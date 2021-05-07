@@ -7,37 +7,35 @@ from path import Path
 
 from archetypal import IDF, settings
 from archetypal.eplus_interface.version import get_eplus_dirs
-from archetypal.template import (
-    BuildingTemplate,
-    DomesticHotWaterSetting,
-    GasMaterial,
-    GlazingMaterial,
-    MassRatio,
-    MaterialLayer,
-    OpaqueConstruction,
-    OpaqueMaterial,
-    StructureInformation,
-    VentilationSetting,
-    WindowConstruction,
-    WindowSetting,
-    ZoneConditioning,
-    ZoneConstructionSet,
-    ZoneDefinition,
-    ZoneLoad,
-)
+from archetypal.template.building_template import BuildingTemplate
+from archetypal.template.conditioning import ZoneConditioning
+from archetypal.template.dhw import DomesticHotWaterSetting
+from archetypal.template.load import ZoneLoad
+from archetypal.template.materials.gas_layer import GasLayer
+from archetypal.template.materials.gas_material import GasMaterial
+from archetypal.template.materials.glazing_material import GlazingMaterial
+from archetypal.template.materials.material_layer import MaterialLayer
+from archetypal.template.materials.opaque_material import OpaqueMaterial
+from archetypal.template.constructions.opaque_construction import OpaqueConstruction
 from archetypal.template.schedule import (
     DaySchedule,
     WeekSchedule,
     YearSchedule,
     YearSchedulePart,
 )
+from archetypal.template.structure import MassRatio, StructureInformation
+from archetypal.template.ventilation import VentilationSetting
+from archetypal.template.constructions.window_construction import WindowConstruction
+from archetypal.template.window_setting import WindowSetting
+from archetypal.template.zone_construction_set import ZoneConstructionSet
+from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
 
 
 class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
 
-    def test_template_to_template(self, config):
+    def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""
 
@@ -65,7 +63,7 @@ class TestUmiTemplate:
         )
 
         data_dict = a.to_dict()
-        a.to_json()
+        a.to_dict()
         assert no_duplicates(data_dict)
 
     @pytest.mark.skipif(
@@ -81,7 +79,7 @@ class TestUmiTemplate:
         ]
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.from_idf_files(idf_source, wf, name="Mixed_Files")
-        a.to_json()
+        a.to_dict()
         data_dict = a.to_dict()
         assert no_duplicates(data_dict)
 
@@ -123,23 +121,35 @@ class TestUmiTemplate:
         yield IDF(prep_outputs=False)
 
     @pytest.fixture()
-    def manual_umitemplate_library(self, config, idf):
+    def manual_umitemplate_library(self, config):
         """ Creates Umi template from scratch """
 
         # region Defines materials
 
         # Opaque materials
         concrete = OpaqueMaterial(
-            Name="Concrete", Conductivity=0.5, SpecificHeat=800, Density=1500, idf=idf
+            Name="Concrete",
+            Conductivity=0.5,
+            SpecificHeat=800,
+            Density=1500,
         )
         insulation = OpaqueMaterial(
-            Name="Insulation", Conductivity=0.04, SpecificHeat=1000, Density=30, idf=idf
+            Name="Insulation",
+            Conductivity=0.04,
+            SpecificHeat=1000,
+            Density=30,
         )
         brick = OpaqueMaterial(
-            Name="Brick", Conductivity=1, SpecificHeat=900, Density=1900, idf=idf
+            Name="Brick",
+            Conductivity=1,
+            SpecificHeat=900,
+            Density=1900,
         )
         plywood = OpaqueMaterial(
-            Name="Plywood", Conductivity=0.13, SpecificHeat=800, Density=540, idf=idf
+            Name="Plywood",
+            Conductivity=0.13,
+            SpecificHeat=800,
+            Density=540,
         )
         OpaqueMaterials = [concrete, insulation, brick, plywood]
 
@@ -152,17 +162,16 @@ class TestUmiTemplate:
             SolarReflectanceFront=0.5,
             SolarReflectanceBack=0.5,
             VisibleTransmittance=0.7,
-            VisibleReflectanceFront=0.5,
-            VisibleReflectanceBack=0.5,
+            VisibleReflectanceFront=0.3,
+            VisibleReflectanceBack=0.3,
             IRTransmittance=0.7,
             IREmissivityFront=0.5,
             IREmissivityBack=0.5,
-            idf=idf,
         )
         GlazingMaterials = [glass]
 
         # Gas materials
-        air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24, idf=idf)
+        air = GasMaterial(Name="Air", Conductivity=0.02, Density=1.24)
         GasMaterials = [air]
         # endregion
 
@@ -178,7 +187,7 @@ class TestUmiTemplate:
         glassLayer = MaterialLayer(glass, Thickness=0.16)
 
         # Gas MaterialLayers
-        airLayer = MaterialLayer(air, Thickness=0.04)
+        airLayer = GasLayer(air, Thickness=0.04)
 
         MaterialLayers = [
             concreteLayer,
@@ -196,44 +205,31 @@ class TestUmiTemplate:
         wall_int = OpaqueConstruction(
             Name="wall_int",
             Layers=[plywoodLayer],
-            Surface_Type="Partition",
-            Outside_Boundary_Condition="Zone",
-            IsAdiabatic=True,
-            idf=idf,
         )
         wall_ext = OpaqueConstruction(
             Name="wall_ext",
             Layers=[concreteLayer, insulationLayer, brickLayer],
-            Surface_Type="Facade",
-            Outside_Boundary_Condition="Outdoors",
-            idf=idf,
         )
         floor = OpaqueConstruction(
             Name="floor",
             Layers=[concreteLayer, plywoodLayer],
-            Surface_Type="Ground",
-            Outside_Boundary_Condition="Zone",
-            idf=idf,
         )
         roof = OpaqueConstruction(
             Name="roof",
             Layers=[plywoodLayer, insulationLayer, brickLayer],
-            Surface_Type="Roof",
-            Outside_Boundary_Condition="Outdoors",
-            idf=idf,
         )
         OpaqueConstructions = [wall_int, wall_ext, floor, roof]
 
         # Window construction
         window = WindowConstruction(
-            Name="Window", Layers=[glassLayer, airLayer, glassLayer], idf=idf
+            Layers=[glassLayer, airLayer, glassLayer], Name="Window"
         )
         WindowConstructions = [window]
 
         # Structure definition
         mass_ratio = MassRatio(Material=plywood, NormalRatio=1, HighLoadRatio=1)
         struct_definition = StructureInformation(
-            Name="Structure", MassRatios=[mass_ratio], idf=idf
+            MassRatios=[mass_ratio], Name="Structure"
         )
         StructureDefinitions = [struct_definition]
         # endregion
@@ -243,35 +239,22 @@ class TestUmiTemplate:
         # Day schedules
         # Always on
         sch_d_on = DaySchedule.from_values(
-            Values=[1] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="AlwaysOn",
-            idf=idf,
+            Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day"
         )
         # Always off
         sch_d_off = DaySchedule.from_values(
-            Values=[0] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="AlwaysOff",
-            idf=idf,
+            Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day"
         )
         # DHW
         sch_d_dhw = DaySchedule.from_values(
-            Values=[0.3] * 24,
-            Category="Day",
-            Type="Fraction",
-            Name="DHW",
-            idf=idf,
+            Name="DHW", Values=[0.3] * 24, Type="Fraction", Category="Day"
         )
         # Internal gains
         sch_d_gains = DaySchedule.from_values(
-            Values=[0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
-            Category="Day",
-            Type="Fraction",
             Name="Gains",
-            idf=idf,
+            Values=[0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
+            Type="Fraction",
+            Category="Day",
         )
         DaySchedules = [sch_d_on, sch_d_dhw, sch_d_gains, sch_d_off]
 
@@ -282,7 +265,6 @@ class TestUmiTemplate:
             Category="Week",
             Type="Fraction",
             Name="AlwaysOn",
-            idf=idf,
         )
         # Always off
         sch_w_off = WeekSchedule(
@@ -298,7 +280,6 @@ class TestUmiTemplate:
             Category="Week",
             Type="Fraction",
             Name="AlwaysOff",
-            idf=idf,
         )
         # DHW
         sch_w_dhw = WeekSchedule(
@@ -314,7 +295,6 @@ class TestUmiTemplate:
             Category="Week",
             Type="Fraction",
             Name="DHW",
-            idf=idf,
         )
         # Internal gains
         sch_w_gains = WeekSchedule(
@@ -328,89 +308,82 @@ class TestUmiTemplate:
                 sch_d_gains,
             ],
             Category="Week",
-            Type="Fractio",
+            Type="Fraction",
             Name="Gains",
-            idf=idf,
         )
         WeekSchedules = [sch_w_on, sch_w_off, sch_w_dhw, sch_w_gains]
 
         # Year schedules
         # Always on
         dict_on = {
+            "$id": 1,
             "Category": "Year",
             "Parts": [
-                YearSchedulePart(
-                    **{
-                        "FromDay": 1,
-                        "FromMonth": 1,
-                        "ToDay": 31,
-                        "ToMonth": 12,
-                        "Schedule": sch_w_on,
-                    }
-                )
+                {
+                    "FromDay": 1,
+                    "FromMonth": 1,
+                    "ToDay": 31,
+                    "ToMonth": 12,
+                    "Schedule": sch_w_on.to_ref(),
+                }
             ],
             "Type": "Fraction",
             "Name": "AlwaysOn",
-            "idf": idf,
         }
-        sch_y_on = YearSchedule.from_parts(**dict_on)
+        sch_y_on = YearSchedule.from_dict(dict_on, {a.id: a for a in WeekSchedules})
         # Always off
         dict_off = {
+            "$id": 2,
             "Category": "Year",
             "Parts": [
-                YearSchedulePart(
-                    **{
-                        "FromDay": 1,
-                        "FromMonth": 1,
-                        "ToDay": 31,
-                        "ToMonth": 12,
-                        "Schedule": sch_w_off,
-                    }
-                )
+                {
+                    "FromDay": 1,
+                    "FromMonth": 1,
+                    "ToDay": 31,
+                    "ToMonth": 12,
+                    "Schedule": sch_w_off.to_ref(),
+                }
             ],
             "Type": "Fraction",
             "Name": "AlwaysOff",
-            "idf": idf,
         }
-        sch_y_off = YearSchedule.from_parts(**dict_off)
+        sch_y_off = YearSchedule.from_dict(dict_off, {a.id: a for a in WeekSchedules})
         # DHW
         dict_dhw = {
+            "$id": 3,
             "Category": "Year",
             "Parts": [
-                YearSchedulePart(
-                    **{
-                        "FromDay": 1,
-                        "FromMonth": 1,
-                        "ToDay": 31,
-                        "ToMonth": 12,
-                        "Schedule": sch_w_dhw,
-                    }
-                )
+                {
+                    "FromDay": 1,
+                    "FromMonth": 1,
+                    "ToDay": 31,
+                    "ToMonth": 12,
+                    "Schedule": sch_w_dhw.to_ref(),
+                }
             ],
             "Type": "Fraction",
             "Name": "DHW",
-            "idf": idf,
         }
-        sch_y_dhw = YearSchedule.from_parts(**dict_dhw)
+        sch_y_dhw = YearSchedule.from_dict(dict_dhw, {a.id: a for a in WeekSchedules})
         # Internal gains
         dict_gains = {
+            "$id": 4,
             "Category": "Year",
             "Parts": [
-                YearSchedulePart(
-                    **{
-                        "FromDay": 1,
-                        "FromMonth": 1,
-                        "ToDay": 31,
-                        "ToMonth": 12,
-                        "Schedule": sch_w_gains,
-                    }
-                )
+                {
+                    "FromDay": 1,
+                    "FromMonth": 1,
+                    "ToDay": 31,
+                    "ToMonth": 12,
+                    "Schedule": sch_w_gains.to_ref(),
+                }
             ],
             "Type": "Fraction",
             "Name": "Gains",
-            "idf": idf,
         }
-        sch_y_gains = YearSchedule.from_parts(**dict_gains)
+        sch_y_gains = YearSchedule.from_dict(
+            dict_gains, {a.id: a for a in WeekSchedules}
+        )
         YearSchedules = [sch_y_on, sch_y_off, sch_y_dhw, sch_y_gains]
         # endregion
 
@@ -422,7 +395,6 @@ class TestUmiTemplate:
             AfnWindowAvailability=sch_y_off,
             ShadingSystemAvailabilitySchedule=sch_y_off,
             ZoneMixingAvailabilitySchedule=sch_y_off,
-            idf=idf,
         )
         WindowSettings = [window_setting]
         # endregion
@@ -430,13 +402,13 @@ class TestUmiTemplate:
         # region Defines DHW settings
 
         dhw_setting = DomesticHotWaterSetting(
-            Name="dhw_setting_1",
-            IsOn=True,
             WaterSchedule=sch_y_dhw,
+            IsOn=True,
             FlowRatePerFloorArea=0.03,
             WaterSupplyTemperature=65,
             WaterTemperatureInlet=10,
-            idf=idf,
+            area=1,
+            Name="dhw_setting_1",
         )
         DomesticHotWaterSettings = [dhw_setting]
         # endregion
@@ -444,10 +416,9 @@ class TestUmiTemplate:
         # region Defines ventilation settings
 
         vent_setting = VentilationSetting(
-            Name="vent_setting_1",
             NatVentSchedule=sch_y_off,
             ScheduledVentilationSchedule=sch_y_off,
-            idf=idf,
+            Name="vent_setting_1",
         )
         VentilationSettings = [vent_setting]
         # endregion
@@ -459,7 +430,6 @@ class TestUmiTemplate:
             HeatingSchedule=sch_y_on,
             CoolingSchedule=sch_y_on,
             MechVentSchedule=sch_y_off,
-            idf=idf,
         )
         ZoneConditionings = [zone_conditioning]
         # endregion
@@ -480,7 +450,6 @@ class TestUmiTemplate:
             IsGroundAdiabatic=False,
             Facade=wall_ext,
             IsFacadeAdiabatic=False,
-            idf=idf,
         )
         # Core zone
         zone_constr_set_core = ZoneConstructionSet(
@@ -496,7 +465,6 @@ class TestUmiTemplate:
             IsGroundAdiabatic=False,
             Facade=wall_ext,
             IsFacadeAdiabatic=False,
-            idf=idf,
         )
         ZoneConstructionSets = [zone_constr_set_perim, zone_constr_set_core]
         # endregion
@@ -504,11 +472,10 @@ class TestUmiTemplate:
         # region Defines zone loads
 
         zone_load = ZoneLoad(
-            Name="zone_load_1",
             EquipmentAvailabilitySchedule=sch_y_gains,
             LightsAvailabilitySchedule=sch_y_gains,
             OccupancySchedule=sch_y_gains,
-            idf=idf,
+            Name="zone_load_1",
         )
         ZoneLoads = [zone_load]
         # endregion
@@ -518,7 +485,6 @@ class TestUmiTemplate:
         # Perimeter zone
         perim = ZoneDefinition(
             Name="Perim_zone",
-            idf=idf,
             Conditioning=zone_conditioning,
             Constructions=zone_constr_set_perim,
             DomesticHotWater=dhw_setting,
@@ -530,7 +496,6 @@ class TestUmiTemplate:
         # Core zone
         core = ZoneDefinition(
             Name="Core_zone",
-            idf=idf,
             Conditioning=zone_conditioning,
             Constructions=zone_constr_set_core,
             DomesticHotWater=dhw_setting,
@@ -550,7 +515,6 @@ class TestUmiTemplate:
             Structure=struct_definition,
             Windows=window_setting,
             Name="Building_template_1",
-            idf=idf,
         )
         BuildingTemplates = [building_template]
         # endregion
@@ -592,32 +556,17 @@ class TestUmiTemplate:
 
     @pytest.mark.skipif(
         os.environ.get("CI", "False").lower() == "true",
-        reason="Skipping this test on CI environment because it needs EnergyPlys 8-7-0",
-    )
-    def test_sf_cz5a(self, config):
-        from path import Path
-
-        settings.log_console = False
-        files = Path("tests/input_data/problematic").files("*CZ5A*.idf")
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        template = UmiTemplateLibrary.from_idf_files(
-            name="my_umi_template", idf_files=files, as_version="9-2-0", weather=w
-        )
-        template.to_json()
-        assert no_duplicates(template.to_dict(), attribute="Name")
-        assert no_duplicates(template.to_dict(), attribute="$id")
-
-    office = [
-        "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-    ]
-
-    @pytest.mark.skipif(
-        os.environ.get("CI", "False").lower() == "true",
         reason="Skipping this test on CI environment",
     )
-    @pytest.mark.parametrize("file", office, ids=["small", "medium", "large"])
+    @pytest.mark.parametrize(
+        "file",
+        (
+            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        ),
+        ids=("small", "medium", "large"),
+    )
     def test_necb_serial(self, file, config):
         settings.log_console = True
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -653,7 +602,7 @@ class TestUmiTemplate:
             weather=w,
             processors=-1,
         )
-        template.to_json()
+        template.to_dict()
         assert no_duplicates(template.to_dict(), attribute="Name")
         assert no_duplicates(template.to_dict(), attribute="$id")
 
@@ -683,7 +632,6 @@ class TestUmiTemplate:
             weather=w,
             processors=1,
         )
-        template.to_json()
         assert no_duplicates(template.to_dict(), attribute="Name")
         assert no_duplicates(template.to_dict(), attribute="$id")
 
@@ -698,8 +646,6 @@ def climatestudio(config):
     if idf.sim_info is None:
         idf.simulate()
 
-    from archetypal.template import BuildingTemplate
-
     bt = BuildingTemplate.from_idf(idf)
     yield bt
 
@@ -711,8 +657,6 @@ def sf_cz5a(config):
     file = "tests/input_data/problematic/SF+CZ5A+USA_IL_Chicago-OHare.Intl.AP.725300+oilfurnace+slab+IECC_2012.idf"
     w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w, annual=True)
-
-    from archetypal.template import BuildingTemplate
 
     bt = BuildingTemplate.from_idf(idf)
     yield bt

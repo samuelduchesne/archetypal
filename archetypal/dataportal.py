@@ -22,12 +22,6 @@ import requests
 from archetypal import settings
 from archetypal.utils import log
 
-# scipy and sklearn are optional dependencies for faster nearest node search
-try:
-    from osgeo import gdal
-except ImportError as e:
-    gdal = None
-
 
 def tabula_available_buildings(country_name="France"):
     """Returns all available building types for a specific country.
@@ -542,7 +536,7 @@ def nrel_bcl_api_request(data):
         response = requests.get(prepared_url)
 
         # check if an error has occurred
-        log(response.raise_for_status(), lg.DEBUG)
+        response.raise_for_status()
 
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result

@@ -50,15 +50,9 @@ setup(
     name="archetypal",
     use_scm_version=True,
     setup_requires=["setuptools_scm"],
-    packages=find_namespace_packages(include=["archetypal", "archetypal.*"],
-                                     exclude=["tests"]),
-    package_data={
-        "archetypal": [
-            "ressources/originBUISketchUp.idf",
-            "ressources/W74-lib.dat",
-            "ressources/NewFileTemplate.d18",
-        ]
-    },
+    packages=find_namespace_packages(
+        include=["archetypal", "archetypal.*"], exclude=["tests"]
+    ),
     include_package_data=True,
     url="https://github.com/samuelduchesne/archetypal",
     license="MIT License",

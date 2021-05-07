@@ -1,154 +1,19 @@
-################################################################################
-# Module: archetypal.template
-# Description:
-# License: MIT, see full license in LICENSE.txt
-# Web: https://github.com/samuelduchesne/archetypal
-################################################################################
+"""archetypal OpaqueConstruction."""
 
 import collections
 import uuid
 
 import numpy as np
-from deprecation import deprecated
 from eppy.bunch_subclass import BadEPFieldError
+from validator_collection import validators
 
-import archetypal
-from archetypal.template import MaterialLayer, OpaqueMaterial, UmiBase, UniqueName
-
-
-class ConstructionBase(UmiBase):
-    """A class used to store data linked with the Life Cycle aspect of
-    constructions (eg.: wall assemblies).
-
-    For more information on the Life Cycle Analysis performed in UMI, see:
-    https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life
-    -cycle-impact
-    """
-
-    __slots__ = (
-        "_assembly_carbon",
-        "_assembly_cost",
-        "_assembly_energy",
-        "_dissassembly_carbon",
-        "_dissassembly_energy",
-    )
-
-    def __init__(
-        self,
-        AssemblyCarbon=0,
-        AssemblyCost=0,
-        AssemblyEnergy=0,
-        DisassemblyCarbon=0,
-        DisassemblyEnergy=0,
-        **kwargs,
-    ):
-        """Initialize a ConstructionBase object with parameters:
-
-        Args:
-            AssemblyCarbon (float): assembly carbon [kgCO2/m2].
-            AssemblyCost (float): assembly carbon [kgCO2/m2].
-            AssemblyEnergy (float): assembly energy [MJ/m2].
-            DisassemblyCarbon (float): disassembly carbon [kgCO2/m2].
-            DisassemblyEnergy (float): disassembly energy [MJ/m2].
-            **kwargs: keywords passed to UmiBase.
-        """
-        super(ConstructionBase, self).__init__(**kwargs)
-        self.AssemblyCarbon = AssemblyCarbon
-        self.AssemblyCost = AssemblyCost
-        self.AssemblyEnergy = AssemblyEnergy
-        self.DisassemblyCarbon = DisassemblyCarbon
-        self.DisassemblyEnergy = DisassemblyEnergy
-
-    @property
-    def AssemblyCarbon(self):
-        """Get or set the assembly carbon [kgCO2/m2]."""
-        return self._assembly_carbon
-
-    @AssemblyCarbon.setter
-    def AssemblyCarbon(self, value):
-        self._assembly_carbon = float(value)
-
-    @property
-    def AssemblyCost(self):
-        """Get or set the assembly cost [$/m2]."""
-        return self._assembly_cost
-
-    @AssemblyCost.setter
-    def AssemblyCost(self, value):
-        self._assembly_cost = float(value)
-
-    @property
-    def AssemblyEnergy(self):
-        """Get or set the assembly energy [MJ/m2]."""
-        return self._assembly_energy
-
-    @AssemblyEnergy.setter
-    def AssemblyEnergy(self, value):
-        self._assembly_energy = float(value)
-
-    @property
-    def DisassemblyCarbon(self):
-        """Get or set the disassembly carbon [kgCO2/m2]."""
-        return self._dissassembly_carbon
-
-    @DisassemblyCarbon.setter
-    def DisassemblyCarbon(self, value):
-        self._dissassembly_carbon = float(value)
-
-    @property
-    def DisassemblyEnergy(self):
-        """Get or set the disassembly energy [MJ/m2]."""
-        return self._dissassembly_energy
-
-    @DisassemblyEnergy.setter
-    def DisassemblyEnergy(self, value):
-        self._dissassembly_energy = float(value)
-
-    def validate(self):
-        """Validate object and fill in missing values."""
-        return self
-
-    def get_ref(self, ref):
-        """Get item matching reference id.
-
-        Args:
-            ref:
-        """
-        return next(
-            iter(
-                [
-                    value
-                    for value in ConstructionBase.CREATED_OBJECTS
-                    if value.id == ref["$ref"]
-                ]
-            ),
-            None,
-        )
-
-
-class LayeredConstruction(ConstructionBase):
-    """Defines the layers of an :class:`OpaqueConstruction`.
-
-    Attributes:
-        Layers (list of MaterialLayer): List of MaterialLayer objects from
-            outside to inside.
-    """
-
-    def __init__(self, Layers, **kwargs):
-        """Initialize object.
-
-        Args:
-            Layers (list of MaterialLayer): A list of :class:`MaterialLayer`
-                objects.
-            **kwargs: Keywords passed to the :class:`ConstructionBase`
-                constructor.
-        """
-        super(LayeredConstruction, self).__init__(Layers=Layers, **kwargs)
-        self.Layers = Layers
+from archetypal.template.constructions.base_construction import LayeredConstruction
+from archetypal.template.materials.material_layer import MaterialLayer
+from archetypal.template.materials.opaque_material import OpaqueMaterial
 
 
 class OpaqueConstruction(LayeredConstruction):
-    """Opaque Constructions
+    """Opaque Constructions.
 
     .. image:: ../images/template/constructions-opaque.png
 
@@ -165,27 +30,29 @@ class OpaqueConstruction(LayeredConstruction):
         * timeconstant_per_unit_area
         * solar_reflectance_index
     """
-    __slots__ = ()
 
-    def __init__(self, Layers, **kwargs):
-        """
+    __slots__ = ("area",)
+
+    def __init__(self, Name, Layers, **kwargs):
+        """Initialize an OpaqueConstruction.
+
         Args:
-            Layers (list of MaterialLayer): List of MaterialLayers making up the
-                construction.
+            Layers (list of archetypal.MaterialLayer): List of MaterialLayers making
+                up the construction.
             **kwargs: Other attributes passed to parent constructors such as
                 :class:`ConstructionBase`.
         """
-        super(OpaqueConstruction, self).__init__(Layers, **kwargs)
+        super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
         self.area = 1
 
     @property
     def r_value(self):
         """Get or set the thermal resistance [K⋅m2/W] (excluding air films).
 
-        Note that, when setting the R-value, the thickness of the inferred insulation
-        layer will be adjusted.
+        Note that, when setting the R-value, the thickness of the inferred
+        insulation layer will be adjusted.
         """
-        return sum([layer.r_value for layer in self.Layers])
+        return super(OpaqueConstruction, self).r_value
 
     @r_value.setter
     def r_value(self, value):
@@ -211,29 +78,8 @@ class OpaqueConstruction(LayeredConstruction):
         insulation_layer.r_value = new_r_value
 
     @property
-    def u_value(self):
-        """Construction heat transfer coefficient [W/m2⋅K] (excluding air films)."""
-        return 1 / self.r_value
-
-    @property
-    def r_factor(self):
-        """Construction R-factor [m2-K/W] (including air films).
-
-        inside film resistance = 8 [K⋅m2/W]
-        outside film resistance = 20 [K⋅m2/W]
-        """
-        h_in = 8.0
-        h_out = 20.0
-        return 1 / h_out + self.r_value + 1 / h_in
-
-    @property
-    def u_factor(self):
-        """Overall heat transfer coefficient (including air films) W/(m2⋅K)."""
-        return 1 / self.r_factor
-
-    @property
     def equivalent_heat_capacity_per_unit_volume(self):
-        """Construction equivalent per unit wall **volume** heat capacity [J/(kg⋅K)].
+        """Get the equivalent per unit wall volume heat capacity [J/(kg⋅K)].
 
         Hint:
             "The physical quantity which represents the heat storage capability
@@ -262,7 +108,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     @property
     def specific_heat(self):
-        """Construction specific heat weighted by wall area mass [J/(kg⋅K)]."""
+        """Get the construction specific heat weighted by wall area mass [J/(kg⋅K)]."""
         return np.average(
             [layer.specific_heat for layer in self.Layers],
             weights=[layer.Thickness * layer.Material.Density for layer in self.Layers],
@@ -270,7 +116,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     @property
     def heat_capacity_per_unit_wall_area(self):
-        """Construction heat capacity per unit wall area [J/(m2⋅K)].
+        """Get the construction heat capacity per unit wall area [J/(m2⋅K)].
 
         Hint:
             :math:`(HC/A)=ρ·c·δ`, where :math:`δ` is the wall thickness.
@@ -279,34 +125,34 @@ class OpaqueConstruction(LayeredConstruction):
 
     @property
     def total_thickness(self):
-        """Construction total thickness [m]."""
+        """Get the construction total thickness [m]."""
         return sum([layer.Thickness for layer in self.Layers])
 
     @property
     def mass_per_unit_area(self):
-        """Construction mass per unit area [kg/m2]."""
+        """Get the construction mass per unit area [kg/m2]."""
         return sum([layer.Thickness * layer.Material.Density for layer in self.Layers])
 
     @property
     def time_constant_per_unit_area(self):
-        """Construction time constant per unit area."""
+        """Get the construction time constant per unit area [seconds/m2]."""
         return self.mass_per_unit_area * self.specific_heat / self.u_factor
 
     @property
     def solar_reflectance_index(self):
-        """Construction's Solar Reflectance Index of the exposed surface.
+        """Get the Solar Reflectance Index of the exposed surface.
 
         Hint:
             calculation from K-12 AEDG, derived from ASTM E1980 assuming medium wind
             speed.
 
         """
-        exposedMaterial = self.Layers[0]  # 0-th layer is exterior layer
-        solarAbsorptance = exposedMaterial.Material.SolarAbsorptance
-        thermalEmissivity = exposedMaterial.Material.ThermalEmittance
+        exposed_material = self.Layers[0]  # 0-th layer is exterior layer
+        solar_absorptance = exposed_material.Material.SolarAbsorptance
+        thermal_emissivity = exposed_material.Material.ThermalEmittance
 
-        x = (20.797 * solarAbsorptance - 0.603 * thermalEmissivity) / (
-            9.5205 * thermalEmissivity + 12.0
+        x = (20.797 * solar_absorptance - 0.603 * thermal_emissivity) / (
+            9.5205 * thermal_emissivity + 12.0
         )
         sri = 123.97 - 141.35 * x + 9.6555 * x * x
 
@@ -354,22 +200,19 @@ class OpaqueConstruction(LayeredConstruction):
 
         meta = self._get_predecessors_meta(other)
         # thicknesses & materials for self
-        if method == "equivalent_volume":
-            new_m, new_t = self.equivalent_volume(other)
-        elif method == "constant_ufactor":
-            new_m, new_t = self.constant_ufactor(other, weights)
+        if method == "constant_ufactor":
+            new_m, new_t = self._constant_ufactor(other, weights)
         elif method == "dominant_wall":
             # simply return the dominant wall construction
             oc = self.dominant_wall(other, weights)
             return oc
         else:
             raise ValueError(
-                'Possible choices are ["equivalent_volume", "constant_ufactor", '
-                '"dominant_wall"]'
+                'Possible choices are ["constant_ufactor", "dominant_wall"]'
             )
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
-        new_obj = self.__class__(**meta, Layers=layers, idf=self.idf)
+        new_obj = self.__class__(**meta, Layers=layers)
         new_name = (
             "Combined Opaque Construction {{{}}} with u_value "
             "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
@@ -379,33 +222,8 @@ class OpaqueConstruction(LayeredConstruction):
         new_obj.area = sum(weights)
         return new_obj
 
-    def equivalent_volume(self, other):
-        """
-        Todo:
-            - Implement the 'equivalent_volume' method.
-
-        Args:
-            other:
-        """
-        raise NotImplementedError(
-            '"equivalent_volume" method is not yet '
-            "fully implemented. Please choose "
-            '"constant_ufactor"'
-        )
-
-        self_t = np.array([mat.Thickness for mat in self.Layers])
-        self_m = [mat.Material for mat in self.Layers]
-        # thicknesses & materials for other
-        other_t = np.array([mat.Thickness for mat in other.Layers])
-        other_m = [mat.Material for mat in other.Layers]
-        # thicknesses & materials for the new OpaqueConstruction
-        new_t = np.append(self_t, other_t)
-        new_t = new_t / 2
-        new_m = self_m + other_m
-        return new_m, new_t
-
     def dominant_wall(self, other, weights):
-        """Simply returns dominant wall properties
+        """Return dominant wall construction between self and other.
 
         Args:
             other:
@@ -419,8 +237,10 @@ class OpaqueConstruction(LayeredConstruction):
         ][0]
         return oc
 
-    def constant_ufactor(self, other, weights=None):
-        """The constant u-factor method will produce an assembly that has the
+    def _constant_ufactor(self, other, weights=None):
+        """Return materials and thicknesses for constant u-value.
+
+        The constant u-factor method will produce an assembly that has the
         same u-value as an equivalent wall (weighted by wall area) but with a
         mixture of all unique layer materials
 
@@ -440,8 +260,7 @@ class OpaqueConstruction(LayeredConstruction):
             expected_specific_heat,
             expected_total_thickness,
         ):
-            """Objective function for thickness evaluation"""
-
+            """Objective function for thickness evaluation."""
             u_value = 1 / sum(
                 [
                     thickness / mat.Conductivity
@@ -513,94 +332,106 @@ class OpaqueConstruction(LayeredConstruction):
         return np.array(materials), res.x
 
     @classmethod
-    @deprecated(
-        deprecated_in="1.3.1",
-        removed_in="1.5",
-        current_version=archetypal.__version__,
-        details="Use from_dict function instead",
-    )
-    def from_json(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        return cls.from_dict(*args, **kwargs)
+    def from_dict(cls, data, materials, **kwargs):
+        """Create an OpaqueConstruction from a dictionary.
 
-    @classmethod
-    def from_dict(cls, *args, **kwargs):
-        """
         Args:
-            *args:
-            **kwargs:
+            data (dict): The python dictionary.
+            materials (dict): A dictionary of materials with their id as keys.
+
+        .. code-block:: python
+            materials = {}  # dict of materials.
+            data = {
+                 "$id": "140300770659680",
+                 "Layers": [
+                  {
+                   "Material": {
+                    "$ref": "140300653743792"
+                   },
+                   "Thickness": 0.013
+                  },
+                  {
+                   "Material": {
+                    "$ref": "140300653743792"
+                   },
+                   "Thickness": 0.013
+                  }
+                 ],
+                 "AssemblyCarbon": 0.0,
+                 "AssemblyCost": 0.0,
+                 "AssemblyEnergy": 0.0,
+                 "DisassemblyCarbon": 0.0,
+                 "DisassemblyEnergy": 0.0,
+                 "Category": "Partition",
+                 "Comments": "",
+                 "DataSource": "ASHRAE 90.1-2007",
+                 "Name": "90.1-2007 Nonres 6A Int Wall"
+            }
+
         """
         # resolve Material objects from ref
-        layers = kwargs.pop("Layers", None)
-        oc = cls(Layers=layers, **kwargs)
-        lys = [
+        layers = [
             MaterialLayer(
-                oc.get_ref(layer["Material"]),
-                layer["Thickness"],
+                Material=materials[layer["Material"]["$ref"]],
+                Thickness=layer["Thickness"],
             )
-            for layer in layers
+            for layer in data.pop("Layers")
         ]
-        oc.Layers = lys
+        _id = data.pop("$id")
+        oc = cls(Layers=layers, id=_id, **data, **kwargs)
 
         return oc
 
     @classmethod
-    def generic_internalmass(cls, idf, **kwargs):
-        """
+    def generic_internalmass(cls, **kwargs):
+        """Create a generic internal mass object.
 
         Args:
-            idf (IDF): The IDF model
-            **kwargs:
-
-        Returns:
-
+            **kwargs: keywords passed to the class constructor.
         """
-        mat = idf.anidfobject(
-            key="Material".upper(),
+        mat = OpaqueMaterial(
             Name="Wood 6inch",
             Roughness="MediumSmooth",
             Thickness=0.15,
             Conductivity=0.12,
             Density=540,
-            Specific_Heat=1210,
-            Thermal_Absorptance=0.7,
-            Visible_Absorptance=0.7,
+            SpecificHeat=1210,
+            ThermalAbsorptance=0.7,
+            VisibleAbsorptance=0.7,
         )
         return OpaqueConstruction(
             Name="InternalMass",
-            idf=idf,
-            Layers=[
-                MaterialLayer(Material=OpaqueMaterial.from_epbunch(mat), Thickness=0.15)
-            ],
-            Category=kwargs.pop("Category", "InternalMass"),
+            Layers=[MaterialLayer(Material=mat, Thickness=0.15)],
+            Category="InternalMass",
             **kwargs,
         )
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
-        """Construct an OpaqueMaterial object given an epbunch with keys
-        "BuildingSurface:Detailed" or "InternalMass"
+        """Create an OpaqueConstruction object from an epbunch.
+
+        Possible keys are "BuildingSurface:Detailed" or "InternalMass"
+
         Args:
-            epbunch (EpBunch):
-            **kwargs:
+            epbunch (EpBunch): The epbunch object.
+            **kwargs: keywords passed to the LayeredConstruction constructor.
         """
+        assert epbunch.key.lower() in ("internalmass", "construction"), (
+            f"Expected ('Internalmass', 'Construction')." f"Got '{epbunch.key}'."
+        )
         name = epbunch.Name
-        idf = kwargs.pop("idf", epbunch.theidf)
-        # treat internalmass and surfaces differently
+
+        # treat internalmass and regular surfaces differently
         if epbunch.key.lower() == "internalmass":
             layers = cls._internalmass_layer(epbunch)
-            return cls(Name=name, Layers=layers, idf=idf, **kwargs)
-        else:
+            return cls(Name=name, Layers=layers, **kwargs)
+        elif epbunch.key.lower() == "construction":
             layers = cls._surface_layers(epbunch)
-            return cls(Name=name, Layers=layers, idf=idf, **kwargs)
+            return cls(Name=name, Layers=layers, **kwargs)
 
     @classmethod
     def _internalmass_layer(cls, epbunch):
-        """Returns layers of an internal mass object.
+        """Return layers of an internal mass object.
 
         Args:
             epbunch (EpBunch): The InternalMass epobject.
@@ -610,17 +441,17 @@ class OpaqueConstruction(LayeredConstruction):
 
     @classmethod
     def _surface_layers(cls, epbunch):
-        """Retrieve layers for the OpaqueConstruction
+        """Retrieve layers for the OpaqueConstruction.
 
         Args:
             epbunch (EpBunch): EP-Construction object
         """
         layers = []
         for layer in epbunch.fieldnames[2:]:
-            # Iterate over the constructions layers
+            # Iterate over the construction's layers
             material = epbunch.get_referenced_object(layer)
             if material:
-                o = OpaqueMaterial.from_epbunch(material)
+                o = OpaqueMaterial.from_epbunch(material, allow_duplicates=True)
                 try:
                     thickness = material.Thickness
                 except BadEPFieldError:
@@ -628,8 +459,8 @@ class OpaqueConstruction(LayeredConstruction):
                 layers.append(MaterialLayer(Material=o, Thickness=thickness))
         return layers
 
-    def to_json(self):
-        """Convert class properties to dict"""
+    def to_dict(self):
+        """Return OpaqueConstruction dictionary representation."""
         self.validate()  # Validate object before trying to get json format
 
         data_dict = collections.OrderedDict()
@@ -642,14 +473,21 @@ class OpaqueConstruction(LayeredConstruction):
         data_dict["DisassemblyCarbon"] = self.DisassemblyCarbon
         data_dict["DisassemblyEnergy"] = self.DisassemblyEnergy
         data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = str(self.DataSource)
-        data_dict["Name"] = UniqueName(self.Name)
+        data_dict["Name"] = self.Name
 
         return data_dict
 
-    def mapping(self):
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             Layers=self.Layers,
@@ -665,21 +503,17 @@ class OpaqueConstruction(LayeredConstruction):
         )
 
     @classmethod
-    def generic(cls, idf=None):
-        # 90.1-2007 Nonres 4B Int Wall
-        """
-        Args:
-            idf:
-        """
-        om = OpaqueMaterial.generic(idf=idf)
+    def generic(cls, **kwargs):
+        """Return OpaqueConstruction based on 90.1-2007 Nonres 4B Int Wall."""
+        om = OpaqueMaterial.generic()
 
         layers = [MaterialLayer(om, 0.0127), MaterialLayer(om, 0.0127)]  # half inch
         return cls(
             Name="90.1-2007 Nonres 6A Int Wall",
             Layers=layers,
             DataSource="ASHRAE 90.1-2007",
-            idf=idf,
             Category="Partition",
+            **kwargs,
         )
 
     def __add__(self, other):
@@ -691,10 +525,39 @@ class OpaqueConstruction(LayeredConstruction):
         return self.combine(other)
 
     def __hash__(self):
+        """Return the hash value of self."""
         return hash((self.__class__.__name__, getattr(self, "Name", None)))
 
     def __eq__(self, other):
+        """Assert self is equivalent to other."""
         if not isinstance(other, OpaqueConstruction):
             return NotImplemented
         else:
             return all([self.Layers == other.Layers])
+
+    def __copy__(self):
+        """Create a copy of self."""
+        new_con = self.__class__(Name=self.Name, Layers=[a for a in self.Layers])
+        return new_con
+
+    def to_epbunch(self, idf):
+        """Get a Construction EpBunch given an idf model.
+
+        Notes:
+            Will create layered materials as well.
+
+        Args:
+            idf (IDF): An idf model to add the EpBunch in.
+
+        Returns:
+            EpBunch: The EpBunch object added to the idf model.
+        """
+        return idf.newidfobject(
+            key="CONSTRUCTION",
+            Name=self.Name,
+            Outside_Layer=self.Layers[0].to_epbunch(idf).Name,
+            **{
+                f"Layer_{i+2}": layer.to_epbunch(idf).Name
+                for i, layer in enumerate(self.Layers[1:])
+            },
+        )

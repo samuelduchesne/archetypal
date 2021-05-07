@@ -8,26 +8,21 @@
 import collections
 import logging as lg
 import time
-from copy import copy
 from itertools import chain, repeat
 
 import networkx
-from deprecation import deprecated
 from path import Path
 from sigfig import round
 from tqdm import tqdm
+from validator_collection import validators
 
-import archetypal
-from archetypal.template import (
-    DomesticHotWaterSetting,
-    MassRatio,
-    MaterialLayer,
-    StructureInformation,
-    UmiBase,
-    WindowSetting,
-    YearSchedulePart,
-    ZoneDefinition,
-)
+from archetypal.template.dhw import DomesticHotWaterSetting
+from archetypal.template.materials.material_layer import MaterialLayer
+from archetypal.template.schedule import YearSchedulePart
+from archetypal.template.structure import MassRatio, StructureInformation
+from archetypal.template.umi_base import UmiBase
+from archetypal.template.window_setting import WindowSetting
+from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.utils import log, reduce
 
 
@@ -37,8 +32,26 @@ class BuildingTemplate(UmiBase):
     .. image:: ../images/template/buildingtemplate.png
     """
 
+    __slots__ = (
+        "_partition_ratio",
+        "_lifespan",
+        "_core",
+        "_perimeter",
+        "_structure_definition",
+        "_window_setting",
+        "_default_window_to_wall_ratio",
+        "_year_from",
+        "_year_to",
+        "_country",
+        "_climate_zone",
+        "_authors",
+        "_author_emails",
+        "_version",
+    )
+
     def __init__(
         self,
+        Name,
         Core=None,
         Perimeter=None,
         Structure=None,
@@ -85,16 +98,15 @@ class BuildingTemplate(UmiBase):
             Version (str): Version number.
             **kwargs: other optional keywords passed to other constructors.
         """
-        super(BuildingTemplate, self).__init__(**kwargs)
-        self._zone_graph = None
-        self._partition_ratio = PartitionRatio
+        super(BuildingTemplate, self).__init__(Name, **kwargs)
+        self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core
         self.Perimeter = Perimeter
         self.Structure = Structure
         self.Windows = Windows
         self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
-        self.YearFrom = YearFrom
+        self._year_from = YearFrom  # set privately to allow validation
         self.YearTo = YearTo
         self.Country = Country if Country else []
         self.ClimateZone = ClimateZone if ClimateZone else []
@@ -102,76 +114,235 @@ class BuildingTemplate(UmiBase):
         self.AuthorEmails = AuthorEmails if AuthorEmails else []
         self.Version = Version
 
-        self._allzones = []
+    @property
+    def Perimeter(self):
+        """Get or set the perimeter ZoneDefinition."""
+        return self._perimeter
+
+    @Perimeter.setter
+    def Perimeter(self, value):
+        assert isinstance(
+            value, ZoneDefinition
+        ), f"Expected a ZoneDefinition, not {type(value)}"
+        self._perimeter = value
+
+    @property
+    def Core(self):
+        """Get or set the core ZoneDefinition."""
+        return self._core
+
+    @Core.setter
+    def Core(self, value):
+        assert isinstance(
+            value, ZoneDefinition
+        ), f"Expected a ZoneDefinition, not {type(value)}"
+        self._core = value
+
+    @property
+    def Structure(self):
+        """Get or set the StructureInformation."""
+        return self._structure_definition
+
+    @Structure.setter
+    def Structure(self, value):
+        assert isinstance(
+            value, StructureInformation
+        ), f"Expected a StructureInformation, not {type(value)}"
+        self._structure_definition = value
+
+    @property
+    def Windows(self):
+        """Get or set the WindowSetting."""
+        return self._window_setting
+
+    @Windows.setter
+    def Windows(self, value):
+        assert isinstance(
+            value, WindowSetting
+        ), f"Expected a WindowSetting, not {type(value)}"
+        self._window_setting = value
+
+    @property
+    def DefaultWindowToWallRatio(self):
+        """Get or set the DefaultWindowToWallRatio [-]."""
+        return self._default_window_to_wall_ratio
+
+    @DefaultWindowToWallRatio.setter
+    def DefaultWindowToWallRatio(self, value):
+        self._default_window_to_wall_ratio = validators.float(
+            value, minimum=0, maximum=1
+        )
+
+    @property
+    def Lifespan(self):
+        """Get or set the building life span [years]."""
+        return self._lifespan
+
+    @Lifespan.setter
+    def Lifespan(self, value):
+        self._lifespan = validators.integer(value, minimum=True, coerce_value=True)
 
     @property
     def PartitionRatio(self):
-        if self._partition_ratio is None:
-            self._partition_ratio = self.idf.partition_ratio
+        """Get or set the partition ratio [-]."""
         return self._partition_ratio
 
-    def __hash__(self):
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+    @PartitionRatio.setter
+    def PartitionRatio(self, value):
+        self._partition_ratio = validators.float(value, minimum=0)
+
+    @property
+    def YearFrom(self):
+        """Get or set the YearFrom [int]."""
+        return self._year_from
+
+    @YearFrom.setter
+    def YearFrom(self, value):
+        self._year_from = validators.integer(
+            value, coerce_value=True, maximum=self.YearTo, allow_empty=True
         )
 
-    def __eq__(self, other):
-        if not isinstance(other, BuildingTemplate):
-            return NotImplemented
-        else:
-            return all(
-                [
-                    self.Core == other.Core,
-                    self.Perimeter == other.Perimeter,
-                    self.Structure == other.Structure,
-                    self.Windows == other.Windows,
-                    self.Lifespan == other.Lifespan,
-                    self.PartitionRatio == other.PartitionRatio,
-                    self.DefaultWindowToWallRatio == other.DefaultWindowToWallRatio,
-                    self.YearFrom == other.YearFrom,
-                    self.YearTo == other.YearTo,
-                    self.Country == other.Country,
-                    self.ClimateZone == other.ClimateZone,
-                    self.Authors == other.Authors,
-                    self.AuthorEmails == other.AuthorEmails,
-                    self.Version == other.Version,
-                ]
+    @property
+    def YearTo(self):
+        """Get or set the YearTo [int]."""
+        return self._year_to
+
+    @YearTo.setter
+    def YearTo(self, value):
+        self._year_to = validators.integer(
+            value, coerce_value=True, minimum=self.YearFrom, allow_empty=True
+        )
+
+    @property
+    def Country(self):
+        """Get or set the list of alpha-3 country codes [list]."""
+        return self._country
+
+    @Country.setter
+    def Country(self, value):
+        self._country = validators.iterable(value, allow_empty=True)
+
+    @property
+    def ClimateZone(self):
+        """Get or set the list of climatic zones [list]."""
+        return self._climate_zone
+
+    @ClimateZone.setter
+    def ClimateZone(self, value):
+        self._climate_zone = validators.iterable(value, allow_empty=True)
+
+    @property
+    def Authors(self):
+        """Get or set the list of authors [list]."""
+        return self._authors
+
+    @Authors.setter
+    def Authors(self, value):
+        self._authors = validators.iterable(value, allow_empty=True)
+
+    @property
+    def AuthorEmails(self):
+        """Get or set list of author emails [list]."""
+        return self._author_emails
+
+    @AuthorEmails.setter
+    def AuthorEmails(self, value):
+        self._author_emails = validators.iterable(value, allow_empty=True)
+
+    @property
+    def Version(self):
+        """Get or set the template version [str]."""
+        return self._version
+
+    @Version.setter
+    def Version(self, value):
+        self._version = validators.string(value, coerce_value=True)
+
+    @classmethod
+    def from_dict(
+        cls,
+        data,
+        zone_definitions,
+        structure_definitions,
+        window_settings,
+        schedules,
+        window_constructions,
+        **kwargs,
+    ):
+        """Create an BuildingTemplate from a dictionary.
+
+        Args:
+            data (dict): The python dictionary.
+            zone_definitions (dict): A dictionary of ZoneDefinition objects with their
+                id as keys.
+            structure_definitions (dict): A dictionary of StructureInformation with
+                their id as keys.
+            window_settings (dict): A dictionary of WindowSetting objects with their
+                id as keys.
+            schedules (dict): A dictionary of UmiSchedule with their id as keys.
+            window_constructions (dict): A dictionary of WindowConstruction objects
+                with their id as keys.
+            **kwargs: keywords passed to the constructor.
+
+        .. code-block:: python
+
+            {
+              "Core": {
+                "$ref": "178"
+              },
+              "Lifespan": 60,
+              "PartitionRatio": 0.3,
+              "Perimeter": {
+                "$ref": "178"
+              },
+              "Structure": {
+                "$ref": "64"
+              },
+              "Windows": {
+                "$ref": "181"
+              },
+              "DefaultWindowToWallRatio": 0.4,
+              "YearFrom": 0,
+              "YearTo": 0,
+              "Country": [
+                "USA"
+              ],
+              "ClimateZone": [
+                "5A"
+              ],
+              "Authors": [
+                "Carlos Cerezo"
+              ],
+              "AuthorEmails": [
+                "ccerezo@mit.edu"
+              ],
+              "Version": "v1.0",
+              "Category": "Residential and Lodging",
+              "Comments": "Base building definition for MIT 4433",
+              "DataSource": "MIT_SDL",
+              "Name": "B_Res_0_WoodFrame"
+            }
+
+        """
+        core = zone_definitions[data.pop("Core")["$ref"]]
+        perim = zone_definitions[data.pop("Perimeter")["$ref"]]
+        structure = structure_definitions[data.pop("Structure")["$ref"]]
+        window_data = data.pop("Windows")
+        try:
+            window = window_settings[window_data["$ref"]]
+        except KeyError:
+            window = WindowSetting.from_dict(
+                window_data, schedules, window_constructions
             )
 
-    @classmethod
-    @deprecated(
-        deprecated_in="1.3.1",
-        removed_in="1.5",
-        current_version=archetypal.__version__,
-        details="Use from_dict function instead",
-    )
-    def from_json(cls, *args, **kwargs):
-
-        return cls.from_dict(*args, **kwargs)
-
-    @classmethod
-    def from_dict(cls, *args, **kwargs):
-        """
-        Args:
-            *args:
-            **kwargs:
-        """
-        bt = cls(*args, **kwargs)
-
-        ref = kwargs.get("Core", None)
-        bt.Core = bt.get_ref(ref)
-        ref = kwargs.get("Perimeter", None)
-        bt.Perimeter = bt.get_ref(ref)
-        ref = kwargs.get("Structure", None)
-        bt.Structure = bt.get_ref(ref)
-        ref = kwargs.get("Windows", None)
-        try:
-            idf = kwargs.get("idf", None)
-            bt.Windows = WindowSetting.from_dict(Name=ref.pop("Name"), **ref, idf=idf)
-        except:
-            bt.Windows = bt.get_ref(ref)
-
-        return bt
+        return cls(
+            Core=core,
+            Perimeter=perim,
+            Structure=structure,
+            Windows=window,
+            **data,
+            **kwargs,
+        )
 
     @classmethod
     def from_idf(cls, idf, **kwargs):
@@ -183,118 +354,135 @@ class BuildingTemplate(UmiBase):
         """
         # initialize empty BuildingTemplate
         name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
-        bt = cls(Name=name, idf=idf, **kwargs)
 
         epbunch_zones = idf.idfobjects["ZONE"]
         zones = [
-            ZoneDefinition.from_zone_epbunch(ep_zone, allow_duplicates=True, **kwargs)
+            ZoneDefinition.from_epbunch(ep_zone, allow_duplicates=True, **kwargs)
             for ep_zone in tqdm(epbunch_zones, desc=f"Creating UMI objects for {name}")
         ]
+        # do core and Perim zone reduction
+        bt = cls.reduced_model(name, zones, **kwargs)
+
+        if not bt.Core.DomesticHotWater or not bt.Perimeter.DomesticHotWater:
+            dhw = DomesticHotWaterSetting.whole_building(idf)
+            if not bt.Core.DomesticHotWater:
+                bt.Core.DomesticHotWater = dhw
+            if not bt.Perimeter.DomesticHotWater:
+                bt.Perimeter.DomesticHotWater = dhw
+
+        bt.Comments = "\n".join(
+            [
+                "WWR calculated for original model: ",
+                idf.wwr().to_string(),
+                "where East=90, South=180, West=270, North=0\n",
+            ]
+        )
+
+        bt.PartitionRatio = idf.partition_ratio
+
+        return bt
+
+    @classmethod
+    def reduced_model(cls, name, zones, **kwargs):
+        """Create reduced BuildingTemplate from list of ZoneDefinitions.
+
+        Args:
+            name (str): The name of the building template.
+            zones (list of ZoneDefinition): A list of zone definition objects to
+                reduce. At least one must be a perimeter zone (ZoneDefinition.is_core is
+                False).
+            **kwargs: keywords passed to the class constructor.
+
+        Returns:
+            BuildingTemplate: The reduced BuildingTemplate.
+        """
+        # reduce list of perimeter zones
+
+        log("Initiating complexity reduction...")
+        start_time = time.time()
 
         zone: ZoneDefinition
-        bt.cores = list(
+        cores = list(
             chain.from_iterable(
                 [
-                    list(repeat(copy(zone), zone.multiplier))
+                    list(repeat(zone.duplicate(), zone.multiplier))
                     for zone in zones
                     if zone.is_core
                 ]
             )
         )
-        bt.perims = list(
+        perimeters = list(
             chain.from_iterable(
                 [
-                    list(repeat(copy(zone), zone.multiplier))
+                    list(repeat(zone.duplicate(), zone.multiplier))
                     for zone in zones
                     if not zone.is_core
                 ]
             )
         )
-        # do Core and Perim zone reduction
-        bt.reduce(bt.cores, bt.perims)
+        assert (
+            len(perimeters) >= 1
+        ), "Building complexity reduction must have at least one perimeter zone."
 
-        # resolve StructureInformation and WindowSetting
-        bt.Structure = StructureInformation(
-            Name=bt.Name + "_StructureDefinition",
-            MassRatios=[MassRatio.generic()],
-            idf=idf,
-        )
-        bt.Windows = bt.Perimeter.Windows
-
-        bt.Comments += "\n".join(
-            [
-                "WWR calculated for original model: ",
-                bt.idf.wwr().to_string(),
-                "where East=90, South=180, West=270, North=0\n",
-            ]
-        )
-
-        return bt
-
-    def reduce(self, cores, perims):
-        """Reduce the building to its simplest core and perimeter zones."""
-        log("Initiating complexity reduction...")
-        start_time = time.time()
-
+        Core = None
         # reduce list of core zones
         if cores:
-            self.Core = reduce(
+            Core = reduce(
                 ZoneDefinition.combine,
                 tqdm(
                     cores,
-                    desc=f"Reducing core zones {self.idf.position}-{self.idf.name}",
+                    desc=f"Reducing core zones in {name}",
                 ),
             )
-            self.Core.Name = f"{self.Name}_ZoneDefinition_Core"  # set name
+            Core.Name = f"{name}_ZoneDefinition_Core"  # set name
 
-        # reduce list of perimeter zones
-        if not perims:
-            raise ValueError(
-                "Building complexity reduction must have at least one perimeter zone"
+        Perimeter = None
+        if perimeters:
+            Perimeter = reduce(
+                ZoneDefinition.combine,
+                tqdm(
+                    zones,
+                    desc=f"Reducing perimeter zones in {name}",
+                ),
             )
-        else:
-            try:
-                self.Perimeter = reduce(
-                    ZoneDefinition.combine,
-                    tqdm(
-                        perims,
-                        desc=f"Reducing perimeter zones {self.idf.position}-{self.idf.name}",
-                    ),
-                )
-                self.Perimeter.Name = f"{self.Name}_ZoneDefinition_Perimeter"
-            except Exception as e:
-                raise e
+            Perimeter.Name = f"{name}_ZoneDefinition_Perimeter"
 
         # If all perimeter zones, assign self.Perimeter to core.
-        if not self.Core:
-            self.Core = self.Perimeter
-            self.Core.Name = f"{self.Name}_ZoneDefinition"  # rename as both core/perim
+        if not Core:
+            Core = Perimeter
+            Core.Name = f"{name}_ZoneDefinition"  # rename as both core/perim
+
+        # resolve StructureInformation and WindowSetting
+        structure = StructureInformation(
+            MassRatios=[MassRatio.generic()],
+            Name=name + "_StructureDefinition",
+        )
 
         # assign generic window if None
-        if self.Perimeter.Windows is None:
+        if Perimeter.Windows is None:
             # create generic window
-            self.Perimeter.Windows = WindowSetting.generic(
-                idf=self.idf, Name="Generic Window"
-            )
-
-        if not self.Core.DomesticHotWater or not self.Perimeter.DomesticHotWater:
-            dhw = DomesticHotWaterSetting.whole_building(self.idf)
-            if not self.Core.DomesticHotWater:
-                self.Core.DomesticHotWater = dhw
-            if not self.Perimeter.DomesticHotWater:
-                self.Perimeter.DomesticHotWater = dhw
+            Perimeter.Windows = WindowSetting.generic(Name="Generic Window")
+            kwargs.setdefault("DefaultWindowToWallRatio", 0)
 
         log(
-            f"Equivalent core zone has an area of {self.Core.area:,.0f} m2",
+            f"Equivalent core zone has an area of {Core.area:,.0f} m2",
             level=lg.DEBUG,
         )
         log(
-            f"Equivalent perimeter zone has an area of {self.Perimeter.area:,.0f} m2",
+            f"Equivalent perimeter zone has an area of {Perimeter.area:,.0f} m2",
             level=lg.DEBUG,
         )
         log(
-            f"Completed model complexity reduction for BuildingTemplate '{self.Name}' "
+            f"Completed model complexity reduction for BuildingTemplate '{name}' "
             f"in {time.time() - start_time:,.2f}"
+        )
+        return cls(
+            name,
+            Core=Core,
+            Perimeter=Perimeter,
+            Windows=Perimeter.Windows,
+            Structure=structure,
+            **kwargs,
         )
 
     def _graph_reduce(self, G):
@@ -339,20 +527,20 @@ class BuildingTemplate(UmiBase):
             )
             return bundle_zone
 
-    def to_json(self):
-        """Convert class properties to dict"""
+    def to_dict(self):
+        """Return BuildingTemplate dictionary representation."""
         self.validate()  # Validate object before trying to get json format
 
         data_dict = collections.OrderedDict()
 
-        data_dict["Core"] = self.Core.to_dict()
+        data_dict["Core"] = self.Core.to_ref()
         data_dict["Lifespan"] = self.Lifespan
         data_dict["PartitionRatio"] = round(self.PartitionRatio, 2)
-        data_dict["Perimeter"] = self.Perimeter.to_dict()
-        data_dict["Structure"] = self.Structure.to_dict()
-        data_dict["Windows"] = self.Windows.to_dict()
-        data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["Perimeter"] = self.Perimeter.to_ref()
+        data_dict["Structure"] = self.Structure.to_ref()
+        data_dict["Windows"] = self.Windows.to_ref()
+        data_dict["Category"] = validators.string(self.Category, allow_empty=True)
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
         data_dict["YearFrom"] = self.YearFrom
@@ -370,8 +558,7 @@ class BuildingTemplate(UmiBase):
         return self
 
     def get_unique(self):
-        """Recursively replaces every UmiBase objects with the first instance
-        satisfying equality"""
+        """Replace recursively every objects with the first equivalent object."""
 
         def recursive_replace(umibase):
             for key, obj in umibase.mapping().items():
@@ -392,8 +579,15 @@ class BuildingTemplate(UmiBase):
         recursive_replace(self)
         return self
 
-    def mapping(self):
-        self.validate()
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
+
+        Args:
+            validate (bool): If True, try to validate object before returning the
+                mapping.
+        """
+        if validate:
+            self.validate()
 
         return dict(
             Core=self.Core,
@@ -432,4 +626,32 @@ class BuildingTemplate(UmiBase):
             None,
         )
 
+    def __hash__(self):
+        """Return the hash value of self."""
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
+    def __eq__(self, other):
+        """Assert self is equivalent to other."""
+        if not isinstance(other, BuildingTemplate):
+            return NotImplemented
+        else:
+            return all(
+                [
+                    self.Core == other.Core,
+                    self.Perimeter == other.Perimeter,
+                    self.Structure == other.Structure,
+                    self.Windows == other.Windows,
+                    self.Lifespan == other.Lifespan,
+                    self.PartitionRatio == other.PartitionRatio,
+                    self.DefaultWindowToWallRatio == other.DefaultWindowToWallRatio,
+                    self.YearFrom == other.YearFrom,
+                    self.YearTo == other.YearTo,
+                    self.Country == other.Country,
+                    self.ClimateZone == other.ClimateZone,
+                    self.Authors == other.Authors,
+                    self.AuthorEmails == other.AuthorEmails,
+                    self.Version == other.Version,
+                ]
+            )

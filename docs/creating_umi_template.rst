@@ -921,7 +921,7 @@ Creating Umi template
 
   .. code-block:: python
 
-    umi_template.to_json()
+    umi_template.to_dict()
 
 .. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html

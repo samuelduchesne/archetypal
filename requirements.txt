@@ -16,7 +16,7 @@ sigfig==1.1.8
 pybind11==2.6.2
 requests~=2.25.1
 packaging~=20.9
-pytest~=6.1.2
+pytest~=6.2.4
 setuptools~=56.1.0
 sklearn~=0.0
 CoolProp~=6.4.1

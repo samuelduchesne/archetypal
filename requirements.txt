@@ -1,7 +1,7 @@
 networkx~=2.5.1
 geomeppy==0.11.8
 eppy==0.5.56  # for stability
-matplotlib~=3.2  # because of TwoSlopesNorm
+matplotlib~=3.4  # because of TwoSlopesNorm
 pycountry~=20.7.3
 scikit-learn~=0.24.2
 pandas>=1.2.0

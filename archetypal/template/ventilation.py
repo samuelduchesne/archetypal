@@ -114,7 +114,7 @@ class VentilationSetting(UmiBase):
                 (Day | Week | Year) which ultimately modifies the Opening Area
                 value. In its current implementation, any
                 value greater than 0 will consider an open window.
-            ScheduledVentilationSchedule (UmiSchedule): The name of
+            ScheduledVentilationSchedule (UmiSchedule, optional): The name of
                 the schedule (Schedules Tab) that modifies the maximum design
                 volume flow rate. This fraction is between 0.0 and 1.0.
             Afn (bool): Todo: Not Used.

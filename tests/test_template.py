@@ -2384,9 +2384,9 @@ class TestVentilationSetting:
         always_on = UmiSchedule.constant_schedule()
         always_half = UmiSchedule.constant_schedule(0.5, Name="AlwaysHalf")
         vent_1 = VentilationSetting(
-            Infiltration=None,
+            Infiltration=0,
             NatVentSchedule=always_on,
-            ScheduledVentilationAch=None,
+            ScheduledVentilationAch=0,
             ScheduledVentilationSchedule=None,
             IsScheduledVentilationOn=False,
             area=50,

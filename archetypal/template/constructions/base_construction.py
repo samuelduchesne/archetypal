@@ -1,4 +1,10 @@
-"""archetypal ConstructionBase and LayeredConstruction."""
+"""archetypal ConstructionBase and LayeredConstruction.
+
+Notes:
+    Thank you to `honeybee-energy` for implementing heat transfer coefficient
+    formulas from ISO. Those where adapted to the structure of the
+    archetypal.template module.
+"""
 
 import math
 from typing import List, Union
@@ -247,8 +253,7 @@ class LayeredConstruction(ConstructionBase):
     def in_h_c(
         self, t_kelvin=293.15, delta_t=15, height=1.0, angle=90, pressure=101325
     ):
-        """Get the detailed indoor convective heat transfer coefficient according to
-        ISO 15099.
+        """Get detailed indoor convective heat transfer coef. according to ISO 15099.
 
         This is used for window U-factor calculations and all of the
         temperature_profile calculations.

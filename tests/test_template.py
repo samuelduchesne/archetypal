@@ -1595,12 +1595,6 @@ class TestWindowConstruction:
         print("q_no_sun", (32 - 24) / sum(r_values))
         print("q_sun", triple.solar_transmittance * 783)
 
-        def q_dot_at_outside_layer(layer: LayeredConstruction, t_1, t_out):
-            epsilon = layer.Layers[0].Material.ThermalEmittance
-            sigma = 5.670e-8  # [W/m2-K4]
-
-            epsilon * sigma * ((t_1 + 273) ** 4 - (t_out + 273) ** 4)
-
     def test_from_simple_glazing(self):
         """Test from shgc and u-value."""
         window = WindowConstruction.from_shgc("Window 1", 0.763, 2.716, 0.812)

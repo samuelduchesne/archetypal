@@ -655,7 +655,7 @@ class UmiTemplateLibrary:
                             obj_list.append(child)
 
     def build_graph(self):
-        """Create a :class:`networkx.DiGraph` of UmiTemplate."""
+        """Create the :class:`networkx.DiGraph` UmiBase objects as nodes."""
         import networkx as nx
 
         G = nx.DiGraph()

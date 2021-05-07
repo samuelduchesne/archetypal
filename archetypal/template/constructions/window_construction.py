@@ -633,15 +633,25 @@ class WindowConstruction(LayeredConstruction):
         r_vals.append(1 / self.in_h(avg_temp, delta_t, height, angle, pressure))
         return r_vals
 
-    def shgc(self, environmental_conditions="summer", G_t=783):
+    def shgc(self, environmental_conditions="summer", global_radiation=783):
         """Calculate the shgc given environmental conditions.
 
+        Notes:
+            This method implements a heat balance at each interface of the
+            glazing unit including outside and inside air film resistances,
+            solar radiation absorption in the glass. See
+            :meth:`~archetypal.template.constructions.window_construction
+            .WindowConstruction.heat_balance` for more details.
+
         Args:
-            environmental_conditions: "summer" or "winter".
-            G_t: Incident solar radiation [W / m ^ 2]
+            environmental_conditions (str): "summer" or "winter". A window shgc is
+                usually calculated with summer conditions. Default is "summer".
+            global_radiation (float): Incident solar radiation [W / m ^ 2]. Overwrite
+                the solar radiation used in the calculation of the shgc.
 
         Returns:
-            tuple
+            float: The shgc of the window construction for the given environmental
+            conditions.
         """
         # Q_dot_noSun
         heat_transfers, temperature_profile = self.heat_balance(
@@ -655,8 +665,8 @@ class WindowConstruction(LayeredConstruction):
         )
         *_, Q_dot_i4 = heat_transfers
 
-        Q_dot_sun = -Q_dot_i4 + self.solar_transmittance * G_t
-        shgc = (Q_dot_sun - -Q_dot_noSun) / G_t
+        Q_dot_sun = -Q_dot_i4 + self.solar_transmittance * global_radiation
+        shgc = (Q_dot_sun - -Q_dot_noSun) / global_radiation
         return shgc
 
     def heat_balance(self, environmental_conditions="summer", G_t=783):

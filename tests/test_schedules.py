@@ -48,9 +48,7 @@ class TestSchedule:
         yield s
 
     def test_plot(self, schedules_in_necb_specific):
-        schedules_in_necb_specific.plot(
-            slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post"
-        )
+        schedules_in_necb_specific.plot(drawstyle="steps-post")
 
     def test_plot2d(self, schedules_in_necb_specific):
         schedules_in_necb_specific.plot2d(show=False, save=False)

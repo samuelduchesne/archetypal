@@ -1386,7 +1386,6 @@ class Schedule:
         Args:
             **kwargs (dict): keyword arguments passed to :meth:`EnergySeries.plot`.
         """
-        pd.plotting.register_matplotlib_converters()  # bug in pandas 1.2.0
         return self.series.plot(**kwargs)
 
     def plot2d(self, **kwargs):

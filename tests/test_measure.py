@@ -8,6 +8,9 @@ from archetypal.template.measures.measure import (
     FacadeUpgradeMid,
     FacadeUpgradeRegular,
     SetFacadeConstructionThermalResistanceToEnergyStar,
+    InfiltrationRegular,
+    InfiltrationTight,
+    InfiltrationMedium,
 )
 
 
@@ -81,3 +84,18 @@ class TestMeasure:
 
         # assert that the total wall r_value has increased.
         assert oc.r_value == pytest.approx(measure.rsi_value)
+
+    @pytest.mark.parametrize(
+        "measure, infiltration_ach",
+        [
+            (InfiltrationRegular(), 0.6),
+            (InfiltrationMedium(), 0.3),
+            (InfiltrationTight(), 0.1),
+        ],
+    )
+    def test_infiltration_upgrade(self, measure, infiltration_ach, umi_library):
+        """Test applying the infiltration measures."""
+        measure.apply_measure_to_whole_library(umi_library)
+
+        for bldg in umi_library.BuildingTemplates:
+            assert bldg.Perimeter.Ventilation.Infiltration == infiltration_ach

@@ -91,14 +91,14 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
             self.rsi_value = rsi_value
         self.AddThermalInsulation = self._apply
 
-    def _apply(self, bt):
+    def _apply(self, building_template):
         """Only apply to Perimeter facade constructions.
 
         Args:
-            rsi_value:
+            building_template (BuildingTemplate): The building template object.
         """
         self._set_insulation_layer_resistance(
-            bt.Perimeter.Constructions.Facade, self.rsi_value
+            building_template.Perimeter.Constructions.Facade, self.rsi_value
         )
 
     def _set_insulation_layer_resistance(self, opaque_construction, rsi_value):
@@ -156,3 +156,40 @@ class FacadeUpgradeLow(SetFacadeConstructionThermalResistanceToEnergyStar):
     name = "FacadeUpgradeLow"
     description = "rsi value from climaplusbeta.com"
     rsi_value = 1 / 3.5
+
+
+class SetInfiltration(Measure):
+    name = "SetInfiltration"
+    description = "This measure sets the infiltration ACH of the perimeter zone."
+    infiltration_ach = 0.6
+
+    def __init__(self, infiltration_ach=None):
+        super().__init__()
+        if infiltration_ach is not None:
+            self.infiltration_ach = infiltration_ach
+
+        self.SetInfiltration = lambda building_template: setattr(
+            building_template.Perimeter.Ventilation,
+            "Infiltration",
+            self.infiltration_ach,
+        )
+
+    def _apply(self, building_template):
+        """Only apply to Perimeter zone ventilation.
+
+        Args:
+            building_template (BuildingTemplate): The building template object.
+        """
+        building_template.Perimeter.Ventilation.Infiltration = self.infiltration_ach
+
+
+class InfiltrationRegular(SetInfiltration):
+    infiltration_ach = 0.6
+
+
+class InfiltrationMedium(SetInfiltration):
+    infiltration_ach = 0.3
+
+
+class InfiltrationTight(SetInfiltration):
+    infiltration_ach = 0.1

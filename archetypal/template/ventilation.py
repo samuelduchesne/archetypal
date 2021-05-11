@@ -452,6 +452,7 @@ class VentilationSetting(UmiBase):
             **kwargs: keywords passed parent constructor.
 
         .. code-block:: python
+
             {
               "$id": "162",
               "Afn": false,

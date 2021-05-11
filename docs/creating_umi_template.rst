@@ -157,7 +157,7 @@ Example of GasMaterial object:
   GasMaterials = [air]
 
 Defining material layers
-------------------
+------------------------
 
 Once the materials are created, layers (or :class:`MaterialLayer` objects) can be created.
 Here are the parameters and their default values for an MaterialLayer object
@@ -293,54 +293,14 @@ Example of StructureInformation object:
 Defining schedules
 ------------------
 
-  Creating Umi template objects to define schedules (e.g. `DaySchedule`).
+Creating Umi template objects to define schedules (e.g. `DaySchedule`).
 
-    - Day schedules
+- Day schedules
 
-      Here are all the parameters and their default values for an
-      DaySchedule object (see DaySchedule_ doc for more information)
+  Here are all the parameters and their default values for a
+  :class:`~schedule.DaySchedule` object (see :class:`~schedule.DaySchedule` doc for more information)
 
-      .. code-block:: python
-
-        def __init__(
-            Name=None,
-            idf=None,
-            start_day_of_the_week=0,
-            strict=False,
-            base_year=2018,
-            schType=None,
-            schTypeLimitsName=None,
-            values=None,
-            **kwargs)
-
-      Example of DaySchedule objects:
-
-        .. code-block:: python
-
-          # Always on
-          sch_d_on = ar.DaySchedule.from_values(
-            [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn")
-          # Always off
-          sch_d_off = ar.DaySchedule.from_values(
-            [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff")
-          # DHW
-          sch_d_dhw = ar.DaySchedule.from_values(
-            [0.3] * 24, Category="Day", schTypeLimitsName="Fractional", Name="DHW")
-          # Internal gains
-          sch_d_gains = ar.DaySchedule.from_values(
-            [0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
-            Category="Day",
-            schTypeLimitsName="Fractional",
-            Name="Gains",)
-          # List of DaySchedule objects (needed for Umi template creation)
-          DaySchedules = [sch_d_on, sch_d_dhw, sch_d_gains, sch_d_off]
-
-    - Week schedules
-
-      Here are all the parameters and their default values for an
-      WeekSchedule object (see WeekSchedule_ doc for more information)
-
-      .. code-block:: python
+    .. code-block:: python
 
         def __init__(
             Name=None,
@@ -353,192 +313,232 @@ Defining schedules
             values=None,
             **kwargs)
 
-      Example of WeekSchedule objects:
+  Example of :class:`~schedule.DaySchedule` objects:
 
-        .. code-block:: python
+    .. code-block:: python
 
-          # WeekSchedules using DaySchedule objects
-          # Variable `days` needs a list of 7 dict,
-          # representing the 7 days of the week
-          sch_w_on = ar.WeekSchedule(
-            days=[
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_on.id},],
-            Category="Week",
-            schTypeLimitsName="Fractional",
-            Name="AlwaysOn")
-          # Always off
-          sch_w_off = ar.WeekSchedule(
-            days=[
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_off.id},],
-            Category="Week",
-            schTypeLimitsName="Fractional",
-            Name="AlwaysOff")
-          # DHW
-          sch_w_dhw = ar.WeekSchedule(
-            days=[
-                {"$ref": sch_d_dhw.id},
-                {"$ref": sch_d_dhw.id},
-                {"$ref": sch_d_dhw.id},
-                {"$ref": sch_d_dhw.id},
-                {"$ref": sch_d_dhw.id},
-                {"$ref": sch_d_dhw.id},
-                {"$ref": sch_d_dhw.id},],
-            Category="Week",
-            schTypeLimitsName="Fractional",
-            Name="DHW")
-          # Internal gains
-          sch_w_gains = ar.WeekSchedule(
-            days=[
-                {"$ref": sch_d_gains.id},
-                {"$ref": sch_d_gains.id},
-                {"$ref": sch_d_gains.id},
-                {"$ref": sch_d_gains.id},
-                {"$ref": sch_d_gains.id},
-                {"$ref": sch_d_gains.id},
-                {"$ref": sch_d_gains.id},],
-            Category="Week",
-            schTypeLimitsName="Fractional",
-            Name="Gains")
-          # List of WeekSchedule objects (needed for Umi template creation)
-          WeekSchedules = [sch_w_on, sch_w_off, sch_w_dhw, sch_w_gains]
+      # Always on
+      sch_d_on = ar.DaySchedule.from_values(
+        [1] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOn")
+      # Always off
+      sch_d_off = ar.DaySchedule.from_values(
+        [0] * 24, Category="Day", schTypeLimitsName="Fractional", Name="AlwaysOff")
+      # DHW
+      sch_d_dhw = ar.DaySchedule.from_values(
+        [0.3] * 24, Category="Day", schTypeLimitsName="Fractional", Name="DHW")
+      # Internal gains
+      sch_d_gains = ar.DaySchedule.from_values(
+        [0] * 6 + [0.5, 0.6, 0.7, 0.8, 0.9, 1] + [0.7] * 6 + [0.4] * 6,
+        Category="Day",
+        schTypeLimitsName="Fractional",
+        Name="Gains",)
+      # List of DaySchedule objects (needed for Umi template creation)
+      DaySchedules = [sch_d_on, sch_d_dhw, sch_d_gains, sch_d_off]
 
-      WeekSchedule object can also be created from a dictionary.
-      For example, we create a WeekSchedule `AlwaysOn` from a dictionary and
-      using DaySchedule `AlwaysOn` objects:
+- Week schedules
 
-        .. code-block:: python
+  Here are all the parameters and their default values for a
+  :class:`~schedule.WeekSchedule` object (see :class:`~schedule.WeekSchedule` doc for more information)
 
-          # Dict of a WeekSchedule (like it would be written in json file)
-          dict_w_on = {
-            "Category": "Week",
-            "Days": [
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_on.id},
-                {"$ref": sch_d_off.id},
-                {"$ref": sch_d_on.id},
+  .. code-block:: python
+
+    def __init__(
+        Name=None,
+        idf=None,
+        start_day_of_the_week=0,
+        strict=False,
+        base_year=2018,
+        schType=None,
+        schTypeLimitsName=None,
+        values=None,
+        **kwargs)
+
+  Example of :class:`~schedule.WeekSchedule` objects:
+
+    .. code-block:: python
+
+      # WeekSchedules using DaySchedule objects
+      # Variable `days` needs a list of 7 dict,
+      # representing the 7 days of the week
+      sch_w_on = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_on.id},],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="AlwaysOn")
+      # Always off
+      sch_w_off = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_off.id},],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="AlwaysOff")
+      # DHW
+      sch_w_dhw = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},
+            {"$ref": sch_d_dhw.id},],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="DHW")
+      # Internal gains
+      sch_w_gains = ar.WeekSchedule(
+        days=[
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},
+            {"$ref": sch_d_gains.id},],
+        Category="Week",
+        schTypeLimitsName="Fractional",
+        Name="Gains")
+      # List of WeekSchedule objects (needed for Umi template creation)
+      WeekSchedules = [sch_w_on, sch_w_off, sch_w_dhw, sch_w_gains]
+
+  WeekSchedule object can also be created from a dictionary.
+  For example, we create a WeekSchedule `AlwaysOn` from a dictionary and
+  using DaySchedule `AlwaysOn` objects:
+
+    .. code-block:: python
+
+      # Dict of a WeekSchedule (like it would be written in json file)
+      dict_w_on = {
+        "Category": "Week",
+        "Days": [
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+            {"$ref": sch_d_off.id},
+            {"$ref": sch_d_on.id},
+        ],
+        "Type": "Fraction",
+        "Name": "OnOff_2"}
+      # Creates WeekSchedule from dict (from json)
+      sch_w_on = ar.WeekSchedule.from_dict(**dict_w_on)
+
+- Year schedules
+
+  Here are all the parameters and their default values for an
+  YearSchedule object (see YearSchedule_ doc for more information)
+
+  .. code-block:: python
+
+    def __init__(
+        Name=None,
+        idf=None,
+        start_day_of_the_week=0,
+        strict=False,
+        base_year=2018,
+        schType=None,
+        schTypeLimitsName=None,
+        values=None,
+        **kwargs)
+
+  YearSchedule are created from dictionaries.
+  For example, we create YearSchedules from dictionaries and
+  using WeekSchedule objects:
+
+    .. code-block:: python
+
+      # YearSchedules using DaySchedule objects
+      # Always on
+      dict_on = {
+        "Category": "Year",
+        "Parts": [
+            {
+            "FromDay": 1,
+            "FromMonth": 1,
+            "ToDay": 31,
+            "ToMonth": 12,
+            "Schedule": {"$ref": sch_w_on.id}
+            }],
+        "Type": "Fraction",
+        "Name": "AlwaysOn"}
+      sch_y_on = ar.YearSchedule.from_dict(**dict_on)
+      # Always off
+      dict_off = {
+        "Category": "Year",
+        "Parts": [
+            {
+            "FromDay": 1,
+            "FromMonth": 1,
+            "ToDay": 31,
+            "ToMonth": 12,
+            "Schedule": {"$ref": sch_w_off.id}}],
+        "Type": "Fraction",
+        "Name": "AlwaysOff"}
+      sch_y_off = ar.YearSchedule.from_dict(**dict_off)
+      # Year ON/OFF
+      dict_on_off = {
+        "Category": "Year",
+        "Parts": [
+            {
+            "FromDay": 1,
+            "FromMonth": 1,
+            "ToDay": 31,
+            "ToMonth": 5,
+            "Schedule": {"$ref": sch_w_on.id}
+            },
+            {
+            "FromDay": 1,
+            "FromMonth": 6,
+            "ToDay": 31,
+            "ToMonth": 12,
+            "Schedule": {"$ref": sch_w_off.id}
+            }
             ],
-            "Type": "Fraction",
-            "Name": "OnOff_2"}
-          # Creates WeekSchedule from dict (from json)
-          sch_w_on = ar.WeekSchedule.from_dict(**dict_w_on)
-
-    - Year schedules
-
-      Here are all the parameters and their default values for an
-      YearSchedule object (see YearSchedule_ doc for more information)
-
-      .. code-block:: python
-
-        def __init__(
-            Name=None,
-            idf=None,
-            start_day_of_the_week=0,
-            strict=False,
-            base_year=2018,
-            schType=None,
-            schTypeLimitsName=None,
-            values=None,
-            **kwargs)
-
-      YearSchedule are created from dictionaries.
-      For example, we create YearSchedules from dictionaries and
-      using WeekSchedule objects:
-
-        .. code-block:: python
-
-          # YearSchedules using DaySchedule objects
-          # Always on
-          dict_on = {
-            "Category": "Year",
-            "Parts": [
-                {
-                "FromDay": 1,
-                "FromMonth": 1,
-                "ToDay": 31,
-                "ToMonth": 12,
-                "Schedule": {"$ref": sch_w_on.id}
-                }],
-            "Type": "Fraction",
-            "Name": "AlwaysOn"}
-          sch_y_on = ar.YearSchedule.from_dict(**dict_on)
-          # Always off
-          dict_off = {
-            "Category": "Year",
-            "Parts": [
-                {
-                "FromDay": 1,
-                "FromMonth": 1,
-                "ToDay": 31,
-                "ToMonth": 12,
-                "Schedule": {"$ref": sch_w_off.id}}],
-            "Type": "Fraction",
-            "Name": "AlwaysOff"}
-          sch_y_off = ar.YearSchedule.from_dict(**dict_off)
-          # Year ON/OFF
-          dict_on_off = {
-            "Category": "Year",
-            "Parts": [
-                {
-                "FromDay": 1,
-                "FromMonth": 1,
-                "ToDay": 31,
-                "ToMonth": 5,
-                "Schedule": {"$ref": sch_w_on.id}
-                },
-                {
-                "FromDay": 1,
-                "FromMonth": 6,
-                "ToDay": 31,
-                "ToMonth": 12,
-                "Schedule": {"$ref": sch_w_off.id}
-                }
-                ],
-            "Type": "Fraction",
-            "Name": "ON_OFF"}
-          sch_y_on_off = ar.YearSchedule.from_dict(**dict_on_off)
-          # DHW
-          dict_dhw = {
-            "Category": "Year",
-            "Parts": [
-                {
-                "FromDay": 1,
-                "FromMonth": 1,
-                "ToDay": 31,
-                "ToMonth": 12,
-                "Schedule": {"$ref": sch_w_dhw.id}}],
-            "Type": "Fraction",
-            "Name": "DHW"}
-          sch_y_dhw = ar.YearSchedule.from_dict(**dict_dhw)
-          # Internal gains
-          dict_gains = {
-            "Category": "Year",
-            "Parts": [
-                {
-                "FromDay": 1,
-                "FromMonth": 1,
-                "ToDay": 31,
-                "ToMonth": 12,
-                "Schedule": {"$ref": sch_w_gains.id}}],
-            "Type": "Fraction",
-            "Name": "Gains"}
-          sch_y_gains = ar.YearSchedule.from_dict(**dict_gains)
-          # List of YearSchedule objects (needed for Umi template creation)
-          YearSchedules = [sch_y_on, sch_y_off, sch_y_on_off, sch_y_dhw, sch_y_gains]
+        "Type": "Fraction",
+        "Name": "ON_OFF"}
+      sch_y_on_off = ar.YearSchedule.from_dict(**dict_on_off)
+      # DHW
+      dict_dhw = {
+        "Category": "Year",
+        "Parts": [
+            {
+            "FromDay": 1,
+            "FromMonth": 1,
+            "ToDay": 31,
+            "ToMonth": 12,
+            "Schedule": {"$ref": sch_w_dhw.id}}],
+        "Type": "Fraction",
+        "Name": "DHW"}
+      sch_y_dhw = ar.YearSchedule.from_dict(**dict_dhw)
+      # Internal gains
+      dict_gains = {
+        "Category": "Year",
+        "Parts": [
+            {
+            "FromDay": 1,
+            "FromMonth": 1,
+            "ToDay": 31,
+            "ToMonth": 12,
+            "Schedule": {"$ref": sch_w_gains.id}}],
+        "Type": "Fraction",
+        "Name": "Gains"}
+      sch_y_gains = ar.YearSchedule.from_dict(**dict_gains)
+      # List of YearSchedule objects (needed for Umi template creation)
+      YearSchedules = [sch_y_on, sch_y_off, sch_y_on_off, sch_y_dhw, sch_y_gains]
 
 Defining window settings
 ------------------------
@@ -923,14 +923,12 @@ Creating Umi template
 
     umi_template.to_dict()
 
-.. _OpaqueMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueMaterial.html
 .. _GlazingMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GlazingMaterial.html
 .. _GasMaterial: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.GasMaterial.html
 .. _OpaqueConstruction: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.OpaqueConstruction.html
 .. _WindowConstruction: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WindowConstruction.html
 .. _StructureDefinition: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.StructureInformation.html
 .. _MassRatio: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.MassRatio.html
-.. _DaySchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.DaySchedule.html
 .. _WeekSchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WeekSchedule.html
 .. _YearSchedule: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.YearSchedule.html
 .. _WindowSetting: https://archetypal.readthedocs.io/en/develop/reference/archetypal.template.WindowSetting.html

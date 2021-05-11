@@ -68,23 +68,23 @@ Classes that support the :ref:`templates_label` classes above.
     :nosignatures:
     :toctree: reference/
 
-    UmiBase
-    MaterialBase
-    MaterialLayer
-    ConstructionBase
-    LayeredConstruction
-    MassRatio
-    YearSchedulePart
-    DaySchedule
-    WeekSchedule
-    YearSchedule
-    WindowType
-    ShadingType
+    umi_base.UmiBase
+    materials.material_base.MaterialBase
+    materials.material_layer.MaterialLayer
+    constructions.base_construction.ConstructionBase
+    constructions.base_construction.LayeredConstruction
+    structure.MassRatio
+    schedule.YearSchedulePart
+    schedule.DaySchedule
+    schedule.WeekSchedule
+    schedule.YearSchedule
+    constructions.window_construction.WindowType
+    constructions.window_construction.ShadingType
 
 Graph Module
 ------------
 
-.. currentmodule:: archetypal.template
+.. currentmodule:: archetypal.zone_graph
 
 .. autosummary::
     :template: autosummary.rst
@@ -132,51 +132,17 @@ Data Portal
 EnergyDataFrame
 ---------------
 
-.. currentmodule:: archetypal.energypandas
+.. note::
 
-.. autosummary::
-    :template: autosummary-noinherit.rst
-    :nosignatures:
-    :toctree: reference/
-
-    EnergyDataFrame
-    EnergySeries.to_units
-    EnergySeries.normalize
-    EnergyDataFrame.discretize_tsam
+    EnergyDataFrame is now part of its own package `energy-pandas <https://github.com/samuelduchesne/energy-pandas>`_.
 
 
 EnergySeries
 ------------
 
-.. currentmodule:: archetypal.energypandas
+.. note::
 
-.. autosummary::
-    :template: autosummary.rst
-    :nosignatures:
-    :toctree: reference/
-
-    EnergySeries
-    EnergySeries.from_reportdata
-    EnergySeries.to_units
-    EnergySeries.normalize
-    EnergySeries.ldc_source
-    EnergySeries.source_side
-    EnergySeries.discretize_tsam
-    EnergySeries.plot3d
-    EnergySeries.plot2d
-    EnergySeries.p_max
-    EnergySeries.p_max
-    EnergySeries.monthly
-    EnergySeries.capacity_factor
-    EnergySeries.bin_edges
-    EnergySeries.time_at_min
-    EnergySeries.bin_scaling_factors
-    EnergySeries.duration_scaling_factor
-    EnergySeries.ldc
-    EnergySeries.nseries
-    save_and_show
-    plot_energyseries
-    plot_energyseries_map
+    EnergySeries is now part of its own package `energy-pandas <https://github.com/samuelduchesne/energy-pandas>`_.
 
 
 Report Data
@@ -189,6 +155,7 @@ Report Data
     :nosignatures:
     :toctree: reference/
 
+    ReportData.__init__
     ReportData.from_sql_dict
     ReportData.from_sqlite
     ReportData.filter_report_data
@@ -206,28 +173,6 @@ Tabular Data
 
     TabularData.from_sql
     TabularData.filter_tabular_data
-
-IDF to BUI module
------------------
-
-.. currentmodule:: archetypal.trnsys
-
-.. autosummary::
-    :template: autosummary.rst
-    :nosignatures:
-    :toctree: reference/
-
-    convert_idf_to_trnbuild
-    get_idf_objects
-    clear_name_idf_objects
-    zone_origin
-    closest_coords
-    parse_window_lib
-    choose_window
-    trnbuild_idf
-
-
-
 
 
 Utils

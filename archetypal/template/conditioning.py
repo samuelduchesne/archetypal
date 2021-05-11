@@ -634,6 +634,7 @@ class ZoneConditioning(UmiBase):
             **kwargs: keywords passed to parent constructor.
 
         .. code-block:: python
+
             {
                 "$id": "165",
                 "CoolingSchedule": { $ref: "1" },

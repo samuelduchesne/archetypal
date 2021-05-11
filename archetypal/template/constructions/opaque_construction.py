@@ -340,6 +340,7 @@ class OpaqueConstruction(LayeredConstruction):
             materials (dict): A dictionary of materials with their id as keys.
 
         .. code-block:: python
+
             materials = {}  # dict of materials.
             data = {
                  "$id": "140300770659680",

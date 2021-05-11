@@ -23,7 +23,7 @@ the multizone building model) is now part of a distinct package known as the
 
 ## Features
 
-Here is a short overview of features that we are part of archetypal:
+Here is a short overview of features that are part of archetypal:
 
 1. Building Complexity Reduction: A utility to transform a multizone EnergyPlus model to a
    two-zone normalized model. Such models are called `building archetypes` and are the

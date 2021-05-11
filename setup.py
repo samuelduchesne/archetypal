@@ -12,10 +12,10 @@ here = os.getcwd()
 
 # This check is here if the user does not have a new enough pip to recognize
 # the minimum Python requirement in the metadata.
-if sys.version_info < (3, 6):
+if sys.version_info < (3, 7):
     error = """
 archetypal 1.1+ does not support Python 2.x, 3.0, 3.1, 3.2, or 3.3.
-Python 3.6 and above is required. This may be due to an out of date pip.
+Python 3.7 and above is required. This may be due to an out of date pip.
 Make sure you have pip >= 9.0.1.
 """
     sys.exit(error)
@@ -61,7 +61,7 @@ setup(
     description="Retrieve, construct, simulate, convert and analyse building archetypes",
     long_description=long_description,
     keywords="Building archetypes",
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=install_requires,
     extras_require={"dev": dev_requires},
     test_suite="tests",
@@ -69,4 +69,19 @@ setup(
         [console_scripts]
         archetypal=archetypal.cli:cli
     """,
+    classifiers=[
+        # How mature is this project? Common values are
+        #   3 - Alpha
+        #   4 - Beta
+        #   5 - Production/Stable
+        "Development Status :: 4 - Beta",
+        # Indicate who your project is intended for
+        "Intended Audience :: Science/Research",
+        # Pick your license as you wish (should match "license" above)
+        "License :: OSI Approved :: MIT License",
+        # Specify the Python versions you support here. In particular, ensure
+        # that you indicate whether you support Python 2, Python 3 or both.
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+    ],
 )

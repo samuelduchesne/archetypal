@@ -1,4 +1,11 @@
-"""Window module handles window settings."""
+"""Window module handles window settings.
+
+Notes:
+    Thank you to `honeybee-energy <https://github.com/ladybug-tools/honeybee-energy/
+    blob/master/honeybee_energy/construction/window.py>`_ for implementing center
+    of glass resistance formulas from ISO. Those where adapted to the structure of the
+    archetypal.template module.
+"""
 
 import collections
 from enum import Enum

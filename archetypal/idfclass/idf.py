@@ -6,6 +6,7 @@ different forms.
 
 import itertools
 import logging as lg
+import math
 import os
 import re
 import shutil
@@ -22,11 +23,13 @@ from typing import Any, Optional, Union
 
 import eppy
 import pandas as pd
+from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.easyopen import getiddfile
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from geomeppy import IDF as geomIDF
+from geomeppy.geom.polygons import Polygon3D
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
@@ -34,8 +37,6 @@ from path import Path
 from tabulate import tabulate
 from tqdm import tqdm
 
-from archetypal import ReportData, log, settings
-from archetypal import EnergySeries
 from archetypal.eplus_interface.basement import BasementThread
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
 from archetypal.eplus_interface.exceptions import (
@@ -52,6 +53,8 @@ from archetypal.idfclass.outputs import Outputs
 from archetypal.idfclass.reports import get_report
 from archetypal.idfclass.util import get_idf_version, hash_model
 from archetypal.idfclass.variables import Variables
+from archetypal.reportdata import ReportData
+from archetypal.utils import log, settings
 
 
 class IDF(geomIDF):
@@ -62,6 +65,12 @@ class IDF(geomIDF):
     Wrapper over the geomeppy.IDF class and subsequently the
     eppy.modeleditor.IDF class.
     """
+
+    IDD = {}
+    IDDINDEX = {}
+    BLOCK = {}
+
+    OUTPUTTYPES = ("standard", "nocomment1", "nocomment2", "compressed")
 
     # dependencies: dict of <dependant value: independent value>
     _dependencies = {
@@ -173,6 +182,7 @@ class IDF(geomIDF):
         position=0,
         name=None,
         output_directory=None,
+        outputtype="standard",
         **kwargs,
     ):
         """Initialize an IDF object.
@@ -180,8 +190,7 @@ class IDF(geomIDF):
         Args:
             output_directory:
             idfname (str or os.PathLike): The path of the idf file to read. If none,
-            an in-memory
-                IDF object is generated.
+                an in-memory IDF object is generated.
             epw (str or os.PathLike): The weather-file. If None, epw can be specified in
                 IDF.simulate().
             as_version (str): Specify the target EnergyPlus version for the IDF model.
@@ -194,6 +203,8 @@ class IDF(geomIDF):
             design_day (bool): Force design-day-only simulation (default: False).
             expandobjects (bool): Run ExpandObjects prior to simulation (default: True).
             convert (bool): If True, only convert IDF->epJSON or epJSON->IDF.
+            outputtype (str): Specifies the idf string representation of the model.
+                Choices are: "standard", "nocomment1", "nocomment2", "compressed".
 
         EnergyPlus args:
             tmp_dir=None,
@@ -223,7 +234,7 @@ class IDF(geomIDF):
         self.prep_outputs = prep_outputs
         self._position = position
         self.output_prefix = None
-        self.name = name
+        self.name = self.idfname.basename() if isinstance(self.idfname, Path) else name
         self.output_directory = output_directory
 
         # Set dependants to None
@@ -252,7 +263,7 @@ class IDF(geomIDF):
         self._sim_id = None
         self._sim_timestamp = None
 
-        self.outputtype = "standard"
+        self.outputtype = outputtype
         self.original_idfname = self.idfname  # Save original
 
         try:
@@ -276,12 +287,25 @@ class IDF(geomIDF):
                     .apply()
                 )
 
+    @property
+    def outputtype(self):
+        return self._outputtype
+
+    @outputtype.setter
+    def outputtype(self, value):
+        """Get or set the outputtype for the idf string representation of self."""
+        assert value in self.OUTPUTTYPES, (
+            f'Invalid input "{value}" for output_type.'
+            f"\nOutput type must be one of the following: {self.OUTPUTTYPES}"
+        )
+        self._outputtype = value
+
     def __str__(self):
         """Return the name of IDF model."""
         return self.name
 
     def __repr__(self):
-        """Describe the model."""
+        """Return a representation of self."""
         if self.sim_info is not None:
             sim_info = tabulate(self.sim_info.T, tablefmt="orgtbl")
             sim_info += f"\n\tFiles at '{self.simulation_dir}'"
@@ -358,12 +382,15 @@ class IDF(geomIDF):
 
     def _read_idf(self):
         """Read idf file and return bunches."""
+        self._idd_info = IDF.IDD.get(str(self.as_version), None)
+        self._idd_index = IDF.IDDINDEX.get(str(self.as_version), None)
+        self._block = IDF.BLOCK.get(str(self.as_version), None)
         bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
-            self.idfname, self.iddname, self, commdct=None, block=None
+            self.idfname, self.iddname, self, commdct=self._idd_info, block=self._block
         )
-        self._block = block
-        self._idd_info = commdct
-        self._idd_index = idd_index
+        self._block = IDF.BLOCK[str(self.as_version)] = block
+        self._idd_info = IDF.IDD[str(self.as_version)] = commdct
+        self._idd_index = IDF.IDDINDEX[str(self.as_version)] = idd_index
         self._idfobjects = bunchdt
         self._model = data
         self._idd_version = versiontuple
@@ -740,16 +767,14 @@ class IDF(geomIDF):
 
         Can include the extension (.idf).
         """
-        if self._name is not None:
-            return self._name
-        elif isinstance(self.idfname, StringIO):
-            self._name = f"{uuid.uuid1()}.idf"
-            return self._name
-        else:
-            return self.idfname.basename()
+        return self._name
 
     @name.setter
     def name(self, value):
+        if value is None:
+            value = f"{uuid.uuid1()}.idf"
+        elif ".idf" not in value:
+            value = Path(value).stem + ".idf"
         self._name = value
 
     def sql(self) -> dict:
@@ -817,7 +842,7 @@ class IDF(geomIDF):
 
         import subprocess
 
-        subprocess.call(
+        subprocess.Popen(
             (
                 shutil.which(
                     "IDFEditor",
@@ -835,7 +860,7 @@ class IDF(geomIDF):
 
         import subprocess
 
-        subprocess.call(
+        subprocess.Popen(
             (
                 shutil.which(
                     "EP-Launch",
@@ -990,6 +1015,50 @@ class IDF(geomIDF):
         return self._area_total
 
     @property
+    def total_building_volume(self):
+        return NotImplemented()
+
+    @staticmethod
+    def _get_volume_from_surfs(zone_surfs):
+        """Calculate the volume of a zone only and only if the surfaces are such
+        that you can find a point inside so that you can connect every vertex to
+        the point without crossing a face.
+
+        Adapted from: https://stackoverflow.com/a/19125446
+
+        Args:
+            zone_surfs (list): List of zone surfaces (EpBunch)
+        """
+        vol = 0
+        for surf in zone_surfs:
+            polygon_d = Polygon3D(surf.coords)  # create Polygon3D from surf
+            n = len(polygon_d.vertices_list)
+            v2 = polygon_d[0]
+            x2 = v2.x
+            y2 = v2.y
+            z2 = v2.z
+
+            for i in range(1, n - 1):
+                v0 = polygon_d[i]
+                x0 = v0.x
+                y0 = v0.y
+                z0 = v0.z
+                v1 = polygon_d[i + 1]
+                x1 = v1.x
+                y1 = v1.y
+                z1 = v1.z
+                # Add volume of tetrahedron formed by triangle and origin
+                vol += math.fabs(
+                    x0 * y1 * z2
+                    + x1 * y2 * z0
+                    + x2 * y0 * z1
+                    - x0 * y2 * z1
+                    - x1 * y0 * z2
+                    - x2 * y1 * z0
+                )
+        return vol / 6.0
+
+    @property
     def partition_ratio(self) -> float:
         """float: Lineal meters of partitions per m2 of floor area."""
         if self._partition_ratio is None:
@@ -1011,8 +1080,8 @@ class IDF(geomIDF):
                                 zone.Multiplier if zone.Multiplier != "" else 1
                             )
                             partition_lineal += surface.width * multiplier
-            self._partition_ratio = (
-                partition_lineal / self.net_conditioned_building_area
+            self._partition_ratio = partition_lineal / max(
+                self.net_conditioned_building_area, self.unconditioned_building_area
             )
         return self._partition_ratio
 
@@ -1046,14 +1115,18 @@ class IDF(geomIDF):
 
     @property
     def day_of_week_for_start_day(self):
-        """Get day of week for start day for the first found RUNPERIOD."""
+        """Get day of week for start day for the first found RUNPERIOD.
+
+        Monday = 0 .. Sunday = 6
+        """
         import calendar
 
         run_period = next(iter(self.idfobjects["RUNPERIOD"]), None)
         if run_period:
             day = run_period["Day_of_Week_for_Start_Day"]
         else:
-            raise ValueError("model does not contain a 'RunPeriod'")
+            log("model does not contain a 'RunPeriod'. Defaulting to Sunday.")
+            day = "Sunday"
 
         if day.lower() == "sunday":
             return calendar.SUNDAY
@@ -1426,12 +1499,12 @@ class IDF(geomIDF):
         the updated file. The run is multiprocessing_safe.
 
         Hint:
-            If attempting to upgrade an earlier version of EnergyPlus ( pre-v7.2.0),
+            If attempting to upgrade an earlier version of EnergyPlus (pre-v7.2.0),
             specific binaries need to be downloaded and copied to the
             EnergyPlus*/PreProcess/IDFVersionUpdater folder. More info at
             `Converting older version files
             <http://energyplus.helpserve.com/Knowledgebase/List/Index/46
-            /converting-older-version-files>`_ .
+            /converting-older-version-files>`_.
 
         Args:
             to_version (str, optional): EnergyPlus version in the form "X-X-X".
@@ -1513,7 +1586,7 @@ class IDF(geomIDF):
                 if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
             ]:
                 if isclose(surface.tilt, 90, abs_tol=10):
-                    if surface.Outside_Boundary_Condition == "Outdoors":
+                    if surface.Outside_Boundary_Condition.lower() == "outdoors":
                         surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
                         total_surface_area[surf_azim] += surface.area * multiplier
                 for subsurface in surface.subsurfaces:

@@ -3,13 +3,9 @@ import os
 import pandas as pd
 import pytest
 
-from archetypal import (
-    IDF,
-    dataportal,
-    download_bld_window,
-    tabula_building_details_sheet,
-)
-from archetypal.template import WindowSetting
+from archetypal import IDF, dataportal
+from archetypal.dataportal import download_bld_window, tabula_building_details_sheet
+from archetypal.template.window_setting import WindowSetting
 
 
 def test_tabula_available_country(config):

@@ -1,19 +1,23 @@
-networkx
-geomeppy
-eppy
-matplotlib>=3.2  # because of TwoSlopesNorm
-pycountry
-scikit-learn
+networkx~=2.5.1
+geomeppy==0.11.8
+eppy==0.5.56  # for stability
+matplotlib~=3.4  # because of TwoSlopesNorm
+pycountry~=20.7.3
+scikit-learn~=0.24.2
 pandas>=1.2.0
 numpy>=1.17
-tqdm
-tabulate
-path
-tsam
-pint
-click
-outdated
-deprecation
-sigfig
-energy-pandas==0.2.1
-setuptools_scm
+tqdm~=4.60.0
+tabulate~=0.8.9
+path~=15.1.2
+click~=7.1.2
+outdated~=0.2.1
+deprecation~=2.1.0
+sigfig~=1.1.8
+requests~=2.25.1
+packaging~=20.9
+pytest~=6.2.4
+setuptools~=56.2.0
+sklearn~=0.0
+CoolProp~=6.4.1
+energy-pandas~=0.2.4
+validator_collection~=1.5.0

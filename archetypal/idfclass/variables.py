@@ -1,9 +1,9 @@
 """EnergyPlus variables module."""
 
 import pandas as pd
+from energy_pandas import EnergyDataFrame
 from geomeppy.patches import EpBunch
 
-from archetypal import EnergyDataFrame
 from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
 
@@ -27,7 +27,7 @@ class Variable:
             raise TypeError()
 
     def __repr__(self):
-        """Return the string representation of an EpBunch."""
+        """Return a representation of self."""
         return self._epobject.__str__()
 
     def values(

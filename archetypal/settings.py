@@ -6,9 +6,7 @@
 ################################################################################
 
 import logging as lg
-import os
 
-import pint
 from path import Path
 
 # locations to save data, logs, images, and cache
@@ -123,26 +121,7 @@ default_crs = {"init": "epsg:4326"}
 # unique schedule number as list
 unique_schedules = []
 
-# region read template - use io.BytesIO(settings.template) in code
-import pkg_resources
-
 resource_package = archetypal.__name__  # Could be any module/package name
-
-# originBUISketchUp.idf template
-resource_path = "/".join(("ressources", "originBUISketchUp.idf"))
-# Do not use os.path.join()
-template_BUI = pkg_resources.resource_string(resource_package, resource_path)
-
-# window library ('W74-lib.dat') template
-resource_path = "/".join(("ressources", "W74-lib.dat"))
-# Do not use os.path.join()
-template_winLib = pkg_resources.resource_string(resource_package, resource_path)
-
-# NewFileTemplate.d18 ('W74-lib.dat') template
-resource_path = "/".join(("ressources", "NewFileTemplate.d18"))
-# Do not use os.path.join()
-path_template_d18 = pkg_resources.resource_filename(resource_package, resource_path)
-# endregion
 
 # Units
 

@@ -1,7 +1,6 @@
 """ExpandObjects module"""
 
 import logging as lg
-import platform
 import shutil
 import subprocess
 import time
@@ -108,7 +107,8 @@ class ExpandObjectsThread(Thread):
                         self.failure_callback()
         except Exception as e:
             self.exception = e
-            self.p.kill()  # kill process to be sure
+            if self.p is not None:
+                self.p.kill()  # kill process to be sure
             return
 
     def msg_callback(self, *args, **kwargs):

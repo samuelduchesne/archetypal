@@ -4,12 +4,11 @@ import hashlib
 import os
 from collections import OrderedDict
 from io import StringIO
-from path import Path
 
 import eppy
 from eppy.EPlusInterfaceFunctions import parse_idd
 
-from archetypal import log
+from archetypal.utils import log
 
 
 def hash_model(idfname, **kwargs):

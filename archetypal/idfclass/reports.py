@@ -5,8 +5,9 @@ from sqlite3.dbapi2 import OperationalError
 
 import pandas as pd
 
-from archetypal import log, settings
+from archetypal import settings
 from archetypal.idfclass.util import hash_model
+from archetypal.utils import log
 
 
 def get_report(

@@ -71,4 +71,4 @@ the AdultEducationCenter.idf model is used.
     >>> template_json = UmiTemplateLibrary(
     >>>     name="my_umi_template",
     >>>     BuildingTemplates=[template_obj]
-    >>> ).to_json()
+    >>> ).to_dict()

@@ -1,8 +1,9 @@
 import pytest
+from energy_pandas import EnergyDataFrame, EnergySeries
 from numpy.testing import assert_almost_equal
 from pandas import read_csv
 
-from archetypal import IDF, EnergyDataFrame, EnergySeries, settings
+from archetypal import IDF, settings
 
 
 @pytest.fixture(scope="module")

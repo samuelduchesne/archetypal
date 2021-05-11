@@ -26,4 +26,5 @@ dependencies:
     - geomeppy
     - deprecation
     - sigfig
+    - validator_collection
     - -r file:requirements-dev.txt

@@ -19,13 +19,8 @@ import pandas as pd
 import pycountry as pycountry
 import requests
 
-from archetypal import log, make_str, settings
-
-# scipy and sklearn are optional dependencies for faster nearest node search
-try:
-    from osgeo import gdal
-except ImportError as e:
-    gdal = None
+from archetypal import settings
+from archetypal.utils import log
 
 
 def tabula_available_buildings(country_name="France"):
@@ -401,7 +396,7 @@ def save_to_cache(url, response_json):
                 settings.cache_folder, os.extsep.join([filename, "json"])
             )
             # dump to json, and save to file
-            json_str = make_str(json.dumps(response_json))
+            json_str = json.dumps(response_json)
             with io.open(cache_path_filename, "w", encoding="utf-8") as cache_file:
                 cache_file.write(json_str)
 
@@ -541,7 +536,7 @@ def nrel_bcl_api_request(data):
         response = requests.get(prepared_url)
 
         # check if an error has occurred
-        log(response.raise_for_status(), lg.DEBUG)
+        response.raise_for_status()
 
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result

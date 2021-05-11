@@ -18,14 +18,12 @@ import json
 import logging as lg
 import multiprocessing
 import os
-import re
 import sys
 import time
 import unicodedata
 import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
-from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -155,7 +153,7 @@ def log(
         # convert message to ascii for console display so it doesn't break
         # windows terminals
         message = (
-            unicodedata.normalize("NFKD", make_str(message))
+            unicodedata.normalize("NFKD", str(message))
             .encode("ascii", errors="replace")
             .decode()
         )
@@ -238,269 +236,6 @@ def close_logger(logger=None, level=None, name=None, filename=None, log_dir=None
     for handler in handlers:
         handler.close()
         logger.removeHandler(handler)
-
-
-def make_str(value):
-    """Convert a passed-in value to unicode if Python 2, or string if Python 3.
-
-    Args:
-        value (any): the value to convert to unicode/string
-
-    Returns:
-        unicode or string
-    """
-    try:
-        # for python 2.x compatibility, use unicode
-        return np.unicode(value)
-    except NameError:
-        # python 3.x has no unicode type, so if error, use str type
-        return str(value)
-
-
-def load_umi_template_objects(filename):
-    """Reads
-
-    Args:
-        filename (str): path of template file
-
-    Returns:
-        dict: Dict of umi_objects
-    """
-    with open(filename) as f:
-        umi_objects = json.load(f)
-    return umi_objects
-
-
-def umi_template_object_to_dataframe(umi_dict, umi_object):
-    """Returns flattened DataFrame of umi_objects
-
-    Args:
-        umi_dict (dict): dict of umi objects
-        umi_object (str): umi_object name
-
-    Returns:
-        pandas.DataFrame: flattened DataFrame of umi_objects
-    """
-    return json_normalize(umi_dict[umi_object])
-
-
-def get_list_of_common_umi_objects(filename):
-    """Returns list of common umi objects
-
-    Args:
-        filename (str): path to umi template file
-
-    Returns:
-        dict: Dict of common umi objects
-    """
-    umi_objects = load_umi_template(filename)
-    components = OrderedDict()
-    for umi_dict in umi_objects:
-        for x in umi_dict:
-            components[x] = umi_dict[x].columns.tolist()
-    return components
-
-
-def newrange(previous, following):
-    """Takes the previous DataFrame and calculates a new Index range. Returns a
-    DataFrame with a new index
-
-    Args:
-        previous (pandas.DataFrame): previous DataFrame
-        following (pandas.DataFrame): follwoing DataFrame
-
-    Returns:
-        pandas.DataFrame: DataFrame with an incremented new index
-    """
-    if not previous.empty:
-        from_index = previous.iloc[[-1]].index.values + 1
-        to_index = from_index + len(following)
-
-        following.index = np.arange(from_index, to_index)
-        following.rename_axis("$id", inplace=True)
-        return following
-    else:
-        # If previous dataframe is empty, return the orginal DataFrame
-        return following
-
-
-def type_surface(row):
-    """Takes a boundary and returns its corresponding umi-type
-
-    Args:
-        row:
-
-    Returns:
-        str: The umi-type of boundary
-    """
-
-    # Floors
-    if row["Surface_Type"] == "Floor":
-        if row["Outside_Boundary_Condition"] == "Surface":
-            return 3
-        if row["Outside_Boundary_Condition"] == "Ground":
-            return 2
-        if row["Outside_Boundary_Condition"] == "Outdoors":
-            return 4
-        else:
-            return np.NaN
-
-    # Roofs & Ceilings
-    if row["Surface_Type"] == "Roof":
-        return 1
-    if row["Surface_Type"] == "Ceiling":
-        return 3
-    # Walls
-    if row["Surface_Type"] == "Wall":
-        if row["Outside_Boundary_Condition"] == "Surface":
-            return 5
-        if row["Outside_Boundary_Condition"] == "Outdoors":
-            return 0
-    return np.NaN
-
-
-def label_surface(row):
-    """Takes a boundary and returns its corresponding umi-Category
-
-    Args:
-        row:
-    """
-    # Floors
-    if row["Surface_Type"] == "Floor":
-        if row["Outside_Boundary_Condition"] == "Surface":
-            return "Interior Floor"
-        if row["Outside_Boundary_Condition"] == "Ground":
-            return "Ground Floor"
-        if row["Outside_Boundary_Condition"] == "Outdoors":
-            return "Exterior Floor"
-        else:
-            return "Other"
-
-    # Roofs & Ceilings
-    if row["Surface_Type"] == "Roof":
-        return "Roof"
-    if row["Surface_Type"] == "Ceiling":
-        return "Interior Floor"
-    # Walls
-    if row["Surface_Type"] == "Wall":
-        if row["Outside_Boundary_Condition"] == "Surface":
-            return "Partition"
-        if row["Outside_Boundary_Condition"] == "Outdoors":
-            return "Facade"
-    return "Other"
-
-
-def layer_composition(row):
-    """Takes in a series with $id and thickness values and return an array of
-    dict of the form {'Material': {'$ref': ref}, 'thickness': thickness} If
-    thickness is 'nan', it returns None.
-
-    Returns (list): List of dicts
-
-    Args:
-        row (pandas.Series): a row
-    """
-    array = []
-    ref = row["$id", "Outside_Layer"]
-    thickness = row["Thickness", "Outside_Layer"]
-    if np.isnan(ref):
-        pass
-    else:
-        array.append({"Material": {"$ref": str(int(ref))}, "Thickness": thickness})
-        for i in range(2, len(row["$id"]) + 1):
-            ref = row["$id", "Layer_{}".format(i)]
-            if np.isnan(ref):
-                pass
-            else:
-                thickness = row["Thickness", "Layer_{}".format(i)]
-                array.append(
-                    {"Material": {"$ref": str(int(ref))}, "Thickness": thickness}
-                )
-        return array
-
-
-def schedule_composition(row):
-    """Takes in a series with $id and \*_ScheduleDay_Name values and return an
-    array of dict of the form {'$ref': ref}
-
-    Args:
-        row (pandas.Series): a row
-
-    Returns:
-        list: list of dicts
-    """
-    # Assumes 7 days
-    day_schedules = []
-    days = [
-        "Monday_ScheduleDay_Name",
-        "Tuesday_ScheduleDay_Name",
-        "Wednesday_ScheduleDay_Name",
-        "Thursday_ScheduleDay_Name",
-        "Friday_ScheduleDay_Name",
-        "Saturday_ScheduleDay_Name",
-        "Sunday_ScheduleDay_Name",
-    ]  # With weekends last (as defined in
-    # umi-template)
-    # Let's start with the `Outside_Layer`
-    for day in days:
-        try:
-            ref = row["$id", day]
-        except:
-            pass
-        else:
-            day_schedules.append({"$ref": str(int(ref))})
-    return day_schedules
-
-
-def year_composition(row):
-    """Takes in a series with $id and ScheduleWeek_Name_{} values and return an
-    array of dict of the form {'FromDay': fromday, 'FromMonth': frommonth,
-    'Schedule': {'$ref': int( ref)}, 'ToDay': today, 'ToMonth': tomonth}
-
-    Args:
-        row (pandas.Series): a row
-
-    Returns:
-        list: list of dicts
-    """
-    parts = []
-    for i in range(1, 26 + 1):
-        try:
-            ref = row["$id", "ScheduleWeek_Name_{}".format(i)]
-        except:
-            pass
-        else:
-            if ~np.isnan(ref):
-                fromday = row["Schedules", "Start_Day_{}".format(i)]
-                frommonth = row["Schedules", "Start_Month_{}".format(i)]
-                today = row["Schedules", "End_Day_{}".format(i)]
-                tomonth = row["Schedules", "End_Month_{}".format(i)]
-
-                parts.append(
-                    {
-                        "FromDay": fromday,
-                        "FromMonth": frommonth,
-                        "Schedule": {"$ref": str(int(ref))},
-                        "ToDay": today,
-                        "ToMonth": tomonth,
-                    }
-                )
-    return parts
-
-
-def date_transform(date_str):
-    """Simple function transforming one-based hours (1->24) into zero-based
-    hours (0->23)
-
-    Args:
-        date_str (str): a date string of the form 'HH:MM'
-
-    Returns:
-        datetime.datetime: datetime object
-    """
-    if date_str[0:2] != "24":
-        return datetime.strptime(date_str, "%H:%M") - timedelta(hours=1)
-    return datetime.strptime("23:00", "%H:%M")
 
 
 def weighted_mean(series, df, weighting_variable):
@@ -649,87 +384,14 @@ def cd(path):
         log("finally inside {0}".format(os.getcwd()))
 
 
-def rmse(data, targets):
-    """calculate rmse with target values
-
-    # Todo : write de description of the args
-    Args:
-        data:
-        targets:
-    """
-    y = piecewise(data)
-    predictions = y
-    error = np.sqrt(np.mean((predictions - targets) ** 2))
-    return error
-
-
-def piecewise(data):
-    """returns a piecewise function from an array of the form [hour1, hour2,
-    ..., value1, value2, ...]
-
-    # Todo : write de description of the args
-    Args:
-        data:
-    """
-    nb = int(len(data) / 2)
-    bins = data[0:nb]
-    sf = data[nb:]
-    x = np.linspace(0, 8760, 8760)
-    # build condition array
-    conds = [x < bins[0]]
-    conds.extend([np.logical_and(x >= i, x < j) for i, j in zip(bins[0:], bins[1:])])
-    # build function array. This is the value of y when the condition is met.
-    funcs = sf
-    y = np.piecewise(x, conds, funcs)
-    return y
-
-
-def checkStr(datafile, string, begin_line=0):
-    """Find the first occurrence of a string and return its line number
-
-    Returns: the list index containing the string
-
-    Args:
-        datafile (list-like): a list-like object
-        string (str): the string to find in the txt file
-    """
-    value = []
-    count = 0
-    for line in datafile:
-        if count < begin_line:
-            count += 1
-            continue
-        count += 1
-        match = re.search(string, str(line))
-        if match:
-            return count
-            break
-
-
-def write_lines(file_path, lines):
-    """Delete file if exists, then write lines in it
-
-    Args:
-        file_path (str): path of the file
-        lines (list of str): lines to be written in file
-    """
-    # Delete temp file if exists
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    # Save lines in temp file
-    temp_idf_file = open(file_path, "w+")
-    for line in lines:
-        temp_idf_file.write("%s" % line)
-    temp_idf_file.close()
-
-
 def load_umi_template(json_template):
-    """
+    """Load umi template file to list of dict.
+
     Args:
-        json_template: Absolute or relative filepath to an umi json_template
+        json_template (str): filepath to an umi json_template.
 
     Returns:
-        pandas.DataFrame: 17 DataFrames, one for each component groups
+        list: list of dict.
     """
     if os.path.isfile(json_template):
         with open(json_template) as f:
@@ -842,12 +504,7 @@ def timeit(method):
 
 
 def lcm(x, y):
-    """This function takes two integers and returns the L.C.M.
-
-    Args:
-        x:
-        y:
-    """
+    """This function takes two integers and returns the least common multiple."""
 
     # choose the greater number
     if x > y:
@@ -948,7 +605,7 @@ def parallel_process(
     Args:
         in_dict (dict): A dictionary to iterate over. `function` is applied to value
             and key is used as an identifier.
-        function (function): A python function to apply to the elements of
+        function (callable): A python function to apply to the elements of
             in_dict
         processors (int): The number of cores to use.
         use_kwargs (bool): If True, pass the kwargs as arguments to `function`.

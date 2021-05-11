@@ -8,33 +8,32 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from pandas.io.common import get_handle
 from path import Path
 
+from archetypal import settings
 from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
-from archetypal.template import (
-    IDF,
-    BuildingTemplate,
+from archetypal.idfclass.idf import IDF
+from archetypal.template.building_template import BuildingTemplate
+from archetypal.template.conditioning import ZoneConditioning
+from archetypal.template.constructions.opaque_construction import OpaqueConstruction
+from archetypal.template.constructions.window_construction import WindowConstruction
+from archetypal.template.dhw import DomesticHotWaterSetting
+from archetypal.template.load import ZoneLoad
+from archetypal.template.materials.gas_layer import GasLayer
+from archetypal.template.materials.gas_material import GasMaterial
+from archetypal.template.materials.glazing_material import GlazingMaterial
+from archetypal.template.materials.material_layer import MaterialLayer
+from archetypal.template.materials.opaque_material import OpaqueMaterial
+from archetypal.template.schedule import (
     DaySchedule,
-    DomesticHotWaterSetting,
-    GasMaterial,
-    GlazingMaterial,
-    MassRatio,
-    MaterialLayer,
-    OpaqueConstruction,
-    OpaqueMaterial,
-    StructureInformation,
-    UmiBase,
-    UniqueName,
-    VentilationSetting,
     WeekSchedule,
-    WindowConstruction,
-    WindowSetting,
     YearSchedule,
     YearSchedulePart,
-    ZoneConditioning,
-    ZoneConstructionSet,
-    ZoneDefinition,
-    ZoneLoad,
-    settings,
 )
+from archetypal.template.structure import MassRatio, StructureInformation
+from archetypal.template.umi_base import UmiBase, UniqueName
+from archetypal.template.ventilation import VentilationSetting
+from archetypal.template.window_setting import WindowSetting
+from archetypal.template.zone_construction_set import ZoneConstructionSet
+from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.utils import CustomJSONEncoder, log, parallel_process
 
 
@@ -141,7 +140,7 @@ class UmiTemplateLibrary:
         self.GlazingMaterials = GlazingMaterials or []
 
     def __iter__(self):
-        """Iterate over component groups."""
+        """Iterate over component groups. Yields tuple of (group, value)."""
         for group in self._LIB_GROUPS:
             yield group, self.__dict__[group]
 
@@ -188,16 +187,12 @@ class UmiTemplateLibrary:
         # instantiate class
         umi_template = cls(name)
 
-        # fill in arguments
-        umi_template.idf_files = [Path(idf) for idf in idf_files]
-        umi_template.weather = Path(weather).expand()
-
         # if parallel is True, run eplus in parallel
         in_dict = {}
-        for i, idf_file in enumerate(umi_template.idf_files):
+        for i, idf_file in enumerate(idf_files):
             in_dict[idf_file] = dict(
                 idfname=idf_file,
-                epw=umi_template.weather,
+                epw=weather,
                 verbose=False,
                 position=i,
                 nolimit=True,
@@ -281,102 +276,172 @@ class UmiTemplateLibrary:
         return BuildingTemplate.from_idf(idf, **kwargs)
 
     @classmethod
-    def open(cls, filename, idf=None):
+    def open(cls, filename):
         """Initialize an UmiTemplate object from an UMI Template Library File.
 
         Args:
             filename (str or Path): PathLike object giving the pathname of the UMI
                 Template File.
-            idf (IDF): Optionally pass a pre-initialized IDF object.
 
         Returns:
             UmiTemplateLibrary: The template object.
         """
         name = Path(filename)
-        t = cls(name)
-        if not idf:
-            idf = IDF(prep_outputs=False)
         with open(filename, "r") as f:
-            import json
+            t = cls.loads(f.read(), name)
 
-            datastore = json.load(f)
+        return t
 
-            # with datastore, create each objects
-            t.GasMaterials = [
-                GasMaterial.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["GasMaterials"]
-            ]
-            t.GlazingMaterials = [
-                GlazingMaterial(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["GlazingMaterials"]
-            ]
-            t.OpaqueMaterials = [
-                OpaqueMaterial(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["OpaqueMaterials"]
-            ]
-            t.OpaqueConstructions = [
-                OpaqueConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["OpaqueConstructions"]
-            ]
-            t.WindowConstructions = [
-                WindowConstruction.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["WindowConstructions"]
-            ]
-            t.StructureInformations = [
-                StructureInformation.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["StructureDefinitions"]
-            ]
-            t.DaySchedules = [
-                DaySchedule.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["DaySchedules"]
-            ]
-            t.WeekSchedules = [
-                WeekSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["WeekSchedules"]
-            ]
-            t.YearSchedules = [
-                YearSchedule.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["YearSchedules"]
-            ]
-            t.DomesticHotWaterSettings = [
-                DomesticHotWaterSetting.from_dict(
-                    **store, idf=idf, allow_duplicates=True
-                )
-                for store in datastore["DomesticHotWaterSettings"]
-            ]
-            t.VentilationSettings = [
-                VentilationSetting.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["VentilationSettings"]
-            ]
-            t.ZoneConditionings = [
-                ZoneConditioning.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["ZoneConditionings"]
-            ]
-            t.ZoneConstructionSets = [
-                ZoneConstructionSet.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["ZoneConstructionSets"]
-            ]
-            t.ZoneLoads = [
-                ZoneLoad.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["ZoneLoads"]
-            ]
-            t.ZoneDefinitions = [
-                ZoneDefinition.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["Zones"]
-            ]
-            t.WindowSettings = [
-                WindowSetting.from_ref(
-                    store["$ref"], datastore["BuildingTemplates"], idf=idf
-                )
-                if "$ref" in store
-                else WindowSetting.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["WindowSettings"]
-            ]
-            t.BuildingTemplates = [
-                BuildingTemplate.from_dict(**store, idf=idf, allow_duplicates=True)
-                for store in datastore["BuildingTemplates"]
-            ]
-
+    @classmethod
+    def loads(cls, s, name):
+        """load string."""
+        datastore = json.loads(s)
+        # with datastore, create each objects
+        t = cls(name)
+        t.GasMaterials = [
+            GasMaterial.from_dict(store, allow_duplicates=True)
+            for store in datastore["GasMaterials"]
+        ]
+        t.GlazingMaterials = [
+            GlazingMaterial.from_dict(
+                store,
+            )
+            for store in datastore["GlazingMaterials"]
+        ]
+        t.OpaqueMaterials = [
+            OpaqueMaterial.from_dict(store, allow_duplicates=True)
+            for store in datastore["OpaqueMaterials"]
+        ]
+        t.OpaqueConstructions = [
+            OpaqueConstruction.from_dict(
+                store,
+                materials={
+                    a.id: a
+                    for a in (t.GasMaterials + t.GlazingMaterials + t.OpaqueMaterials)
+                },
+                allow_duplicates=True,
+            )
+            for store in datastore["OpaqueConstructions"]
+        ]
+        t.WindowConstructions = [
+            WindowConstruction.from_dict(
+                store,
+                materials={a.id: a for a in (t.GasMaterials + t.GlazingMaterials)},
+                allow_duplicates=True,
+            )
+            for store in datastore["WindowConstructions"]
+        ]
+        t.StructureInformations = [
+            StructureInformation.from_dict(
+                store,
+                materials={a.id: a for a in t.OpaqueMaterials},
+                allow_duplicates=True,
+            )
+            for store in datastore["StructureDefinitions"]
+        ]
+        t.DaySchedules = [
+            DaySchedule.from_dict(store, allow_duplicates=True)
+            for store in datastore["DaySchedules"]
+        ]
+        t.WeekSchedules = [
+            WeekSchedule.from_dict(
+                store,
+                day_schedules={a.id: a for a in t.DaySchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["WeekSchedules"]
+        ]
+        t.YearSchedules = [
+            YearSchedule.from_dict(
+                store,
+                week_schedules={a.id: a for a in t.WeekSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["YearSchedules"]
+        ]
+        t.DomesticHotWaterSettings = [
+            DomesticHotWaterSetting.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["DomesticHotWaterSettings"]
+        ]
+        t.VentilationSettings = [
+            VentilationSetting.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["VentilationSettings"]
+        ]
+        t.ZoneConditionings = [
+            ZoneConditioning.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["ZoneConditionings"]
+        ]
+        t.ZoneConstructionSets = [
+            ZoneConstructionSet.from_dict(
+                store,
+                opaque_constructions={a.id: a for a in t.OpaqueConstructions},
+                allow_duplicates=True,
+            )
+            for store in datastore["ZoneConstructionSets"]
+        ]
+        t.ZoneLoads = [
+            ZoneLoad.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["ZoneLoads"]
+        ]
+        t.ZoneDefinitions = [
+            ZoneDefinition.from_dict(
+                store,
+                zone_conditionings={a.id: a for a in t.ZoneConditionings},
+                zone_construction_sets={a.id: a for a in t.ZoneConstructionSets},
+                domestic_hot_water_settings={
+                    a.id: a for a in t.DomesticHotWaterSettings
+                },
+                opaque_constructions={a.id: a for a in t.OpaqueConstructions},
+                zone_loads={a.id: a for a in t.ZoneLoads},
+                ventilation_settings={a.id: a for a in t.VentilationSettings},
+                allow_duplicates=True,
+            )
+            for store in datastore["Zones"]
+        ]
+        t.WindowSettings = [
+            WindowSetting.from_ref(
+                store["$ref"],
+                datastore["BuildingTemplates"],
+                schedules={a.id: a for a in t.YearSchedules},
+                window_constructions={a.id: a for a in t.WindowConstructions},
+            )
+            if "$ref" in store
+            else WindowSetting.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                window_constructions={a.id: a for a in t.WindowConstructions},
+                allow_duplicates=True,
+            )
+            for store in datastore["WindowSettings"]
+        ]
+        t.BuildingTemplates = [
+            BuildingTemplate.from_dict(
+                store,
+                zone_definitions={a.id: a for a in t.ZoneDefinitions},
+                structure_definitions={a.id: a for a in t.StructureInformations},
+                window_settings={a.id: a for a in t.WindowSettings},
+                schedules={a.id: a for a in t.YearSchedules},
+                window_constructions={a.id: a for a in t.WindowConstructions},
+                allow_duplicates=True,
+            )
+            for store in datastore["BuildingTemplates"]
+        ]
         return t
 
     def validate(self, defaults=True):
@@ -497,22 +562,27 @@ class UmiTemplateLibrary:
             return response
 
     def to_dict(self):
-        """Return the dict representation of the object."""
+        """Return UmiTemplateLibrary dictionary representation."""
         # First, reset existing name
-        UniqueName.existing = set()
 
         # Create ordered dict with empty list
         data_dict = OrderedDict([(key, []) for key in self._LIB_GROUPS])
 
         # create dict values
         for group_name, group in self:
+            # reset unique names for group
+            UniqueName.existing = set()
             obj: UmiBase
             for obj in group:
-                data_dict.setdefault(group_name, []).append(obj.to_json())
+                data = obj.to_dict()
+                data.update({"Name": UniqueName(data.get("Name"))})
+                data_dict.setdefault(group_name, []).append(data)
 
         if not data_dict.get("GasMaterials"):
             # Umi needs at least one gas material even if it is not necessary.
-            data_dict.get("GasMaterials").append(GasMaterial(Name="AIR").to_json())
+            data = GasMaterial(Name="AIR").to_dict()
+            data.update({"Name": UniqueName(data.get("Name"))})
+            data_dict.get("GasMaterials").append(data)
             data_dict.move_to_end("GasMaterials", last=False)
 
         # Correct naming convention and reorder categories
@@ -585,7 +655,7 @@ class UmiTemplateLibrary:
                             obj_list.append(child)
 
     def build_graph(self):
-        """Create a :class:`networkx.DiGraph` of UmiTemplate."""
+        """Create the :class:`networkx.DiGraph` UmiBase objects as nodes."""
         import networkx as nx
 
         G = nx.DiGraph()
@@ -641,7 +711,7 @@ def no_duplicates(file, attribute="Name"):
         return True
 
 
-DEEP_OBJECTS = (UmiBase, MaterialLayer, YearSchedulePart, MassRatio, list)
+DEEP_OBJECTS = (UmiBase, MaterialLayer, GasLayer, YearSchedulePart, MassRatio, list)
 
 
 def traverse(parent):

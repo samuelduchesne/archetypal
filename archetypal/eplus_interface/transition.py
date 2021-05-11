@@ -1,5 +1,6 @@
 """Transition module."""
 
+import logging as lg
 import os
 import platform
 import re
@@ -9,7 +10,6 @@ import time
 from io import StringIO
 from subprocess import CalledProcessError
 from threading import Thread
-import logging as lg
 
 from eppy.runner.run_functions import paths_from_version
 from path import Path
@@ -122,7 +122,7 @@ class TransitionExe(EnergyPlusProgram):
         return " ".join(self.__repr__())
 
     def __repr__(self):
-        """Return command as string."""
+        """Return the command as a string."""
         return self.cmd()
 
     def cmd(self):

@@ -3,11 +3,13 @@
 import inspect
 
 import pandas as pd
+from energy_pandas import EnergySeries
+from eppy.bunch_subclass import BadEPFieldError
 from geomeppy.patches import EpBunch
 from tabulate import tabulate
 
-from archetypal import EnergySeries, ReportData
 from archetypal.idfclass.extensions import bunch2db
+from archetypal.reportdata import ReportData
 
 
 class Meter:
@@ -29,7 +31,7 @@ class Meter:
             raise TypeError()
 
     def __repr__(self):
-        """Return the string representation of an EpBunch."""
+        """Return a representation of self."""
         return self._epobject.__str__()
 
     def values(
@@ -64,16 +66,20 @@ class Meter:
         if self._epobject not in self._idf.idfobjects[self._epobject.key]:
             self._idf.addidfobject(self._epobject)
             self._idf.simulate()
+        try:
+            key_name = self._epobject.Key_Name
+        except BadEPFieldError:
+            key_name = self._epobject.Name  # Backwards compatibility
         report = ReportData.from_sqlite(
             sqlite_file=self._idf.sql_file,
-            table_name=self._epobject.Key_Name,
+            table_name=key_name,
             environment_type=1 if self._idf.design_day else 3,
             reporting_frequency=bunch2db[reporting_frequency],
         )
         return EnergySeries.from_reportdata(
             report,
             to_units=units,
-            name=self._epobject.Key_Name,
+            name=key_name,
             normalize=normalize,
             sort_values=sort_values,
             ascending=ascending,
@@ -99,7 +105,7 @@ class MeterGroup:
         return self._properties[meter_name]
 
     def __repr__(self):
-        """Return all available meters."""
+        """Return a representation of all available meters."""
         # getmembers() returns all the
         # members of an object
         members = []
@@ -162,7 +168,7 @@ class Meters:
             )
 
     def __repr__(self):
-        """Tabulate available meters."""
+        """Tabulate all available meters."""
         # getmembers() returns all the
         # members of an object
         members = []

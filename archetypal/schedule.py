@@ -1160,11 +1160,15 @@ class Schedule:
                 value = ScheduleTypeLimits("Fraction", 0, 1)
             elif value.lower() == "temperature":
                 value = ScheduleTypeLimits("Temperature", -100, 100)
+            elif value.lower() == "on/off":
+                value = ScheduleTypeLimits("On/Off", 0, 1, "Discrete", "availability")
             else:
-                raise ValueError(
+                value = ScheduleTypeLimits("Fraction", 0, 1)
+                log(
                     f"'{value}' is not a known ScheduleTypeLimits for "
                     f"{self.Name}. Please instantiate the object before "
-                    f"passing as the 'Type' parameter."
+                    f"passing as the 'Type' parameter.",
+                    level=lg.WARNING,
                 )
             assert isinstance(value, ScheduleTypeLimits), value
         self._schedule_type_limits = value

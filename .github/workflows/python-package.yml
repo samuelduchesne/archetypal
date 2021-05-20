@@ -37,7 +37,16 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      - name: EnergyPlus cache
+        id: ep-cache
+        uses: actions/cache@v2
+        with:
+          path: /usr/local/EnergyPlus-${{ matrix.energyplus-install }}
+          key: ${{ runner.os }}-ep-${{ matrix.energyplus-sha }}
+          restore-keys: |
+            ${{ runner.os }}-ep-
       - name: Install EnergyPlus
+        if: steps.ep-cache.outputs.cache-hit != 'true'
         env:
           ENERGYPLUS_VERSION: ${{ matrix.energyplus-version }}
           ENERGYPLUS_SHA: ${{ matrix.energyplus-sha }}

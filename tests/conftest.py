@@ -1,17 +1,14 @@
 import glob
-import os
-import shutil
 import sys
 
 import pytest
-
-import archetypal as ar
-
 
 # Parametrization of the fixture scratch_then_cache. The following array
 # tells pytest to use True than False for all tests that use this fixture.
 # This is very usefull to test the behavior of methods that use cached data
 # or not.
+from archetypal import settings, utils
+
 do = [True, False]
 
 
@@ -21,20 +18,17 @@ def scratch_then_cache(request):
     start fresh with tests"""
     # request is a special parameter known to pytest. It passes whatever is in
     # params=do. Ids are there to give the test a human readable name.
-    dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
     if request.param:
+        dirs = [
+            settings.data_folder,
+            settings.cache_folder,
+            settings.imgs_folder,
+        ]
         for dir in dirs:
-            if os.path.exists(dir):
-                try:
-                    shutil.rmtree(dir)
-                finally:
-                    assert not os.path.exists(dir)
+            dir.rmtree_p()
 
 
-samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular',
-
-
-# 'umi_samples']
+samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular', 'umi_samples']
 
 
 @pytest.fixture(params=samples_, ids=samples_, scope="session")
@@ -44,15 +38,16 @@ def idf_source(request):
 
 @pytest.fixture(scope="session")
 def config():
-    ar.config(
+    utils.config(
         data_folder="tests/.temp/data",
         logs_folder="tests/.temp/logs",
-        imgs_folder="tests/.temp/imgs",
+        imgs_folder="tests/.temp/images",
         cache_folder="tests/.temp/cache",
         use_cache=True,
-        log_file=True,
+        log_file=False,
         log_console=True,
         umitemplate="tests/input_data/umi_samples/BostonTemplateLibrary_2.json",
+        debug=True,
     )
 
 
@@ -60,13 +55,9 @@ def config():
 def clean_config(config):
     """calls config fixture and clears default folders"""
 
-    dirs = [ar.settings.data_folder, ar.settings.cache_folder, ar.settings.imgs_folder]
+    dirs = [settings.data_folder, settings.cache_folder, settings.imgs_folder]
     for dir in dirs:
-        if os.path.exists(dir):
-            try:
-                shutil.rmtree(dir)
-            finally:
-                assert not os.path.exists(dir)
+        dir.rmtree_p()
 
 
 # List fixtures that are located outiside of conftest.py so that they can be

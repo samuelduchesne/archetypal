@@ -1,42 +1,69 @@
-import io
-import json
-import os
-from collections import OrderedDict
+"""UmiTemplateLibrary Module."""
 
-import numpy as np
+import json
+import logging as lg
+from collections import OrderedDict
+from concurrent.futures.thread import ThreadPoolExecutor
+
+from pandas.io.common import get_handle
 from path import Path
 
-from archetypal import (
-    load_idf,
-    BuildingTemplate,
-    GasMaterial,
-    GlazingMaterial,
-    OpaqueMaterial,
-    OpaqueConstruction,
-    WindowConstruction,
-    StructureDefinition,
+from archetypal import settings
+from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
+from archetypal.idfclass.idf import IDF
+from archetypal.template.building_template import BuildingTemplate
+from archetypal.template.conditioning import ZoneConditioning
+from archetypal.template.constructions.opaque_construction import OpaqueConstruction
+from archetypal.template.constructions.window_construction import WindowConstruction
+from archetypal.template.dhw import DomesticHotWaterSetting
+from archetypal.template.load import ZoneLoad
+from archetypal.template.materials.gas_layer import GasLayer
+from archetypal.template.materials.gas_material import GasMaterial
+from archetypal.template.materials.glazing_material import GlazingMaterial
+from archetypal.template.materials.material_layer import MaterialLayer
+from archetypal.template.materials.opaque_material import OpaqueMaterial
+from archetypal.template.schedule import (
     DaySchedule,
     WeekSchedule,
     YearSchedule,
-    DomesticHotWaterSetting,
-    VentilationSetting,
-    ZoneConditioning,
-    ZoneConstructionSet,
-    ZoneLoad,
-    Zone,
-    settings,
-    UmiBase,
-    MaterialLayer,
-    YearScheduleParts,
-    UmiSchedule,
-    MassRatio,
+    YearSchedulePart,
 )
+from archetypal.template.structure import MassRatio, StructureInformation
+from archetypal.template.umi_base import UmiBase, UniqueName
+from archetypal.template.ventilation import VentilationSetting
+from archetypal.template.window_setting import WindowSetting
+from archetypal.template.zone_construction_set import ZoneConstructionSet
+from archetypal.template.zonedefinition import ZoneDefinition
+from archetypal.utils import CustomJSONEncoder, log, parallel_process
 
 
-class UmiTemplate:
-    """Main class supporting the definition of a multiple building templates and
-    corresponding template objects.
+class UmiTemplateLibrary:
+    """Handles parsing and creating Template Library Files for UMI for Rhino.
+
+    - See :meth:`open` to parse existing Umi Template Library files (.json).
+    - See :meth:`from_idf_files` to create a library by converting existing IDF models.
     """
+
+    _LIB_GROUPS = [
+        "GasMaterials",
+        "GlazingMaterials",
+        "OpaqueMaterials",
+        "OpaqueConstructions",
+        "WindowConstructions",
+        "StructureInformations",
+        "DaySchedules",
+        "WeekSchedules",
+        "YearSchedules",
+        "DomesticHotWaterSettings",
+        "VentilationSettings",
+        "ZoneConditionings",
+        "ZoneConstructionSets",
+        "ZoneLoads",
+        "ZoneDefinitions",
+        "WindowSettings",
+        "BuildingTemplates",
+    ]
+
     def __init__(
         self,
         name="unnamed",
@@ -46,7 +73,7 @@ class UmiTemplate:
         OpaqueConstructions=None,
         OpaqueMaterials=None,
         WindowConstructions=None,
-        StructureDefinitions=None,
+        StructureInformations=None,
         DaySchedules=None,
         WeekSchedules=None,
         YearSchedules=None,
@@ -56,9 +83,9 @@ class UmiTemplate:
         ZoneConditionings=None,
         ZoneConstructionSets=None,
         ZoneLoads=None,
-        Zones=None,
+        ZoneDefinitions=None,
     ):
-        """Initialize a new UmiTemplate with empty attributes.
+        """Initialize a new UmiTemplateLibrary with empty attributes.
 
         Args:
             name (str): The name of the UMI Template.
@@ -73,8 +100,8 @@ class UmiTemplate:
                 objects.
             WindowConstructions (list of WindowConstruction): list of
                 WindowConstruction objects.
-            StructureDefinitions (list of StructureDefinition): list of
-                StructureDefinition objects.
+            StructureInformations (list of StructureInformation): list of
+                StructureInformation objects.
             DaySchedules (list of DaySchedule): list of DaySchedule objects.
             WeekSchedules (list of WeekSchedule): list of WeekSchedule objects.
             YearSchedules (list of YearSchedule): list of YearSchedule objects.
@@ -89,212 +116,352 @@ class UmiTemplate:
             ZoneConstructionSets (list of ZoneConstructionSet): list of
                 ZoneConstructionSet objects.
             ZoneLoads (list of ZoneLoad): list of ZoneLoad objects.
-            Zones (list of Zone): list of Zone objects
+            ZoneDefinitions (list of ZoneDefinition): list of Zone objects
         """
-        if Zones is None:
-            Zones = []
-        if ZoneLoads is None:
-            ZoneLoads = []
-        if ZoneConstructionSets is None:
-            ZoneConstructionSets = []
-        if ZoneConditionings is None:
-            ZoneConditionings = []
-        if WindowSettings is None:
-            WindowSettings = []
-        if VentilationSettings is None:
-            VentilationSettings = []
-        if DomesticHotWaterSettings is None:
-            DomesticHotWaterSettings = []
-        if YearSchedules is None:
-            YearSchedules = []
-        if WeekSchedules is None:
-            WeekSchedules = []
-        if DaySchedules is None:
-            DaySchedules = []
-        if StructureDefinitions is None:
-            StructureDefinitions = []
-        if WindowConstructions is None:
-            WindowConstructions = []
-        if OpaqueMaterials is None:
-            OpaqueMaterials = []
-        if OpaqueConstructions is None:
-            OpaqueConstructions = []
-        if GlazingMaterials is None:
-            GlazingMaterials = []
-        if GasMaterials is None:
-            GasMaterials = []
-        if BuildingTemplates is None:
-            BuildingTemplates = []
-
-        self.idfs = None
-        self.idf_files = None
+        self.idf_files = []
         self.name = name
-        self.Zones = Zones
-        self.ZoneLoads = ZoneLoads
-        self.ZoneConstructionSets = ZoneConstructionSets
-        self.ZoneConditionings = ZoneConditionings
-        self.WindowSettings = WindowSettings
-        self.VentilationSettings = VentilationSettings
-        self.DomesticHotWaterSettings = DomesticHotWaterSettings
-        self.YearSchedules = YearSchedules
-        self.WeekSchedules = WeekSchedules
-        self.DaySchedules = DaySchedules
-        self.StructureDefinitions = StructureDefinitions
-        self.WindowConstructions = WindowConstructions
-        self.OpaqueMaterials = OpaqueMaterials
-        self.OpaqueConstructions = OpaqueConstructions
-        self.BuildingTemplates = BuildingTemplates
-        self.GasMaterials = GasMaterials
-        self.GlazingMaterials = GlazingMaterials
+        self.ZoneDefinitions = ZoneDefinitions or []
+        self.ZoneLoads = ZoneLoads or []
+        self.ZoneConstructionSets = ZoneConstructionSets or []
+        self.ZoneConditionings = ZoneConditionings or []
+        self.WindowSettings = WindowSettings or []
+        self.VentilationSettings = VentilationSettings or []
+        self.DomesticHotWaterSettings = DomesticHotWaterSettings or []
+        self.UmiSchedules = []  # placeholder for UmiSchedules
+        self.YearSchedules = YearSchedules or []
+        self.WeekSchedules = WeekSchedules or []
+        self.DaySchedules = DaySchedules or []
+        self.StructureInformations = StructureInformations or []
+        self.WindowConstructions = WindowConstructions or []
+        self.OpaqueMaterials = OpaqueMaterials or []
+        self.OpaqueConstructions = OpaqueConstructions or []
+        self.BuildingTemplates = BuildingTemplates or []
+        self.GasMaterials = GasMaterials or []
+        self.GlazingMaterials = GlazingMaterials or []
+
+    def __iter__(self):
+        """Iterate over component groups. Yields tuple of (group, value)."""
+        for group in self._LIB_GROUPS:
+            yield group, self.__dict__[group]
+
+    def _clear_components_list(self, except_groups=None):
+        """Clear components lists except except_groups."""
+        if except_groups is None:
+            except_groups = []
+        exception = ["BuildingTemplates"]
+        exception.extend(except_groups)
+        for key, group in self:
+            if key not in exception:
+                setattr(self, key, [])
 
     @classmethod
-    def read_idf(
-        cls, idf_files, weather, sql=None, name="unnamed", load_idf_kwargs=None
+    def from_idf_files(
+        cls,
+        idf_files,
+        weather,
+        name="unnamed",
+        processors=-1,
+        keep_all_zones=False,
+        **kwargs,
     ):
-        """Initializes an UmiTemplate object from one or more idf_files.
+        """Initialize an UmiTemplateLibrary object from one or more idf_files.
 
         The resulting object contains the reduced version of the IDF files.
-        To save to file, call the :meth:`to_json` method.
+        To save to file, call the :meth:`save` method.
+
+        Important:
+            When using :meth:`from_idf_files` The idf files are striped of run period
+            modifiers and special days to return simple annual schedules.
 
         Args:
-            idf_files (str or list): One or more IDF file paths.
-            weather (str): Path to the weather file.
-            sql:
-            name:
-            load_idf_kwargs (dict): kwargs passed to the
-                :meth:`archetypal.idfclass.load_idf` method.
+            idf_files (list of (str or Path)): list of IDF file paths.
+            weather (str or Path): Path to the weather file.
+            name (str): The name of the Template File
+            processors (int): Number of cores. Defaults to -1, all cores.
+            kwargs: keyword arguments passed to IDF().
+
+        Raises:
+            Exception: All exceptions are raised if settings.debug=True. Will raise
+                an exception if all BuildingTemplates failed to be created.
         """
-        if load_idf_kwargs is None:
-            load_idf_kwargs = {}
         # instantiate class
-        t = cls(name)
+        umi_template = cls(name)
 
-        # fill in arguments
-        t.idf_files = idf_files
-        t.weather = weather
-        t.sql = sql
+        # if parallel is True, run eplus in parallel
+        in_dict = {}
+        for i, idf_file in enumerate(idf_files):
+            in_dict[idf_file] = dict(
+                idfname=idf_file,
+                epw=weather,
+                verbose=False,
+                position=i,
+                nolimit=True,
+                keep_data_err=True,  # For debugging
+                readvars=False,  # No need to readvars since only sql is used
+                **kwargs,
+            )
+        results = parallel_process(
+            in_dict,
+            cls.template_complexity_reduction,
+            processors=processors,
+            use_kwargs=True,
+            debug=True,
+            position=None,
+            executor=ThreadPoolExecutor,
+        )
+        for res in results:
+            if isinstance(res, EnergyPlusProcessError):
+                filename = (settings.logs_folder / "failed_reduce.txt").expand()
+                with open(filename, "a") as file:
+                    file.writelines(res.write())
+                    log(f"EnergyPlusProcess errors listed in {filename}")
+            elif isinstance(res, Exception):
+                if settings.debug:
+                    raise res
+                else:
+                    log(
+                        f"Unable to create Building Template. Exception raised: "
+                        f"{str(res)}",
+                        lg.ERROR,
+                    )
 
-        # Load IDF objects
-        t.idfs = [
-            load_idf(idf_file, weather_file=weather, **load_idf_kwargs)
-            for idf_file in idf_files
+        # If all exceptions, raise them for debugging
+        if all(isinstance(x, Exception) for x in results):
+            raise Exception([res for res in results if isinstance(res, Exception)])
+
+        umi_template.BuildingTemplates = [
+            res for res in results if not isinstance(res, Exception)
         ]
 
-        # For each idf load
-        template_obj = []
-        for idf in t.idfs:
-            bldg = BuildingTemplate.from_idf(idf, sql=idf.sql, DataSource=idf.name)
-            template_obj.append(bldg)
-            for name in [
-                DaySchedule,
-                DomesticHotWaterSetting,
-                GasMaterial,
-                GlazingMaterial,
-                OpaqueConstruction,
-                OpaqueMaterial,
-                StructureDefinition,
-                VentilationSetting,
-                WeekSchedule,
-                WindowConstruction,
-                YearSchedule,
-                ZoneConditioning,
-                ZoneConstructionSet,
-                ZoneLoad,
-                Zone,
-            ]:
-                t.__dict__[name.__name__ + "s"].extend(
-                    [obj for obj in bldg.all_objects.values() if isinstance(obj, name)]
-                )
+        if keep_all_zones:
+            _zones = set(
+                obj.get_unique()
+                for obj in UmiBase.CREATED_OBJECTS
+                if isinstance(obj, ZoneDefinition)
+            )
+            for zone in _zones:
+                umi_template.ZoneDefinitions.append(zone)
+            exceptions = [ZoneDefinition.__name__]
+        else:
+            exceptions = None
 
-        t.BuildingTemplates = template_obj
+        # Get unique instances
+        umi_template.unique_components(exceptions)
 
-        return t
+        # Update attributes of instance
+        umi_template.update_components_list(exceptions=exceptions)
+
+        return umi_template
+
+    @staticmethod
+    def template_complexity_reduction(idfname, epw, **kwargs):
+        """Wrap IDF, simulate and BuildingTemplate for parallel processing."""
+        idf = IDF(idfname, epw=epw, **kwargs)
+
+        # remove daylight saving time modifiers
+        for daylight in idf.idfobjects["RunPeriodControl:DaylightSavingTime".upper()]:
+            idf.removeidfobject(daylight)
+        # edit run period to start on Monday
+        for run_period in idf.idfobjects["RunPeriod".upper()]:
+            run_period.Day_of_Week_for_Start_Day = "Monday"
+            run_period.Apply_Weekend_Holiday_Rule = "No"
+            run_period.Use_Weather_File_Holidays_and_Special_Days = "No"
+            run_period.Use_Weather_File_Daylight_Saving_Period = "No"
+        # remove daylight saving time modifiers
+        for day in idf.idfobjects["RunPeriodControl:SpecialDays".upper()]:
+            idf.removeidfobject(day)
+
+        if idf.sim_info is None:
+            idf.simulate()
+        return BuildingTemplate.from_idf(idf, **kwargs)
 
     @classmethod
-    def read_file(cls, filename):
-        """Initializes an UmiTemplate object from an UMI Template File.
+    def open(cls, filename):
+        """Initialize an UmiTemplate object from an UMI Template Library File.
 
         Args:
-            filename (path-like): Path-like object giving the pathname (absolute
-                or relative to the current working directory) of the UMI
+            filename (str or Path): PathLike object giving the pathname of the UMI
                 Template File.
 
         Returns:
-            UmiTemplate: The template object.
+            UmiTemplateLibrary: The template object.
         """
         name = Path(filename)
-        t = cls(name)
-
         with open(filename, "r") as f:
-            import json
-
-            datastore = json.load(f)
-
-            # with datastore, create each objects
-            t.GasMaterials = [
-                GasMaterial.from_json(**store) for store in datastore["GasMaterials"]
-            ]
-            t.GlazingMaterials = [
-                GlazingMaterial(**store) for store in datastore["GlazingMaterials"]
-            ]
-            t.OpaqueMaterials = [
-                OpaqueMaterial(**store) for store in datastore["OpaqueMaterials"]
-            ]
-            t.OpaqueConstructions = [
-                OpaqueConstruction.from_json(**store)
-                for store in datastore["OpaqueConstructions"]
-            ]
-            t.WindowConstructions = [
-                WindowConstruction.from_json(**store)
-                for store in datastore["WindowConstructions"]
-            ]
-            t.StructureDefinitions = [
-                StructureDefinition.from_json(**store)
-                for store in datastore["StructureDefinitions"]
-            ]
-            t.DaySchedules = [
-                DaySchedule.from_json(**store) for store in datastore["DaySchedules"]
-            ]
-            t.WeekSchedules = [
-                WeekSchedule.from_json(**store) for store in datastore["WeekSchedules"]
-            ]
-            t.YearSchedules = [
-                YearSchedule.from_json(**store) for store in datastore["YearSchedules"]
-            ]
-            t.DomesticHotWaterSettings = [
-                DomesticHotWaterSetting.from_json(**store)
-                for store in datastore["DomesticHotWaterSettings"]
-            ]
-            t.VentilationSettings = [
-                VentilationSetting.from_json(**store)
-                for store in datastore["VentilationSettings"]
-            ]
-            t.ZoneConditionings = [
-                ZoneConditioning.from_json(**store)
-                for store in datastore["ZoneConditionings"]
-            ]
-            t.ZoneConstructionSets = [
-                ZoneConstructionSet.from_json(**store)
-                for store in datastore["ZoneConstructionSets"]
-            ]
-            t.ZoneLoads = [
-                ZoneLoad.from_json(**store) for store in datastore["ZoneLoads"]
-            ]
-            t.Zones = [Zone.from_json(**store) for store in datastore["Zones"]]
-            t.BuildingTemplates = [
-                BuildingTemplate.from_json(**store)
-                for store in datastore["BuildingTemplates"]
-            ]
+            t = cls.loads(f.read(), name)
 
         return t
 
-    def to_json(self, path_or_buf=None, indent=2, all_zones=False, sort_keys=False):
-        """Writes the umi template to json format
+    @classmethod
+    def loads(cls, s, name):
+        """load string."""
+        datastore = json.loads(s)
+        # with datastore, create each objects
+        t = cls(name)
+        t.GasMaterials = [
+            GasMaterial.from_dict(store, allow_duplicates=True)
+            for store in datastore["GasMaterials"]
+        ]
+        t.GlazingMaterials = [
+            GlazingMaterial.from_dict(
+                store,
+            )
+            for store in datastore["GlazingMaterials"]
+        ]
+        t.OpaqueMaterials = [
+            OpaqueMaterial.from_dict(store, allow_duplicates=True)
+            for store in datastore["OpaqueMaterials"]
+        ]
+        t.OpaqueConstructions = [
+            OpaqueConstruction.from_dict(
+                store,
+                materials={
+                    a.id: a
+                    for a in (t.GasMaterials + t.GlazingMaterials + t.OpaqueMaterials)
+                },
+                allow_duplicates=True,
+            )
+            for store in datastore["OpaqueConstructions"]
+        ]
+        t.WindowConstructions = [
+            WindowConstruction.from_dict(
+                store,
+                materials={a.id: a for a in (t.GasMaterials + t.GlazingMaterials)},
+                allow_duplicates=True,
+            )
+            for store in datastore["WindowConstructions"]
+        ]
+        t.StructureInformations = [
+            StructureInformation.from_dict(
+                store,
+                materials={a.id: a for a in t.OpaqueMaterials},
+                allow_duplicates=True,
+            )
+            for store in datastore["StructureDefinitions"]
+        ]
+        t.DaySchedules = [
+            DaySchedule.from_dict(store, allow_duplicates=True)
+            for store in datastore["DaySchedules"]
+        ]
+        t.WeekSchedules = [
+            WeekSchedule.from_dict(
+                store,
+                day_schedules={a.id: a for a in t.DaySchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["WeekSchedules"]
+        ]
+        t.YearSchedules = [
+            YearSchedule.from_dict(
+                store,
+                week_schedules={a.id: a for a in t.WeekSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["YearSchedules"]
+        ]
+        t.DomesticHotWaterSettings = [
+            DomesticHotWaterSetting.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["DomesticHotWaterSettings"]
+        ]
+        t.VentilationSettings = [
+            VentilationSetting.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["VentilationSettings"]
+        ]
+        t.ZoneConditionings = [
+            ZoneConditioning.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["ZoneConditionings"]
+        ]
+        t.ZoneConstructionSets = [
+            ZoneConstructionSet.from_dict(
+                store,
+                opaque_constructions={a.id: a for a in t.OpaqueConstructions},
+                allow_duplicates=True,
+            )
+            for store in datastore["ZoneConstructionSets"]
+        ]
+        t.ZoneLoads = [
+            ZoneLoad.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                allow_duplicates=True,
+            )
+            for store in datastore["ZoneLoads"]
+        ]
+        t.ZoneDefinitions = [
+            ZoneDefinition.from_dict(
+                store,
+                zone_conditionings={a.id: a for a in t.ZoneConditionings},
+                zone_construction_sets={a.id: a for a in t.ZoneConstructionSets},
+                domestic_hot_water_settings={
+                    a.id: a for a in t.DomesticHotWaterSettings
+                },
+                opaque_constructions={a.id: a for a in t.OpaqueConstructions},
+                zone_loads={a.id: a for a in t.ZoneLoads},
+                ventilation_settings={a.id: a for a in t.VentilationSettings},
+                allow_duplicates=True,
+            )
+            for store in datastore["Zones"]
+        ]
+        t.WindowSettings = [
+            WindowSetting.from_ref(
+                store["$ref"],
+                datastore["BuildingTemplates"],
+                schedules={a.id: a for a in t.YearSchedules},
+                window_constructions={a.id: a for a in t.WindowConstructions},
+            )
+            if "$ref" in store
+            else WindowSetting.from_dict(
+                store,
+                schedules={a.id: a for a in t.YearSchedules},
+                window_constructions={a.id: a for a in t.WindowConstructions},
+                allow_duplicates=True,
+            )
+            for store in datastore["WindowSettings"]
+        ]
+        t.BuildingTemplates = [
+            BuildingTemplate.from_dict(
+                store,
+                zone_definitions={a.id: a for a in t.ZoneDefinitions},
+                structure_definitions={a.id: a for a in t.StructureInformations},
+                window_settings={a.id: a for a in t.WindowSettings},
+                schedules={a.id: a for a in t.YearSchedules},
+                window_constructions={a.id: a for a in t.WindowConstructions},
+                allow_duplicates=True,
+            )
+            for store in datastore["BuildingTemplates"]
+        ]
+        return t
+
+    def validate(self, defaults=True):
+        """Validate the object."""
+        pass
+
+    def save(
+        self,
+        path_or_buf=None,
+        indent=2,
+        sort_keys=False,
+        compression="infer",
+        storage_options=None,
+    ):
+        """Save to json file.
 
         Args:
-            path_or_buf (path-like): Path-like object giving the pathname
-                (absolute or relative to the current working directory)
-            indent (bool or str): If indent is a non-negative integer or string,
+            path_or_buf (path-like): File path or object. If not specified,
+                overwrites files. See :attr:`UmiTemplateLibrary.name`.
+            indent (bool or str or int): If indent is a non-negative integer or string,
                 then JSON array elements and object members will be
                 pretty-printed with that indent level. An indent level of 0,
                 negative, or "" will only insert newlines. None (the default)
@@ -302,107 +469,266 @@ class UmiTemplate:
                 integer indent indents that many spaces per level. If indent is
                 a string (such as "t"), that string is used to indent each
                 level.
-            all_zones (bool): If True, all zones that have participated in the
-                creation of the core and perimeter zones will be outputed to the
-                json file.
-            sort_keys (bool): If sort_keys is true (default: False), then the
-                output of dictionaries will be sorted by key; this is useful for
-                regression tests to ensure that JSON serializations can be
-                compared on a day-to-day basis.
+            sort_keys (callable): If sort_keys is true (default: False), then the
+                output of dictionaries will be sorted by this callable.
+                e.g.: `lambda x: x.get("$id")` sorts by $id. If callable is not
+                available or fails, then sorted by `Name`.
+            compression (str): A string representing the compression to use in the
+                output file, only used when the first argument is a filename. By
+                default, the compression is inferred from the filename.
+            storage_options (dict): Extra options that make sense for a particular
+                storage connection, e.g. host, port, username, password, etc.,
+                if using a URL that will be parsed by fsspec, e.g., starting “s3://”,
+                “gcs://”. An error will be raised if providing this argument with a
+                non-fsspec URL. See the fsspec and backend storage implementation
+                docs for the set of allowed keys and values.
         """
-        # todo: check if bools are created as lowercase 'false' or 'true'
+        if path_or_buf is None:
+            basedir = Path(self.name).dirname()
+            name = Path(self.name).stem
+            path_or_buf = basedir / name + ".json"
 
-        if not path_or_buf:
-            json_name = "%s.json" % self.name
-            path_or_buf = os.path.join(settings.data_folder, json_name)
-            # create the folder on the disk if it doesn't already exist
-            if not os.path.exists(settings.data_folder):
-                os.makedirs(settings.data_folder)
-        with io.open(path_or_buf, "w+", encoding="utf-8") as path_or_buf:
-            data_dict = OrderedDict(
-                {
-                    "GasMaterials": [],
-                    "GlazingMaterials": [],
-                    "OpaqueMaterials": [],
-                    "OpaqueConstructions": [],
-                    "WindowConstructions": [],
-                    "StructureDefinitions": [],
-                    "DaySchedules": [],
-                    "WeekSchedules": [],
-                    "YearSchedules": [],
-                    "DomesticHotWaterSettings": [],
-                    "VentilationSettings": [],
-                    "ZoneConditionings": [],
-                    "ZoneConstructionSets": [],
-                    "ZoneLoads": [],
-                    "Zones": [],
-                    "WindowSettings": [],
-                    "BuildingTemplates": [],
-                }
-            )
+        self.to_json(
+            path_or_buf,
+            indent=indent,
+            sort_keys=sort_keys,
+            compression=compression,
+            storage_options=storage_options,
+        )
 
-            jsonized = {}
+    def to_json(
+        self,
+        path_or_buf=None,
+        indent=2,
+        sort_keys=False,
+        default_handler=None,
+        compression="infer",
+        storage_options=None,
+    ):
+        """Convert the object to a JSON string.
 
-            def recursive_json(obj):
-                if obj.__class__.mro()[0] == UmiSchedule:
-                    obj = obj.develop()
-                catname = obj.__class__.__name__ + "s"
-                if catname in data_dict:
-                    key = obj.id
-                    if key not in jsonized.keys():
-                        app_dict = obj.to_json()
-                        data_dict[catname].append(app_dict)
-                        jsonized[key] = obj
-                for key, value in obj.__dict__.items():
+        Args:
+            path_or_buf (path-like): File path or object. If not specified,
+                the result is returned as a string.
+            indent (bool or str or int): If indent is a non-negative integer or string,
+                then JSON array elements and object members will be
+                pretty-printed with that indent level. An indent level of 0,
+                negative, or "" will only insert newlines. None (the default)
+                selects the most compact representation. Using a positive
+                integer indent indents that many spaces per level. If indent is
+                a string (such as "t"), that string is used to indent each
+                level.
+            sort_keys (callable):
+            default_handler (callable): Handler to call if object cannot otherwise be
+                converted to a suitable format for JSON. Should receive a single
+                argument which is the object to convert and return a serializable
+                object.
+            compression (str): A string representing the compression to use in the
+                output file, only used when the first argument is a filename. By
+                default, the compression is inferred from the filename.
+            storage_options (dict): Extra options that make sense for a particular
+                storage connection, e.g. host, port, username, password, etc.,
+                if using a URL that will be parsed by fsspec, e.g., starting “s3://”,
+                “gcs://”. An error will be raised if providing this argument with a
+                non-fsspec URL. See the fsspec and backend storage implementation
+                docs for the set of allowed keys and values.
+        """
+        if default_handler is None:
+            default_handler = CustomJSONEncoder
 
-                    if isinstance(
-                        value, (UmiBase, MaterialLayer, YearScheduleParts)
-                    ) and not key.startswith("_"):
-                        recursive_json(value)
-                    elif isinstance(value, list):
-                        [
-                            recursive_json(value)
-                            for value in value
-                            if isinstance(
-                                value,
-                                (UmiBase, MaterialLayer, YearScheduleParts, MassRatio),
-                            )
-                        ]
+        data_dict = self.to_dict()
 
-            for bld in self.BuildingTemplates:
-                if all_zones:
-                    recursive_json(bld)
-                else:
-                    # First, remove cores and perims lists
-                    cores = bld.__dict__.pop("cores", None)
-                    perims = bld.__dict__.pop("perims", None)
-
-                    # apply the recursion
-                    recursive_json(bld)
-
-                    # put back objects
-                    bld.cores = cores
-                    bld.perims = perims
-
+        if sort_keys is not None:
+            # Sort values
             for key in data_dict:
-                data_dict[key] = sorted(
-                    data_dict[key], key=lambda x: x["Name"] if "Name" in x else "A"
-                )
+                # Sort the list elements by their Name
+                try:
+                    data_dict[key] = sorted(data_dict[key], key=sort_keys)
+                except Exception:
+                    # revert to sorting by Name if failure
+                    data_dict[key] = sorted(data_dict[key], key=lambda x: x.get("Name"))
 
-            class CustomJSONEncoder(json.JSONEncoder):
-                def default(self, obj):
-                    if isinstance(obj, np.bool_):
-                        return bool(obj)
+        response = json.dumps(data_dict, indent=indent, cls=default_handler)
+        if path_or_buf is not None:
+            # apply compression and byte/text conversion
+            with get_handle(
+                path_or_buf,
+                "wt",
+                compression=compression,
+                storage_options=storage_options,
+            ) as handles:
+                handles.handle.write(response)
+        else:
+            return response
 
-                    return obj
+    def to_dict(self):
+        """Return UmiTemplateLibrary dictionary representation."""
+        # First, reset existing name
 
-            if not data_dict["GasMaterials"]:
-                # Umi needs at least one gas material even if it is not necessary.
-                data_dict["GasMaterials"].append(GasMaterial(Name="AIR").to_json())
-            # Write the dict to json using json.dumps
-            response = json.dumps(
-                data_dict, indent=indent, sort_keys=sort_keys, cls=CustomJSONEncoder
-            )
-            path_or_buf.write(response)
+        # Create ordered dict with empty list
+        data_dict = OrderedDict([(key, []) for key in self._LIB_GROUPS])
 
-        return response
+        # create dict values
+        for group_name, group in self:
+            # reset unique names for group
+            UniqueName.existing = set()
+            obj: UmiBase
+            for obj in group:
+                data = obj.to_dict()
+                data.update({"Name": UniqueName(data.get("Name"))})
+                data_dict.setdefault(group_name, []).append(data)
+
+        if not data_dict.get("GasMaterials"):
+            # Umi needs at least one gas material even if it is not necessary.
+            data = GasMaterial(Name="AIR").to_dict()
+            data.update({"Name": UniqueName(data.get("Name"))})
+            data_dict.get("GasMaterials").append(data)
+            data_dict.move_to_end("GasMaterials", last=False)
+
+        # Correct naming convention and reorder categories
+        for key in tuple(data_dict.keys()):
+            v = data_dict[key]
+            del data_dict[key]
+            if key == "ZoneDefinitions":
+                key = "Zones"
+            if key == "StructureInformations":
+                key = "StructureDefinitions"
+            data_dict[key] = v
+
+        # Validate
+        assert no_duplicates(data_dict, attribute="Name")
+
+        # Sort values
+        for key in data_dict:
+            # Sort the list elements by their Name
+            data_dict[key] = sorted(data_dict[key], key=lambda x: x.get("Name"))
+
+        return data_dict
+
+    def unique_components(self, exceptions=None):
+        """Keep only unique components.
+
+        Calls :func:`~archetypal.template.umi_base.UmiBase.get_unique` for each
+        object in the graph.
+        """
+        self._clear_components_list(exceptions)  # First clear components
+
+        for key, group in self:
+            # for each group
+            for component in group:
+                # travers each object using generator
+                for parent, key, obj in traverse(component):
+                    if key:  # key is None when we reach lowest level
+                        setattr(
+                            parent, key, obj.get_unique()
+                        )  # set unique object on key
+
+        self.update_components_list(exceptions=exceptions)  # Update the components list
+        # that was cleared
+
+    def replace_component(self, this, that) -> None:
+        """Replace all instances of `this` with `that`.
+
+        Args:
+            this (UmiBase): The reference to replace with `that`.
+            that (UmiBase): The object to replace each references with.
+        """
+        for bldg in self.BuildingTemplates:
+            for parent, key, obj in traverse(bldg):
+                if obj is this:
+                    setattr(parent, key, that)
+
+        self.update_components_list()
+
+    def update_components_list(self, exceptions=None):
+        """Update the component groups with connected components."""
+        # clear components list except BuildingTemplate
+        self._clear_components_list(exceptions)
+
+        for key, group in self:
+            for component in group:
+                for parent, key, child in traverse(component):
+                    if isinstance(child, UmiBase):
+                        obj_list = self.__dict__[child.__class__.__name__ + "s"]
+                        if not any(o.id == child.id for o in obj_list):
+                            # Important to compare on UmiBase.id and not on identity.
+                            obj_list.append(child)
+
+    def build_graph(self):
+        """Create the :class:`networkx.DiGraph` UmiBase objects as nodes."""
+        import networkx as nx
+
+        G = nx.DiGraph()
+
+        for bldg in self.BuildingTemplates:
+            for parent, key, child in traverse(bldg):
+                G.add_edge(parent, child)
+
+        return G
+
+
+def no_duplicates(file, attribute="Name"):
+    """Assert whether or not dict has duplicated Names.
+
+    `attribute` can be another attribute name like "$id".
+
+    Args:
+        file (str or dict): Path of the json file or dict containing umi objects groups
+        attribute (str): Attribute to search for duplicates in json UMI structure.
+            eg. : "$id", "Name".
+
+    Returns:
+        bool: True if no duplicates.
+
+    Raises:
+        Exception if duplicates found.
+    """
+    import json
+    from collections import defaultdict
+
+    if isinstance(file, str):
+        data = json.loads(open(file).read())
+    else:
+        data = file
+    ids = {}
+    for key, value in data.items():
+        ids[key] = defaultdict(int)
+        for component in value:
+            try:
+                _id = component[attribute]
+            except KeyError:
+                pass  # BuildingTemplate does not have an id
+            else:
+                ids[key][_id] += 1
+    dups = {
+        key: dict(filter(lambda x: x[1] > 1, values.items()))
+        for key, values in ids.items()
+        if dict(filter(lambda x: x[1] > 1, values.items()))
+    }
+    if any(dups.values()):
+        raise Exception(f"Duplicate {attribute} found: {dups}")
+    else:
+        return True
+
+
+DEEP_OBJECTS = (UmiBase, MaterialLayer, GasLayer, YearSchedulePart, MassRatio, list)
+
+
+def traverse(parent):
+    """Iterate over UmiBases in a depth-first-search (DFS).
+
+    Perform a depth-first-search over the UmiBase objects of var and
+    yield the Umibase objects in order.
+    """
+    if isinstance(parent, DEEP_OBJECTS):
+        if isinstance(parent, list):
+            for obj in parent:
+                yield from traverse(obj)
+        elif isinstance(parent, DaySchedule):
+            yield None, None, parent
+        else:
+            for k, child in parent:
+                if isinstance(child, UmiBase):
+                    yield parent, k, child
+                if isinstance(child, DEEP_OBJECTS):
+                    yield from traverse(child)

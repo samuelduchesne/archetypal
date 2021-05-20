@@ -7,7 +7,6 @@
 
 import logging as lg
 
-import pint
 from path import Path
 
 # locations to save data, logs, images, and cache
@@ -21,6 +20,9 @@ umitemplate = Path("data/BostonTemplateLibrary.json")
 
 # cache server responses
 use_cache = False
+
+# Debug behavior
+debug = False
 
 # write log to file and/or to console
 log_file = False
@@ -119,33 +121,22 @@ default_crs = {"init": "epsg:4326"}
 # unique schedule number as list
 unique_schedules = []
 
-# TRNSYS default location
-trnsys_default_folder = Path(r"C:\TRNSYS18")
-
-# region read template - use io.BytesIO(settings.template) in code
-import pkg_resources
-
 resource_package = archetypal.__name__  # Could be any module/package name
-
-# originBUISketchUp.idf template
-resource_path = "/".join(("ressources", "originBUISketchUp.idf"))
-# Do not use os.path.join()
-template_BUI = pkg_resources.resource_string(resource_package, resource_path)
-
-# window library ('W74-lib.dat') template
-resource_path = "/".join(("ressources", "W74-lib.dat"))
-# Do not use os.path.join()
-template_winLib = pkg_resources.resource_string(resource_package, resource_path)
-
-# NewFileTemplate.d18 ('W74-lib.dat') template
-resource_path = "/".join(("ressources", "NewFileTemplate.d18"))
-# Do not use os.path.join()
-path_template_d18 = pkg_resources.resource_filename(resource_package, resource_path)
-# endregion
 
 # Units
 
-unit_registry = pint.UnitRegistry()
+from energy_pandas.units import unit_registry
+
+unit_registry.define("m3 = 1 * meter ** 3 = m³")
+unit_registry.define(
+    "degree_Celsius = kelvin; offset: 273.15 = °C = C = celsius = degC = degreeC"
+)
+unit_registry.define(
+    "degree_Fahrenheit = 5 / 9 * kelvin; offset: 233.15 + 200 / 9 = "
+    "°F = F = fahrenheit = degF = degreeF"
+)
+unit_registry.define("ach = dimensionless")  # Air Changes per Hour
+unit_registry.define("acr = 1 / hour")  # Air change rate
 
 
 class ZoneWeight(object):

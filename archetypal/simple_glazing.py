@@ -7,10 +7,11 @@
 
 import logging as lg
 import math
+import warnings
 
 import numpy as np
 
-from archetypal import log
+from archetypal.utils import log
 
 
 def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
@@ -104,8 +105,12 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     R_vis_f = r_vis_f(T_vis)
 
     # sanity checks
-    assert T_vis + R_vis_f <= 1.0
-    assert T_vis + R_vis_b <= 1.0
+    if T_vis + R_vis_f >= 1.0:
+        warnings.warn("T_vis + R_vis_f > 1", UserWarning)
+        T_vis -= (T_vis + R_vis_f - 1) * 1.1
+    if T_vis + R_vis_b >= 1.0:
+        warnings.warn("T_vis + R_vis_b > 1", UserWarning)
+        T_vis -= (T_vis + R_vis_b - 1) * 1.1
 
     # Last Step. Saving results to dict
     dict["SolarHeatGainCoefficient"] = shgc
@@ -224,9 +229,8 @@ def thickness(r_l_w):
     """The thickness of the equivalent layer in units of meters.
 
     Args:
-        r_l_w (double): The resisance of the bare window under winter
-        conditions (without the film coefficients) in
-            units of m\ :sup:`2`\ K`/W.
+        r_l_w (double): The resistance of the bare window under winter
+            conditions (without the film coefficients) in units of m\ :sup:`2`\ K`/W.
 
     Returns:
         double: The thickness of the equivalent layer in units of meters
@@ -397,10 +401,9 @@ def r_s_f(t_sol, shgc, r_o_s, r_l_w, r_i_s):
         t_sol (double): The Solat Transmittance at normal incidence.
         shgc (double): The window's Solar Heat Gain Coefficient
         r_o_s (double): Resistance of the outside coefficient under summer
-        conditions.
+            conditions.
         r_l_w (double): The resisance of the bare window under winter
-        conditions (without the film
-            coefficients) in units of m\ :sup:`2`\ K/W.
+            conditions (without the film coefficients) in units of m\ :sup:`2`\ K/W.
         r_i_s (double): Resistance of the inside coefficient under summer
         conditions.
 

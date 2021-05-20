@@ -1,18 +1,18 @@
+""""""
+
 import functools
-import logging as lg
 import time
 from sqlite3 import OperationalError
 
 import numpy as np
-import pandas as pd
+from pandas import DataFrame, read_sql_query, to_numeric
 from path import Path
 
-from archetypal import log, EnergySeries
+from archetypal.utils import log
 
 
-class ReportData(pd.DataFrame):
-    """This class serves as a subclass of a pandas DataFrame allowing to add
-    additional functionnality"""
+class ReportData(DataFrame):
+    """Handles Report Variable Data and Report Meter Data"""
 
     ARCHETYPE = "Archetype"
     REPORTDATAINDEX = "ReportDataIndex"
@@ -31,8 +31,9 @@ class ReportData(pd.DataFrame):
 
     @classmethod
     def from_sql_dict(cls, sql_dict):
+        """Create from dictionary."""
         report_data = sql_dict["ReportData"]
-        report_data["ReportDataDictionaryIndex"] = pd.to_numeric(
+        report_data["ReportDataDictionaryIndex"] = to_numeric(
             report_data["ReportDataDictionaryIndex"]
         )
 
@@ -48,21 +49,32 @@ class ReportData(pd.DataFrame):
     def from_sqlite(
         cls,
         sqlite_file,
-        table_name="WaterSystems:EnergyTransfer",
+        table_name,
         warmup_flag=0,
         environment_type=3,
+        reporting_frequency=None,
     ):
-        """Reads an EnergyPlus eplusout.sql file and returns a :class:`ReportData`
-        which is a subclass of :class:`DataFrame`.
+        """Read an EnergyPlus eplusout.sql file.
 
         Args:
-            environment_type (str): An enumeration of the environment type. (1 = Design
+            sqlite_file (str): The path of the sqlite3 file.
+            table_name (str, optional): Filter results by a specific table name.
+            warmup_flag (int): 1 during warmup, 0 otherwise. Defaults to 0.
+            environment_type (int): An enumeration of the environment type. (1 = Design
                 Day, 2 = Design Run Period, 3 = Weather Run Period) See the various
                 SizingPeriod objects and the RunPeriod object for details.
-            sqlite_file (str):
+            reporting_frequency (str, optional): "HVAC System Timestep",
+                "Zone Timestep", "Hourly", "Daily", "Monthly", "Run Period".
+
+        Examples:
+            >>> ReportData.from_sqlite("eplusout.sql",
+            >>>     table_name="Air System Total Heating Energy",
+            >>>     warmup_flag=0,
+            >>>     environment_type=1,
+            >>> )
 
         Returns:
-            (ReportData): The ReportData object.
+            ReportData: a :class:`ReportData` which is a subclass of :class:`DataFrame`.
         """
         if not isinstance(sqlite_file, str):
             raise TypeError("Please provide a str, not a {}".format(type(sqlite_file)))
@@ -124,11 +136,17 @@ class ReportData(pd.DataFrame):
                 )
                 sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
                 params.update(env_name)
+            if reporting_frequency:
+                conditions, reporting_frequency = cls.multiple_conditions(
+                    "reporting_frequency", reporting_frequency, "ReportingFrequency"
+                )
+                sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
+                params.update(reporting_frequency)
             df = cls.execute(conn, sql_query, params)
             return cls(df)
 
-    @classmethod
-    def multiple_conditions(cls, basename, cond_names, var_name):
+    @staticmethod
+    def multiple_conditions(basename, cond_names, var_name):
         if not isinstance(cond_names, (list, tuple)):
             cond_names = [cond_names]
         cond_names = set(cond_names)
@@ -145,7 +163,7 @@ class ReportData(pd.DataFrame):
         try:
             # Try regular str read, could fail if wrong encoding
             conn.text_factory = str
-            df = pd.read_sql_query(sql_query, conn, params=params, coerce_float=True)
+            df = read_sql_query(sql_query, conn, params=params, coerce_float=True)
         except OperationalError as e:
             # Wring encoding found, the load bytes and decode object
             # columns only
@@ -157,53 +175,9 @@ class ReportData(pd.DataFrame):
         return ReportData
 
     @property
-    def schedules(self):
-        return self.sorted_values(key_value="Schedule Value")
-
-    @property
     def df(self):
         """Returns the DataFrame of the ReportData"""
-        return pd.DataFrame(self)
-
-    def heating_load(
-        self, normalize=False, sort=False, ascending=False, concurrent_sort=False
-    ):
-        """Returns the aggragated 'Heating:Electricity', 'Heating:Gas' and
-        'Heating:DistrictHeating' of each archetype
-
-        Args:
-            normalize (bool): if True, returns a normalize Series.
-                Normalization is done with respect to each Archetype
-            sort (bool): if True, sorts the values. Usefull when a load
-                duration curve is needed.
-            ascending (bool): if True, sorts value in ascending order. If a
-                Load Duration Curve is needed, use ascending=False.
-
-        Returns:
-            EnergySeries: the Value series of the Heating Load with a Archetype,
-                TimeIndex as MultiIndex.
-        """
-        hl = self.filter_report_data(
-            name=("Heating:Electricity", "Heating:Gas", "Heating:DistrictHeating")
-        )
-        freq = list(set(hl.ReportingFrequency))
-        units = list(set(hl.Units))
-        freq_map = dict(Hourly="H", Daily="D", Monthly="M")
-        if len(units) > 1:
-            raise MixedUnitsError()
-
-        hl = hl.groupby(["Archetype", "TimeIndex"]).Value.sum()
-        log("Returned Heating Load in units of {}".format(str(units)), lg.DEBUG)
-        return EnergySeries(
-            hl,
-            frequency=freq_map[freq[0]],
-            units=units[0],
-            normalize=normalize,
-            sort_values=sort,
-            ascending=ascending,
-            to_units="kWh",
-            concurrent_sort=concurrent_sort,
-        )
+        return DataFrame(self)
 
     def filter_report_data(
         self,
@@ -412,36 +386,7 @@ class ReportData(pd.DataFrame):
         else:
             return filtered_df.__finalize__(self)
 
-    def sorted_values(self, key_value=None, name=None, by="TimeIndex", ascending=True):
-        """Returns sorted values by filtering key_value and name
-
-        Args:
-            self: The ReporatData DataFrame
-            key_value (str): key_value column filter
-            name (str): name column filter
-            by (str): sorting by this column name
-            ascending (bool):
-
-        Returns:
-            ReportData
-        """
-        if key_value and name:
-            return (
-                self.filter_report_data(name=name, keyvalue=key_value)
-                .sort_values(by=by, ascending=ascending)
-                .reset_index(drop=True)
-                .rename_axis("TimeStep")
-                .set_index(["Archetype"], append=True)
-                .swaplevel(i=-2, j=-1, axis=0)
-            )
-        else:
-            return self.sort_values(by=by, inplace=False)
-
 
 def conjunction(*conditions, logical=np.logical_and):
-    """Applies a logical function on n conditons"""
+    """Apply a logical function on n conditions."""
     return functools.reduce(logical, conditions)
-
-
-def or_conjunction(*conditions):
-    return functools.reduce(np.logical_or, conditions)

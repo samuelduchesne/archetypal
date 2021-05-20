@@ -19,13 +19,8 @@ import pandas as pd
 import pycountry as pycountry
 import requests
 
-from archetypal import log, settings, make_str
-
-# scipy and sklearn are optional dependencies for faster nearest node search
-try:
-    from osgeo import gdal
-except ImportError as e:
-    gdal = None
+from archetypal import settings
+from archetypal.utils import log
 
 
 def tabula_available_buildings(country_name="France"):
@@ -401,14 +396,16 @@ def save_to_cache(url, response_json):
                 settings.cache_folder, os.extsep.join([filename, "json"])
             )
             # dump to json, and save to file
-            json_str = make_str(json.dumps(response_json))
+            json_str = json.dumps(response_json)
             with io.open(cache_path_filename, "w", encoding="utf-8") as cache_file:
                 cache_file.write(json_str)
 
             log('Saved response to cache file "{}"'.format(cache_path_filename))
 
 
-def openei_api_request(data,):
+def openei_api_request(
+    data,
+):
     """Query the OpenEI.org API.
 
     Args:
@@ -434,8 +431,8 @@ def nrel_api_cbr_request(data):
     """Query the NREL Commercial Building Resource Database
 
     Examples:
-        >>> import archetypal as ar
-        >>> ar.dataportal.nrel_api_cbr_request({'s': 'Commercial'
+        >>> from archetypal import dataportal
+        >>> dataportal.nrel_api_cbr_request({'s': 'Commercial'
         >>> 'Reference', 'api_key': 'oGZdX1nhars1cTJYTm7M9T12T1ZOvikX9pH0Zudq'})
 
     Args:
@@ -525,7 +522,7 @@ def nrel_bcl_api_request(data):
     else:
         url = "https://bcl.nrel.gov/api/search/{}.{}".format(keyword, kformat)
     prepared_url = requests.Request("GET", url, params=data).prepare().url
-    print(prepared_url)
+    log(prepared_url)
     cached_response_json = get_from_cache(prepared_url)
 
     if cached_response_json:
@@ -539,7 +536,7 @@ def nrel_bcl_api_request(data):
         response = requests.get(prepared_url)
 
         # check if an error has occurred
-        log(response.raise_for_status(), lg.DEBUG)
+        response.raise_for_status()
 
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
@@ -709,23 +706,19 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
             # There seems to be a double backlash in the response. We try
             # removing it here.
             try:
-                response = response.content.decode("UTF-8").replace("//", "")
-                response_json = json.loads(response)
-            except Exception:
+                response_str = response.content.decode("UTF-8").replace("//", "")
+                response_json = json.loads(response_str)
+            except Exception as e:
                 log(
-                    "Server at {} returned status code {} and no JSON "
-                    "data.".format(domain, response.status_code),
+                    f"Error {e}\n"
+                    f"Server at {domain} returned status code {response.status_code} "
+                    f"and no JSON data.",
                     level=lg.ERROR,
                 )
+                return {}
             else:
                 save_to_cache(prepared_url, response_json)
                 return response_json
-            # deal with response satus_code here
-            log(
-                "Server at {} returned status code {} and no JSON "
-                "data.".format(domain, response.status_code),
-                level=lg.ERROR,
-            )
         else:
             return response_json
 

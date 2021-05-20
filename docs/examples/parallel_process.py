@@ -1,7 +1,8 @@
 import pandas as pd
 from path import Path
 
-from archetypal import config, run_eplus, parallel_process
+from archetypal.idfclass.idf import IDF
+from archetypal.utils import config, parallel_process
 
 config(cache_folder="../../tests/.temp/cache", use_cache=True, log_console=True)
 
@@ -9,7 +10,7 @@ config(cache_folder="../../tests/.temp/cache", use_cache=True, log_console=True)
 def main():
 
     # setup directories and input files
-    necb_basedir = Path("../../tests/input_data/trnsys")
+    necb_basedir = Path("../../tests/input_data/necb")
     files = necb_basedir.glob("Ref*.idf")
     epw = Path("../../tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw")
 
@@ -21,19 +22,18 @@ def main():
             eplus_file=str(file),
             prep_outputs=True,
             weather_file=str(epw),
-            expandobjects=True,
+            expandobjects=False,
             verbose="v",
             design_day=True,
-            output_report="sql_file",
         )
         for k, file in idfs.file.to_dict().items()
     }
 
-    sql_files = parallel_process(rundict, run_eplus, use_kwargs=True, processors=-1)
-    return sql_files
+    idfs = parallel_process(rundict, IDF, processors=-1, use_kwargs=True)
+    return idfs
 
 
 if __name__ == "__main__":
     config(use_cache=True, log_console=True)
-    sql_files = main()
-    print(sql_files)
+    idfs = main()
+    print(idfs)

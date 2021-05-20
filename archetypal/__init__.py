@@ -6,26 +6,29 @@
 ################################################################################
 
 # Version of the package
-__version__ = "1.3.4"
+from pkg_resources import get_distribution, DistributionNotFound
 
-# warn if a newer version of archetypal is available
-from outdated import warn_if_outdated
-from .utils import warn_if_not_compatible
+try:
+    __version__ = get_distribution("archetypal").version
+except DistributionNotFound:
+    # package is not installed
+    __version__ = "0.0.0"  # should happen only if package is copied, not installed.
+else:
+    # warn if a newer version of archetypal is available
+    from outdated import warn_if_outdated
+    from .eplus_interface.version import warn_if_not_compatible
+finally:
+    # warn if energyplus not installed or incompatible
+    from .eplus_interface.version import warn_if_not_compatible
 
-warn_if_outdated("archetypal", __version__)
-warn_if_not_compatible()
+    warn_if_not_compatible()
 
-from .utils import *
-from .simple_glazing import *
-from .energyseries import EnergySeries
-from .energydataframe import EnergyDataFrame
-from .reportdata import ReportData
-from .tabulardata import TabularData
-from .idfclass import *
-from .schedule import Schedule
-from .dataportal import *
-from .plot import *
-from .trnsys import *
-from .template import *
-from .umi_template import *
-from .cli import *
+# don't display futurewarnings
+
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.simplefilter(action="ignore", category=UserWarning)
+
+from .idfclass import IDF
+from .umi_template import UmiTemplateLibrary

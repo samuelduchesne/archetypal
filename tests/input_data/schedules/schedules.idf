@@ -138,13 +138,6 @@
     DISCRETE;                !- Numeric Type
 
   ScheduleTypeLimits,
-    On/Off,                  !- Name
-    0,                       !- Lower Limit Value
-    1,                       !- Upper Limit Value
-    DISCRETE,                !- Numeric Type
-    Availability;            !- Unit Type
-
-  ScheduleTypeLimits,
     Percent,                 !- Name
     0,                       !- Lower Limit Value
     ,                        !- Upper Limit Value

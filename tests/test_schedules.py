@@ -1,63 +1,93 @@
-import os
-
+import numpy as np
+import pandas as pd
 import pytest
 
-from archetypal import (
-    Schedule,
-    load_idf,
-    copy_file,
-    run_eplus,
-    UmiSchedule,
-    config,
-    get_eplus_dirs,
-    settings,
-)
+import archetypal.settings as settings
+from archetypal import IDF
+from archetypal.eplus_interface.version import get_eplus_dirs
+from archetypal.schedule import Schedule, ScheduleTypeLimits
+from archetypal.template.schedule import UmiSchedule, YearSchedule
+from archetypal.utils import config
 
 
-def test_schedules_in_necb_specific(config):
-    files = [
-        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-    ]
-    idfs = {os.path.basename(file): load_idf(file) for file in files}
-    import matplotlib.pyplot as plt
+class TestScheduleTypeLimits:
+    """Test ScheduleTypeLimits class."""
 
-    for key in idfs:
-        idf = idfs[key]
-        s = Schedule(
-            Name="NECB-A-Thermostat Setpoint-Heating", idf=idf, start_day_of_the_week=0
+    def test_from_to_dict(self):
+        data = {
+            "Name": "Fractional",
+            "LowerLimit": 0,
+            "UpperLimit": 1,
+            "NumericType": None,
+            "UnitType": "Dimensionless",
+        }
+
+        type_limit = ScheduleTypeLimits.from_dict(data)
+        type_limit_dict = type_limit.to_dict()
+        type_limit_dup = ScheduleTypeLimits.from_dict(type_limit_dict)
+
+        assert type_limit.Name == type_limit_dup.Name == "Fractional"
+
+    def test_from_epbunch(self):
+        idf = IDF()
+        epbunch = idf.anidfobject("SCHEDULETYPELIMITS", Name="Fractional")
+
+        type_limit = ScheduleTypeLimits.from_epbunch(epbunch)
+        assert type_limit
+
+
+class TestSchedule:
+    @pytest.fixture()
+    def schedules_in_necb_specific(self, config):
+        idf = IDF(
+            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD "
+            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         )
-        s.plot(slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post")
-        plt.show()
+        epbunch = idf.schedules_dict["NECB-A-Thermostat Setpoint-Heating".upper()]
+        s = Schedule.from_epbunch(epbunch, start_day_of_the_week=0)
+        yield s
 
+    def test_plot(self, schedules_in_necb_specific):
+        schedules_in_necb_specific.plot(
+            slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post"
+        )
 
-def test_make_umi_schedule(config):
-    """Tests only a single schedule name"""
-    import matplotlib.pyplot as plt
+    def test_plot2d(self, schedules_in_necb_specific):
+        schedules_in_necb_specific.plot2d(show=False, save=False)
 
-    idf_file = "tests/input_data/schedules/schedules.idf"
-    idf_file = copy_file(idf_file)
-    idf = load_idf(idf_file)
+    def test_make_umi_schedule(self):
+        """Test only a single schedule name."""
 
-    s = UmiSchedule(Name="POFF", idf=idf, start_day_of_the_week=0)
-    ep_year, ep_weeks, ep_days = s.to_year_week_day()
+        idf = IDF("tests/input_data/schedules/schedules.idf", prep_outputs=False)
+        ep_bunch = idf.schedules_dict["CoolingCoilAvailSched".upper()]
+        s = UmiSchedule.from_epbunch(ep_bunch, start_day_of_the_week=0)
+        new = s.develop()
+        assert hash(s) != hash(new)
+        assert id(s) != id(new)
 
-    new = UmiSchedule(
-        Name=ep_year.Name, idf=idf, start_day_of_the_week=s.startDayOfTheWeek
-    )
+        assert isinstance(s, UmiSchedule)
+        assert isinstance(new, YearSchedule)
+        assert len(s.all_values) == len(new.all_values)
+        np.testing.assert_array_equal(new.all_values, s.all_values)
 
-    print(len(s.all_values))
-    print(len(new.all_values))
-    ax = s.plot(slice=("2018/01/01 00:00", "2018/01/07"), legend=True)
-    new.plot(slice=("2018/01/01 00:00", "2018/01/07"), ax=ax, legend=True)
-    plt.show()
-    assert s.__class__.__name__ == "UmiSchedule"
-    assert len(s.all_values) == len(new.all_values)
-    assert (new.all_values == s.all_values).all()
+    def test_constant_schedule(self):
+        const = Schedule.constant_schedule()
+        assert const.__class__.__name__ == "Schedule"
 
+    @pytest.fixture()
+    def new_idf(self, config):
+        yield IDF(prep_outputs=False)
 
-def test_constant_schedule():
-    const = Schedule.constant_schedule()
-    assert const.__class__.__name__ == "Schedule"
+    def test_from_values(self, new_idf):
+        import numpy as np
+
+        heating_sched = UmiSchedule.from_values(
+            Name="Zone_Heating_Schedule",
+            Values=np.ones(8760),
+            Type="Fraction",
+            idf=idf,
+        )
+        assert len(heating_sched.all_values) == 8760
 
 
 idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
@@ -65,8 +95,10 @@ idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 
 def schedules_idf():
     config(cache_folder="tests/.temp/cache")
-    idf = load_idf(
+    idf = IDF(
         idf_file,
+        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+        readvars=True,
         include=[
             get_eplus_dirs(settings.ep_version)
             / "DataSets"
@@ -78,13 +110,23 @@ def schedules_idf():
 
 
 idf = schedules_idf()
-schedules = list(idf.get_all_schedules(yearly_only=True).keys())
-ids = [i.replace(" ", "_") for i in schedules]
+schedules_dict = idf._get_all_schedules(yearly_only=True)
+schedules = list(schedules_dict.values())
+ids = [i.replace(" ", "_") for i in schedules_dict.keys()]
+
+
+@pytest.fixture(scope="module")
+def csv_out(config):
+    idf = schedules_idf().simulate()
+    csv, *_ = idf.simulation_dir.files("*out.csv")
+    yield csv
+
+
 schedules = [
     pytest.param(
         schedule,
         marks=pytest.mark.xfail(
-            reason="Can't quite capture all possibilities " "with special days"
+            reason="Can't quite capture all possibilities with special days"
         ),
     )
     if schedule == "POFF"
@@ -95,68 +137,36 @@ schedules = [
 ]
 
 
-@pytest.fixture(params=schedules, ids=ids)
-def test_schedules(request, run_schedules_idf):
+@pytest.fixture(params=schedules, ids=ids, scope="module")
+def schedule_parametrized(request, csv_out):
     """Create the test_data"""
     import pandas as pd
 
-    # read original schedule
-    idf = schedules_idf()
-    schName = request.param
-    orig = Schedule(Name=schName, idf=idf)
-
-    print(
-        "{name}\tType:{type}\t[{len}]\tValues:{"
-        "values}".format(
-            name=orig.Name,
-            type=orig.schType,
-            values=orig.all_values,
-            len=len(orig.all_values),
-        )
-    )
+    ep_bunch = request.param
+    origin = Schedule.from_epbunch(ep_bunch)
 
     # create year:week:day version
-    new_eps = orig.to_year_week_day()
-    new = Schedule(Name=new_eps[0].Name, idf=idf)
+    new_eps = origin.to_year_week_day()
+    new = origin
 
-    index = orig.series.index
-    epv = pd.read_csv(run_schedules_idf)
+    index = origin.series.index
+    epv = pd.read_csv(csv_out)
     epv.columns = epv.columns.str.strip()
-    epv = epv.loc[:, schName.upper() + ":Schedule Value [](Hourly)"].values
+    epv = epv.loc[:, ep_bunch.Name.upper() + ":Schedule Value [](Hourly)"].values
     expected = pd.Series(epv, index=index)
 
     print("Year: {}".format(new_eps[0].Name))
     print("Weeks: {}".format([obj.Name for obj in new_eps[1]]))
     print("Days: {}".format([obj.Name for obj in new_eps[2]]))
 
-    yield orig, new, expected
+    yield origin, new, expected
 
 
-@pytest.fixture(scope="module")
-def run_schedules_idf(config):
-    files = run_eplus(
-        idf_file,
-        weather_file="tests/input_data/CAN_PQ_Montreal.Intl.AP" ".716270_CWEC.epw",
-        annual=True,
-        readvars=True,
-        include=[
-            get_eplus_dirs(settings.ep_version)
-            / "DataSets"
-            / "TDV"
-            / "TDV_2008_kBtu_CTZ06.csv"
-        ],
-        return_files=True,
-    )
-    cache_dir = files[1][0].dirname()
-    csv = next(iter(cache_dir.glob("*out.csv")))
-    yield csv
-
-
-def test_ep_versus_schedule(test_schedules):
+def test_ep_versus_schedule(schedule_parametrized):
     """Main test. Will run the idf using EnergyPlus, retrieve the csv file,
     create the schedules and compare"""
 
-    orig, new, expected = test_schedules
+    orig, new, expected = schedule_parametrized
 
     # slice_ = ('2018/01/01 00:00', '2018/01/08 00:00')  # first week
     # slice_ = ('2018/05/20 12:00', '2018/05/22 12:00')
@@ -179,10 +189,6 @@ def test_ep_versus_schedule(test_schedules):
     # plt.show()
     # # endregion
 
-    print(orig.series[mask])
-    assert (
-        orig.all_values.round(3)[0 : 52 * 7 * 24] == expected.round(3)[0 : 52 * 7 * 24]
-    ).all()
-    assert (
-        new.all_values.round(3)[0 : 52 * 7 * 24] == expected.round(3)[0 : 52 * 7 * 24]
-    ).all()
+    print(pd.DataFrame({"actual": orig.series[mask], "expected": expected[mask]}))
+    np.testing.assert_array_almost_equal(orig.all_values, expected, verbose=True)
+    np.testing.assert_array_almost_equal(new.all_values, expected, verbose=True)

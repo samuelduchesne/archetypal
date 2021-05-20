@@ -13,8 +13,8 @@ def test_absurd():
     """Simulates a Double Clear Air Glazing System (Window.exe v.7.5). Will
     raise an error when checking Visible Transmittance at Normal Incidence +
     Back Side Visible Reflectance at Normal Incidence not <= 1.0"""
-    with pytest.raises(AssertionError):
-        res = calc_simple_glazing(0.704, 2.703, 0.9)
+    with pytest.warns(UserWarning):
+        calc_simple_glazing(0.704, 2.703, 0.9)
 
 
 @pytest.mark.parametrize(

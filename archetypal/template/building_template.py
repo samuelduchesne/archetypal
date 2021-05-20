@@ -8,28 +8,22 @@
 import collections
 import logging as lg
 import time
-from collections import defaultdict
+from itertools import chain, repeat
 
-import eppy
-import matplotlib.collections
-import matplotlib.colors
 import networkx
-import tabulate
-from eppy.bunch_subclass import EpBunch
 from path import Path
+from sigfig import round
 from tqdm import tqdm
+from validator_collection import validators
 
-from archetypal import log, save_and_show
-from archetypal.template import (
-    UmiBase,
-    Zone,
-    resolve_obco,
-    WindowSetting,
-    StructureDefinition,
-    MassRatio,
-    is_core,
-)
-from archetypal.utils import reduce
+from archetypal.template.dhw import DomesticHotWaterSetting
+from archetypal.template.materials.material_layer import MaterialLayer
+from archetypal.template.schedule import YearSchedulePart
+from archetypal.template.structure import MassRatio, StructureInformation
+from archetypal.template.umi_base import UmiBase
+from archetypal.template.window_setting import WindowSetting
+from archetypal.template.zonedefinition import ZoneDefinition
+from archetypal.utils import log, reduce
 
 
 class BuildingTemplate(UmiBase):
@@ -38,8 +32,26 @@ class BuildingTemplate(UmiBase):
     .. image:: ../images/template/buildingtemplate.png
     """
 
+    __slots__ = (
+        "_partition_ratio",
+        "_lifespan",
+        "_core",
+        "_perimeter",
+        "_structure_definition",
+        "_window_setting",
+        "_default_window_to_wall_ratio",
+        "_year_from",
+        "_year_to",
+        "_country",
+        "_climate_zone",
+        "_authors",
+        "_author_emails",
+        "_version",
+    )
+
     def __init__(
         self,
+        Name,
         Core=None,
         Perimeter=None,
         Structure=None,
@@ -47,17 +59,24 @@ class BuildingTemplate(UmiBase):
         Lifespan=60,
         PartitionRatio=0.35,
         DefaultWindowToWallRatio=0.4,
-        **kwargs
+        YearFrom=None,
+        YearTo=None,
+        Country=None,
+        ClimateZone=None,
+        Authors=None,
+        AuthorEmails=None,
+        Version="v1.0",
+        **kwargs,
     ):
         """Initialize a :class:`BuildingTemplate` object with the following
         attributes:
 
         Args:
-            Core (Zone): The Zone object defining the core zone. see
+            Core (ZoneDefinition): The Zone object defining the core zone. see
                 :class:`Zone` for more details.
-            Perimeter (Zone): The Zone object defining the perimeter zone. see
+            Perimeter (ZoneDefinition): The Zone object defining the perimeter zone. see
                 :class:`Zone` for more details.
-            Structure (StructureDefinition): The StructureDefinition object
+            Structure (StructureInformation): The StructureInformation object
                 defining the structural properties of the template.
             Windows (WindowSetting): The WindowSetting object defining the
                 window properties of the object.
@@ -69,10 +88,17 @@ class BuildingTemplate(UmiBase):
             DefaultWindowToWallRatio (float): The default Window to Wall Ratio
                 (WWR) for this template (same for all orientations). Number
                 between 0 and 1.
+            YearFrom (int): Start year for range.
+            YearTo (int): End year for range.
+            Country (list of str): alpha-3 Country Code.
+            ClimateZone (list of str): ANSI/ASHRAE/IESNA Standard 90.1 International
+                Climatic Zone. eg. "5A"
+            Authors (list of str): Authors of this template
+            AuthorEmails (list of str): Contact information.
+            Version (str): Version number.
             **kwargs: other optional keywords passed to other constructors.
         """
-        super(BuildingTemplate, self).__init__(**kwargs)
-        self._zone_graph = None
+        super(BuildingTemplate, self).__init__(Name, **kwargs)
         self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core
@@ -80,138 +106,243 @@ class BuildingTemplate(UmiBase):
         self.Structure = Structure
         self.Windows = Windows
         self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
+        self._year_from = YearFrom  # set privately to allow validation
+        self.YearTo = YearTo
+        self.Country = Country if Country else []
+        self.ClimateZone = ClimateZone if ClimateZone else []
+        self.Authors = Authors if Authors else []
+        self.AuthorEmails = AuthorEmails if AuthorEmails else []
+        self.Version = Version
 
-    def __hash__(self):
-        return hash((self.__class__.__name__, self.Name, self.DataSource))
+    @property
+    def Perimeter(self):
+        """Get or set the perimeter ZoneDefinition."""
+        return self._perimeter
 
-    def __eq__(self, other):
-        if not isinstance(other, BuildingTemplate):
-            return False
-        else:
-            return all(
-                [
-                    self.Core == other.Core,
-                    self.Perimeter == other.Perimeter,
-                    self.Structure == other.Structure,
-                    self.Windows == other.Windows,
-                    self.Lifespan == other.Lifespan,
-                    self.PartitionRatio == other.PartitionRatio,
-                ]
-            )
+    @Perimeter.setter
+    def Perimeter(self, value):
+        assert isinstance(
+            value, ZoneDefinition
+        ), f"Expected a ZoneDefinition, not {type(value)}"
+        self._perimeter = value
 
-    def view_building(
-        self,
-        fig_height=None,
-        fig_width=6,
-        plot_graph=False,
-        save=False,
-        show=True,
-        close=False,
-        ax=None,
-        axis_off=False,
-        cmap="plasma",
-        dpi=300,
-        file_format="png",
-        azim=-60,
-        elev=30,
-        filename=None,
-        opacity=0.5,
-        proj_type="persp",
-        **kwargs
-    ):
-        """
-        Args:
-            fig_height (float): matplotlib figure height in inches.
-            fig_width (float): matplotlib figure width in inches.
-            plot_graph (bool): if True, add the graph plot to this plot.
-            save (bool): if True, save the figure as an image file to disk.
-            show (bool): if True, show the figure.
-            close (bool): close the figure (only if show equals False) to
-                prevent display.
-            ax (matplotlib.axes._axes.Axes, optional): An existing axes object
-                on which to plot this graph.
-            axis_off (bool): If True, turn off the matplotlib axis.
-            cmap (str): The name a registered
-                :class:`matplotlib.colors.Colormap`.
-            dpi (int): the resolution of the image file if saving.
-            file_format (str): the format of the file to save (e.g., 'jpg',
-                'png', 'svg', 'pdf')
-            azim (float): Azimuthal viewing angle, defaults to -60.
-            elev (float): Elevation viewing angle, defaults to 30.
-            filename (str): the name of the file if saving.
-            opacity (float): 0.0 transparent through 1.0 opaque
-            proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
-            **kwargs:
-        """
-        from geomeppy.view_geometry import _get_collections, _get_limits
-        from mpl_toolkits.mplot3d import Axes3D
-        import matplotlib.pyplot as plt
+    @property
+    def Core(self):
+        """Get or set the core ZoneDefinition."""
+        return self._core
 
-        if fig_height is None:
-            fig_height = fig_width
+    @Core.setter
+    def Core(self, value):
+        assert isinstance(
+            value, ZoneDefinition
+        ), f"Expected a ZoneDefinition, not {type(value)}"
+        self._core = value
 
-        if ax:
-            fig = plt.gcf()
-        else:
-            fig = plt.figure(figsize=(fig_width, fig_height), dpi=dpi)
-            ax = Axes3D(fig)
+    @property
+    def Structure(self):
+        """Get or set the StructureInformation."""
+        return self._structure_definition
 
-        collections = _get_collections(self.idf, opacity=opacity)
-        for c in collections:
-            ax.add_collection3d(c)
+    @Structure.setter
+    def Structure(self, value):
+        assert isinstance(
+            value, StructureInformation
+        ), f"Expected a StructureInformation, not {type(value)}"
+        self._structure_definition = value
 
-        # Set the initial view
-        ax.view_init(elev, azim)
-        ax.set_proj_type(proj_type)
+    @property
+    def Windows(self):
+        """Get or set the WindowSetting."""
+        return self._window_setting
 
-        # calculate and set the axis limits
-        limits = _get_limits(idf=self.idf)
-        ax.set_xlim(limits["x"])
-        ax.set_ylim(limits["y"])
-        ax.set_zlim(limits["z"])
+    @Windows.setter
+    def Windows(self, value):
+        assert isinstance(
+            value, WindowSetting
+        ), f"Expected a WindowSetting, not {type(value)}"
+        self._window_setting = value
 
-        if plot_graph:
-            annotate = kwargs.get("annotate", False)
-            self.zone_graph(log_adj_report=False, force=False).plot_graph3d(
-                ax=ax, annotate=annotate
-            )
+    @property
+    def DefaultWindowToWallRatio(self):
+        """Get or set the DefaultWindowToWallRatio [-]."""
+        return self._default_window_to_wall_ratio
 
-        fig, ax = save_and_show(
-            fig=fig,
-            ax=ax,
-            save=save,
-            show=show,
-            close=close,
-            filename=filename,
-            file_format=file_format,
-            dpi=dpi,
-            axis_off=axis_off,
-            extent=None,
+    @DefaultWindowToWallRatio.setter
+    def DefaultWindowToWallRatio(self, value):
+        self._default_window_to_wall_ratio = validators.float(
+            value, minimum=0, maximum=1
         )
-        return fig, ax
+
+    @property
+    def Lifespan(self):
+        """Get or set the building life span [years]."""
+        return self._lifespan
+
+    @Lifespan.setter
+    def Lifespan(self, value):
+        self._lifespan = validators.integer(value, minimum=True, coerce_value=True)
+
+    @property
+    def PartitionRatio(self):
+        """Get or set the partition ratio [-]."""
+        return self._partition_ratio
+
+    @PartitionRatio.setter
+    def PartitionRatio(self, value):
+        self._partition_ratio = validators.float(value, minimum=0)
+
+    @property
+    def YearFrom(self):
+        """Get or set the YearFrom [int]."""
+        return self._year_from
+
+    @YearFrom.setter
+    def YearFrom(self, value):
+        self._year_from = validators.integer(
+            value, coerce_value=True, maximum=self.YearTo, allow_empty=True
+        )
+
+    @property
+    def YearTo(self):
+        """Get or set the YearTo [int]."""
+        return self._year_to
+
+    @YearTo.setter
+    def YearTo(self, value):
+        self._year_to = validators.integer(
+            value, coerce_value=True, minimum=self.YearFrom, allow_empty=True
+        )
+
+    @property
+    def Country(self):
+        """Get or set the list of alpha-3 country codes [list]."""
+        return self._country
+
+    @Country.setter
+    def Country(self, value):
+        self._country = validators.iterable(value, allow_empty=True)
+
+    @property
+    def ClimateZone(self):
+        """Get or set the list of climatic zones [list]."""
+        return self._climate_zone
+
+    @ClimateZone.setter
+    def ClimateZone(self, value):
+        self._climate_zone = validators.iterable(value, allow_empty=True)
+
+    @property
+    def Authors(self):
+        """Get or set the list of authors [list]."""
+        return self._authors
+
+    @Authors.setter
+    def Authors(self, value):
+        self._authors = validators.iterable(value, allow_empty=True)
+
+    @property
+    def AuthorEmails(self):
+        """Get or set list of author emails [list]."""
+        return self._author_emails
+
+    @AuthorEmails.setter
+    def AuthorEmails(self, value):
+        self._author_emails = validators.iterable(value, allow_empty=True)
+
+    @property
+    def Version(self):
+        """Get or set the template version [str]."""
+        return self._version
+
+    @Version.setter
+    def Version(self, value):
+        self._version = validators.string(value, coerce_value=True)
 
     @classmethod
-    def from_json(cls, *args, **kwargs):
-        """
+    def from_dict(
+        cls,
+        data,
+        zone_definitions,
+        structure_definitions,
+        window_settings,
+        schedules,
+        window_constructions,
+        **kwargs,
+    ):
+        """Create an BuildingTemplate from a dictionary.
+
         Args:
-            *args:
-            **kwargs:
+            data (dict): The python dictionary.
+            zone_definitions (dict): A dictionary of ZoneDefinition objects with their
+                id as keys.
+            structure_definitions (dict): A dictionary of StructureInformation with
+                their id as keys.
+            window_settings (dict): A dictionary of WindowSetting objects with their
+                id as keys.
+            schedules (dict): A dictionary of UmiSchedule with their id as keys.
+            window_constructions (dict): A dictionary of WindowConstruction objects
+                with their id as keys.
+            **kwargs: keywords passed to the constructor.
+
+        .. code-block:: python
+
+            {
+              "Core": {
+                "$ref": "178"
+              },
+              "Lifespan": 60,
+              "PartitionRatio": 0.3,
+              "Perimeter": {
+                "$ref": "178"
+              },
+              "Structure": {
+                "$ref": "64"
+              },
+              "Windows": {
+                "$ref": "181"
+              },
+              "DefaultWindowToWallRatio": 0.4,
+              "YearFrom": 0,
+              "YearTo": 0,
+              "Country": [
+                "USA"
+              ],
+              "ClimateZone": [
+                "5A"
+              ],
+              "Authors": [
+                "Carlos Cerezo"
+              ],
+              "AuthorEmails": [
+                "ccerezo@mit.edu"
+              ],
+              "Version": "v1.0",
+              "Category": "Residential and Lodging",
+              "Comments": "Base building definition for MIT 4433",
+              "DataSource": "MIT_SDL",
+              "Name": "B_Res_0_WoodFrame"
+            }
+
         """
-        bt = cls(*args, **kwargs)
-
-        ref = kwargs.get("Core", None)
-        bt.Core = bt.get_ref(ref)
-        ref = kwargs.get("Perimeter", None)
-        bt.Perimeter = bt.get_ref(ref)
-        ref = kwargs.get("Structure", None)
-        bt.Structure = bt.get_ref(ref)
-        ref = kwargs.get("Windows", None)
+        core = zone_definitions[data.pop("Core")["$ref"]]
+        perim = zone_definitions[data.pop("Perimeter")["$ref"]]
+        structure = structure_definitions[data.pop("Structure")["$ref"]]
+        window_data = data.pop("Windows")
         try:
-            bt.Windows = WindowSetting.from_json(Name=ref.pop("Name"), **ref)
-        except:
-            bt.Windows = bt.get_ref(ref)
+            window = window_settings[window_data["$ref"]]
+        except KeyError:
+            window = WindowSetting.from_dict(
+                window_data, schedules, window_constructions
+            )
 
-        return bt
+        return cls(
+            Core=core,
+            Perimeter=perim,
+            Structure=structure,
+            Windows=window,
+            **data,
+            **kwargs,
+        )
 
     @classmethod
     def from_idf(cls, idf, **kwargs):
@@ -223,81 +354,135 @@ class BuildingTemplate(UmiBase):
         """
         # initialize empty BuildingTemplate
         name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
-        bt = cls(Name=name, idf=idf, **kwargs)
+
+        epbunch_zones = idf.idfobjects["ZONE"]
         zones = [
-            Zone.from_zone_epbunch(zone, sql=bt.sql)
-            for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop")
+            ZoneDefinition.from_epbunch(ep_zone, allow_duplicates=True, **kwargs)
+            for ep_zone in tqdm(epbunch_zones, desc=f"Creating UMI objects for {name}")
         ]
-        zone: Zone
-        bt.cores = [
-            zone
-            for zone in zones
-            if zone.is_core and zone.is_part_of_conditioned_floor_area
-        ]
-        bt.perims = [
-            zone
-            for zone in zones
-            if not zone.is_core and zone.is_part_of_conditioned_floor_area
-        ]
-        # do Core and Perim zone reduction
-        bt.reduce(bt.cores, bt.perims)
+        # do core and Perim zone reduction
+        bt = cls.reduced_model(name, zones, **kwargs)
 
-        # resolve StructureDefinition and WindowSetting
-        bt.Structure = StructureDefinition(
-            Name=bt.Name + "_StructureDefinition",
-            MassRatios=[MassRatio.generic()],
-            idf=idf,
-        )
-        bt.Windows = bt.Perimeter.Windows
-        bt.PartitionRatio = idf.partition_ratio
+        if not bt.Core.DomesticHotWater or not bt.Perimeter.DomesticHotWater:
+            dhw = DomesticHotWaterSetting.whole_building(idf)
+            if not bt.Core.DomesticHotWater:
+                bt.Core.DomesticHotWater = dhw
+            if not bt.Perimeter.DomesticHotWater:
+                bt.Perimeter.DomesticHotWater = dhw
 
-        bt.Comments += "\n".join(
+        bt.Comments = "\n".join(
             [
                 "WWR calculated for original model: ",
-                bt.idf.wwr().to_string(),
+                idf.wwr().to_string(),
                 "where East=90, South=180, West=270, North=0\n",
             ]
         )
 
+        bt.PartitionRatio = idf.partition_ratio
+
         return bt
 
-    def reduce(self, cores, perims):
-        """Reduce the building to its simplest core and perimeter zones.
+    @classmethod
+    def reduced_model(cls, name, zones, **kwargs):
+        """Create reduced BuildingTemplate from list of ZoneDefinitions.
 
         Args:
-            **zone_graph_kwargs:
+            name (str): The name of the building template.
+            zones (list of ZoneDefinition): A list of zone definition objects to
+                reduce. At least one must be a perimeter zone (ZoneDefinition.is_core is
+                False).
+            **kwargs: keywords passed to the class constructor.
+
+        Returns:
+            BuildingTemplate: The reduced BuildingTemplate.
         """
+        # reduce list of perimeter zones
+
+        log("Initiating complexity reduction...")
         start_time = time.time()
 
+        zone: ZoneDefinition
+        cores = list(
+            chain.from_iterable(
+                [
+                    list(repeat(zone.duplicate(), zone.multiplier))
+                    for zone in zones
+                    if zone.is_core
+                ]
+            )
+        )
+        perimeters = list(
+            chain.from_iterable(
+                [
+                    list(repeat(zone.duplicate(), zone.multiplier))
+                    for zone in zones
+                    if not zone.is_core
+                ]
+            )
+        )
+        assert (
+            len(perimeters) >= 1
+        ), "Building complexity reduction must have at least one perimeter zone."
+
+        Core = None
+        # reduce list of core zones
         if cores:
-            self.Core = reduce(Zone.combine, cores)
-        if not perims:
-            raise ValueError(
-                "Building complexity reduction must have at least one perimeter zone"
+            Core = reduce(
+                ZoneDefinition.combine,
+                tqdm(
+                    cores,
+                    desc=f"Reducing core zones in {name}",
+                ),
             )
-        else:
-            self.Perimeter = reduce(Zone.combine, perims)
+            Core.Name = f"{name}_ZoneDefinition_Core"  # set name
 
-        if self.Perimeter.Windows is None:
+        Perimeter = None
+        if perimeters:
+            Perimeter = reduce(
+                ZoneDefinition.combine,
+                tqdm(
+                    zones,
+                    desc=f"Reducing perimeter zones in {name}",
+                ),
+            )
+            Perimeter.Name = f"{name}_ZoneDefinition_Perimeter"
+
+        # If all perimeter zones, assign self.Perimeter to core.
+        if not Core:
+            Core = Perimeter
+            Core.Name = f"{name}_ZoneDefinition"  # rename as both core/perim
+
+        # resolve StructureInformation and WindowSetting
+        structure = StructureInformation(
+            MassRatios=[MassRatio.generic()],
+            Name=name + "_StructureDefinition",
+        )
+
+        # assign generic window if None
+        if Perimeter.Windows is None:
             # create generic window
-            self.Perimeter.Windows = WindowSetting.generic(idf=self.idf)
+            Perimeter.Windows = WindowSetting.generic(Name="Generic Window")
+            kwargs.setdefault("DefaultWindowToWallRatio", 0)
 
-        if not self.Core:
-            self.Core = self.Perimeter
         log(
-            "Equivalent core zone has an area of {:,.0f} m2".format(self.Core.area),
+            f"Equivalent core zone has an area of {Core.area:,.0f} m2",
             level=lg.DEBUG,
         )
         log(
-            "Equivalent perimeter zone has an area of {:,.0f} m2".format(
-                self.Perimeter.area
-            ),
+            f"Equivalent perimeter zone has an area of {Perimeter.area:,.0f} m2",
             level=lg.DEBUG,
         )
         log(
-            'Completed model complexity reduction for BuildingTemplate "{}" in {:,.2f} seconds'.format(
-                self.Name, time.time() - start_time
-            )
+            f"Completed model complexity reduction for BuildingTemplate '{name}' "
+            f"in {time.time() - start_time:,.2f}"
+        )
+        return cls(
+            name,
+            Core=Core,
+            Perimeter=Perimeter,
+            Windows=Perimeter.Windows,
+            Structure=structure,
+            **kwargs,
         )
 
     def _graph_reduce(self, G):
@@ -310,10 +495,10 @@ class BuildingTemplate(UmiBase):
         :func:`operator.add` method.
 
         Args:
-            G (ZoneGraph):
+            G (archetypal.zone_graph.ZoneGraph):
 
         Returns:
-            Zone: The reduced zone
+            ZoneDefinition: The reduced zone
         """
         if len(G) < 1:
             log("No zones for building graph %s" % G.name)
@@ -337,586 +522,136 @@ class BuildingTemplate(UmiBase):
             )
 
             log(
-                'completed zone reduction for zone "{}" in building "{}" in {:,.2f} seconds'.format(
-                    bundle_zone.Name, self.Name, time.time() - start_time
-                )
+                f"completed zone reduction for zone '{bundle_zone.Name}' "
+                f"in building '{self.Name}' in {time.time() - start_time:,.2f} seconds"
             )
             return bundle_zone
 
-    def to_json(self):
-        """Convert class properties to dict"""
+    def to_dict(self):
+        """Return BuildingTemplate dictionary representation."""
+        self.validate()  # Validate object before trying to get json format
+
         data_dict = collections.OrderedDict()
 
-        data_dict["Core"] = self.Core.to_dict()
+        data_dict["Core"] = self.Core.to_ref()
         data_dict["Lifespan"] = self.Lifespan
-        data_dict["PartitionRatio"] = self.PartitionRatio
-        data_dict["Perimeter"] = self.Perimeter.to_dict()
-        data_dict["Structure"] = self.Structure.to_dict()
-        data_dict["Windows"] = self.Windows.to_dict()
-        data_dict["Category"] = self.Category
-        data_dict["Comments"] = self.Comments
+        data_dict["PartitionRatio"] = round(self.PartitionRatio, 2)
+        data_dict["Perimeter"] = self.Perimeter.to_ref()
+        data_dict["Structure"] = self.Structure.to_ref()
+        data_dict["Windows"] = self.Windows.to_ref()
+        data_dict["Category"] = validators.string(self.Category, allow_empty=True)
+        data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
         data_dict["Name"] = self.Name
+        data_dict["YearFrom"] = self.YearFrom
+        data_dict["YearTo"] = self.YearTo
+        data_dict["Country"] = self.Country
+        data_dict["ClimateZone"] = self.ClimateZone
+        data_dict["Authors"] = self.Authors
+        data_dict["AuthorEmails"] = self.AuthorEmails
+        data_dict["Version"] = self.Version
 
         return data_dict
 
+    def validate(self):
+        """Validate object and fill in missing values."""
+        return self
 
-def add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter):
-    """
-    Args:
-        adj_report (dict): the report dict to append to.
-        zone (EpBunch):
-        surface (EpBunch):
-        adj_zone (EpBunch):
-        adj_surf (EpBunch):
-        counter (int): Counter.
-    """
-    adj_report["#"].append(counter)
-    adj_report["Zone Name"].append(zone.Name)
-    adj_report["Surface Type"].append(surface["Surface_Type"])
-    adj_report["Adjacent Zone"].append(adj_zone["Name"])
-    adj_report["Surface Type_"].append(adj_surf["Surface_Type"])
+    def get_unique(self):
+        """Replace recursively every objects with the first equivalent object."""
 
+        def recursive_replace(umibase):
+            for key, obj in umibase.mapping().items():
+                if isinstance(
+                    obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
+                ):
+                    recursive_replace(obj)
+                    setattr(umibase, key, obj.get_unique())
+                elif isinstance(obj, list):
+                    [
+                        recursive_replace(obj)
+                        for obj in obj
+                        if isinstance(
+                            obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
+                        )
+                    ]
 
-class ZoneGraph(networkx.Graph):
-    """A subclass of :class:`networkx.Graph`. This class implements useful
-    methods to visualize and navigate a template along the thermal adjacency of
-    its zones.
+        recursive_replace(self)
+        return self
 
-    There are currently two methods to visualize the graph:
-
-    - :func:`plot in 3d <plot_graph3d>` to get a 3-dimensional view of the
-      building.
-    - :func:`plot in 2d <plot_graph2d>` to get a 2-dimensional view of the
-      building zones
-
-    Note:
-        A Graph stores nodes and edges with optional data, or attributes.
-
-        Graphs hold undirected edges. Self loops are allowed but multiple
-        (parallel) edges are not.
-
-        Nodes can be arbitrary (hashable) Python objects with optional key/value
-        attributes. By convention `None` is not used as a node.
-
-        Edges are represented as links between nodes with optional key/value
-        attributes.
-    """
-
-    @classmethod
-    def from_idf(cls, idf, sql, log_adj_report=True, skeleton=False, force=False):
-        """Create a graph representation of all the building zones. An edge
-        between two zones represents the adjacency of the two zones.
-
-        If skeleton is False, this method will create all the building
-        objects iteratively over the building zones.
+    def mapping(self, validate=True):
+        """Get a dict based on the object properties, useful for dict repr.
 
         Args:
-            log_adj_report (bool, optional): If True, prints an adjacency report
-                in the log.
-            skeleton (bool, optional): If True, create a zone graph without
-                creating hierarchical objects, eg. zones > zoneloads > ect.
-            force (bool): If True, will recalculate the graph.
-
-        Returns:
-            ZoneGraph: The building's zone graph object
+            validate (bool): If True, try to validate object before returning the
+                mapping.
         """
+        if validate:
+            self.validate()
 
-        start_time = time.time()
-
-        G = cls(name=idf.name)
-
-        counter = 0
-        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop"):
-            # initialize the adjacency report dictionary. default list.
-            adj_report = defaultdict(list)
-            zone_obj = None
-            if not skeleton:
-                zone_obj = Zone.from_zone_epbunch(zone, sql=sql)
-                zonesurfaces = zone.zonesurfaces
-                zone_obj._zonesurfaces = zonesurfaces
-                _is_core = zone_obj.is_core
-            else:
-                zonesurfaces = zone.zonesurfaces
-                _is_core = is_core(zone)
-            G.add_node(zone.Name, epbunch=zone, core=_is_core, zone=zone_obj)
-
-            for surface in zonesurfaces:
-                if surface.key.upper() in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
-                    # Todo deal with internal mass surfaces
-                    pass
-                else:
-                    adj_zone: EpBunch
-                    adj_surf: EpBunch
-                    adj_surf, adj_zone = resolve_obco(surface)
-
-                    if adj_zone and adj_surf:
-                        counter += 1
-
-                        if skeleton:
-                            zone_obj = None
-                            _is_core = is_core(zone)
-                        else:
-                            zone_obj = Zone.from_zone_epbunch(adj_zone, sql=sql)
-                            _is_core = zone_obj.is_core
-
-                        # create node for adjacent zone
-                        G.add_node(
-                            zone.Name, epbunch=adj_zone, core=_is_core, zone=zone_obj
-                        )
-                        try:
-                            this_cstr = surface["Construction_Name"]
-                            their_cstr = adj_surf["Construction_Name"]
-                            is_diff_cstr = (
-                                surface["Construction_Name"]
-                                != adj_surf["Construction_Name"]
-                            )
-                        except:
-                            this_cstr, their_cstr, is_diff_cstr = None, None, None
-                        # create edge from this zone to the adjacent zone
-                        G.add_edge(
-                            zone.Name,
-                            adj_zone.Name,
-                            this_cstr=this_cstr,
-                            their_cstr=their_cstr,
-                            is_diff_cstr=is_diff_cstr,
-                        )
-
-                        add_to_report(
-                            adj_report, zone, surface, adj_zone, adj_surf, counter
-                        )
-                    else:
-                        pass
-            if log_adj_report:
-                msg = "Printing Adjacency Report for zone %s\n" % zone.Name
-                msg += tabulate.tabulate(adj_report, headers="keys")
-                log(msg)
-
-        log("Created zone graph in {:,.2f} seconds".format(time.time() - start_time))
-        log(networkx.info(G), lg.DEBUG)
-        return G
-
-    def __init__(self, incoming_graph_data=None, **attr):
-        """Initialize a graph with edges, name, or graph attributes.
-
-        Wrapper around the :class:`networkx.Graph` class.
-
-        Args:
-            incoming_graph_data: input graph (optional, default: None) Data to
-                initialize graph. If None (default) an empty graph is created.
-                The data can be an edge list, or any NetworkX graph object. If
-                the corresponding optional Python packages are installed the
-                data can also be a NumPy matrix or 2d ndarray, a SciPy sparse
-                matrix, or a PyGraphviz graph.
-            attr: keyword arguments, optional (default= no attributes)
-                Attributes to add to graph as key=value pairs.
-        """
-        super(ZoneGraph, self).__init__(incoming_graph_data=incoming_graph_data, **attr)
-
-    def plot_graph3d(
-        self,
-        fig_height=None,
-        fig_width=6,
-        save=False,
-        show=True,
-        close=False,
-        ax=None,
-        axis_off=False,
-        cmap="plasma",
-        dpi=300,
-        file_format="png",
-        azim=-60,
-        elev=30,
-        proj_type="persp",
-        filename=None,
-        annotate=False,
-        plt_style="ggplot",
-    ):
-        """Plot the :class:`archetypal.template.ZoneGraph` in a 3D plot.
-
-        The size of the node is relative to its
-        :func:`networkx.Graph.degree`. The node degree is the number of edges
-        adjacent to the node.
-
-        The nodes are positioned in 3d space according to the mean value of
-        the surfaces centroids. For concave volumes, this corresponds to the
-        center of gravity of the volume. Some weird positioning can occur for
-        convex volumes.
-
-        Todo:
-            Create an Example
-
-        Args:
-            fig_height (float): matplotlib figure height in inches.
-            fig_width (float): matplotlib figure width in inches.
-            save (bool): if True, save the figure as an image file to disk.
-            show (bool): if True, show the figure.
-            close (bool): close the figure (only if show equals False) to
-                prevent display.
-            ax (matplotlib.axes._axes.Axes, optional): An existing axes object
-                on which to plot this graph.
-            axis_off (bool): If True, turn off the matplotlib axis.
-            cmap (str): The name a registered
-                :class:`matplotlib.colors.Colormap`.
-            dpi (int): the resolution of the image file if saving.
-            file_format (str): the format of the file to save (e.g., 'jpg',
-                'png', 'svg', 'pdf')
-            azim (float): Azimuthal viewing angle, defaults to -60.
-            elev (float): Elevation viewing angle, defaults to 30.
-            proj_type (str): Type of projection, accepts 'persp' and 'ortho'.
-            filename (str): the name of the file if saving.
-            annotate (bool or str or tuple): If True, annotates the node with
-                the Zone Name. Pass an EpBunch *field_name* to retrieve data
-                from the zone EpBunch. Pass a tuple (data, key) to retrieve data
-                from the graph: eg. ('core', None) will retrieve the attribute
-                'core' associated to the node. The second tuple element serves
-                as a key on the first: G.nodes(data=data)[key].
-            plt_style (str, dict, or list): A style specification. Valid options
-                are: - str: The name of a style or a path/URL to a style file.
-                For a list of available style names, see `style.available` . -
-                dict: Dictionary with valid key/value pairs for
-                :attr:`matplotlib.rcParams`. - list: A list of style specifiers
-                (str or dict) applied from first to last in the list.
-
-        Returns:
-            fig, ax: fig, ax
-        """
-        from mpl_toolkits.mplot3d import Axes3D
-        import matplotlib.pyplot as plt
-        import numpy as np
-
-        def avg(zone: eppy.bunch_subclass.EpBunch):
-            """calculate the zone centroid coordinates"""
-            x_, y_, z_, dem = 0, 0, 0, 0
-            from geomeppy.geom.polygons import Polygon3D, Vector3D
-            from geomeppy.recipes import translate_coords
-
-            ggr = zone.theidf.idfobjects["GLOBALGEOMETRYRULES"][0]
-
-            for surface in zone.zonesurfaces:
-                if surface.key.upper() in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
-                    pass
-                else:
-                    dem += 1  # Counter for average calc at return
-                    if ggr.Coordinate_System.lower() == "relative":
-                        # add zone origin to surface coordinates and create
-                        # Polygon3D from updated coords.
-                        zone = zone.theidf.getobject("ZONE", surface.Zone_Name)
-                        poly3d = Polygon3D(surface.coords)
-                        origin = (zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
-                        coords = translate_coords(poly3d, Vector3D(*origin))
-                        poly3d = Polygon3D(coords)
-                    else:
-                        # Polygon3D from surface coords
-                        poly3d = Polygon3D(surface.coords)
-                    x, y, z = poly3d.centroid
-                    x_ += x
-                    y_ += y
-                    z_ += z
-            return x_ / dem, y_ / dem, z_ / dem
-
-        # Get node positions in a dictionary
-        pos = {name: avg(epbunch) for name, epbunch in self.nodes(data="epbunch")}
-
-        # Get the maximum number of edges adjacent to a single node
-        edge_max = max(1, max([self.degree(i) for i in self.nodes]))  # min = 1
-
-        # Define color range proportional to number of edges adjacent to a
-        # single node
-        colors = {
-            i: plt.cm.get_cmap(cmap)(self.degree(i) / edge_max) for i in self.nodes
-        }
-
-        if annotate:
-            # annotate can be bool or str.
-            if isinstance(annotate, bool):
-                # if True, default to 'Name' field
-                annotate = "Name"
-            if isinstance(annotate, str):
-                # create dict of the form {id: (x, y, z, label, zdir)}. zdir is
-                # None by default.
-                labels = {
-                    name: (*pos[name], data[annotate], None)
-                    for name, data in self.nodes(data="epbunch")
-                }
-            if isinstance(annotate, tuple):
-                data, key = annotate
-                if key:
-                    labels = {
-                        name: (*pos[name], data[key], None)
-                        for name, data in self.nodes(data=data)
-                    }
-                else:
-                    labels = {
-                        name: (*pos[name], data, None)
-                        for name, data in self.nodes(data=data)
-                    }
-
-        # 3D network plot
-        with plt.style.context((plt_style)):
-            if fig_height is None:
-                fig_height = fig_width
-
-            if ax:
-                fig = plt.gcf()
-            else:
-                fig = plt.figure(figsize=(fig_width, fig_height), dpi=dpi)
-                ax = Axes3D(fig)
-
-            # Loop on the pos dictionary to extract the x,y,z coordinates of
-            # each node
-            for key, value in pos.items():
-                xi = value[0]
-                yi = value[1]
-                zi = value[2]
-
-                # Scatter plot
-                ax.scatter(
-                    xi,
-                    yi,
-                    zi,
-                    color=colors[key],
-                    s=20 + 20 * self.degree(key),
-                    edgecolors="k",
-                    alpha=0.7,
-                )
-                if annotate:
-                    # Add node label
-                    ax.text(*labels[key], fontsize=4)
-            # Loop on the list of edges to get the x,y,z, coordinates of the
-            # connected nodes
-            # Those two points are the extrema of the line to be plotted
-            for i, j in enumerate(self.edges()):
-                x = np.array((pos[j[0]][0], pos[j[1]][0]))
-                y = np.array((pos[j[0]][1], pos[j[1]][1]))
-                z = np.array((pos[j[0]][2], pos[j[1]][2]))
-
-                # Plot the connecting lines
-                ax.plot(x, y, z, c="black", alpha=0.5)
-
-        # Set the initial view
-        ax.view_init(elev, azim)
-        ax.set_proj_type(proj_type)
-
-        # Hide the axes
-        if axis_off:
-            ax.set_axis_off()
-
-        if filename is None:
-            filename = "unnamed"
-
-        fig, ax = save_and_show(
-            fig=fig,
-            ax=ax,
-            save=save,
-            show=show,
-            close=close,
-            filename=filename,
-            file_format=file_format,
-            dpi=dpi,
-            axis_off=axis_off,
-            extent=None,
+        return dict(
+            Core=self.Core,
+            Lifespan=self.Lifespan,
+            PartitionRatio=self.PartitionRatio,
+            Perimeter=self.Perimeter,
+            Structure=self.Structure,
+            Windows=self.Windows,
+            Category=self.Category,
+            Comments=self.Comments,
+            DataSource=self.DataSource,
+            Name=self.Name,
+            YearFrom=self.YearFrom,
+            YearTo=self.YearTo,
+            Country=self.Country,
+            ClimateZone=self.ClimateZone,
+            Authors=self.Authors,
+            AuthorEmails=self.AuthorEmails,
+            Version=self.Version,
         )
-        return fig, ax
 
-    def plot_graph2d(
-        self,
-        layout_function,
-        *func_args,
-        color_nodes=None,
-        fig_height=None,
-        fig_width=6,
-        node_labels_to_integers=False,
-        legend=False,
-        with_labels=True,
-        arrows=True,
-        save=False,
-        show=True,
-        close=False,
-        ax=None,
-        axis_off=False,
-        cmap="plasma",
-        dpi=300,
-        file_format="png",
-        filename="unnamed",
-        plt_style="ggplot",
-        extent="tight",
-        **kwargs
-    ):
-        """Plot the adjacency of the zones as a graph. Choose a layout from the
-        :mod:`networkx.drawing.layout` module, the
-        :mod:`Graphviz AGraph (dot)<networkx.drawing.nx_agraph>` module, the
-        :mod:`Graphviz with pydot<networkx.drawing.nx_pydot>` module. Then, plot
-        the graph using matplotlib using the :mod:`networkx.drawing.py_lab`
-
-        Examples:
-            >>> G = BuildingTemplate().from_idf
-            >>> G.plot_graph2d(nx.nx_agraph.graphviz_layout, ('dot'),
-            >>>                font_color='w', legend=True, font_size=8,
-            >>>                color_nodes='core',
-            >>>                node_labels_to_integers=True,
-            >>>                plt_style='seaborn', save=True,
-            >>>                filename='test')
+    def get_ref(self, ref):
+        """Get item matching reference id.
 
         Args:
-            layout_function (func): One of the networkx layout functions.
-            *func_args: The layout function arguments as a tuple. The first
-                argument (self) is already supplied.
-            color_nodes (bool or str): False by default. If a string is passed
-                the nodes are colored according to a data attribute of the
-                graph. By default, the original node names is accessed with the
-                'name' attribute.
-            fig_height (float): matplotlib figure height in inches.
-            fig_width (float): matplotlib figure width in inches.
-            node_labels_to_integers:
-            legend:
-            with_labels (bool, optional): Set to True to draw labels on the
-            arrows (bool, optional): If True, draw arrowheads. Note: Arrows will
-                be the same color as edges.
-            save (bool): if True, save the figure as an image file to disk.
-            show (bool): if True, show the figure.
-            close (bool): close the figure (only if show equals False) to
-                prevent display.
-            ax (matplotlib.axes._axes.Axes, optional): An existing axes object
-                on which to plot this graph.
-            axis_off (bool): If True, turn off the matplotlib axis.
-            cmap (str): The name a registered
-                :class:`matplotlib.colors.Colormap`.
-            dpi (int): the resolution of the image file if saving.
-            file_format (str): the format of the file to save (e.g., 'jpg',
-                'png', 'svg', 'pdf')
-            filename (str): the name of the file if saving.
-            plt_style (str, dict, or list): A style specification. Valid options
-                are: - str: The name of a style or a path/URL to a style file.
-                For a list of available style names, see `style.available` . -
-                dict: Dictionary with valid key/value pairs for
-                :attr:`matplotlib.rcParams`. - list: A list of style specifiers
-                (str or dict) applied from first to last in the list.
-            extent:
-            **kwargs: keywords passed to :func:`networkx.draw_networkx`
-
-        Returns:
-            (tuple): The fig and ax objects
+            ref:
         """
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError:
-            raise ImportError("Matplotlib required for draw()")
-        except RuntimeError:
-            print("Matplotlib unable to open display")
-            raise
-        # fill kwargs
-        kwargs["cmap"] = cmap
-        G = self.copy()
-        if node_labels_to_integers:
-            G = networkx.convert_node_labels_to_integers(G, label_attribute="name")
-        tree = networkx.dfs_tree(G)
-        pos = layout_function(tree, *func_args)
-        with plt.style.context((plt_style)):
-            if ax:
-                fig = plt.gcf()
-            else:
-                if fig_height is None:
-                    fig_height = fig_width
-                fig, ax = plt.subplots(1, figsize=(fig_width, fig_height), dpi=dpi)
+        return next(
+            iter(
+                [
+                    value
+                    for value in BuildingTemplate.CREATED_OBJECTS
+                    if value.id == ref["$ref"]
+                ]
+            ),
+            None,
+        )
 
-            if isinstance(color_nodes, str):
-                from itertools import count
+    def __hash__(self):
+        """Return the hash value of self."""
+        return hash(
+            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
+        )
 
-                groups = set(networkx.get_node_attributes(G, color_nodes).values())
-                mapping = dict(zip(sorted(groups), count()))
-                colors = [mapping[G.nodes[n][color_nodes]] for n in tree.nodes]
-                colors = [discrete_cmap(len(groups), cmap).colors[i] for i in colors]
-
-            paths_ = []
-            for nt in tree:
-                # choose nodes and color for each iteration
-                nlist = [nt]
-                label = "%s: %s" % (nt, G.nodes(data="name")[nt])
-                if color_nodes:
-                    node_color = [colors[nt]]
-                else:
-                    node_color = "#1f78b4"
-                # draw the graph
-                sc = networkx.draw_networkx_nodes(
-                    tree,
-                    pos=pos,
-                    nodelist=nlist,
-                    ax=ax,
-                    node_color=node_color,
-                    label=label,
-                    **kwargs
-                )
-                paths_.extend(sc.get_paths())
-            scatter = matplotlib.collections.PathCollection(paths_)
-            networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows, **kwargs)
-            if with_labels:
-                networkx.draw_networkx_labels(G, pos, **kwargs)
-
-            if legend:
-                bbox = kwargs.get("bbox_to_anchor", (1, 1))
-                legend1 = ax.legend(
-                    title=color_nodes, bbox_to_anchor=bbox, markerscale=0.5
-                )
-                ax.add_artist(legend1)
-
-            # clear axis
-            ax.axis("off")
-
-            fig, ax = save_and_show(
-                fig=fig,
-                ax=ax,
-                save=save,
-                show=show,
-                close=close,
-                filename=filename,
-                file_format=file_format,
-                dpi=dpi,
-                axis_off=axis_off,
-                extent=extent,
+    def __eq__(self, other):
+        """Assert self is equivalent to other."""
+        if not isinstance(other, BuildingTemplate):
+            return NotImplemented
+        else:
+            return all(
+                [
+                    self.Core == other.Core,
+                    self.Perimeter == other.Perimeter,
+                    self.Structure == other.Structure,
+                    self.Windows == other.Windows,
+                    self.Lifespan == other.Lifespan,
+                    self.PartitionRatio == other.PartitionRatio,
+                    self.DefaultWindowToWallRatio == other.DefaultWindowToWallRatio,
+                    self.YearFrom == other.YearFrom,
+                    self.YearTo == other.YearTo,
+                    self.Country == other.Country,
+                    self.ClimateZone == other.ClimateZone,
+                    self.Authors == other.Authors,
+                    self.AuthorEmails == other.AuthorEmails,
+                    self.Version == other.Version,
+                ]
             )
-            return fig, ax
-
-    @property
-    def core_graph(self):
-        """Returns a copy of the ZoneGraph containing only core zones"""
-        nodes = [i for i, data in self.nodes(data="core") if data]
-        H = self.subgraph(nodes).copy()
-        H.name = "Core_" + self.name
-        return H
-
-    @property
-    def perim_graph(self):
-        """Returns a copy of the ZoneGraph containing only perimeter zones"""
-        nodes = [i for i, data in self.nodes(data="core") if not data]
-        H = self.subgraph(nodes).copy()
-        H.name = "Perim_" + self.name
-        return H
-
-    def info(self, node=None):
-        """Print short summary of information for the graph or the node n.
-
-        Args:
-            node (any hashable): A node in the graph
-        """
-        return log(networkx.info(G=self, n=node))
-
-
-def discrete_cmap(N, base_cmap=None):
-    """Create an N-bin discrete colormap from the specified input map
-
-    Args:
-        N:
-        base_cmap:
-    """
-
-    # Note that if base_cmap is a string or None, you can simply do
-    #    return plt.cm.get_cmap(base_cmap, N)
-    # The following works for string, None, or a colormap instance:
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    base = plt.cm.get_cmap(base_cmap)
-    color_list = base(np.linspace(0, 1, N))
-    cmap_name = base.name + str(N)
-    return matplotlib.colors.ListedColormap(color_list, cmap_name, N)

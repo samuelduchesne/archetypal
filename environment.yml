@@ -1,9 +1,8 @@
 name: archetypal
 channels:
-  - defaults
   - conda-forge
 dependencies:
-  - shapely
+  - geopandas
   - networkx
   - six
   - matplotlib>=2.1
@@ -11,7 +10,7 @@ dependencies:
   - pycountry
   - scikit-learn
   - scipy
-  - pandas>=0.24
+  - pandas==1.2.0
   - numpy>=1.17
   - tqdm
   - tabulate
@@ -23,5 +22,9 @@ dependencies:
   - pip
   - pip:
     - tsam
-    - eppy
+    - git+https://github.com/samuelduchesne/eppy.git@feature/defaults#egg=eppy
     - geomeppy
+    - deprecation
+    - sigfig
+    - validator_collection
+    - -r file:requirements-dev.txt

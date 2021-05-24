@@ -12,6 +12,6 @@ Thank you for using *archetypal* and for considering contributing to it!
 
   - post your proposal on the [issue tracker](https://github.com/samuelduchesne/archetypal/issues) so we can review it together (some proposals may not be a good fit for the project);
   - fork the repo, make your change (adhering to archetypal's existing coding format, commenting, and docstring styles);
-  - [test it](https://github.com/samuelduchesne/archetypal/tree/develop/tests);
+    [test it](https://github.com/samuelduchesne/archetypal/tree/main/tests);
   - format your code using [black](https://black.readthedocs.io/en/stable/) and submit a [PR](https://github.com/samuelduchesne/archetypal/pulls);
   - respond to code review.

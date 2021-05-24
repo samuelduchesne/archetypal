@@ -16,6 +16,9 @@ __all__ = [
     "WindowSetting",
     "ZoneDefinition",
     "ZoneConstructionSet",
+    "YearSchedule",
+    "WeekSchedule",
+    "DaySchedule",
 ]
 
 from archetypal.template.building_template import BuildingTemplate
@@ -25,7 +28,12 @@ from archetypal.template.constructions.window_construction import WindowConstruc
 from archetypal.template.dhw import DomesticHotWaterSetting
 from archetypal.template.load import ZoneLoad
 from archetypal.template.materials import GasMaterial, GlazingMaterial, OpaqueMaterial
-from archetypal.template.schedule import UmiSchedule
+from archetypal.template.schedule import (
+    DaySchedule,
+    UmiSchedule,
+    WeekSchedule,
+    YearSchedule,
+)
 from archetypal.template.structure import StructureInformation
 from archetypal.template.ventilation import VentilationSetting
 from archetypal.template.window_setting import WindowSetting

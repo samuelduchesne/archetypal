@@ -169,8 +169,8 @@ class LayeredConstruction(ConstructionBase):
     def Layers(self, value):
         value = validators.iterable(value, minimum_length=1, maximum_length=10)
         assert all(isinstance(a, (MaterialLayer, GasLayer)) for a in value), (
-            "Value input error for '{value}'. Layers must be a list of MaterialLayer "
-            "or GasLayer objects only."
+            f"Input error for '{value}'. Layers must be a list of MaterialLayer "
+            f"or GasLayer objects only."
         )
         assert isinstance(
             value[0], MaterialLayer

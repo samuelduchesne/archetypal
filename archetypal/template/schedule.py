@@ -536,7 +536,7 @@ class DaySchedule(UmiSchedule):
             "schedule:day:list",
             "schedule:day:interval",
         ), (
-            f"Value input error for '{epbunch.key}'. Expected on of "
+            f"Input error for '{epbunch.key}'. Expected on of "
             f"('Schedule:Day:Hourly', 'Schedule:Day:List' and "
             f"'Schedule:Day:Interval')"
         )

@@ -182,4 +182,4 @@ will work well to create a new environment using a specific dependency file in o
 .. _download: https://github.com/NREL/EnergyPlus/releases/tag/v9.2.0
 .. _supplementary conversion programs: http://energyplus.helpserve.com/Knowledgebase/List/Index/46/converting-older-version-files
 .. _script: https://gist.github.com/samuelduchesne/aef233396167e0f961df3d62a193573e
-.. _environment.yml: https://github.com/samuelduchesne/archetypal/blob/master/environment.yml
+.. _environment.yml: https://github.com/samuelduchesne/archetypal/blob/main/environment.yml

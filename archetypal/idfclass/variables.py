@@ -72,7 +72,7 @@ class Variable:
                         environment_type = 3
                     else:
                         environment_type = 1 if self._idf.design_day else 3
-            except (KeyError, IndexError):
+            except (KeyError, IndexError, AttributeError):
                 reporting_frequency = 3
         report = ReportData.from_sqlite(
             sqlite_file=self._idf.sql_file,

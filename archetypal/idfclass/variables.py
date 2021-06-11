@@ -86,7 +86,6 @@ class Variable:
                 f"Try another environment_type (1, 2 or 3) or specify IDF.annual=True "
                 f"and rerun the simulation."
             )
-            return EnergySeries()
         return EnergyDataFrame.from_reportdata(
             report,
             name=self._epobject.Variable_Name,

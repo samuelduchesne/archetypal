@@ -95,7 +95,6 @@ class Meter:
                 f"Try another environment_type (1, 2 or 3) or specify IDF.annual=True "
                 f"and rerun the simulation."
             )
-            return EnergySeries()
         return EnergySeries.from_reportdata(
             report,
             to_units=units,

@@ -1,7 +1,8 @@
 """EnergyPlus variables module."""
+import logging
 
 import pandas as pd
-from energy_pandas import EnergyDataFrame
+from energy_pandas import EnergyDataFrame, EnergySeries
 from geomeppy.patches import EpBunch
 
 from archetypal.idfclass.extensions import bunch2db
@@ -34,6 +35,7 @@ class Variable:
         self,
         units=None,
         reporting_frequency="Hourly",
+        environment_type=None,
         normalize=False,
         sort_values=False,
     ):
@@ -51,6 +53,8 @@ class Variable:
                 is detected automatically and a dimensionality check is performed.
             reporting_frequency (str): Timestep, Hourly, Daily, Monthly,
                 RunPeriod, Environment, Annual or Detailed. Default "Hourly".
+            environment_type (int): The environment type (1 = Design Day, 2 = Design
+                Run Period, 3 = Weather Run Period).
             normalize (bool): Normalize between 0 and 1.
             sort_values (bool): If True, values are sorted (default ascending=True).
 
@@ -61,12 +65,34 @@ class Variable:
         if self._epobject not in self._idf.idfobjects[self._epobject.key]:
             self._idf.addidfobject(self._epobject)
             self._idf.simulate()
+        if environment_type is None:
+            if self._idf.design_day:
+                environment_type = 1
+            elif self._idf.annual:
+                environment_type = 3
+            else:
+                # the environment_type is specified by the simulationcontrol.
+                try:
+                    for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
+                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() \
+                                == "yes":
+                            environment_type = 3
+                        else:
+                            environment_type = 1
+                except (KeyError, IndexError, AttributeError):
+                    reporting_frequency = 3
         report = ReportData.from_sqlite(
             sqlite_file=self._idf.sql_file,
             table_name=self._epobject.Variable_Name,
-            environment_type=1 if self._idf.design_day else 3,
+            environment_type=environment_type,
             reporting_frequency=bunch2db[reporting_frequency],
         )
+        if report.empty:
+            logging.error(
+                f"The variable is empty for environment_type `{environment_type}`. "
+                f"Try another environment_type (1, 2 or 3) or specify IDF.annual=True "
+                f"and rerun the simulation."
+            )
         return EnergyDataFrame.from_reportdata(
             report,
             name=self._epobject.Variable_Name,

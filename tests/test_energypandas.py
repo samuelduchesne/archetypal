@@ -50,8 +50,7 @@ class TestEnergySeries:
             axis_off=False,
             kind=kind,
             cmap="Reds",
-            fig_width=4,
-            fig_height=4,
+            figsize=(4, 4),
             edgecolors="grey",
             linewidths=0.01,
         )
@@ -60,8 +59,7 @@ class TestEnergySeries:
         fig, ax = rd_es.plot2d(
             axis_off=False,
             cmap="Reds",
-            fig_height=2,
-            fig_width=6,
+            figsize=(2, 6),
             show=True,
             save=False,
             filename=rd_es.name + "_heatmap",
@@ -93,8 +91,7 @@ class TestEnergyDataFrame:
         fig, ax = rd_edf.plot2d(
             axis_off=False,
             cmap="Reds",
-            fig_height=None,
-            fig_width=6,
+            figsize=(4, 6),
             show=True,
             save=False,
             extent="tight",

@@ -75,14 +75,20 @@ class Meter:
         except BadEPFieldError:
             key_name = self._epobject.Name  # Backwards compatibility
         if environment_type is None:
-            try:
-                for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                    if ctrl.obj[-1].lower() == "yes" and self._idf.design_day is False:
-                        environment_type = 3
-                    else:
-                        environment_type = 1 if self._idf.design_day else 3
-            except (KeyError, IndexError, AttributeError):
-                reporting_frequency = 3
+            if self._idf.design_day:
+                environment_type = 1
+            elif self._idf.annual:
+                environment_type = 3
+            else:
+                # the environment_type is specified by the simulationcontrol.
+                try:
+                    for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
+                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes":
+                            environment_type = 3
+                        else:
+                            environment_type = 1
+                except (KeyError, IndexError, AttributeError):
+                    reporting_frequency = 3
         report = ReportData.from_sqlite(
             sqlite_file=self._idf.sql_file,
             table_name=key_name,

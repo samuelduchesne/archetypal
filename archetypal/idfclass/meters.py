@@ -1,6 +1,7 @@
 """EnergyPlus meters module."""
 
 import inspect
+import logging
 
 import pandas as pd
 from energy_pandas import EnergySeries
@@ -38,6 +39,7 @@ class Meter:
         self,
         units=None,
         reporting_frequency="Hourly",
+        environment_type=None,
         normalize=False,
         sort_values=False,
         ascending=False,
@@ -53,10 +55,12 @@ class Meter:
                 is detected automatically and a dimensionality check is performed.
             reporting_frequency (str): Timestep, Hourly, Daily, Monthly,
                 RunPeriod, Environment, Annual or Detailed. Default "Hourly".
+            environment_type (int): The environment type (1 = Design Day, 2 = Design
+                Run Period, 3 = Weather Run Period).
             normalize (bool): Normalize between 0 and 1.
             sort_values (bool): If True, values are sorted (default ascending=True)
             ascending (bool): If True and `sort_values` is True, values are sorted in
-            ascending order.
+                ascending order.
             agg_func: #Todo: Document
 
         Returns:
@@ -70,12 +74,28 @@ class Meter:
             key_name = self._epobject.Key_Name
         except BadEPFieldError:
             key_name = self._epobject.Name  # Backwards compatibility
+        if environment_type is None:
+            try:
+                for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
+                    if ctrl.obj[-1].lower() == "yes":
+                        environment_type = 3
+                    else:
+                        environment_type = 1 if self._idf.design_day else 3
+            except (KeyError, IndexError):
+                reporting_frequency = 3
         report = ReportData.from_sqlite(
             sqlite_file=self._idf.sql_file,
             table_name=key_name,
-            environment_type=1 if self._idf.design_day else 3,
+            environment_type=environment_type,
             reporting_frequency=bunch2db[reporting_frequency],
         )
+        if report.empty:
+            logging.error(
+                f"The variable is empty for environment_type `{environment_type}`. "
+                f"Try another environment_type (1, 2 or 3) or specify IDF.annual=True "
+                f"and rerun the simulation."
+            )
+            return EnergySeries()
         return EnergySeries.from_reportdata(
             report,
             to_units=units,

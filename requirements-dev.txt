@@ -4,3 +4,4 @@ sphinx
 sphinx_rtd_theme
 recommonmark
 sphinx-click
+jupyter_contrib_nbextensions

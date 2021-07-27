@@ -1,4 +1,4 @@
-networkx~=2.6.1
+networkx~=2.6.2
 geomeppy==0.11.8
 eppy==0.5.56  # for stability
 matplotlib~=3.4  # because of TwoSlopesNorm

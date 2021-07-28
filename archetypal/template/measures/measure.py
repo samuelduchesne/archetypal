@@ -41,6 +41,60 @@ class Measure:
         """Return a representation of self."""
         return self.description
 
+class SetMechanicalVentilation(Measure):
+    """Set the Mechanical Ventilation."""
+
+    name = "SetMechanicalVentilation"
+    description = ""
+
+    def __init__(self, ach=3.5, ventilation_schedule=None):
+        """Initialize measure with parameters."""
+        super(SetMechanicalVentilation, self).__init__()
+
+        self.SetCoreVentilationAch = lambda building_template: setattr(
+            building_template.Core.Ventilation, "ScheduledVentilationAch", ach
+        )
+        self.SetPerimVentilationAch = lambda building_template: setattr(
+            building_template.Perimeter.Ventilation, "ScheduledVentilationAch", ach
+        )
+        if ventilation_schedule is not None:
+            self.SetCoreVentilation = lambda building_template: setattr(
+                building_template.Core.Ventilation, "ScheduledVentilationSchedule", ventilation_schedule
+            )
+            self.SetPerimVentilation = lambda building_template: setattr(
+                building_template.Perimeter.Ventilation, "ScheduledVentilationSchedule", ventilation_schedule
+            )
+        if ach > 0:
+            self.SetCoreScheduledVentilationOn = lambda building_template: setattr(
+                building_template.Perimeter.Ventilation, "IsScheduledVentilationOn", True
+            )
+            self.SetPerimeterScheduledVentilationOn = lambda building_template: setattr(
+                building_template.Perimeter.Ventilation, "IsScheduledVentilationOn", True
+            )
+
+class SetCOP(Measure):
+    """Set the COPs."""
+
+    name = "SetCOP"
+    description = ""
+
+    def __init__(self, cooling_cop=3.5, heating_cop=1):
+        """Initialize measure with parameters."""
+        super(SetCOP, self).__init__()
+
+        self.SetCoreCoolingCOP = lambda building_template: setattr(
+            building_template.Core.Conditioning, "CoolingCoeffOfPerf", cooling_cop
+        )
+        self.SetPerimCoolingCOP = lambda building_template: setattr(
+            building_template.Perimeter.Conditioning, "CoolingCoeffOfPerf", cooling_cop
+        )
+        self.SetCoreHeatingCOP = lambda building_template: setattr(
+            building_template.Core.Conditioning, "HeatingCoeffOfPerf", heating_cop
+        )
+        self.SetPerimHeatingCOP = lambda building_template: setattr(
+            building_template.Perimeter.Conditioning, "HeatingCoeffOfPerf", heating_cop
+        )
+
 
 class EnergyStarUpgrade(Measure):
     """The EnergyStarUpgrade changes the equipment power density to."""
@@ -48,17 +102,27 @@ class EnergyStarUpgrade(Measure):
     name = "EnergyStarUpgrade"
     description = "EnergyStar for tenant spaces of 0.75 W/sf ~= 8.07 W/m2"
 
-    def __init__(self, lighting_power_density=8.07):
+    def __init__(self, lighting_power_density=8.07, equipment_power_density=8.07):
         """Initialize measure with parameters."""
         super(EnergyStarUpgrade, self).__init__()
 
-        self.SetCoreEquipementPowerDensity = lambda building_template: setattr(
+        self.SetCoreLightingPowerDensity = lambda building_template: setattr(
             building_template.Core.Loads, "LightingPowerDensity", lighting_power_density
         )
-        self.SetPerimEquipementPowerDensity = lambda building_template: setattr(
+        self.SetPerimLightingPowerDensity = lambda building_template: setattr(
             building_template.Perimeter.Loads,
             "LightingPowerDensity",
             lighting_power_density,
+        )
+        self.SetCoreEquipementPowerDensity = lambda building_template: setattr(
+            building_template.Core.Loads,
+            "EquipmentPowerDensity",
+            equipment_power_density,
+        )
+        self.SetPerimEquipementPowerDensity = lambda building_template: setattr(
+            building_template.Perimeter.Loads,
+            "EquipmentPowerDensity",
+            equipment_power_density,
         )
 
 
@@ -73,9 +137,10 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
         "This measure changes the r-value of the insulation layer of the "
         "facade construction to R5.78."
     )
-    rsi_value = 3.08
+    rsi_value_facade = 3.08
+    rsi_value_roof = 5.02
 
-    def __init__(self, rsi_value=None):
+    def __init__(self, rsi_value_facade=None, rsi_value_roof=None):
         """Initialize measure with parameters.
 
         Notes:
@@ -83,22 +148,23 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
             rsi_value.
 
         Args:
-            rsi_value (float): The new rsi value for external walls.
+            rsi_value_facade (float): The new rsi value for external walls.
         """
         super(SetFacadeConstructionThermalResistanceToEnergyStar, self).__init__()
 
-        if rsi_value is not None:
-            self.rsi_value = rsi_value
-        self.AddThermalInsulation = self._apply
+        if rsi_value_facade is not None:
+            self.rsi_value_facade = rsi_value_facade
+            self.rsi_value_roof = rsi_value_roof
 
-    def _apply(self, building_template):
-        """Only apply to Perimeter facade constructions.
-
-        Args:
-            building_template (BuildingTemplate): The building template object.
-        """
-        self._set_insulation_layer_resistance(
-            building_template.Perimeter.Constructions.Facade, self.rsi_value
+        self.AlterFacade = (
+            lambda building_template: self._set_insulation_layer_resistance(
+                building_template.Perimeter.Constructions.Facade, self.rsi_value_facade
+            )
+        )
+        self.AlterRoof = (
+            lambda building_template: self._set_insulation_layer_resistance(
+                building_template.Perimeter.Constructions.Roof, self.rsi_value_roof
+            )
         )
 
     def _set_insulation_layer_resistance(self, opaque_construction, rsi_value):
@@ -131,7 +197,7 @@ class FacadeUpgradeBest(SetFacadeConstructionThermalResistanceToEnergyStar):
 
     name = "FacadeUpgradeBest"
     description = "rsi value from climaplusbeta.com"
-    rsi_value = 1 / 0.13
+    rsi_value_facade = 1 / 0.13
 
 
 class FacadeUpgradeMid(SetFacadeConstructionThermalResistanceToEnergyStar):
@@ -139,7 +205,7 @@ class FacadeUpgradeMid(SetFacadeConstructionThermalResistanceToEnergyStar):
 
     name = "FacadeUpgradeMid"
     description = "rsi value from climaplusbeta.com"
-    rsi_value = 1 / 0.34
+    rsi_value_facade = 1 / 0.34
 
 
 class FacadeUpgradeRegular(SetFacadeConstructionThermalResistanceToEnergyStar):
@@ -147,7 +213,7 @@ class FacadeUpgradeRegular(SetFacadeConstructionThermalResistanceToEnergyStar):
 
     name = "FacadeUpgradeRegular"
     description = "rsi value from climaplusbeta.com"
-    rsi_value = 1 / 1.66
+    rsi_value_facade = 1 / 1.66
 
 
 class FacadeUpgradeLow(SetFacadeConstructionThermalResistanceToEnergyStar):
@@ -155,7 +221,7 @@ class FacadeUpgradeLow(SetFacadeConstructionThermalResistanceToEnergyStar):
 
     name = "FacadeUpgradeLow"
     description = "rsi value from climaplusbeta.com"
-    rsi_value = 1 / 3.5
+    rsi_value_facade = 1 / 3.5
 
 
 class SetInfiltration(Measure):

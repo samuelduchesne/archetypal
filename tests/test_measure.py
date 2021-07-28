@@ -54,7 +54,7 @@ class TestMeasure:
         previous_thickness = oc.total_thickness
         previous_r_value = oc.r_value
 
-        measure = SetFacadeConstructionThermalResistanceToEnergyStar(rsi_value=3.08)
+        measure = SetFacadeConstructionThermalResistanceToEnergyStar(rsi_value_facade=3.08)
         measure.apply_measure_to_whole_library(umi_library)
 
         # assert that the total wall r_value has increased.

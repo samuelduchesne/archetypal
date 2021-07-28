@@ -67,6 +67,19 @@ class Meter:
         Returns:
             EnergySeries: The time-series object.
         """
+        assert reporting_frequency in [
+            "Timestep",
+            "Hourly",
+            "Daily",
+            "Monthly",
+            "RunPeriod",
+            "Environment",
+            "Annual",
+            "Detailed",
+        ], (
+            "reporting_frequency is case sensitiv and must be one of 'Timestep', 'Hourly', 'Daily', 'Monthly', "
+            "'RunPeriod', 'Environment', 'Annual' or 'Detailed' "
+        )
         self._epobject.Reporting_Frequency = reporting_frequency.lower()
         if self._epobject not in self._idf.idfobjects[self._epobject.key]:
             self._idf.addidfobject(self._epobject)

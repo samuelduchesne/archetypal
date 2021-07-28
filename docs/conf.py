@@ -109,8 +109,8 @@ html_static_path = ["_static"]
 
 
 def setup(app):
-    app.add_stylesheet("theme_overrides.css")
-    app.add_javascript("copybutton.js")
+    app.add_css_file("theme_overrides.css")
+    app.add_js_file("copybutton.js")
     # Add the 'copybutton' javascript, to hide/show the prompt in code examples
 
 

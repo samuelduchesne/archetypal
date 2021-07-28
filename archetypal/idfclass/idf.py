@@ -57,6 +57,18 @@ from archetypal.reportdata import ReportData
 from archetypal.utils import log, settings
 
 
+def find_and_launch(app_name, app_path_guess, file_path):
+    app_path = shutil.which(app_name, path=app_path_guess)
+    assert app_path is not None, f"Could not find {app_name} at '{app_path_guess}'"
+    assert file_path.exists(), f"{file_path} does not exist."
+    subprocess.Popen(
+        (
+            app_path,
+            file_path,
+        )
+    )
+
+
 class IDF(geomIDF):
     """Class for loading and parsing idf models.
 
@@ -842,33 +854,18 @@ class IDF(geomIDF):
 
         import subprocess
 
-        subprocess.Popen(
-            (
-                shutil.which(
-                    "IDFEditor",
-                    path=get_eplus_dirs(self.file_version.dash)
-                    / "PreProcess"
-                    / "IDFEditor",
-                ),
-                filepath.abspath(),
-            )
+        app_path_guess = (
+            get_eplus_dirs(self.file_version.dash) / "PreProcess" / "IDFEditor"
         )
+        find_and_launch("IDFEditor", app_path_guess, filepath.abspath())
 
     def open_last_simulation(self):
         """Open last simulation in Ep-Launch."""
         filepath, *_ = self.simulation_dir.files("*.idf")
 
         import subprocess
-
-        subprocess.Popen(
-            (
-                shutil.which(
-                    "EP-Launch",
-                    path=get_eplus_dirs(self.file_version.dash),
-                ),
-                filepath.abspath(),
-            )
-        )
+        app_path_guess = get_eplus_dirs(self.file_version.dash)
+        find_and_launch("EP-Launch", app_path_guess, filepath.abspath())
 
     def open_mdd(self):
         """Open .mdd file in browser.

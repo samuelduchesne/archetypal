@@ -2,29 +2,28 @@ name: archetypal
 channels:
   - conda-forge
 dependencies:
-  - geopandas
-  - networkx
-  - six
-  - matplotlib>=2.1
-  - requests>=2.18
-  - pycountry
-  - scikit-learn
-  - scipy
-  - pandas==1.2.0
+  - python=3.8  # because of Coolprop
+  - networkx=2.6.*
+  - matplotlib=3.4.*  # because of TwoSlopesNorm
+  - requests=2.25.*
+  - pycountry=20.7.*
+  - scikit-learn=0.24.*
+  - pandas>=1.2.0
   - numpy>=1.17
-  - tqdm
-  - tabulate
-  - path.py
-  - pyomo
-  - pint
-  - click
-  - outdated
+  - tqdm=4.61.*
+  - tabulate=0.8.*
+  - path=16.0.*
+  - click=8.0.*
+  - outdated=0.2.*
+  - shapely  # needs to be installed correctly on Windows
   - pip
   - pip:
-    - tsam
-    - git+https://github.com/samuelduchesne/eppy.git@feature/defaults#egg=eppy
-    - geomeppy
-    - deprecation
-    - sigfig
-    - validator_collection
-    - -r file:requirements-dev.txt
+    - eppy==0.5.56  # for stability
+    - geomeppy==0.11.8
+    - sigfig~=1.1.9
+    - validator_collection~=1.5.0
+    - energy-pandas~=0.3.2
+    - CoolProp~=6.4.1
+    - setuptools~=56.2.0
+    - deprecation~=2.1.0
+    - -r requirements-dev.txt  # Install dev dependencies for good measure

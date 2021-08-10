@@ -18,7 +18,7 @@ from geomeppy.recipes import (
 )
 from validator_collection import checkers, validators
 
-from pyumi.shoeboxer.hvac_templates import HVACTemplates
+from .hvac_templates import HVACTemplates
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -204,6 +204,7 @@ class ShoeBox(IDF):
         number_of_stories=1,
         ground_temperature=10,
         wwr_map=None,
+        coordinates=None,
         zones_data=None,
         zoning="by_storey",
         **kwargs,
@@ -241,7 +242,7 @@ class ShoeBox(IDF):
             zones_data = [
                 {
                     "name": "Core",
-                    "coordinates": [(10, 0), (10, 5), (0, 5), (0, 0)],
+                    "coordinates": coordinates or [(10, 0), (10, 5), (0, 5), (0, 0)],
                     "height": height,
                     "num_stories": number_of_stories,
                     "zoning": zoning,
@@ -254,7 +255,7 @@ class ShoeBox(IDF):
                 zones_data.append(
                     {
                         "name": "Perim",
-                        "coordinates": [(10, 5), (10, 10), (0, 10), (0, 5)],
+                        "coordinates": coordinates or [(10, 5), (10, 10), (0, 10), (0, 5)],
                         "height": height,
                         "num_stories": number_of_stories,
                         "zoning": zoning,
@@ -317,20 +318,11 @@ class ShoeBox(IDF):
 
         for zone in idf.idfobjects["ZONE"]:
             # Calculate zone area
-            floor_area = 0
-            for zone in idf.idfobjects["ZONE"]:
-                for surface in zone.zonesurfaces:
-                    if surface.Surface_Type.lower() == "floor":
-                        floor_area += surface.area
+            zone_floor_area = cls.zone_floor_area(zone)
 
             # infiltration, only `window` surfaces are considered.
-            window_area = 0
+            zone_window_area = cls.zone_window_area(zone)
             opening_area_ratio = building_template.Windows.OperableArea
-            for zone in idf.idfobjects["ZONE"]:
-                for surface in zone.zonesurfaces:
-                    for sub_surface in surface.subsurfaces:
-                        if sub_surface.Surface_Type.lower() == "window":
-                            window_area += sub_surface.area
 
             if is_core(zone):
                 # add internal gains
@@ -343,7 +335,7 @@ class ShoeBox(IDF):
                 internal_mass = InternalMass(
                     surface_name=f"{zone.Name} InternalMass",
                     construction=building_template.Core.InternalMassConstruction,
-                    total_area_exposed_to_zone=floor_area
+                    total_area_exposed_to_zone=zone_floor_area
                     * building_template.Core.InternalMassExposedPerFloorArea,
                 )
                 if internal_mass.total_area_exposed_to_zone > 0:
@@ -356,20 +348,37 @@ class ShoeBox(IDF):
                 HVACTemplates[system].create_from(zone, building_template.Perimeter)
 
                 # Create InternalMass object, then convert to EpBunch.
-                internal_mass = InternalMass(
-                    surface_name=f"{zone.Name} InternalMass",
-                    construction=building_template.Perimeter.InternalMassConstruction,
-                    total_area_exposed_to_zone=floor_area
-                    * building_template.Core.InternalMassExposedPerFloorArea,
-                )
-                if internal_mass.total_area_exposed_to_zone > 0:
+                if building_template.Perimeter.InternalMassExposedPerFloorArea > 0:
+                    internal_mass = InternalMass(
+                        surface_name=f"{zone.Name} InternalMass",
+                        construction=building_template.Perimeter.InternalMassConstruction,
+                        total_area_exposed_to_zone=zone_floor_area
+                        * building_template.Perimeter.InternalMassExposedPerFloorArea,
+                    )
                     internal_mass.to_epbunch(idf, zone.Name)
 
                 # infiltration
                 building_template.Perimeter.Ventilation.to_epbunch(
-                    idf, zone.Name, opening_area=window_area * opening_area_ratio
+                    idf, zone.Name, opening_area=zone_window_area * opening_area_ratio
                 )
         return idf
+
+    @classmethod
+    def zone_window_area(cls, zone):
+        window_area = 0
+        for surface in zone.zonesurfaces:
+            for sub_surface in surface.subsurfaces:
+                if sub_surface.Surface_Type.lower() == "window":
+                    window_area += sub_surface.area
+        return window_area
+
+    @classmethod
+    def zone_floor_area(cls, zone):
+        floor_area = 0
+        for surface in zone.zonesurfaces:
+            if surface.Surface_Type.lower() == "floor":
+                floor_area += surface.area
+        return floor_area
 
     @property
     def ground_temperatures(self):

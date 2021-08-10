@@ -126,14 +126,14 @@ class ExpandObjectsThread(Thread):
         if (Path(self.run_dir) / "GHTIn.idf").exists():
             self.idf.include.append(
                 (Path(self.run_dir) / "GHTIn.idf").copy(
-                    self.idf.output_directory / "GHTIn.idf"
+                    self.idf.output_directory.makedirs_p() / "GHTIn.idf"
                 )
             )
 
         if (Path(self.run_dir) / "BasementGHTIn.idf").exists():
             self.idf.include.append(
                 (Path(self.run_dir) / "BasementGHTIn.idf").copy(
-                    self.idf.output_directory / "BasementGHTIn.idf"
+                    self.idf.output_directory.makedirs_p() / "BasementGHTIn.idf"
                 )
             )
 

@@ -683,22 +683,18 @@ class IDF(geomIDF):
         """Path: The output directory based on the hashing of the original file.
 
         Notes:
-            The hashing is performed before transitions or modifications.
+            The hashing is performed before transitions or modifications. The directory is not created! Use
+            `self.output_directory.makedir_p()` to create it without an error if it exists.
         """
         if self._output_directory is None:
             cache_filename = self._original_cache
             output_directory = settings.cache_folder / cache_filename
-            output_directory.makedirs_p()
             self._output_directory = output_directory.expand()
         return Path(self._output_directory)
 
     @output_directory.setter
     def output_directory(self, value):
-        if value and not Path(value).exists():
-            raise ValueError(
-                f"The tmp_dir '{value}' must be created before being assigned"
-            )
-        elif value:
+        if value:
             value = Path(value)
         self._output_directory = value
 
@@ -848,7 +844,7 @@ class IDF(geomIDF):
         """Open file in correct version of Ep-Launch."""
         if isinstance(self.idfname, StringIO):
             # make a temporary file if inmemery IDF.
-            filepath = self.savecopy(self.output_directory / self.name)
+            filepath = self.savecopy(self.output_directory.makedirs_p() / self.name)
         else:
             filepath = self.idfname
 
@@ -1311,7 +1307,7 @@ class IDF(geomIDF):
         # Todo: Add EpMacro Thread -> if exist in.imf "%program_path%EPMacro"
         # Run the expandobjects program if necessary
         tmp = (
-            self.output_directory / "expandobjects_run_" + str(uuid.uuid1())[0:8]
+            self.output_directory.makedirs_p() / "expandobjects_run_" + str(uuid.uuid1())[0:8]
         ).mkdir()
         # Run the ExpandObjects preprocessor program
         expandobjects_thread = ExpandObjectsThread(self, tmp)
@@ -1326,7 +1322,7 @@ class IDF(geomIDF):
 
         # Run the Basement preprocessor program if necessary
         tmp = (
-            self.output_directory / "runBasement_run_" + str(uuid.uuid1())[0:8]
+            self.output_directory.makedirs_p() / "runBasement_run_" + str(uuid.uuid1())[0:8]
         ).mkdir()
         basement_thread = BasementThread(self, tmp)
         basement_thread.start()
@@ -1339,7 +1335,7 @@ class IDF(geomIDF):
             raise e
 
         # Run the Slab preprocessor program if necessary
-        tmp = (self.output_directory / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = (self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
         slab_thread = SlabThread(self, tmp)
         slab_thread.start()
         slab_thread.join()
@@ -1351,7 +1347,7 @@ class IDF(geomIDF):
             raise e
 
         # Run the energyplus program
-        tmp = (self.output_directory / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = (self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()
         running_simulation_thread = EnergyPlusThread(self, tmp)
         running_simulation_thread.start()
         running_simulation_thread.join()
@@ -1436,14 +1432,16 @@ class IDF(geomIDF):
         as_idf = IDF(filename, **kwargs)
         # copy simulation_dir over to new location
         file: Path
-        as_idf.simulation_dir.makedirs_p()
-        for file in self.simulation_files:
-            if self.output_prefix in file:
-                name = file.replace(self.output_prefix, as_idf.output_prefix)
-                name = Path(name).basename()
-            else:
-                name = file.basename()
-            file.copy(as_idf.simulation_dir / name)
+        if self.simulation_files:
+            # If simulation files exist in cache, copy to new cache location
+            as_idf.simulation_dir.makedirs_p()
+            for file in self.simulation_files:
+                if self.output_prefix in file:
+                    name = file.replace(self.output_prefix, as_idf.output_prefix)
+                    name = Path(name).basename()
+                else:
+                    name = file.basename()
+                file.copy(as_idf.simulation_dir / name)
         return as_idf
 
     def process_results(self):
@@ -1529,7 +1527,7 @@ class IDF(geomIDF):
             # execute transitions
             tmp = (
                 self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]
-            ).mkdir()
+            ).makedirs_p()
             slab_thread = TransitionThread(self, tmp, overwrite=overwrite)
             slab_thread.start()
             slab_thread.join()

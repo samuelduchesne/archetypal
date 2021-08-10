@@ -185,7 +185,7 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
         # Then, change the r_value (which changes the thickness) of that layer only.
         energy_star_rsi = rsi_value
         if layer.r_value > energy_star_rsi:
-            log.warning(
+            log.debug(
                 f"r_value is already higher for material_layer '{layer}' of "
                 f"opaque_construction '{opaque_construction}'"
             )

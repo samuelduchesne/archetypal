@@ -6,6 +6,7 @@
 ################################################################################
 
 import logging as lg
+import os
 
 from path import Path
 
@@ -162,5 +163,9 @@ class ZoneWeight(object):
 
 zone_weight = ZoneWeight(n=0)
 
-# Latest version of EnergyPlus compatible with archetypal
-ep_version = "9-2-0"
+# Latest version of EnergyPlus compatible with archetypal looks for ENERGYPLUS_VERSION in os.environ
+ep_version = (
+    os.getenv("ENERGYPLUS_VERSION").replace("-", ".")
+    if os.getenv("ENERGYPLUS_VERSION")
+    else "9-2-0"  # default if not found
+)

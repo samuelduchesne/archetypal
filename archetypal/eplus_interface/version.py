@@ -177,9 +177,10 @@ class EnergyPlusVersion(Version):
                     basedirs_.append(basedir.files("*.idd"))
             iddnames = set(chain.from_iterable(basedirs_))
         except FileNotFoundError:
-            _choices = ["9-2-0"]  # Little hack in case E+ is not installed
+            _choices = [settings.ep_version]  # Little hack in case E+ is not installed
         else:
             _choices = set(
-                re.match(r"V(.*)-Energy\+", idd.stem).groups()[0] for idd in iddnames
+                a.group(1) if a is not None else None
+                for a in re.finditer(r"EnergyPlusV([\d-]*)", " ".join(iddnames))
             )
         return _choices

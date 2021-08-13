@@ -9,3 +9,6 @@ updates:
   # Raise pull requests for version updates
   # to pip against the `main` branch
   target-branch: "main"
+  ignore:
+    - dependency-name: "*"
+      update-types: ["version-update:semver-patch"]

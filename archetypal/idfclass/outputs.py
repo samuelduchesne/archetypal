@@ -283,7 +283,7 @@ class Outputs:
                 self._other_outputs.append(output)
         return self
 
-    def add_basics(self):
+    def add_basics(self, summary_report_kwargs={}, output_control_kwargs={}, sql_kwargs={}):
         """Adds the summary report and the sql file to the idf outputs"""
         return (
             self.add_summary_report()
@@ -374,12 +374,15 @@ class Outputs:
             self._other_outputs.append(output)
         return self
 
-    def add_output_control(self, output_control_table_style="CommaAndHTML"):
+    def add_output_control(
+        self, column_separator="CommaAndHTML", unit_converstion="None"
+    ):
         """Sets the `OutputControl:Table:Style` object.
 
         Args:
-            output_control_table_style (str): Choices are: Comma, Tab, Fixed,
-                HTML, XML, CommaAndHTML, TabAndHTML, XMLAndHTML, All
+            column_separator (str): Choices are: "Comma", "Tab", "Fixed",
+                "HTML", "XML", "CommaAndHTML", "TabAndHTML", "XMLAndHTML", "All"
+            unit_converstion (str): Choices are: "None", "JtoKWH", "JtoMJ", "JtoGJ", "InchPound"
         Returns:
             Outputs: self
         """
@@ -397,7 +400,7 @@ class Outputs:
         outputs = [
             {
                 "key": "OutputControl:Table:Style".upper(),
-                **dict(Column_Separator=output_control_table_style),
+                **dict(Column_Separator=column_separator, Unit_Conversion=unit_converstion),
             }
         ]
 

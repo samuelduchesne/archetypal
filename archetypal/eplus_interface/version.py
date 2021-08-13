@@ -171,6 +171,10 @@ class EnergyPlusVersion(Version):
                 updater_ = basedir / "PreProcess" / "IDFVersionUpdater"
                 if updater_.exists():
                     basedirs_.append(updater_.files("*.idd"))
+                else:
+                    # The IDFVersionUpdate folder could be removed in some installation (eg Docker container).
+                    # Add the idd contained in the basedir instead.
+                    basedirs_.append(basedir.files("*.idd"))
             iddnames = set(chain.from_iterable(basedirs_))
         except FileNotFoundError:
             _choices = ["9-2-0"]  # Little hack in case E+ is not installed

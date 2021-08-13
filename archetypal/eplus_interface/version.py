@@ -180,7 +180,7 @@ class EnergyPlusVersion(Version):
             _choices = [settings.ep_version]  # Little hack in case E+ is not installed
         else:
             _choices = set(
-                a.group(1) if a is not None else None
-                for a in re.finditer(r"EnergyPlusV([\d-]*)", " ".join(iddnames))
+                a.group(0) if a is not None else None
+                for a in re.finditer("([\d-]{5})", " ".join(iddnames))
             )
         return _choices

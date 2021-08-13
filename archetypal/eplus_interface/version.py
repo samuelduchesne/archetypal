@@ -181,6 +181,6 @@ class EnergyPlusVersion(Version):
         else:
             _choices = set(
                 a.group(0) if a is not None else None
-                for a in re.finditer("([\d-]{5})", " ".join(iddnames))
+                for a in re.finditer(r"([\d]-[\d]-[\d])", " ".join(iddnames))
             )
         return _choices

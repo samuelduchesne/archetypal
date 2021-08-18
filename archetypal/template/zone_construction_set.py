@@ -575,6 +575,7 @@ class SurfaceDispatcher:
             ("Wall", "Surface"): self._do_partition,
             ("Wall", "Zone"): self._do_partition,
             ("Wall", "Ground"): self._do_basement,
+            ("Wall", "GroundFCfactorMethod"): self._do_basement,
             ("Roof", "Outdoors"): self._do_roof,
             ("Roof", "Zone"): self._do_roof,
             ("Roof", "Surface"): self._do_roof,
@@ -621,7 +622,7 @@ class SurfaceDispatcher:
             name=surf.theidf.name,
         )
         oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
+            surf.get_referenced_object("Construction_Name")
         )
         oc.area = surf.area
         oc.Category = "Ground"

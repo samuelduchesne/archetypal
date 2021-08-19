@@ -1312,8 +1312,12 @@ class Schedule:
         year = get_year_for_first_weekday(self.startDayOfTheWeek)
         return datetime(year, 1, 1)
 
-    def plot(self, slice=None, **kwargs):
+    def plot(self, **kwargs):
         """Plot the schedule. Implements the .loc accessor on the series object.
+
+        Notes:
+            Plotting can also be acheived through the series property:
+            `Schedule.series.plot()`.
 
         Examples:
             >>> from archetypal import IDF
@@ -1321,28 +1325,16 @@ class Schedule:
             >>> epbunch = idf.schedules_dict["NECB-A-Thermostat Setpoint-Heating"]
             >>> s = Schedule.from_epbunch(epbunch)
             >>>     )
-            >>> s.plot(slice=("2018/01/02", "2018/01/03"), drawstyle="steps-post")
+            >>> s.plot(drawstyle="steps-post")
 
         Args:
-            slice (tuple): define a 2-tuple object the will be passed to
-                :class:`pandas.IndexSlice` as a range.
-            **kwargs (dict): keyword arguments passed to
-                :meth:`pandas.Series.plot`.
+            **kwargs (dict): keyword arguments passed to :meth:`EnergySeries.plot`.
         """
-        hourlyvalues = self.all_values
-        index = pd.date_range(self.startDate, periods=len(hourlyvalues), freq="1H")
-        series = pd.Series(hourlyvalues, index=index, dtype=float)
-        if slice is None:
-            slice = pd.IndexSlice[:]
-        elif len(slice) > 1:
-            slice = pd.IndexSlice[slice[0] : slice[1]]
-        label = kwargs.pop("label", self.Name)
-        ax = series.loc[slice].plot(**kwargs, label=label)
-        return ax
+        return self.series.plot(**kwargs)
 
     def plot2d(self, **kwargs):
         """Plot the carpet plot of the schedule."""
-        return EnergySeries(self.series, name=self.Name).plot2d(**kwargs)
+        return self.series.plot2d(**kwargs)
 
     plot2d.__doc__ += EnergySeries.plot2d.__doc__
 

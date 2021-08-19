@@ -749,7 +749,7 @@ class ZoneLoad(UmiBase):
         """
         people = idf.newidfobject(
             "PEOPLE",
-            Name=self.Name,
+            Name=":".join(("People", self.Name, zone_name)),
             Zone_or_ZoneList_Name=zone_name,
             Number_of_People_Schedule_Name=self.OccupancySchedule.to_epbunch(idf).Name,
             Number_of_People_Calculation_Method="People/Area",
@@ -772,7 +772,7 @@ class ZoneLoad(UmiBase):
         )
         lights = idf.newidfobject(
             key="LIGHTS",
-            Name=self.Name,
+            Name=":".join(("Lights", self.Name, zone_name)),
             Zone_or_ZoneList_Name=zone_name,
             Schedule_Name=self.LightsAvailabilitySchedule.to_epbunch(idf).Name,
             Design_Level_Calculation_Method="Watts/Area",
@@ -784,7 +784,7 @@ class ZoneLoad(UmiBase):
         )
         equipment = idf.newidfobject(
             "ELECTRICEQUIPMENT",
-            Name=self.Name,
+            Name=":".join(("ElectricEquipment", self.Name, zone_name)),
             Zone_or_ZoneList_Name=zone_name,
             Schedule_Name=self.EquipmentAvailabilitySchedule.to_epbunch(idf).Name,
             Design_Level_Calculation_Method="Watts/Area",
@@ -792,6 +792,7 @@ class ZoneLoad(UmiBase):
             Fraction_Latent=0,
             Fraction_Radiant=0.2,
             Fraction_Lost=0,
+            EndUse_Subcategory="ElectricEquipment",
         )
         return people, lights, equipment
 

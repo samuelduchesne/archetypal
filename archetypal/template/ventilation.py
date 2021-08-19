@@ -873,7 +873,7 @@ class VentilationSetting(UmiBase):
                 Zone_or_ZoneList_Name=zone_name,
                 Schedule_Name=self.ScheduledVentilationSchedule.to_year_week_day()[
                     0
-                ].Name,  # take the YearSchedule and get the name.
+                ].to_epbunch(idf).Name,  # take the YearSchedule and get the name.
                 Design_Flow_Rate_Calculation_Method="AirChanges/Hour",
                 Design_Flow_Rate="",
                 Flow_Rate_per_Zone_Floor_Area="",

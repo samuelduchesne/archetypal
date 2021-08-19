@@ -61,7 +61,8 @@ class EconomizerTypes(UmiBaseEnum):
 
     NoEconomizer = 0
     DifferentialDryBulb = 1
-    DifferentialEnthalphy = 2
+    DifferentialEnthalpy = 2
+    DifferentialEnthalphy = 2  # fix for the UMI bug
 
 
 class IdealSystemLimit(UmiBaseEnum):

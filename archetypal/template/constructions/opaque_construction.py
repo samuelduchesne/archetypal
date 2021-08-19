@@ -417,8 +417,8 @@ class OpaqueConstruction(LayeredConstruction):
             epbunch (EpBunch): The epbunch object.
             **kwargs: keywords passed to the LayeredConstruction constructor.
         """
-        assert epbunch.key.lower() in ("internalmass", "construction"), (
-            f"Expected ('Internalmass', 'Construction')." f"Got '{epbunch.key}'."
+        assert epbunch.key.lower() in ("internalmass", "construction", 'construction:internalsource'), (
+            f"Expected ('Internalmass', 'Construction', 'construction:internalsouce')." f"Got '{epbunch.key}'."
         )
         name = epbunch.Name
 
@@ -426,7 +426,7 @@ class OpaqueConstruction(LayeredConstruction):
         if epbunch.key.lower() == "internalmass":
             layers = cls._internalmass_layer(epbunch)
             return cls(Name=name, Layers=layers, **kwargs)
-        elif epbunch.key.lower() == "construction":
+        elif epbunch.key.lower() in ("construction", 'construction:internalsource',):
             layers = cls._surface_layers(epbunch)
             return cls(Name=name, Layers=layers, **kwargs)
 

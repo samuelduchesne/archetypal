@@ -4,6 +4,7 @@ import copy
 
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata, Idd, removecomment
+from eppy.idf_msequence import Idf_MSequence
 from geomeppy.patches import EpBunch
 
 from archetypal.utils import extend_class, log
@@ -40,8 +41,14 @@ def get_default(self: EpBunch, name):
 
 @extend_class(EpBunch)
 def to_dict(self: EpBunch):
-    """Get the dict representation of the object."""
+    """Get the dict representation of the EpBunch."""
     return {k: v for k, v in zip(self.fieldnames, self.fieldvalues)}
+
+
+@extend_class(Idf_MSequence)
+def to_dict(self: Idf_MSequence):
+    """Get the list of dict representation of the Idf_Msequence."""
+    return [obj.to_dict() for obj in self]
 
 
 @extend_class(Eplusdata)

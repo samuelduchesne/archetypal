@@ -4,13 +4,14 @@ import copy
 
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata, Idd, removecomment
+from eppy.idf_msequence import Idf_MSequence
 from geomeppy.patches import EpBunch
 
 from archetypal.utils import extend_class, log
 
 
 @extend_class(EpBunch)
-def __eq__(self, other):
+def __eq__(self: EpBunch, other):
     """Test the equality of two EpBunch objects using all attribute values."""
     if not isinstance(other, EpBunch):
         return False
@@ -18,7 +19,7 @@ def __eq__(self, other):
 
 
 @extend_class(EpBunch)
-def nameexists(self):
+def nameexists(self: EpBunch):
     """Return True if EpBunch Name already exists in idf.idfobjects[KEY]."""
     existing_objs = self.theidf.idfobjects[self.key.upper()]
     try:
@@ -28,7 +29,7 @@ def nameexists(self):
 
 
 @extend_class(EpBunch)
-def get_default(self, name):
+def get_default(self: EpBunch, name):
     """Return the default value of a field"""
     if "default" in self.getfieldidd(name).keys():
         _type = _parse_idd_type(self, name)
@@ -38,8 +39,20 @@ def get_default(self, name):
         return ""
 
 
+@extend_class(EpBunch)
+def to_dict(self: EpBunch):
+    """Get the dict representation of the EpBunch."""
+    return {k: v for k, v in zip(self.fieldnames, self.fieldvalues)}
+
+
+@extend_class(Idf_MSequence)
+def to_dict(self: Idf_MSequence):
+    """Get the list of dict representation of the Idf_Msequence."""
+    return [obj.to_dict() for obj in self]
+
+
 @extend_class(Eplusdata)
-def makedict(self, dictfile, fnamefobject):
+def makedict(self: Eplusdata, dictfile, fnamefobject):
     """stuff file data into the blank dictionary."""
     # fname = './exapmlefiles/5ZoneDD.idf'
     # fname = './1ZoneUncontrolled.idf'

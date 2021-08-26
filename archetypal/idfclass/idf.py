@@ -1866,6 +1866,17 @@ class IDF(geomIDF):
         self.idfobjects[key].remove(idfobject)
         self._reset_dependant_vars("idfobjects")
 
+    def removeidfobjects(self, idfobjects):
+        """Remove an IDF object from the model.
+
+        Args:
+            idfobject (EpBunch): The object to remove from the model.
+        """
+        for idfobject in idfobjects:
+            key = idfobject.key.upper()
+            self.idfobjects[key].remove(idfobject)
+        self._reset_dependant_vars("idfobjects")
+
     def anidfobject(self, key, aname="", **kwargs) -> EpBunch:
         # type: (str, str, **Any) -> EpBunch
         """Define and create an object, but don't add it to the model.

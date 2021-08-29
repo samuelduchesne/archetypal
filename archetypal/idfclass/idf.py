@@ -885,7 +885,7 @@ class IDF(geomIDF):
 
         import subprocess
 
-        app_path_guess = get_eplus_dirs(self.file_version.dash)
+        app_path_guess = self.file_version.current_install_dir
         find_and_launch("EP-Launch", app_path_guess, filepath.abspath())
 
     def open_mdd(self):

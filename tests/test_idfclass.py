@@ -347,13 +347,11 @@ class TestThreads:
 
     @pytest.mark.skip("To long to run for tests")
     def test_runbasement(self, config):
-        epw = (
-            EnergyPlusVersion.current().current_install_dir
-            / "WeatherData"
-            / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
-        )
         idf = IDF.from_example_files(
-            "LgOffVAVusingBasement.idf", epw=epw, annual=False, design_day=True
+            "LgOffVAVusingBasement.idf",
+            epw="USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw",
+            annual=False,
+            design_day=True,
         )
 
         assert idf.simulate()

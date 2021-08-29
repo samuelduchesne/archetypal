@@ -1863,13 +1863,9 @@ class TestZoneLoad:
     @pytest.fixture(scope="class")
     def fiveZoneEndUses(self, config):
         """"""
-        epw = (
-            EnergyPlusVersion.current().current_install_dir
-            / "WeatherData"
-            / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        )
         idf = IDF.from_example_files(
-            "5ZoneAirCooled_AirBoundaries_Daylighting.idf", epw=epw
+            "5ZoneAirCooled_AirBoundaries_Daylighting.idf",
+            epw="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
         )
         if idf.sim_info is None:
             idf.simulate()
@@ -2195,11 +2191,18 @@ class TestVentilationSetting:
         """Create test cases with different ventilation definitions."""
 
         eplusdir = EnergyPlusVersion.current().current_install_dir
-        w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        idf = IDF.from_example_files(request.param, epw=w, annual=True)
+        idf = IDF.from_example_files(
+            request.param,
+            epw="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+            annual=True,
+        )
         if idf.sim_info is None:
             idf.simulate()
-        copy = IDF.from_example_files(request.param, epw=w, annual=True)
+        copy = IDF.from_example_files(
+            request.param,
+            epw="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+            annual=True,
+        )
         if copy.sim_info is None:
             copy.simulate()
         yield idf, request.param, copy  # passes a copy as well

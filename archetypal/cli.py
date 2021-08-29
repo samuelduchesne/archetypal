@@ -17,7 +17,7 @@ from archetypal.umi_template import UmiTemplateLibrary
 from archetypal.utils import config, docstring_parameter, log, parallel_process, timeit
 
 from .eplus_interface.exceptions import EnergyPlusVersionError
-from .eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
+from .eplus_interface.version import EnergyPlusVersion
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -165,7 +165,7 @@ def cli(
     "--weather",
     "-w",
     help="EPW weather file path",
-    default=get_eplus_dirs(settings.ep_version)
+    default=EnergyPlusVersion.current().current_install_location
     / "WeatherData"
     / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
     show_default=True,

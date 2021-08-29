@@ -6,7 +6,7 @@ import pytest
 from eppy.bunch_subclass import EpBunch
 
 from archetypal import IDF, settings
-from archetypal.eplus_interface.version import get_eplus_dirs
+from archetypal.eplus_interface import EnergyPlusVersion
 from archetypal.simple_glazing import calc_simple_glazing
 from archetypal.template.building_template import BuildingTemplate
 from archetypal.template.conditioning import ZoneConditioning, EconomizerTypes
@@ -1864,7 +1864,7 @@ class TestZoneLoad:
     def fiveZoneEndUses(self, config):
         """"""
         epw = (
-            get_eplus_dirs(settings.ep_version)
+            EnergyPlusVersion.current().current_install_dir
             / "WeatherData"
             / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         )
@@ -2194,7 +2194,7 @@ class TestVentilationSetting:
     def ventilatontests(self, config, request):
         """Create test cases with different ventilation definitions."""
 
-        eplusdir = get_eplus_dirs(settings.ep_version)
+        eplusdir = EnergyPlusVersion.current().current_install_dir
         w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
         idf = IDF.from_example_files(request.param, epw=w, annual=True)
         if idf.sim_info is None:

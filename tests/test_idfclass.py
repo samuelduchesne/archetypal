@@ -9,7 +9,7 @@ from archetypal.eplus_interface import (
     EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
 )
-from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
+from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import parallel_process
 
 
@@ -47,7 +47,9 @@ class TestIDF:
         """"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idfname = (
-            get_eplus_dirs(settings.ep_version) / "ExampleFiles" / "5ZoneNightVent1.idf"
+            EnergyPlusVersion.current().current_install_dir
+            / "ExampleFiles"
+            / "5ZoneNightVent1.idf"
         )
         yield IDF(idfname, epw=w)
 
@@ -229,7 +231,7 @@ class TestIDF:
         scope="class",
         params=[
             None,
-            get_eplus_dirs(settings.ep_version)
+            EnergyPlusVersion.current().current_install_dir
             / "ExampleFiles"
             / "5ZoneNightVent1.idf",
         ],
@@ -328,11 +330,15 @@ class TestThreads:
         d.mkdir()
         p = d / "5ZoneAirCooledWithSlab.idf"
         epw = (
-            get_eplus_dirs()
+            EnergyPlusVersion.current().current_install_dir
             / "WeatherData"
             / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
         )
-        slab_idf = get_eplus_dirs() / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
+        slab_idf = (
+            EnergyPlusVersion.current().current_install_dir
+            / "ExampleFiles"
+            / "5ZoneAirCooledWithSlab.idf"
+        )
         with open(slab_idf, "r") as f:
             p.write_text(f.read())
         idf = IDF(p, epw=epw, annual=False, design_day=True)
@@ -342,7 +348,7 @@ class TestThreads:
     @pytest.mark.skip("To long to run for tests")
     def test_runbasement(self, config):
         epw = (
-            get_eplus_dirs()
+            EnergyPlusVersion.current().current_install_dir
             / "WeatherData"
             / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
         )

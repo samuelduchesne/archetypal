@@ -1,4 +1,4 @@
-"""EnergyPlusVersion module."""
+"""EnergyPlusVersion module handles finding idd paths and valid versions."""
 
 import platform
 import re
@@ -9,23 +9,202 @@ from packaging.version import Version
 from path import Path
 
 from archetypal import settings
-from archetypal.eplus_interface.exceptions import InvalidEnergyPlusVersion
-from archetypal.settings import ep_version
+from archetypal.eplus_interface.exceptions import (
+    InvalidEnergyPlusVersion,
+)
 
 
-def get_eplus_dirs(version=ep_version):
-    """Return EnergyPlus root folder for a specific version.
+class EnergyPlusVersion(Version):
+    """EnergyPlusVersion class.
 
-    Args:
-        version (str): Version number in the form "9-2-0" to search for.
+    This class subclasses the :class:`packaging.version.Version` class. It is usuful
+    to compare version numbers together.
 
-    Returns:
-        (Path): The folder path.
+    Any EnergyPlusVersion numbers are checked against valid versions before they can
+    be initialized.
+
+    Examples:
+        To create a version number:
+
+        >>> from archetypal.eplus_interface.version import EnergyPlusVersion
+        >>> EnergyPlusVersion("9.2.0")
+        <EnergyPlusVersion('9.2.0')>
+
+        An invalid version number raises an exception:
+
+        >>> from archetypal.eplus_interface.version import EnergyPlusVersion
+        >>> EnergyPlusVersion("3.2.0")  # "3.2.0" was never released.
+        archetypal.eplus_interface.exceptions.InvalidEnergyPlusVersion
+
     """
-    from eppy.runner.run_functions import install_paths
 
-    eplus_exe, eplus_weather = install_paths(version)
-    return Path(eplus_exe).dirname()
+    __slots__ = ("_valid_paths", "_install_locations")
+
+    def __init__(self, version):
+        """Initialize an EnergyPlusVersion from a version number.
+
+        Args:
+            version (str, EnergyPlusVersion): The version number to create. Can be a
+                string a tuple or another EnergyPlusVersion object.
+
+        Raises:
+            InvalidEnergyPlusVersion: If the version is not a valid version number.
+        """
+        self.install_locations = {}
+        self.valid_idd_paths = {}
+
+        if isinstance(version, tuple):
+            version = ".".join(map(str, version[0:3]))
+        if isinstance(version, Version):
+            version = ".".join(map(str, (version.major, version.minor, version.micro)))
+        if isinstance(version, str) and "-" in version:
+            version = version.replace("-", ".")
+        super(EnergyPlusVersion, self).__init__(version)
+        if self.dash not in self.valid_versions:
+            raise InvalidEnergyPlusVersion
+
+    @classmethod
+    def latest(cls):
+        """Initialize an EnergyPlusVersion with the latest version installed."""
+        eplus_homes = get_eplus_basedirs()
+
+        # check if any EnergyPlus install exists
+        if not eplus_homes:
+            raise Exception(
+                "No EnergyPlus installation found. Make sure you have EnergyPlus "
+                "installed. Go to https://energyplus.net/downloads to download the "
+                "latest version of EnergyPlus."
+            )
+
+        # Find the most recent version of EnergyPlus installed from the version
+        # number (at the end of the folder name)
+        version = next(
+            iter(
+                sorted(
+                    (
+                        re.search(r"([\d])-([\d])-([\d])", home.stem).group()
+                        for home in eplus_homes
+                    ),
+                    reverse=True,
+                )
+            )
+        )
+        return cls(version)
+
+    @property
+    def dash(self) -> str:
+        """Return the version number as a dash-separated string: "major-minor-micro"."""
+        return "-".join(map(str, (self.major, self.minor, self.micro)))
+
+    @property
+    def current_idd_path(self):
+        """Get the current Idd file path for this version."""
+        return self.valid_idd_paths[self.dash]
+
+    @property
+    def current_install_dir(self):
+        """Get the current installation directory for this EnergyPlus version."""
+        return self.install_locations[self.dash]
+
+    @property
+    def tuple(self) -> tuple:
+        """Return the version number as a tuple: (major, minor, micro)."""
+        return self.major, self.minor, self.micro
+
+    @property
+    def valid_versions(self) -> set:
+        """List the idd file version found on this machine."""
+        if not self.valid_idd_paths:
+            # Little hack in case E+ is not installed
+            _choices = set(settings.ep_version)
+        else:
+            _choices = set(self.valid_idd_paths.keys())
+
+        return _choices
+
+    @property
+    def install_locations(self) -> dict:
+        """Get or set the available EnergyPlus root folders keyed by version number.
+
+        Installation folders are detected automatically at the default location for
+        all platforms.
+        """
+        return self._install_locations
+
+    @install_locations.setter
+    def install_locations(self, value):
+        if not value:
+            value = {}
+            for basedir in get_eplus_basedirs():
+                # match the Idd file contained in basedir
+                match = re.search(r"([\d]-[\d]-[\d])", basedir)
+                version = match.group(1)
+                value[version] = basedir.expand()
+        self._install_locations = value
+
+    @property
+    def valid_idd_paths(self) -> dict:
+        """Get or set the idd paths as a dict with version numbers as keys."""
+        return self._valid_paths
+
+    @valid_idd_paths.setter
+    def valid_idd_paths(self, value):
+        assert isinstance(value, dict)
+        if not value:
+            try:
+                basedirs_ = []
+                for version, basedir in self.install_locations.items():
+                    updater_ = basedir / "PreProcess" / "IDFVersionUpdater"
+                    if updater_.exists():
+                        basedirs_.append(updater_.files("*.idd"))
+                    else:
+                        # The IDFVersionUpdate folder could be removed in some
+                        # installation (eg Docker container).
+                        # Add the idd contained in the basedir instead.
+                        basedirs_.append(basedir.files("*.idd"))
+                iddnames = set(chain.from_iterable(basedirs_))
+            except FileNotFoundError:
+                _valid_paths = {}
+            else:
+                _valid_paths = {}
+                for iddname in iddnames:
+                    match = re.search(r"V(\d-\d-\d)", str(iddname))
+                    if match is None:
+                        # match the Idd file contained in basedir
+                        match = re.search(r"([\d]-[\d]-[\d])", iddname)
+                        version = match.group(1)
+                    else:
+                        version = match.group(1)
+
+                    _valid_paths[version] = iddname
+        self._valid_paths = dict(sorted(_valid_paths.items()))
+
+    @classmethod
+    def current(cls):
+        """Initialize an EnergyPlusVersion object for the specified module version.
+
+        Notes:
+            Specified by :ref:`archetypal.settings.ep_version` which looks for the
+            `"ENERGYPLUS_VERSION` environment variable.
+        """
+        version = settings.ep_version
+        return cls(version)
+
+    @property
+    def current_install_location(self):
+        return self.install_locations[self.dash]
+
+    def duplicate(self):
+        """Get a copy of this object."""
+        return self.__copy__()
+
+    def __copy__(self):
+        """Return a copy of self."""
+        return EnergyPlusVersion(self)
+
+    def __repr__(self) -> str:
+        """Return a representation of self."""
+        return f"<EnergyPlusVersion('{str(self)}')>"
 
 
 def get_eplus_basedirs():
@@ -46,32 +225,6 @@ def get_eplus_basedirs():
         )
 
 
-def _latest_energyplus_version():
-    """Find all EnergyPlus installs. and returns the latest version number.
-
-    Only looks in default locations on all platforms.
-
-    Returns:
-        (EnergyPlusVersion): The version number of the latest E+ install
-    """
-    eplus_homes = get_eplus_basedirs()
-
-    # check if any EnergyPlus install exists
-    if not eplus_homes:
-        raise Exception(
-            "No EnergyPlus installation found. Make sure you have EnergyPlus "
-            "installed. Go to https://energyplus.net/downloads to download the "
-            "latest version of EnergyPlus."
-        )
-
-    # Find the most recent version of EnergyPlus installed from the version
-    # number (at the end of the folder name)
-    return sorted(
-        (re.search(r"([\d])-([\d])-([\d])", home.stem).group() for home in eplus_homes),
-        reverse=True,
-    )[0]
-
-
 def warn_if_not_compatible():
     """Check if an EnergyPlus install is detected.
 
@@ -87,100 +240,3 @@ def warn_if_not_compatible():
             "machine. Please install EnergyPlus from https://energyplus.net before "
             "using archetypal"
         )
-
-
-class EnergyPlusVersion(Version):
-    """EnergyPlusVersion class.
-
-    This class subclasses the :class:`packaging.version.Version` class. It is usuful
-    to compare version numbers together.
-
-    Any EnergyPlusVersion numbers are checked against valid versions before they can
-    be initialized.
-
-    Examples:
-        To create a version number:
-
-        >>> from archetypal import EnergyPlusVersion
-        >>> EnergyPlusVersion("9.2.0")
-        <EnergyPlusVersion('9.2.0')>
-
-        An invalid version number raises an exception:
-
-        >>> from archetypal import EnergyPlusVersion
-        >>> EnergyPlusVersion("3.2.0")  # "3.2.0" was never released.
-        archetypal.eplus_interface.exceptions.InvalidEnergyPlusVersion
-
-    """
-
-    def __init__(self, version):
-        """Initialize an EnergyPlusVersion from a version number.
-
-        Args:
-            version (str, EnergyPlusVersion): The version number to create. Can be a
-                string a tuple or another EnergyPlusVersion object.
-
-        Raises:
-            InvalidEnergyPlusVersion: If the version is not a valid version number.
-        """
-        if isinstance(version, tuple):
-            version = ".".join(map(str, version[0:3]))
-        if isinstance(version, Version):
-            version = ".".join(map(str, (version.major, version.minor, version.micro)))
-        if isinstance(version, str) and "-" in version:
-            version = version.replace("-", ".")
-        super(EnergyPlusVersion, self).__init__(version)
-        if self.dash not in self.valid_versions:
-            raise InvalidEnergyPlusVersion
-
-    def __repr__(self) -> str:
-        """Return a representation of self."""
-        return "<EnergyPlusVersion({0})>".format(repr(str(self)))
-
-    @classmethod
-    def latest(cls):
-        """Return the latest EnergyPlus version installed."""
-        version = _latest_energyplus_version()
-        return cls(version)
-
-    @classmethod
-    def current(cls):
-        """Return the current EnergyPlus version specified by the main module.
-
-        Specified by :ref:`archetypal.settings.ep_version`
-        """
-        version = settings.ep_version
-        return cls(version)
-
-    @property
-    def tuple(self) -> tuple:
-        """Return the object as a tuple: (major, minor, micro)."""
-        return self.major, self.minor, self.micro
-
-    @property
-    def dash(self) -> str:
-        """Return the object as a dash-separated string: "major-minor-micro"."""
-        return "-".join(map(str, (self.major, self.minor, self.micro)))
-
-    @property
-    def valid_versions(self) -> list:
-        """List the idd versions installed on this machine."""
-        try:
-            basedirs_ = []
-            for basedir in get_eplus_basedirs():
-                updater_ = basedir / "PreProcess" / "IDFVersionUpdater"
-                if updater_.exists():
-                    basedirs_.append(updater_.files("*.idd"))
-                else:
-                    # The IDFVersionUpdate folder could be removed in some installation (eg Docker container).
-                    # Add the idd contained in the basedir instead.
-                    basedirs_.append(basedir.files("*.idd"))
-            iddnames = set(chain.from_iterable(basedirs_))
-        except FileNotFoundError:
-            _choices = [settings.ep_version]  # Little hack in case E+ is not installed
-        else:
-            _choices = set(
-                a.group(0) if a is not None else None
-                for a in re.finditer(r"([\d]-[\d]-[\d])", " ".join(iddnames))
-            )
-        return _choices

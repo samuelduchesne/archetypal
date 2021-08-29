@@ -290,21 +290,20 @@ class IDF(GeomIDF):
             # Set model outputs
             self._outputs = Outputs(idf=self)
             if self.prep_outputs:
-                (
-                    self._outputs.add_basics()
-                    .add_umi_template_outputs()
-                    .add_custom(outputs=self.prep_outputs)
-                    .add_profile_gas_elect_ouputs()
-                    .apply()
-                )
+                self._outputs.add_basics()
+                if isinstance(self.prep_outputs, list):
+                    self._outputs.add_custom(outputs=self.prep_outputs)
+                self._outputs.add_profile_gas_elect_outputs()
+                self._outputs.add_umi_template_outputs()
+                self._outputs.apply()
 
     @property
     def outputtype(self):
+        """Get or set the outputtype for the idf string representation of self."""
         return self._outputtype
 
     @outputtype.setter
     def outputtype(self, value):
-        """Get or set the outputtype for the idf string representation of self."""
         assert value in self.OUTPUTTYPES, (
             f'Invalid input "{value}" for output_type.'
             f"\nOutput type must be one of the following: {self.OUTPUTTYPES}"
@@ -688,6 +687,10 @@ class IDF(GeomIDF):
 
     @prep_outputs.setter
     def prep_outputs(self, value):
+        assert isinstance(value, (bool, list)), (
+            f"Expected bool or list of dict for "
+            f"SimulationOutput outputs. Got {type(value)}."
+        )
         self._prep_outputs = value
 
     @property

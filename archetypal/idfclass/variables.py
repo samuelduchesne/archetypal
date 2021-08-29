@@ -74,8 +74,10 @@ class Variable:
                 # the environment_type is specified by the simulationcontrol.
                 try:
                     for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() \
-                                == "yes":
+                        if (
+                            ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower()
+                            == "yes"
+                        ):
                             environment_type = 3
                         else:
                             environment_type = 1

@@ -291,21 +291,20 @@ class IDF(geomIDF):
             # Set model outputs
             self._outputs = Outputs(idf=self)
             if self.prep_outputs:
-                (
-                    self._outputs.add_basics()
-                    .add_umi_template_outputs()
-                    .add_custom(outputs=self.prep_outputs)
-                    .add_profile_gas_elect_ouputs()
-                    .apply()
-                )
+                self._outputs.add_basics()
+                if isinstance(self.prep_outputs, list):
+                    self._outputs.add_custom(outputs=self.prep_outputs)
+                self._outputs.add_profile_gas_elect_outputs()
+                self._outputs.add_umi_template_outputs()
+                self._outputs.apply()
 
     @property
     def outputtype(self):
+        """Get or set the outputtype for the idf string representation of self."""
         return self._outputtype
 
     @outputtype.setter
     def outputtype(self, value):
-        """Get or set the outputtype for the idf string representation of self."""
         assert value in self.OUTPUTTYPES, (
             f'Invalid input "{value}" for output_type.'
             f"\nOutput type must be one of the following: {self.OUTPUTTYPES}"
@@ -685,6 +684,10 @@ class IDF(geomIDF):
 
     @prep_outputs.setter
     def prep_outputs(self, value):
+        assert isinstance(value, (bool, list)), (
+            f"Expected bool or list of dict for "
+            f"SimulationOutput outputs. Got {type(value)}."
+        )
         self._prep_outputs = value
 
     @property
@@ -881,6 +884,7 @@ class IDF(geomIDF):
         filepath, *_ = self.simulation_dir.files("*.idf")
 
         import subprocess
+
         app_path_guess = get_eplus_dirs(self.file_version.dash)
         find_and_launch("EP-Launch", app_path_guess, filepath.abspath())
 
@@ -1328,7 +1332,8 @@ class IDF(geomIDF):
         # Todo: Add EpMacro Thread -> if exist in.imf "%program_path%EPMacro"
         # Run the expandobjects program if necessary
         tmp = (
-            self.output_directory.makedirs_p() / "expandobjects_run_" + str(uuid.uuid1())[0:8]
+            self.output_directory.makedirs_p() / "expandobjects_run_"
+            + str(uuid.uuid1())[0:8]
         ).mkdir()
         # Run the ExpandObjects preprocessor program
         expandobjects_thread = ExpandObjectsThread(self, tmp)
@@ -1343,7 +1348,8 @@ class IDF(geomIDF):
 
         # Run the Basement preprocessor program if necessary
         tmp = (
-            self.output_directory.makedirs_p() / "runBasement_run_" + str(uuid.uuid1())[0:8]
+            self.output_directory.makedirs_p() / "runBasement_run_"
+            + str(uuid.uuid1())[0:8]
         ).mkdir()
         basement_thread = BasementThread(self, tmp)
         basement_thread.start()
@@ -1356,7 +1362,9 @@ class IDF(geomIDF):
             raise e
 
         # Run the Slab preprocessor program if necessary
-        tmp = (self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = (
+            self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]
+        ).mkdir()
         slab_thread = SlabThread(self, tmp)
         slab_thread.start()
         slab_thread.join()
@@ -1368,7 +1376,9 @@ class IDF(geomIDF):
             raise e
 
         # Run the energyplus program
-        tmp = (self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = (
+            self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]
+        ).mkdir()
         running_simulation_thread = EnergyPlusThread(self, tmp)
         running_simulation_thread.start()
         running_simulation_thread.join()

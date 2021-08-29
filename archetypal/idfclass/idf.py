@@ -349,7 +349,6 @@ class IDF(geomIDF):
         from pathlib import Path as Pathlib
 
         example_name = Path(example_name)
-        epw = Path(epw)
         file = next(
             iter(
                 Pathlib(
@@ -357,14 +356,18 @@ class IDF(geomIDF):
                 ).rglob(f"{example_name.stem}.idf")
             )
         )
-        epw = next(
-            iter(
-                Pathlib(
-                    EnergyPlusVersion.current().current_install_dir / "WeatherData"
-                ).rglob(f"{epw.stem}.epw")
-            ),
-            epw,
-        )
+        if epw is not None:
+            epw = Path(epw)
+            if not epw.exists():
+                epw = next(
+                    iter(
+                        Pathlib(
+                            EnergyPlusVersion.current().current_install_dir
+                            / "WeatherData"
+                        ).rglob(f"{epw.stem}.epw")
+                    ),
+                    epw,
+                )
         return cls(file, epw=epw, **kwargs)
 
     def setiddname(self, iddname, testing=False):

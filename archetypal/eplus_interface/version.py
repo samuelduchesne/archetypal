@@ -9,9 +9,7 @@ from packaging.version import Version
 from path import Path
 
 from archetypal import settings
-from archetypal.eplus_interface.exceptions import (
-    InvalidEnergyPlusVersion,
-)
+from archetypal.eplus_interface.exceptions import InvalidEnergyPlusVersion
 
 
 class EnergyPlusVersion(Version):

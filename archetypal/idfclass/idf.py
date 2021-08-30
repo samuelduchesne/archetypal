@@ -1332,7 +1332,8 @@ class IDF(geomIDF):
         # Todo: Add EpMacro Thread -> if exist in.imf "%program_path%EPMacro"
         # Run the expandobjects program if necessary
         tmp = (
-            self.output_directory.makedirs_p() / "expandobjects_run_" + str(uuid.uuid1())[0:8]
+            self.output_directory.makedirs_p() / "expandobjects_run_"
+            + str(uuid.uuid1())[0:8]
         ).mkdir()
         # Run the ExpandObjects preprocessor program
         expandobjects_thread = ExpandObjectsThread(self, tmp)
@@ -1347,7 +1348,8 @@ class IDF(geomIDF):
 
         # Run the Basement preprocessor program if necessary
         tmp = (
-            self.output_directory.makedirs_p() / "runBasement_run_" + str(uuid.uuid1())[0:8]
+            self.output_directory.makedirs_p() / "runBasement_run_"
+            + str(uuid.uuid1())[0:8]
         ).mkdir()
         basement_thread = BasementThread(self, tmp)
         basement_thread.start()
@@ -1360,7 +1362,9 @@ class IDF(geomIDF):
             raise e
 
         # Run the Slab preprocessor program if necessary
-        tmp = (self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = (
+            self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]
+        ).mkdir()
         slab_thread = SlabThread(self, tmp)
         slab_thread.start()
         slab_thread.join()
@@ -1372,7 +1376,9 @@ class IDF(geomIDF):
             raise e
 
         # Run the energyplus program
-        tmp = (self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = (
+            self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]
+        ).mkdir()
         running_simulation_thread = EnergyPlusThread(self, tmp)
         running_simulation_thread.start()
         running_simulation_thread.join()
@@ -2054,6 +2060,30 @@ class IDF(geomIDF):
                         except (KeyError, AttributeError):
                             pass
         return used_schedules
+
+    @property
+    def width(self):
+        """Get the width of the building [m]."""
+        bbox = self.bounding_box()
+        return max(bbox.xs) - min(bbox.xs)
+
+    @property
+    def length(self):
+        """Get the length of the building [m]."""
+        bbox = self.bounding_box()
+        return max(bbox.ys) - min(bbox.ys)
+
+    def resize(self, width, length):
+        """Resize the floor plate to x and y [meters].
+
+        Args:
+            width (float): The new width [m] of the building (x axis).
+            length (float): The new length [m] of the building (y axis).
+        """
+        x_scale = width / self.width
+        y_scale = length / self.length
+        self.scale(x_scale, axes="x")
+        self.scale(y_scale, axes="y")
 
     def rename(self, objkey, objname, newname):
         """Rename all the references to this objname.

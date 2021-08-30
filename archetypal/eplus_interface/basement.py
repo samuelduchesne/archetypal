@@ -57,14 +57,10 @@ class BasementThread(Thread):
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        self.basement_exe = Path(
-            shutil.which(
-                "Basement", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
-            )
-        ).copy(self.run_dir)
-        self.basement_idd = (
-            self.eplus_home / "PreProcess" / "GrndTempCalc" / "BasementGHT.idd"
-        ).copy(self.run_dir)
+        self.basement_exe = Path(shutil.which("Basement", path=self.eplus_home)).copy(
+            self.run_dir
+        )
+        self.basement_idd = (self.eplus_home / "BasementGHT.idd").copy(self.run_dir)
         self.outfile = self.idf.name
 
         # The BasementGHTin.idf file is copied from the self.include list (
@@ -207,11 +203,13 @@ class BasementThread(Thread):
 
     @property
     def eplus_home(self):
-        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
-        if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
-            )
+        """Get the version-dependant directory where executables are installed."""
+        if self.idf.file_version <= EnergyPlusVersion("7.2"):
+            install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            return Path(eplus_home)
+            install_dir = (
+                self.idf.file_version.current_install_dir
+                / "PreProcess"
+                / "GrndTempCalc"
+            )
+        return install_dir

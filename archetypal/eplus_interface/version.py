@@ -168,7 +168,7 @@ class EnergyPlusVersion(Version):
             else:
                 _valid_paths = {}
                 for iddname in iddnames:
-                    match = re.search(r"V(\d-\d-\d)", str(iddname))
+                    match = re.search(".+V(\d-\d-\d)", str(iddname))
                     if match is None:
                         # match the Idd file contained in basedir
                         match = re.search(r"([\d]-[\d]-[\d])", iddname)

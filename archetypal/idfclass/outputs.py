@@ -36,7 +36,8 @@ class Outputs:
             a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]
         )
         self.output_meters = set(
-            a.Key_Name for a in idf.idfobjects["Output:Meter".upper()]
+            getattr(a, "Key_Name", getattr(a, "Name"))  # Backwards compatibility
+            for a in idf.idfobjects["Output:Meter".upper()]
         )
         # existing_ouputs = []
         # for key in idf.getiddgroupdict()["Output Reporting"]:

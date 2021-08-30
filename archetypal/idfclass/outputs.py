@@ -1,6 +1,3 @@
-from typing import Iterable
-
-
 class Outputs:
     """Handles preparation of EnergyPlus outputs. Different instance methods
     allow to chain methods together and to add predefined bundles of outputs in
@@ -9,161 +6,18 @@ class Outputs:
     Examples:
         >>> from archetypal import IDF
         >>> idf = IDF(prep_outputs=False)  # True be default
-        >>> idf.outputs.add_output_control().add_umi_outputs(
-        >>> ).add_profile_gas_elect_outputs().apply()
+        >>> idf.outputs.add_output_control().add_umi_ouputs(
+        >>> ).add_profile_gas_elect_ouputs().apply()
     """
 
-    REPORTING_FREQUENCIES = ("Annual", "Monthly", "Daily", "Hourly", "Timestep")
-
-    def __init__(
-        self,
-        idf,
-        variables=None,
-        meters=None,
-        outputs=None,
-        reporting_frequency="Hourly",
-        include_sqlite=True,
-        include_html=True,
-        unit_conversion=None,
-    ):
+    def __init__(self, idf):
         """Initialize an outputs object.
 
         Args:
             idf (IDF): the IDF object for wich this outputs object is created.
         """
         self.idf = idf
-        self.output_variables = variables
-        self.output_meters = meters
-        self.other_outputs = outputs
-        self.reporting_frequency = reporting_frequency
-        self.include_sqlite = include_sqlite
-        self.include_html = include_html
-        self.unit_conversion = unit_conversion
-
-    @property
-    def unit_conversion(self):
-        return self._unit_conversion
-
-    @unit_conversion.setter
-    def unit_conversion(self, value):
-        if not value:
-            value = "None"
-        assert value in ["None", "JtoKWH", "JtoMJ", "JtoGJ", "InchPound"]
-        for obj in self.idf.idfobjects["OutputControl:Table:Style".upper()]:
-            obj.Unit_Conversion = value
-        self._unit_conversion = value
-
-    @property
-    def include_sqlite(self):
-        """Get or set a boolean for whether a SQLite report should be generated."""
-        return self._include_sqlite
-
-    @include_sqlite.setter
-    def include_sqlite(self, value):
-        value = bool(value)
-        if value:
-            self.add_sql().apply()
-        else:
-            # if False, try to remove sql, if exists.
-            for obj in self.idf.idfobjects["Output:SQLite".upper()]:
-                self.idf.removeidfobject(obj)
-        self._include_sqlite = value
-
-    @property
-    def include_html(self):
-        """Get or set a boolean for whether an HTML report should be generated."""
-        return self._include_html
-
-    @include_html.setter
-    def include_html(self, value):
-        value = bool(value)
-        if value:
-            self.add_output_control().apply()
-        else:
-            # if False, try to remove sql, if exists.
-            for obj in self.idf.idfobjects["OutputControl:Table:Style".upper()]:
-                obj.Column_Separator = "Comma"
-        self._include_html = value
-
-    @property
-    def output_variables(self):
-        """Get or set a tuple of EnergyPlus simulation output variables."""
-        return tuple(sorted(self._output_variables))
-
-    @output_variables.setter
-    def output_variables(self, value):
-        if value is not None:
-            assert not isinstance(
-                value, (str, bytes)
-            ), f"Expected list or tuple. Got {type(value)}."
-            values = []
-            for output in value:
-                values.append(str(output))
-            value = set(values)
-        else:
-            value = set()
-        self._output_variables = value
-
-    @property
-    def output_meters(self):
-        """Get or set a tuple of EnergyPlus simulation output meters."""
-        return tuple(sorted(self._output_meters))
-
-    @output_meters.setter
-    def output_meters(self, value):
-        if value is not None:
-            assert not isinstance(
-                value, (str, bytes)
-            ), f"Expected list or tuple. Got {type(value)}."
-            values = []
-            for output in value:
-                values.append(str(output))
-            value = set(values)
-        else:
-            value = set()
-        self._output_meters = value
-
-    @property
-    def other_outputs(self):
-        """Get or set a list of outputs."""
-        return self._other_outputs
-
-    @other_outputs.setter
-    def other_outputs(self, value):
-        if value is not None:
-            assert all(
-                isinstance(item, dict) for item in value
-            ), f"Expected list of dict. Got {type(value)}."
-            values = []
-            for output in value:
-                values.append(output)
-            value = values
-        else:
-            value = []
-        self._other_outputs = value
-
-    @property
-    def reporting_frequency(self):
-        """Get or set the reporting frequency of outputs.
-
-        Choose from the following:
-
-        * Annual
-        * Monthly
-        * Daily
-        * Hourly
-        * Timestep
-        """
-        return self._reporting_frequency
-
-    @reporting_frequency.setter
-    def reporting_frequency(self, value):
-        value = value.title()
-        assert value in self.REPORTING_FREQUENCIES, (
-            f"reporting_frequency {value} is not recognized.\nChoose from the "
-            f"following:\n{self.REPORTING_FREQUENCIES}"
-        )
-        self._reporting_frequency = value
+        self._outputs = []
 
     def add_custom(self, outputs):
         """Add custom-defined outputs as a list of objects.
@@ -184,14 +38,8 @@ class Outputs:
         Returns:
             Outputs: self
         """
-        assert isinstance(outputs, Iterable), "outputs must be some sort of iterable"
-        for output in outputs:
-            if "meter" in output["key"].lower():
-                self._output_meters.add(output)
-            elif "variable" in output["key"].lower():
-                self._output_variables.add(output)
-            else:
-                self._other_outputs.append(output)
+        if isinstance(outputs, list):
+            self._outputs.extend(outputs)
         return self
 
     def add_basics(self):
@@ -207,8 +55,8 @@ class Outputs:
     def add_schedules(self):
         """Adds Schedules object"""
         outputs = [{"key": "Output:Schedules".upper(), **dict(Key_Field="Hourly")}]
-        for output in outputs:
-            self._other_outputs.append(output)
+
+        self._outputs.extend(outputs)
         return self
 
     def add_meter_variables(self, format="IDF"):
@@ -227,8 +75,7 @@ class Outputs:
             Outputs: self
         """
         outputs = [dict(key="Output:VariableDictionary".upper(), Key_Field=format)]
-        for output in outputs:
-            self._other_outputs.append(output)
+        self._outputs.extend(outputs)
         return self
 
     def add_summary_report(self, summary="AllSummary"):
@@ -258,8 +105,8 @@ class Outputs:
                 **dict(Report_1_Name=summary),
             }
         ]
-        for output in outputs:
-            self._other_outputs.append(output)
+
+        self._outputs.extend(outputs)
         return self
 
     def add_sql(self, sql_output_style="SimpleAndTabular"):
@@ -278,12 +125,9 @@ class Outputs:
         Returns:
             Outputs: self
         """
-        outputs = [
-            {"key": "Output:SQLite".upper(), **dict(Option_Type=sql_output_style)}
-        ]
+        output = {"key": "Output:SQLite".upper(), **dict(Option_Type=sql_output_style)}
 
-        for output in outputs:
-            self._other_outputs.append(output)
+        self._outputs.extend([output])
         return self
 
     def add_output_control(self, output_control_table_style="CommaAndHTML"):
@@ -295,17 +139,6 @@ class Outputs:
         Returns:
             Outputs: self
         """
-        assert output_control_table_style in [
-            "Comma",
-            "Tab",
-            "Fixed",
-            "HTML",
-            "XML",
-            "CommaAndHTML",
-            "TabAndHTML",
-            "XMLAndHTML",
-            "All",
-        ]
         outputs = [
             {
                 "key": "OutputControl:Table:Style".upper(),
@@ -313,52 +146,195 @@ class Outputs:
             }
         ]
 
-        for output in outputs:
-            self._other_outputs.append(output)
+        self._outputs.extend(outputs)
         return self
 
     def add_umi_template_outputs(self):
         """Adds the necessary outputs in order to create an UMI template."""
         # list the outputs here
-        variables = [
-            "Air System Outdoor Air Minimum Flow Fraction",
-            "Air System Total Cooling Energy",
-            "Air System Total Heating Energy",
-            "Heat Exchanger Latent Effectiveness",
-            "Heat Exchanger Sensible Effectiveness",
-            "Heat Exchanger Total Heating Rate",
-            "Water Heater Heating Energy",
-            "Zone Ideal Loads Zone Total Cooling Energy",
-            "Zone Ideal Loads Zone Total Heating Energy",
-            "Zone Thermostat Cooling Setpoint Temperature",
-            "Zone Thermostat Heating Setpoint Temperature",
+        outputs = [
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Air System Total Heating Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Air System Total Cooling Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Zone Thermostat Heating Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Zone Thermostat Cooling Setpoint Temperature",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Heat Exchanger Total Heating Rate",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Heat Exchanger Sensible Effectiveness",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Heat Exchanger Latent Effectiveness",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Water Heater Heating Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Air System Outdoor Air Minimum Flow Fraction",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="HeatRejection:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:EnergyTransfer", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:EnergyTransfer", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="Heating:DistrictHeating", Reporting_Frequency="hourly"
+                ),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Electricity", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Gas", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="Cooling:DistrictCooling", Reporting_Frequency="hourly"
+                ),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Gas", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="WaterSystems:EnergyTransfer", Reporting_Frequency="hourly"
+                ),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Fans:Electricity", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Pumps:Electricity", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="Refrigeration:Electricity", Reporting_Frequency="hourly"
+                ),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="Refrigeration:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="HeatingCoils:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="Baseboard:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="HeatRejection:Electricity",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Meter".upper(),
+                **dict(
+                    Key_Name="CoolingCoils:EnergyTransfer",
+                    Reporting_Frequency="hourly",
+                ),
+            },
         ]
-        for output in variables:
-            self._output_variables.add(output)
 
-        meters = [
-            "Baseboard:EnergyTransfer",
-            "Cooling:DistrictCooling",
-            "Cooling:Electricity",
-            "Cooling:Electricity",
-            "Cooling:EnergyTransfer",
-            "Cooling:Gas",
-            "CoolingCoils:EnergyTransfer",
-            "Fans:Electricity",
-            "HeatRejection:Electricity",
-            "HeatRejection:EnergyTransfer",
-            "Heating:DistrictHeating",
-            "Heating:Electricity",
-            "Heating:EnergyTransfer",
-            "Heating:Gas",
-            "HeatingCoils:EnergyTransfer",
-            "Pumps:Electricity",
-            "Refrigeration:Electricity",
-            "Refrigeration:EnergyTransfer",
-            "WaterSystems:EnergyTransfer",
-        ]
-        for meter in meters:
-            self._output_meters.add(meter)
+        self._outputs.extend(outputs)
         return self
 
     def add_dxf(self):
@@ -368,100 +344,90 @@ class Outputs:
                 **dict(Report_Type="DXF", Report_Specifications_1="ThickPolyline"),
             }
         ]
-        for output in outputs:
-            self._other_outputs.append(output)
+        self._outputs.extend(outputs)
         return self
 
-    def add_umi_outputs(self):
+    def add_umi_ouputs(self):
         """Adds the necessary outputs in order to return the same energy profile
         as in UMI.
         """
         # list the outputs here
         outputs = [
-            "Air System Total Heating Energy",
-            "Air System Total Cooling Energy",
-            "Zone Ideal Loads Zone Total Cooling Energy",
-            "Zone Ideal Loads Zone Total Heating Energy",
-            "Water Heater Heating Energy",
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Air System Total Heating Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Air System Total Cooling Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Zone Ideal Loads Zone Total Cooling Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Zone Ideal Loads Zone Total Heating Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
+            {
+                "key": "Output:Variable".upper(),
+                **dict(
+                    Variable_Name="Water Heater Heating Energy",
+                    Reporting_Frequency="hourly",
+                ),
+            },
         ]
-        for output in outputs:
-            self._output_variables.add(output)
+
+        self._outputs.extend(outputs)
         return self
 
-    def add_profile_gas_elect_outputs(self):
+    def add_profile_gas_elect_ouputs(self):
         """Adds the following meters: Electricity:Facility, Gas:Facility,
         WaterSystems:Electricity, Heating:Electricity, Cooling:Electricity
         """
         # list the outputs here
         outputs = [
-            "Electricity:Facility",
-            "Gas:Facility",
-            "WaterSystems:Electricity",
-            "Heating:Electricity",
-            "Cooling:Electricity",
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Electricity:Facility", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Gas:Facility", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(
+                    Key_Name="WaterSystems:Electricity", Reporting_Frequency="hourly"
+                ),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Heating:Electricity", Reporting_Frequency="hourly"),
+            },
+            {
+                "key": "OUTPUT:METER",
+                **dict(Key_Name="Cooling:Electricity", Reporting_Frequency="hourly"),
+            },
         ]
-        for output in outputs:
-            self._output_meters.add(output)
+        self._outputs.extend(outputs)
         return self
-
-    def add_hvac_energy_use(self):
-        """Add outputs for HVAC energy use when detailed systems are assigned.
-
-        This includes a range of outputs for different pieces of equipment,
-        which is meant to catch all energy-consuming parts of a system.
-        (eg. chillers, boilers, coils, humidifiers, fans, pumps).
-        """
-        outputs = [
-            "Baseboard Electricity Energy",
-            "Boiler NaturalGas Energy",
-            "Chiller Electricity Energy",
-            "Chiller Heater System Cooling Electricity Energy",
-            "Chiller Heater System Heating Electricity Energy",
-            "Cooling Coil Electricity Energy",
-            "Cooling Tower Fan Electricity Energy",
-            "District Cooling Chilled Water Energy",
-            "District Heating Hot Water Energy",
-            "Evaporative Cooler Electricity Energy",
-            "Fan Electricity Energy",
-            "Heating Coil Electricity Energy",
-            "Heating Coil NaturalGas Energy",
-            "Heating Coil Total Heating Energy",
-            "Hot_Water_Loop_Central_Air_Source_Heat_Pump Electricity Consumption",
-            "Humidifier Electricity Energy",
-            "Pump Electricity Energy",
-            "VRF Heat Pump Cooling Electricity Energy",
-            "VRF Heat Pump Crankcase Heater Electricity Energy",
-            "VRF Heat Pump Defrost Electricity Energy",
-            "VRF Heat Pump Heating Electricity Energy",
-            "Zone VRF Air Terminal Cooling Electricity Energy",
-            "Zone VRF Air Terminal Heating Electricity Energy",
-        ]
-        for output in outputs:
-            self._output_variables.add(output)
 
     def apply(self):
         """Applies the outputs to the idf model. Modifies the model by calling
         :meth:`~archetypal.idfclass.idf.IDF.newidfobject`"""
-        for output in self.output_variables:
-            self.idf.newidfobject(
-                key="Output:Variable".upper(),
-                **dict(
-                    Variable_Name=output, Reporting_Frequency=self.reporting_frequency
-                ),
-            )
-        for meter in self.output_meters:
-            self.idf.newidfobject(
-                key="Output:Meter".upper(),
-                **dict(Key_Name=meter, Reporting_Frequency=self.reporting_frequency),
-            )
-        for output in self.other_outputs:
+        for output in self._outputs:
             self.idf.newidfobject(**output)
         return self
-
-    def __repr__(self):
-        variables = "OutputVariables:\n {}".format("\n ".join(self.output_variables))
-        meters = "OutputMeters:\n {}".format("\n ".join(self.output_meters))
-        outputs = "Outputs:\n {}".format(
-            "\n ".join((a["key"] for a in self.other_outputs))
-        )
-        return "\n".join([variables, meters, outputs])

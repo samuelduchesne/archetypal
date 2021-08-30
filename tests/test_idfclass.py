@@ -285,6 +285,15 @@ class TestIDF:
         save_as = tmp_path / "idf_dup.idf"
         idf_dup = idf.saveas(save_as)
 
+    def test_resize(self):
+        """Test resizing a building to specific width and length"""
+        idf = IDF.from_example_files("5ZoneAirCooled.idf")
+        assert idf.width == 30.5
+        assert idf.length == 15.2
+        idf.resize(10, 10)
+        assert idf.width == 10
+        assert idf.length == 10
+
 
 class TestIDFTransition:
     def test_transition(self, tmp_path):

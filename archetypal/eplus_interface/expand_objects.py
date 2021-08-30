@@ -59,9 +59,8 @@ class ExpandObjectsThread(Thread):
             self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
             self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
-            self.expandobjectsexe = Path(
-                shutil.which("ExpandObjects", path=self.eplus_home.expand())
-            ).copy2(tmp)
+            expand_object_exe = shutil.which("ExpandObjects", path=self.eplus_home)
+            self.expandobjectsexe = Path(expand_object_exe).copy2(tmp)
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
@@ -151,14 +150,12 @@ class ExpandObjectsThread(Thread):
 
     @property
     def eplus_home(self):
-        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
-        if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
-            )
+        """Get the version-dependant directory where executables are installed."""
+        if self.idf.file_version <= EnergyPlusVersion("7.2"):
+            install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            return Path(eplus_home)
+            install_dir = self.idf.file_version.current_install_dir
+        return install_dir
 
     def stop(self):
         if self.p.poll() is None:

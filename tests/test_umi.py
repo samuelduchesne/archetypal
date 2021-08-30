@@ -6,7 +6,7 @@ import pytest
 from path import Path
 
 from archetypal import IDF, settings
-from archetypal.eplus_interface.version import get_eplus_dirs
+from archetypal.eplus_interface import EnergyPlusVersion
 from archetypal.template.building_template import BuildingTemplate
 from archetypal.template.conditioning import ZoneConditioning
 from archetypal.template.dhw import DomesticHotWaterSetting
@@ -53,7 +53,7 @@ class TestUmiTemplate:
         """Test creating UmiTemplateLibrary from 2 IDF files"""
         idf_source = [
             "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            get_eplus_dirs(settings.ep_version)
+            EnergyPlusVersion.current().current_install_dir
             / "ExampleFiles"
             / "VentilationSimpleTest.idf",
         ]

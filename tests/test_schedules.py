@@ -4,7 +4,7 @@ import pytest
 
 import archetypal.settings as settings
 from archetypal import IDF
-from archetypal.eplus_interface.version import get_eplus_dirs
+from archetypal.eplus_interface import EnergyPlusVersion
 from archetypal.schedule import Schedule, ScheduleTypeLimits
 from archetypal.template.schedule import UmiSchedule, YearSchedule
 from archetypal.utils import config
@@ -98,7 +98,7 @@ def schedules_idf():
         epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
         readvars=True,
         include=[
-            get_eplus_dirs(settings.ep_version)
+            EnergyPlusVersion.current().current_install_dir
             / "DataSets"
             / "TDV"
             / "TDV_2008_kBtu_CTZ06.csv"

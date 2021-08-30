@@ -28,7 +28,7 @@ recommended to put the `config` method at the beginning of a script or in the fi
 
 .. code-block:: python
 
-    from archetypal import IDF, config, get_eplus_dirs, settings
+    from archetypal import IDF, config, EnergyPlusVersion
     config(use_cache=True, log_console=True)
 
 Example
@@ -38,9 +38,9 @@ In a Jupyter Notebook, one would typically do the following:
 
 .. code-block:: python
 
-    idf = IDF(
-        get_eplus_dirs(settings.as_version) / "ExampleFiles" / "BasicsFiles/AdultEducationCenter.idf",
-        epw=get_eplus_dirs(settings.as_version) / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+    idf = IDF.from_example_files(
+        "AdultEducationCenter.idf",
+        epw="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
         design_day=True,
         annual=False,
         expandobjects=True,

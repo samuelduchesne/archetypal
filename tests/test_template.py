@@ -6,7 +6,7 @@ import pytest
 from eppy.bunch_subclass import EpBunch
 
 from archetypal import IDF, settings
-from archetypal.eplus_interface.version import get_eplus_dirs
+from archetypal.eplus_interface import EnergyPlusVersion
 from archetypal.simple_glazing import calc_simple_glazing
 from archetypal.template.building_template import BuildingTemplate
 from archetypal.template.conditioning import ZoneConditioning, EconomizerTypes
@@ -1863,13 +1863,9 @@ class TestZoneLoad:
     @pytest.fixture(scope="class")
     def fiveZoneEndUses(self, config):
         """"""
-        epw = (
-            get_eplus_dirs(settings.ep_version)
-            / "WeatherData"
-            / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        )
         idf = IDF.from_example_files(
-            "5ZoneAirCooled_AirBoundaries_Daylighting.idf", epw=epw
+            "5ZoneAirCooled_AirBoundaries_Daylighting.idf",
+            epw="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
         )
         if idf.sim_info is None:
             idf.simulate()
@@ -2194,12 +2190,19 @@ class TestVentilationSetting:
     def ventilatontests(self, config, request):
         """Create test cases with different ventilation definitions."""
 
-        eplusdir = get_eplus_dirs(settings.ep_version)
-        w = eplusdir / "WeatherData" / "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
-        idf = IDF.from_example_files(request.param, epw=w, annual=True)
+        eplusdir = EnergyPlusVersion.current().current_install_dir
+        idf = IDF.from_example_files(
+            request.param,
+            epw="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+            annual=True,
+        )
         if idf.sim_info is None:
             idf.simulate()
-        copy = IDF.from_example_files(request.param, epw=w, annual=True)
+        copy = IDF.from_example_files(
+            request.param,
+            epw="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+            annual=True,
+        )
         if copy.sim_info is None:
             copy.simulate()
         yield idf, request.param, copy  # passes a copy as well

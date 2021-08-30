@@ -31,4 +31,5 @@ warnings.simplefilter(action="ignore", category=FutureWarning)
 warnings.simplefilter(action="ignore", category=UserWarning)
 
 from .idfclass import IDF
+from .eplus_interface.version import EnergyPlusVersion
 from .umi_template import UmiTemplateLibrary

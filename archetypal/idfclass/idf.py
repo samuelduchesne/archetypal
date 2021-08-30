@@ -47,7 +47,7 @@ from archetypal.eplus_interface.exceptions import (
 from archetypal.eplus_interface.expand_objects import ExpandObjectsThread
 from archetypal.eplus_interface.slab import SlabThread
 from archetypal.eplus_interface.transition import TransitionThread
-from archetypal.eplus_interface.version import EnergyPlusVersion, get_eplus_dirs
+from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.idfclass.meters import Meters
 from archetypal.idfclass.outputs import Outputs
 from archetypal.idfclass.reports import get_report
@@ -329,16 +329,47 @@ class IDF(geomIDF):
         return f"<{body}>"
 
     @classmethod
-    def from_example_files(cls, example_name, **kwargs):
-        """Load an IDF model from the ExampleFiles folder by name."""
+    def from_example_files(cls, example_name, epw=None, **kwargs):
+        """Load an IDF model from the ExampleFiles folder by name.
+
+        Examples:
+            idf = IDF.from_example_files(
+                "minimal",
+                "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+            )
+
+        Args:
+            example_name (str): The name of the example file to load.
+            epw (str): The name of the weather file contained the WeatherData folder
+                or the path to a specific weather file.
+            **kwargs: keyword arguments passed to the IDF constructor.
+
+        Returns:
+            (IDF): An IDF model.
+        """
+        from pathlib import Path as Pathlib
+
+        example_name = Path(example_name)
         file = next(
             iter(
-                (get_eplus_dirs(settings.ep_version) / "ExampleFiles").files(
-                    example_name
-                )
+                Pathlib(
+                    EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
+                ).rglob(f"{example_name.stem}.idf")
             )
         )
-        return cls(file, **kwargs)
+        if epw is not None:
+            epw = Path(epw)
+            if not epw.exists():
+                epw = next(
+                    iter(
+                        Pathlib(
+                            EnergyPlusVersion.current().current_install_dir
+                            / "WeatherData"
+                        ).rglob(f"{epw.stem}.epw")
+                    ),
+                    epw,
+                )
+        return cls(file, epw=epw, **kwargs)
 
     def setiddname(self, iddname, testing=False):
         """Set EnergyPlus IDD path for model.
@@ -458,14 +489,7 @@ class IDF(geomIDF):
                     f"{self.as_version} cannot be lower then "
                     f"the version number set in the file: {self.file_version}"
                 )
-            idd_filename = Path(getiddfile(str(self.file_version))).expand()
-            if not idd_filename.exists():
-                # Try finding the one in IDFVersionsUpdater
-                idd_filename = (
-                    self.idfversionupdater_dir / f"V"
-                    f"{self.file_version.dash}-Energy+.idd"
-                ).expand()
-            self._iddname = idd_filename
+            self._iddname = self.file_version.current_idd_path
         return self._iddname
 
     @property
@@ -766,7 +790,9 @@ class IDF(geomIDF):
         Uses the current module's ep_version.
         """
         return (
-            get_eplus_dirs(settings.ep_version) / "PreProcess" / "IDFVersionUpdater"
+            EnergyPlusVersion.current().current_install_dir
+            / "PreProcess"
+            / "IDFVersionUpdater"
         ).expand()
 
     @property
@@ -848,10 +874,8 @@ class IDF(geomIDF):
         else:
             filepath = self.idfname
 
-        import subprocess
-
         app_path_guess = (
-            get_eplus_dirs(self.file_version.dash) / "PreProcess" / "IDFEditor"
+            self.file_version.current_install_dir / "PreProcess" / "IDFEditor"
         )
         find_and_launch("IDFEditor", app_path_guess, filepath.abspath())
 
@@ -860,7 +884,8 @@ class IDF(geomIDF):
         filepath, *_ = self.simulation_dir.files("*.idf")
 
         import subprocess
-        app_path_guess = get_eplus_dirs(self.file_version.dash)
+
+        app_path_guess = self.file_version.current_install_dir
         find_and_launch("EP-Launch", app_path_guess, filepath.abspath())
 
     def open_mdd(self):

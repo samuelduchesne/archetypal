@@ -7,7 +7,7 @@ from archetypal.idfclass import Outputs
 class TestOutput:
     @pytest.fixture()
     def idf(self):
-        yield IDF()
+        yield IDF(prep_outputs=False)
 
     def test_output_init(self, idf):
         """Test initialization of the Output class."""
@@ -36,7 +36,8 @@ class TestOutput:
         )
         outputs.reporting_frequency = "daily"  # lower case
         assert outputs.reporting_frequency == "Daily"  # should be upper case
-
+        outputs.unit_conversion = "InchPound"
+        assert outputs.unit_conversion == "InchPound"
         outputs.include_sqlite = False
         assert not outputs.include_sqlite
         outputs.include_html = True
@@ -50,3 +51,12 @@ class TestOutput:
             outputs.reporting_frequency = "annually"
         with pytest.raises(AssertionError):
             outputs.other_outputs = "ComponentSizingSummary"
+        with pytest.raises(AssertionError):
+            outputs.unit_conversion = "IP"
+
+    def test_add_basics(self, idf):
+        """Test the Output add_basics method"""
+        outputs = Outputs(idf).add_basics()
+        assert len(outputs.output_variables) == 0
+        assert len(outputs.output_meters) == 0
+        assert len(outputs.other_outputs) == 6

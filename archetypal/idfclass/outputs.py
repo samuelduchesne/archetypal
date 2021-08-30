@@ -32,9 +32,22 @@ class Outputs:
             idf (IDF): the IDF object for wich this outputs object is created.
         """
         self.idf = idf
-        self.output_variables = variables
-        self.output_meters = meters
+        self.output_variables = set(
+            a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]
+        )
+        self.output_meters = set(
+            a.Key_Name for a in idf.idfobjects["Output:Meter".upper()]
+        )
+        # existing_ouputs = []
+        # for key in idf.getiddgroupdict()["Output Reporting"]:
+        #     if key not in ["Output:Variable", "Output:Meter"]:
+        #         existing_ouputs.extend(idf.idfobjects[key.upper()].to_dict())
+        # self.other_outputs = existing_ouputs
         self.other_outputs = outputs
+
+        self.output_variables += tuple(variables or ())
+        self.output_meters += tuple(meters or ())
+        self.other_outputs += tuple(outputs or ())
         self.reporting_frequency = reporting_frequency
         self.include_sqlite = include_sqlite
         self.include_html = include_html
@@ -86,7 +99,7 @@ class Outputs:
         self._include_html = value
 
     @property
-    def output_variables(self):
+    def output_variables(self) -> tuple:
         """Get or set a tuple of EnergyPlus simulation output variables."""
         return tuple(sorted(self._output_variables))
 
@@ -199,7 +212,6 @@ class Outputs:
         return (
             self.add_summary_report()
             .add_output_control()
-            .add_sql()
             .add_schedules()
             .add_meter_variables()
         )
@@ -455,6 +467,9 @@ class Outputs:
                 **dict(Key_Name=meter, Reporting_Frequency=self.reporting_frequency),
             )
         for output in self.other_outputs:
+            key = output.pop("key", None)
+            if key:
+                output["key"] = key.upper()
             self.idf.newidfobject(**output)
         return self
 

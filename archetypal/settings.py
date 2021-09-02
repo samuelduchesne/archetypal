@@ -128,16 +128,7 @@ resource_package = archetypal.__name__  # Could be any module/package name
 
 from energy_pandas.units import unit_registry
 
-unit_registry.define("m3 = 1 * meter ** 3 = m³")
-unit_registry.define(
-    "degree_Celsius = kelvin; offset: 273.15 = °C = C = celsius = degC = degreeC"
-)
-unit_registry.define(
-    "degree_Fahrenheit = 5 / 9 * kelvin; offset: 233.15 + 200 / 9 = "
-    "°F = F = fahrenheit = degF = degreeF"
-)
-unit_registry.define("ach = dimensionless")  # Air Changes per Hour
-unit_registry.define("acr = 1 / hour")  # Air change rate
+unit_registry = unit_registry
 
 
 class ZoneWeight(object):

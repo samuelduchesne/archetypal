@@ -1240,13 +1240,16 @@ class IDF(geomIDF):
                 self._variables = Variables(self)
         return self._variables
 
-    def simulate(self, **kwargs):
+    def simulate(self, force=False, **kwargs):
         """Execute EnergyPlus.
 
         Specified kwargs overwrite IDF parameters. ExpandObjects, Basement and Slab
         preprocessors are ran before EnergyPlus.
 
         Does not return anything.
+
+        Args:
+            force (bool): Force simulation even though results exist in `self.simulation_dir`.
 
         Keyword Args:
             eplus_file (str): path to the idf file.
@@ -1302,9 +1305,11 @@ class IDF(geomIDF):
                 energyplus command.
 
         See Also:
-            :meth:`simulation_files`, :meth:`processed_results` for simulation outputs.
+            :attr:`IDF.simulation_files`, :attr:`IDF.processed_results` for simulation outputs.
 
         """
+        if self.simulation_dir.exists() and not force:  # don't simulate if results exists
+            return self
         # First, update keys with new values
         for key, value in kwargs.items():
             if f"_{key}" in self.__dict__.keys():

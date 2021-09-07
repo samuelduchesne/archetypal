@@ -1934,6 +1934,8 @@ class IDF(GeomIDF):
     def removeidfobjects(self, idfobjects: Iterable[EpBunch]):
         """Remove an IDF object from the model.
 
+        Resetting dependent variables will wait after all objects have been removed.
+
         Args:
             idfobjects: The object to remove from the model.
         """

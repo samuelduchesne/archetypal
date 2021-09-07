@@ -300,8 +300,10 @@ class IDF(GeomIDF):
                 self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
-            self._outputs = Outputs(idf=self)
+            self._outputs = Outputs(idf=self, include_html=False, include_sqlite=False)
             if self.prep_outputs:
+                self._outputs.include_html = True
+                self._outputs.include_sqlite = True
                 self._outputs.add_basics()
                 if isinstance(self.prep_outputs, list):
                     self._outputs.add_custom(outputs=self.prep_outputs)

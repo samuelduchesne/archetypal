@@ -288,8 +288,10 @@ class IDF(GeomIDF):
                 self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
-            self._outputs = Outputs(idf=self)
+            self._outputs = Outputs(idf=self, include_html=False, include_sqlite=False)
             if self.prep_outputs:
+                self._outputs.include_html = True
+                self._outputs.include_sqlite = True
                 self._outputs.add_basics()
                 if isinstance(self.prep_outputs, list):
                     self._outputs.add_custom(outputs=self.prep_outputs)
@@ -1524,6 +1526,29 @@ class IDF(GeomIDF):
             raise ValueError("No results to process. Have you called IDF.simulate()?")
         else:
             return results
+
+    def add_idf_object_from_idf_string(self, idf_string):
+        """Add an IDF object (or more than one) from an EnergyPlus text string.
+
+        Args:
+            idf_string (str): A text string fully describing an EnergyPlus object.
+        """
+        loaded_string = IDF(
+            StringIO(idf_string),
+            file_version=self.file_version,
+            as_version=self.as_version,
+            prep_outputs=False,
+        )
+        added_objects = []
+        for sequence in loaded_string.idfobjects.values():
+            if sequence:
+                for obj in sequence:
+                    data = obj.to_dict()
+                    key = data.pop("key")
+                    added_objects.append(self.newidfobject(key=key.upper(), **data))
+                # added_objects.extend(self.addidfobjects(list(sequence)))
+        del loaded_string  # remove
+        return added_objects
 
     def upgrade(self, to_version=None, overwrite=True):
         """`EnergyPlus` idf version updater using local transition program.

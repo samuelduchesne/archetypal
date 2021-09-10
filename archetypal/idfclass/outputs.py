@@ -14,6 +14,85 @@ class Outputs:
     """
 
     REPORTING_FREQUENCIES = ("Annual", "Monthly", "Daily", "Hourly", "Timestep")
+    COOLING = (
+        "Zone Ideal Loads Supply Air Total Cooling Energy",
+        "Zone Ideal Loads Zone Sensible Cooling Energy",
+        "Zone Ideal Loads Zone Latent Cooling Energy",
+    )
+    HEATING = (
+        "Zone Ideal Loads Supply Air Total Heating Energy",
+        "Zone Ideal Loads Zone Sensible Heating Energy",
+        "Zone Ideal Loads Zone Latent Heating Energy",
+    )
+    LIGHTING = (
+        "Zone Lights Electric Energy",
+        "Zone Lights Total Heating Energy",
+    )
+    ELECTRIC_EQUIP = (
+        "Zone Electric Equipment Electricity Energy",
+        "Zone Electric Equipment Total Heating Energy",
+        "Zone Electric Equipment Radiant Heating Energy",
+        "Zone Electric Equipment Convective Heating Energy",
+        "Zone Electric Equipment Latent Gain Energy",
+    )
+    GAS_EQUIP = (
+        "Zone Gas Equipment NaturalGas Energy",
+        "Zone Gas Equipment Total Heating Energy",
+        "Zone Gas Equipment Radiant Heating Energy",
+        "Zone Gas Equipment Convective Heating Energy",
+        "Zone Gas Equipment Latent Gain Energy",
+    )
+    HOT_WATER = (
+        "Water Use Equipment Zone Sensible Heat Gain Energy",
+        "Water Use Equipment Zone Latent Gain Energy",
+    )
+    PEOPLE_GAIN = (
+        "Zone People Total Heating Energy",
+        "Zone People Sensible Heating Energy",
+        "Zone People Latent Gain Energy",
+    )
+    SOLAR_GAIN = ("Zone Windows Total Transmitted Solar Radiation Energy",)
+    INFIL_GAIN = (
+        "Zone Infiltration Total Heat Gain Energy",
+        "Zone Infiltration Sensible Heat Gain Energy",
+        "Zone Infiltration Latent Heat Gain Energy",
+        "AFN Zone Infiltration Sensible Heat Gain Energy",
+        "AFN Zone Infiltration Latent Heat Gain Energy",
+    )
+    INFIL_LOSS = (
+        "Zone Infiltration Total Heat Loss Energy",
+        "Zone Infiltration Sensible Heat Loss Energy",
+        "Zone Infiltration Latent Heat Loss Energy",
+        "AFN Zone Infiltration Sensible Heat Loss Energy",
+        "AFN Zone Infiltration Latent Heat Loss Energy",
+    )
+    VENT_LOSS = (
+        "Zone Ideal Loads Zone Total Heating Energy",
+        "Zone Ideal Loads Zone Sensible Heating Energy",
+        "Zone Ideal Loads Zone Latent Heating Energy",
+    )
+    VENT_GAIN = (
+        "Zone Ideal Loads Zone Total Cooling Energy",
+        "Zone Ideal Loads Zone Sensible Cooling Energy",
+        "Zone Ideal Loads Zone Latent Cooling Energy",
+    )
+    NAT_VENT_GAIN = (
+        "Zone Ventilation Total Heat Gain Energy",
+        "Zone Ventilation Sensible Heat Gain Energy",
+        "Zone Ventilation Latent Heat Gain Energy",
+        "AFN Zone Ventilation Sensible Heat Gain Energy",
+        "AFN Zone Ventilation Latent Heat Gain Energy",
+    )
+    NAT_VENT_LOSS = (
+        "Zone Ventilation Total Heat Loss Energy",
+        "Zone Ventilation Sensible Heat Loss Energy",
+        "Zone Ventilation Latent Heat Loss Energy",
+        "AFN Zone Ventilation Sensible Heat Loss Energy",
+        "AFN Zone Ventilation Latent Heat Loss Energy",
+    )
+    OPAQUE_ENERGY_FLOW = ("Surface Average Face Conduction Heat Transfer Energy",)
+    WINDOW_LOSS = ("Surface Window Heat Loss Energy",)
+    WINDOW_GAIN = ("Surface Window Heat Gain Energy",)
 
     def __init__(
         self,
@@ -36,7 +115,9 @@ class Outputs:
             a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]
         )
         self.output_meters = set(
-            getattr(a, "Key_Name", getattr(a, "Name"))  # Backwards compatibility
+            getattr(a, "Key_Name")
+            if getattr(a, "Key_Name")
+            else getattr(a, "Name")  # Backwards compatibility
             for a in idf.idfobjects["Output:Meter".upper()]
         )
         # existing_ouputs = []
@@ -400,6 +481,112 @@ class Outputs:
         for output in outputs:
             self._output_variables.add(output)
         return self
+
+    def add_sensible_heat_gain_summary_components(self):
+        hvac_input_sensible_air_heating = [
+            "Zone Air Heat Balance System Air Transfer Rate",
+            "Zone Air Heat Balance System Convective Heat Gain Rate",
+        ]
+        hvac_input_sensible_air_cooling = [
+            "Zone Air Heat Balance System Air Transfer Rate",
+            "Zone Air Heat Balance System Convective Heat Gain Rate",
+        ]
+
+        hvac_input_heated_surface_heating = [
+            "Zone Radiant HVAC Heating Energy",
+            "Zone Ventilated Slab Radiant Heating Energy",
+        ]
+
+        hvac_input_cooled_surface_cooling = [
+            "Zone Radiant HVAC Cooling Energy",
+            "Zone Ventilated Slab Radiant Cooling Energy",
+        ]
+        people_sensible_heat_addition = ["Zone People Sensible Heating Energy"]
+
+        lights_sensible_heat_addition = ["Zone Lights Total Heating Energy"]
+
+        equipment_sensible_heat_addition_and_equipment_sensible_heat_removal = [
+            "Zone Electric Equipment Radiant Heating Energy",
+            "Zone Gas Equipment Radiant Heating Energy",
+            "Zone Steam Equipment Radiant Heating Energy",
+            "Zone Hot Water Equipment Radiant Heating Energy",
+            "Zone Other Equipment Radiant Heating Energy",
+            "Zone Electric Equipment Convective Heating Energy",
+            "Zone Gas Equipment Convective Heating Energy",
+            "Zone Steam Equipment Convective Heating Energy",
+            "Zone Hot Water Equipment Convective Heating Energy",
+            "Zone Other Equipment Convective Heating Energy",
+        ]
+
+        window_heat_addition_and_window_heat_removal = [
+            "Zone Windows Total Heat Gain Energy"
+        ]
+
+        interzone_air_transfer_heat_addition_and_interzone_air_transfer_heat_removal = [
+            "Zone Air Heat Balance Interzone Air Transfer Rate"
+        ]
+
+        infiltration_heat_addition_and_infiltration_heat_removal = [
+            "Zone Air Heat Balance Outdoor Air Transfer Rate"
+        ]
+
+        tuple(map(self._output_variables.add, hvac_input_sensible_air_heating))
+        tuple(map(self._output_variables.add, hvac_input_sensible_air_cooling))
+        tuple(map(self._output_variables.add, hvac_input_heated_surface_heating))
+        tuple(map(self._output_variables.add, hvac_input_cooled_surface_cooling))
+        tuple(map(self._output_variables.add, people_sensible_heat_addition))
+        tuple(map(self._output_variables.add, lights_sensible_heat_addition))
+        tuple(
+            map(
+                self._output_variables.add,
+                equipment_sensible_heat_addition_and_equipment_sensible_heat_removal,
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add, window_heat_addition_and_window_heat_removal
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                interzone_air_transfer_heat_addition_and_interzone_air_transfer_heat_removal,
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                infiltration_heat_addition_and_infiltration_heat_removal,
+            )
+        )
+
+        # The Opaque Surface Conduction and Other Heat Addition and Opaque Surface Conduction and Other Heat Removal
+        # columns are also calculated on an timestep basis as the negative value of the other removal and gain columns
+        # so that the total for the timestep sums to zero. These columns are derived strictly from the other columns.
+
+    def add_load_balance_components(self):
+
+        for group in [
+            self.COOLING,
+            self.HEATING,
+            self.LIGHTING,
+            self.ELECTRIC_EQUIP,
+            self.GAS_EQUIP,
+            self.HOT_WATER,
+            self.PEOPLE_GAIN,
+            self.SOLAR_GAIN,
+            self.INFIL_GAIN,
+            self.INFIL_LOSS,
+            self.VENT_LOSS,
+            self.VENT_GAIN,
+            self.NAT_VENT_GAIN,
+            self.NAT_VENT_LOSS,
+            self.OPAQUE_ENERGY_FLOW,
+            self.WINDOW_LOSS,
+            self.WINDOW_GAIN,
+        ]:
+            for item in group:
+                self._output_variables.add(item)
 
     def add_profile_gas_elect_outputs(self):
         """Adds the following meters: Electricity:Facility, Gas:Facility,

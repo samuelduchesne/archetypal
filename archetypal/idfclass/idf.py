@@ -1528,12 +1528,15 @@ class IDF(GeomIDF):
         Args:
             idf_string (str): A text string fully describing an EnergyPlus object.
         """
+        # Load the idf_string as a new model.
         loaded_string = IDF(
             StringIO(idf_string),
             file_version=self.file_version,
             as_version=self.as_version,
             prep_outputs=False,
         )
+
+        # Loop on all objects and using self.newidfobject
         added_objects = []
         for sequence in loaded_string.idfobjects.values():
             if sequence:

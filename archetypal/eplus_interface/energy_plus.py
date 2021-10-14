@@ -169,9 +169,9 @@ class EnergyPlusThread(Thread):
         # get version from IDF object or by parsing the IDF file for it
 
         tmp = self.tmp
-        self.epw = self.idf.epw.copy(tmp).expand()
+        self.epw = Path(self.idf.epw.copy(tmp)).expand()
         self.idfname = Path(self.idf.savecopy(tmp / self.idf.name)).expand()
-        self.idd = self.idf.iddname.copy(tmp).expand()
+        self.idd = Path(self.idf.iddname.copy(tmp)).expand()
         self.run_dir = Path(tmp).expand()
         self.include = [Path(file).copy(tmp) for file in self.idf.include]
 

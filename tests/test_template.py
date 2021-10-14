@@ -701,6 +701,24 @@ class TestOpaqueMaterial:
             opaqMat_json = opaqMat_epBunch.to_dict()
             assert OpaqueMaterial.from_dict(opaqMat_json) == opaqMat_epBunch
 
+    def test_opaque_material_missing_default(self):
+        """Assert creating objects from missing values still works"""
+        OpaqueMaterial.from_dict(
+            {
+                '$id': "0",
+                "key": "Material",
+                "Name": "G01 16mm gypsum board",
+                "Roughness": "MediumSmooth",
+                "Thickness": 0.0159,
+                "Conductivity": 0.16,
+                "Density": 800.0,
+                "SpecificHeat": 1090.0,
+                "ThermalEmittance": "",  # here is the missing value
+                "SolarAbsorptance": "",  # here is the missing value
+                "VisibleAbsorptance": ""  # here is the missing value
+            }
+        )
+
 
 class TestNoMassMaterial:
     """NoMassMaterial tests."""

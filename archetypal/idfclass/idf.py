@@ -288,23 +288,24 @@ class IDF(GeomIDF):
                 self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
-            self._outputs = Outputs(idf=self)
+            self._outputs = Outputs(idf=self, include_html=False, include_sqlite=False)
             if self.prep_outputs:
-                (
-                    self._outputs.add_basics()
-                    .add_umi_template_outputs()
-                    .add_custom(outputs=self.prep_outputs)
-                    .add_profile_gas_elect_ouputs()
-                    .apply()
-                )
+                self._outputs.include_html = True
+                self._outputs.include_sqlite = True
+                self._outputs.add_basics()
+                if isinstance(self.prep_outputs, list):
+                    self._outputs.add_custom(outputs=self.prep_outputs)
+                self._outputs.add_profile_gas_elect_outputs()
+                self._outputs.add_umi_template_outputs()
+                self._outputs.apply()
 
     @property
     def outputtype(self):
+        """Get or set the outputtype for the idf string representation of self."""
         return self._outputtype
 
     @outputtype.setter
     def outputtype(self, value):
-        """Get or set the outputtype for the idf string representation of self."""
         assert value in self.OUTPUTTYPES, (
             f'Invalid input "{value}" for output_type.'
             f"\nOutput type must be one of the following: {self.OUTPUTTYPES}"
@@ -688,6 +689,10 @@ class IDF(GeomIDF):
 
     @prep_outputs.setter
     def prep_outputs(self, value):
+        assert isinstance(value, (bool, list)), (
+            f"Expected bool or list of dict for "
+            f"SimulationOutput outputs. Got {type(value)}."
+        )
         self._prep_outputs = value
 
     @property
@@ -1522,6 +1527,29 @@ class IDF(GeomIDF):
         else:
             return results
 
+    def add_idf_object_from_idf_string(self, idf_string):
+        """Add an IDF object (or more than one) from an EnergyPlus text string.
+
+        Args:
+            idf_string (str): A text string fully describing an EnergyPlus object.
+        """
+        loaded_string = IDF(
+            StringIO(idf_string),
+            file_version=self.file_version,
+            as_version=self.as_version,
+            prep_outputs=False,
+        )
+        added_objects = []
+        for sequence in loaded_string.idfobjects.values():
+            if sequence:
+                for obj in sequence:
+                    data = obj.to_dict()
+                    key = data.pop("key")
+                    added_objects.append(self.newidfobject(key=key.upper(), **data))
+                # added_objects.extend(self.addidfobjects(list(sequence)))
+        del loaded_string  # remove
+        return added_objects
+
     def upgrade(self, to_version=None, overwrite=True):
         """`EnergyPlus` idf version updater using local transition program.
 
@@ -1905,6 +1933,8 @@ class IDF(GeomIDF):
 
     def removeidfobjects(self, idfobjects: Iterable[EpBunch]):
         """Remove an IDF object from the model.
+
+        Resetting dependent variables will wait after all objects have been removed.
 
         Args:
             idfobjects: The object to remove from the model.

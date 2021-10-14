@@ -171,6 +171,9 @@ class TransitionThread(Thread):
 
         generator = TransitionExe(self.idf, tmp_dir=tmp)
 
+        # set the initial version from which we are transitioning
+        last_successful_transition = self.idf.file_version
+
         for trans in tqdm(
             generator,
             total=len(generator.transitions),
@@ -214,10 +217,14 @@ class TransitionThread(Thread):
                             time.time() - start_time
                         )
                     )
+                    last_successful_transition = trans.trans
                     self.success_callback()
                     for line in self.p.stderr:
                         self.msg_callback(line.decode("utf-8"))
                 else:
+                    # set the version of the IDF the latest it was able to transition
+                    # to.
+                    self.idf.as_version = last_successful_transition
                     self.msg_callback("Transition failed")
                     self.failure_callback()
 

@@ -160,7 +160,11 @@ class OpaqueMaterial(MaterialBase):
 
     @SolarAbsorptance.setter
     def SolarAbsorptance(self, value):
-        self._solar_absorptance = validators.float(value, minimum=0, maximum=1)
+        if value == "":
+            value = None
+        self._solar_absorptance = validators.float(
+            value, minimum=0, maximum=1, allow_empty=True
+        )
 
     @property
     def SpecificHeat(self):
@@ -178,7 +182,11 @@ class OpaqueMaterial(MaterialBase):
 
     @ThermalEmittance.setter
     def ThermalEmittance(self, value):
-        self._thermal_emittance = validators.float(value, minimum=0, maximum=1)
+        if value == "":
+            value = None
+        self._thermal_emittance = validators.float(
+            value, minimum=0, maximum=1, allow_empty=True
+        )
 
     @property
     def VisibleAbsorptance(self):
@@ -187,6 +195,8 @@ class OpaqueMaterial(MaterialBase):
 
     @VisibleAbsorptance.setter
     def VisibleAbsorptance(self, value):
+        if value == "":
+            value = None
         self._visible_absorptance = validators.float(
             value, minimum=0, maximum=1, allow_empty=True
         )

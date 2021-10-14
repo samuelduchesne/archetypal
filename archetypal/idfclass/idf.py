@@ -19,16 +19,15 @@ from collections import defaultdict
 from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
-from typing import Any, Optional, Union
+from typing import IO, Iterable, Optional, Union
 
 import eppy
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
-from eppy.easyopen import getiddfile
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
-from geomeppy import IDF as geomIDF
+from geomeppy import IDF as GeomIDF
 from geomeppy.geom.polygons import Polygon3D
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
 from pandas import DataFrame, Series
@@ -69,7 +68,7 @@ def find_and_launch(app_name, app_path_guess, file_path):
     )
 
 
-class IDF(geomIDF):
+class IDF(GeomIDF):
     """Class for loading and parsing idf models.
 
     This is the starting point to run simulations and retrieving results.
@@ -175,9 +174,9 @@ class IDF(geomIDF):
 
     def __init__(
         self,
-        idfname=None,
+        idfname: Optional[Union[str, IO, Path]] = None,
         epw=None,
-        as_version=settings.ep_version,
+        as_version: Union[str, EnergyPlusVersion] = settings.ep_version,
         annual=False,
         design_day=False,
         expandobjects=False,
@@ -415,6 +414,7 @@ class IDF(geomIDF):
         """Set the IDD to be used by eppy.
 
         Args:
+            iddindex:
             iddinfo (list): Comments and metadata about fields in the IDD.
             block (list): Field names in the IDD.
         """
@@ -707,8 +707,9 @@ class IDF(geomIDF):
         """Path: The output directory based on the hashing of the original file.
 
         Notes:
-            The hashing is performed before transitions or modifications. The directory is not created! Use
-            `self.output_directory.makedir_p()` to create it without an error if it exists.
+            The hashing is performed before transitions or modifications. The directory
+            is not created! Use `self.output_directory.makedir_p()` to create it
+            without an error if it exists.
         """
         if self._output_directory is None:
             cache_filename = self._original_cache
@@ -882,8 +883,6 @@ class IDF(geomIDF):
     def open_last_simulation(self):
         """Open last simulation in Ep-Launch."""
         filepath, *_ = self.simulation_dir.files("*.idf")
-
-        import subprocess
 
         app_path_guess = self.file_version.current_install_dir
         find_and_launch("EP-Launch", app_path_guess, filepath.abspath())
@@ -1249,7 +1248,8 @@ class IDF(geomIDF):
         Does not return anything.
 
         Args:
-            force (bool): Force simulation even though results exist in `self.simulation_dir`.
+            force (bool): Force simulation even though results exist in
+                `self.simulation_dir`.
 
         Keyword Args:
             eplus_file (str): path to the idf file.
@@ -1305,10 +1305,13 @@ class IDF(geomIDF):
                 energyplus command.
 
         See Also:
-            :attr:`IDF.simulation_files`, :attr:`IDF.processed_results` for simulation outputs.
+            :attr:`IDF.simulation_files`, :attr:`IDF.processed_results` for simulation
+            outputs.
 
         """
-        if self.simulation_dir.exists() and not force:  # don't simulate if results exists
+        if (
+            self.simulation_dir.exists() and not force
+        ):  # don't simulate if results exists
             return self
         # First, update keys with new values
         for key, value in kwargs.items():
@@ -1419,8 +1422,6 @@ class IDF(geomIDF):
         simulation results.
 
         Args:
-            filename (str): Filepath to save the file. If None then use the IDF.idfname
-                parameter. Also accepts a file handle.
             lineendings (str) : Line endings to use in the saved file. Options are
                 'default', 'windows' and 'unix' the default is 'default' which uses
                 the line endings for the current system.
@@ -1902,19 +1903,18 @@ class IDF(geomIDF):
         self.idfobjects[key].remove(idfobject)
         self._reset_dependant_vars("idfobjects")
 
-    def removeidfobjects(self, idfobjects):
+    def removeidfobjects(self, idfobjects: Iterable[EpBunch]):
         """Remove an IDF object from the model.
 
         Args:
-            idfobject (EpBunch): The object to remove from the model.
+            idfobjects: The object to remove from the model.
         """
         for idfobject in idfobjects:
             key = idfobject.key.upper()
             self.idfobjects[key].remove(idfobject)
         self._reset_dependant_vars("idfobjects")
 
-    def anidfobject(self, key, aname="", **kwargs) -> EpBunch:
-        # type: (str, str, **Any) -> EpBunch
+    def anidfobject(self, key: str, aname: str = "", **kwargs) -> EpBunch:
         """Define and create an object, but don't add it to the model.
 
         See :func:`~archetypal.idfclass.idf.IDF.newidfobject`). If you don't specify
@@ -2053,9 +2053,9 @@ class IDF(geomIDF):
         used_schedules = []
         all_schedules = self._get_all_schedules(yearly_only=yearly_only)
         for object_name in self.idfobjects:
-            for object in self.idfobjects[object_name]:
-                if object.key.upper() not in schedule_types:
-                    for fieldvalue in object.fieldvalues:
+            for obj in self.idfobjects[object_name]:
+                if obj.key.upper() not in schedule_types:
+                    for fieldvalue in obj.fieldvalues:
                         try:
                             if (
                                 fieldvalue.upper() in all_schedules.keys()
@@ -2153,9 +2153,9 @@ class IDF(geomIDF):
     def _execute_transitions(self, idf_file, to_version, **kwargs):
         trans_exec = {
             EnergyPlusVersion(
-                re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
-            ): exec
-            for exec in self.idfversionupdater_dir.files("Transition-V*")
+                re.search(r"to-V(([\d])-([\d])-([\d]))", executable).group(1)
+            ): executable
+            for executable in self.idfversionupdater_dir.files("Transition-V*")
         }
 
         transitions = [

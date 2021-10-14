@@ -165,7 +165,7 @@ def test_tabula_multiple(config):
 @pytest.mark.xfail(
     condition=os.environ.get("NREL_CONSUMER_KEY") is None,
     reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
-    strict=True,
+    strict=False,
 )
 def test_nrel_api_request(config):
     data = {
@@ -182,7 +182,7 @@ def test_nrel_api_request(config):
 @pytest.mark.xfail(
     condition=os.environ.get("NREL_CONSUMER_KEY") is None,
     reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
-    strict=True,
+    strict=False,
 )
 def test_download_bld_window(config):
     oauth_consumer_key = os.environ.get("NREL_CONSUMER_KEY")
@@ -200,7 +200,7 @@ def test_download_bld_window(config):
 @pytest.mark.xfail(
     condition=os.environ.get("NREL_CONSUMER_KEY") is None,
     reason="Must provide an NREL API key as ENV Variable 'NREL_CONSUMER_KEY'",
-    strict=True,
+    strict=False,
 )
 @pytest.mark.skipif(
     os.environ.get("CI", "False").lower() == "true",

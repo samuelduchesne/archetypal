@@ -294,6 +294,31 @@ class TestIDF:
         assert idf.width == 10
         assert idf.length == 10
 
+    def test_add_idf_object_from_idf_string(self, shoebox_model):
+        """Test adding object string to model.
+
+        This example will replace the existing Building object.
+        """
+        object_string = """
+        Building,
+            Building,                 !- Name
+            30,                       !- North Axis
+            City,                     !- Terrain
+            0.04,                     !- Loads Convergence Tolerance Value
+            0.4,                      !- Temperature Convergence Tolerance Value
+            FullExterior,             !- Solar Distribution
+            25,                       !- Maximum Number of Warmup Days
+            6;                        !- Minimum Number of Warmup Days
+        """
+        added_objects = shoebox_model.add_idf_object_from_idf_string(object_string)
+
+        # assert returned objects are valid.
+        for obj in added_objects:
+            assert obj.Name == "Building"
+
+        # Assert has been added to model
+        assert shoebox_model.getobject("BUILDING", "Building")
+
 
 class TestIDFTransition:
     def test_transition(self, tmp_path):

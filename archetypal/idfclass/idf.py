@@ -1522,6 +1522,31 @@ class IDF(GeomIDF):
         else:
             return results
 
+    def add_idf_object_from_idf_string(self, idf_string):
+        """Add an IDF object (or more than one) from an EnergyPlus text string.
+
+        Args:
+            idf_string (str): A text string fully describing an EnergyPlus object.
+        """
+        # Load the idf_string as a new model.
+        loaded_string = IDF(
+            StringIO(idf_string),
+            file_version=self.file_version,
+            as_version=self.as_version,
+            prep_outputs=False,
+        )
+
+        # Loop on all objects and using self.newidfobject
+        added_objects = []
+        for sequence in loaded_string.idfobjects.values():
+            if sequence:
+                for obj in sequence:
+                    data = obj.to_dict()
+                    key = data.pop("key")
+                    added_objects.append(self.newidfobject(key=key.upper(), **data))
+        del loaded_string  # remove loaded_string model
+        return added_objects
+
     def upgrade(self, to_version=None, overwrite=True):
         """`EnergyPlus` idf version updater using local transition program.
 

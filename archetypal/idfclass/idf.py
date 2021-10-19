@@ -181,7 +181,7 @@ class IDF(GeomIDF):
         self,
         idfname: Optional[Union[str, IO, Path]] = None,
         epw=None,
-        as_version: Union[str, EnergyPlusVersion] = settings.ep_version,
+        as_version: Union[str, EnergyPlusVersion] = None,
         annual=False,
         design_day=False,
         expandobjects=False,
@@ -236,7 +236,7 @@ class IDF(GeomIDF):
         self.idfname = idfname
         self.epw = epw
         self.file_version = kwargs.get("file_version", None)
-        self.as_version = as_version if as_version else settings.ep_version
+        self.as_version = as_version if as_version else self.file_version
         self._custom_processes = custom_processes
         self._include = include
         self.keep_data_err = keep_data_err

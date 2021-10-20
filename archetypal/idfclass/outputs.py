@@ -582,8 +582,6 @@ class Outputs:
             EndUseBalance.OPAQUE_ENERGY_FLOW,
             EndUseBalance.WINDOW_LOSS,
             EndUseBalance.WINDOW_GAIN,
-            EndUseBalance.ZONE_SETPOINTS,
-            EndUseBalance.ZONE_PREDICTED_LOAD
         ]:
             for item in group:
                 self._output_variables.add(item)

@@ -55,15 +55,6 @@ class EndUseBalance:
     OPAQUE_ENERGY_FLOW = ("Surface Average Face Conduction Heat Transfer Energy",)
     WINDOW_LOSS = ("Surface Window Heat Loss Energy",)  # checked
     WINDOW_GAIN = ("Surface Window Heat Gain Energy",)  # checked
-    ZONE_SETPOINTS = (
-        "Zone Thermostat Heating Setpoint Temperature",
-        "Zone Thermostat Cooling Setpoint Temperature",
-    )
-    ZONE_PREDICTED_LOAD = (
-        "Zone Predicted Sensible Load to Setpoint Heat Transfer Rate",
-        # Positive value indicates a heating load, a negative value indicates a cooling
-        # load
-    )
 
     def __init__(
         self,
@@ -85,8 +76,6 @@ class EndUseBalance:
         window_flow,
         is_cooling,
         is_heating,
-        zone_setpoints,
-        zone_predicted_load,
         units="J",
         use_all_solar=True,
     ):
@@ -110,8 +99,6 @@ class EndUseBalance:
         self.use_all_solar = use_all_solar
         self.is_cooling = is_cooling
         self.is_heating = is_heating
-        self.zone_setpoints = zone_setpoints
-        self.zone_predicted_load = zone_predicted_load
 
     @classmethod
     def from_idf(
@@ -142,11 +129,6 @@ class EndUseBalance:
             )
             .to(units)
             .m
-        )
-        zone_predicted_load = idf.variables.OutputVariable.collect_by_output_name(
-            cls.ZONE_PREDICTED_LOAD,
-            reporting_frequency=idf.outputs.reporting_frequency,
-            units=power_units,
         )
 
         rolling_sign = cls.get_rolling_sign_change(_hvac_input)
@@ -208,12 +190,6 @@ class EndUseBalance:
             cls.EQUIP_GAINS,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
-        )
-        # todo: remove
-        zone_setpoints = idf.variables.OutputVariable.collect_by_output_name(
-            cls.ZONE_SETPOINTS,
-            reporting_frequency=idf.outputs.reporting_frequency,
-            units=temperature_units,
         )
 
         # subtract losses from gains
@@ -328,8 +304,6 @@ class EndUseBalance:
             window_flow,
             is_cooling,
             is_heating,
-            zone_setpoints,
-            zone_predicted_load,
             units,
             use_all_solar=True,
         )
@@ -541,8 +515,6 @@ class EndUseBalance:
                 "people_gain",
                 "solar_gain",
                 "infiltration",
-                "zone_setpoints",
-                "zone_predicted_load",
             ]:
                 if not getattr(self, component).empty:
                     summary_by_component[component] = (
@@ -585,8 +557,6 @@ class EndUseBalance:
                 "people_gain",
                 "solar_gain",
                 "infiltration",
-                "zone_setpoints",
-                "zone_predicted_load",
             ]:
                 component_df = getattr(self, component)
                 if not component_df.empty:

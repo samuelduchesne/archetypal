@@ -1997,6 +1997,17 @@ class IDF(GeomIDF):
         self._reset_dependant_vars("idfobjects")
         return new_object
 
+    def addidfobjects(self, new_objects):
+        """Add multiple IDF objects to the model.
+
+        Resetting dependent variables will wait after all objects have been added.
+        """
+        for new_object in new_objects:
+            key = new_object.key.upper()
+            self.idfobjects[key].append(new_object)
+        self._reset_dependant_vars("idfobjects")
+        return new_objects
+
     def removeidfobject(self, idfobject):
         """Remove an IDF object from the model.
 

@@ -1,5 +1,7 @@
 from typing import Iterable
 
+from archetypal.idfclass.end_use_balance import EndUseBalance
+
 
 class Outputs:
     """Handles preparation of EnergyPlus outputs. Different instance methods
@@ -563,6 +565,28 @@ class Outputs:
         # The Opaque Surface Conduction and Other Heat Addition and Opaque Surface Conduction and Other Heat Removal
         # columns are also calculated on an timestep basis as the negative value of the other removal and gain columns
         # so that the total for the timestep sums to zero. These columns are derived strictly from the other columns.
+
+    def add_end_use_balance_components(self):
+        for group in [
+            EndUseBalance.HVAC_INPUT_SENSIBLE,
+            EndUseBalance.LIGHTING,
+            EndUseBalance.EQUIP_GAINS,
+            EndUseBalance.PEOPLE_GAIN,
+            EndUseBalance.SOLAR_GAIN,
+            EndUseBalance.INFIL_GAIN,
+            EndUseBalance.INFIL_LOSS,
+            EndUseBalance.VENTILATION_LOSS,
+            EndUseBalance.VENTILATION_GAIN,
+            EndUseBalance.NAT_VENT_GAIN,
+            EndUseBalance.NAT_VENT_LOSS,
+            EndUseBalance.OPAQUE_ENERGY_FLOW,
+            EndUseBalance.WINDOW_LOSS,
+            EndUseBalance.WINDOW_GAIN,
+            EndUseBalance.ZONE_SETPOINTS,
+            EndUseBalance.ZONE_PREDICTED_LOAD
+        ]:
+            for item in group:
+                self._output_variables.add(item)
 
     def add_load_balance_components(self):
 

@@ -637,56 +637,6 @@ class EndUseBalance:
         heating_load = annual_system_data.xs("Heating Periods", level="Period")
         cooling_load = annual_system_data.xs("Cooling Periods", level="Period")
 
-        heating_load_source = (
-            heating_load.unstack("Gain/Loss")
-            .replace({0: np.NaN})
-            .loc[:, "Heat Gain"]
-            .dropna(how="all")
-            .apply(abs)
-            .rename("value")
-            .reset_index()
-        )
-        heating_load_target = (
-            heating_load.unstack("Gain/Loss")
-            .replace({0: np.NaN})
-            .loc[:, "Heat Loss"]
-            .dropna(how="all")
-            .apply(abs)
-            .rename("value")
-            .reset_index()
-        )
-
-        heating_load_source["target"] = "Heating Load"
-        heating_load_source = heating_load_source.rename(
-            {"Component": "source"}, axis=1
-        )
-        heating_load_source["source"] = heating_load_source["source"] + " Gain"
-        heating_load_source = heating_load_source.replace({"heating Gain": "heating"})
-        heating_load_source_data = heating_load_source.to_dict(orient="records")
-
-        heating_load_target["source"] = "Heating Load"
-        heating_load_target = heating_load_target.rename(
-            {"Component": "target"}, axis=1
-        )
-        heating_load_target_data = heating_load_target.to_dict(orient="records")
-
-        heating_energy_to_heating_system = [{
-            "source": "Heating",
-            "target": "heating",
-            "value": heating_load_source.set_index("source").at["heating", "value"],
-        }]
-
-        link_system_to_gains = (
-            heating_load_source.set_index("source")
-            .drop("heating")
-            .rename_axis("target")
-            .apply(lambda x: 0.01, axis=1)
-            .rename("value")
-            .reset_index()
-        )
-        link_system_to_gains["source"] = "heating"
-        link_system_to_gains = link_system_to_gains.to_dict(orient="records")
-
         system_input = self.idf.htm()["End Uses"].set_index("").head(-2).astype(float)
         system_input = (
             system_input.replace({0: np.NaN})
@@ -703,4 +653,133 @@ class EndUseBalance:
             .to_dict(orient="records")
         )
 
-        return pd.DataFrame(system_input + link_system_to_gains + heating_energy_to_heating_system + heating_load_source_data + heating_load_target_data).to_csv("sankey_data.csv", index=False)
+        (
+            heating_energy_to_heating_system,
+            heating_load_source_data,
+            heating_load_target_data,
+            link_heating_system_to_gains,
+        ) = self._sankey_heating(heating_load, load_type="heating")
+
+        (
+            cooling_energy_to_heating_system,
+            cooling_load_source_data,
+            cooling_load_target_data,
+            link_cooling_system_to_gains,
+        ) = self._sankey_cooling(cooling_load, load_type="cooling")
+
+        return pd.DataFrame(
+            system_input
+            + link_heating_system_to_gains
+            + heating_energy_to_heating_system
+            + heating_load_source_data
+            + heating_load_target_data
+            + cooling_energy_to_heating_system
+            + cooling_load_source_data
+            + cooling_load_target_data
+            + link_cooling_system_to_gains
+        ).to_csv("sankey_data.csv", index=False)
+
+    def _sankey_heating(self, load, load_type="heating"):
+        assert load_type in ["heating", "cooling"]
+        load_source = (
+            load.unstack("Gain/Loss")
+            .replace({0: np.NaN})
+            .loc[:, "Heat Gain"]
+            .dropna(how="all")
+            .apply(abs)
+            .rename("value")
+            .reset_index()
+        )
+        load_target = (
+            load.unstack("Gain/Loss")
+            .replace({0: np.NaN})
+            .loc[:, "Heat Loss"]
+            .dropna(how="all")
+            .apply(abs)
+            .rename("value")
+            .reset_index()
+        )
+        load_source["target"] = load_type.title() + " Load"
+        load_source = load_source.rename({"Component": "source"}, axis=1)
+        load_source["source"] = load_source["source"] + " Gain"
+        load_source = load_source.replace({f"{load_type} Gain": load_type})
+
+        load_source_data = load_source.to_dict(orient="records")
+        load_target["source"] = load_type.title() + " Load"
+        load_target = load_target.rename({"Component": "target"}, axis=1)
+        load_target_data = load_target.to_dict(orient="records")
+        energy_to_hvac_system = [
+            {
+                "source": load_type.title(),
+                "target": load_type.title() + " System",
+                "value": load_source.set_index("source").at[load_type, "value"],
+            }
+        ]
+        link_system_to_gains = (
+            load_source.set_index("source")
+            .drop(load_type)
+            .rename_axis("target")
+            .apply(lambda x: 0.01, axis=1)
+            .rename("value")
+            .reset_index()
+        )
+        link_system_to_gains["source"] = load_type.title()
+        link_system_to_gains = link_system_to_gains.to_dict(orient="records")
+        return (
+            energy_to_hvac_system,
+            load_source_data,
+            load_target_data,
+            link_system_to_gains,
+        )
+
+    def _sankey_cooling(self, load, load_type="cooling"):
+        load_source = (
+            load.unstack("Gain/Loss")
+            .replace({0: np.NaN})
+            .loc[:, "Heat Loss"]
+            .dropna(how="all")
+            .apply(abs)
+            .rename("value")
+            .reset_index()
+        )
+        load_source["target"] = load_type.title() + " Load"
+        load_source = load_source.rename({"Component": "source"}, axis=1)
+        load_source["source"] = load_source["source"] + " Loss"
+        load_source = load_source.replace({f"{load_type} Loss": load_type})
+        load_source_data = load_source.to_dict(orient="records")
+
+        load_target = (
+            load.unstack("Gain/Loss")
+            .replace({0: np.NaN})
+            .loc[:, "Heat Gain"]
+            .dropna(how="all")
+            .apply(abs)
+            .rename("value")
+            .reset_index()
+        )
+        load_target["source"] = load_type.title() + " Load"
+        load_target = load_target.rename({"Component": "target"}, axis=1)
+        load_target_data = load_target.to_dict(orient="records")
+        energy_to_hvac_system = [
+            {
+                "source": load_type.title(),
+                "target": load_type.title() + " System",
+                "value": load_source.set_index("source").at[load_type, "value"],
+            }
+        ]
+        link_system_to_gains = (
+            load_source.set_index("source")
+            .drop(load_type)
+            .rename_axis("target")
+            .apply(lambda x: 0.01, axis=1)
+            .rename("value")
+            .reset_index()
+        )
+        link_system_to_gains["source"] = load_type.title()
+        link_system_to_gains = link_system_to_gains.to_dict(orient="records")
+        return (
+            energy_to_hvac_system,
+            load_source_data,
+            load_target_data,
+            link_system_to_gains,
+        )

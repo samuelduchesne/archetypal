@@ -544,7 +544,7 @@ class EndUseBalance:
                 .unstack("Zone_Name")
                 .groupby(level=["Zone_Name", "Surface_Type"], axis=1)
             ):
-                summary_by_component[f"Window..{surface_type}"] = data.sum(
+                summary_by_component[f"Window on {surface_type}"] = data.sum(
                     level=["Zone_Name", "Period", "Gain/Loss"], axis=1
                 ).sort_index(axis=1)
         else:
@@ -632,6 +632,16 @@ class EndUseBalance:
         system_data = self.to_df(separate_gains_and_losses=True)
         annual_system_data = system_data.sum().sum(
             level=["Component", "Period", "Gain/Loss"]
+        )
+        annual_system_data.rename(
+            {
+                "people_gain": "Occupants",
+                "solar_gain": "Solar",
+                "lighting": "Lighting",
+                "infiltration": "Infiltration",
+                "Wall": "Walls",
+            },
+            inplace=True,
         )
 
         heating_load = annual_system_data.xs("Heating Periods", level="Period")

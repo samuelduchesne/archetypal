@@ -569,6 +569,8 @@ class Outputs:
     def add_end_use_balance_components(self):
         for group in [
             EndUseBalance.HVAC_INPUT_SENSIBLE,
+            EndUseBalance.HVAC_INPUT_HEATED_SURFACE,
+            EndUseBalance.HVAC_INPUT_COOLED_SURFACE,
             EndUseBalance.LIGHTING,
             EndUseBalance.EQUIP_GAINS,
             EndUseBalance.PEOPLE_GAIN,

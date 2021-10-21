@@ -357,7 +357,9 @@ class EndUseBalance:
                     window.get_referenced_object(  # get the zone name though the surface name
                         "Building_Surface_Name"
                     ).Zone_Name.upper(),
-                    float(window.Multiplier) or 1,  # multiplier of this window.
+                    float(window.Multiplier)
+                    if window.Multiplier != ""
+                    else 1,  # multiplier of this window.
                 )
                 for window in idf.getsubsurfaces()
             ],
@@ -409,7 +411,8 @@ class EndUseBalance:
                     surface.Outside_Boundary_Condition.title(),  # the boundary of the surface.
                     surface.Zone_Name.upper(),
                     float(surface.get_referenced_object("Zone_Name").Multiplier)
-                    or 1,  # multiplier of the zone.
+                    if surface.get_referenced_object("Zone_Name").Multiplier != ""
+                    else 1,  # multiplier of the zone.
                 )
                 for surface in idf.getsurfaces()
             ],

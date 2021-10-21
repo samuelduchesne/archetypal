@@ -648,9 +648,11 @@ class EndUseBalance:
         annual_system_data.rename(
             {
                 "people_gain": "Occupants",
-                "solar_gain": "Solar",
+                "solar_gain": "Passive Solar",
                 "lighting": "Lighting",
                 "infiltration": "Infiltration",
+                "interior_equipment": "Equipment",
+                "window_energy_flow": "Windows",
                 "Wall": "Walls",
             },
             inplace=True,
@@ -724,7 +726,9 @@ class EndUseBalance:
         load_source["target"] = load_type.title() + " Load"
         load_source = load_source.rename({"Component": "source"}, axis=1)
         load_source["source"] = load_source["source"] + " Gain"
-        load_source = load_source.replace({f"{load_type} Gain": load_type})
+        load_source = load_source.replace(
+            {f"{load_type} Gain": load_type.title() + " System"}
+        )
 
         load_source_data = load_source.to_dict(orient="records")
         load_target["source"] = load_type.title() + " Load"
@@ -734,12 +738,14 @@ class EndUseBalance:
             {
                 "source": load_type.title(),
                 "target": load_type.title() + " System",
-                "value": load_source.set_index("source").at[load_type, "value"],
+                "value": load_source.set_index("source").at[
+                    load_type.title() + " System", "value"
+                ],
             }
         ]
         link_system_to_gains = (
             load_source.set_index("source")
-            .drop(load_type)
+            .drop(load_type.title() + " System")
             .rename_axis("target")
             .apply(lambda x: 0.01, axis=1)
             .rename("value")
@@ -767,7 +773,9 @@ class EndUseBalance:
         load_source["target"] = load_type.title() + " Load"
         load_source = load_source.rename({"Component": "source"}, axis=1)
         load_source["source"] = load_source["source"] + " Loss"
-        load_source = load_source.replace({f"{load_type} Loss": load_type})
+        load_source = load_source.replace(
+            {f"{load_type} Loss": load_type.title() + " System"}
+        )
         load_source_data = load_source.to_dict(orient="records")
 
         load_target = (
@@ -786,12 +794,14 @@ class EndUseBalance:
             {
                 "source": load_type.title(),
                 "target": load_type.title() + " System",
-                "value": load_source.set_index("source").at[load_type, "value"],
+                "value": load_source.set_index("source").at[
+                    load_type.title() + " System", "value"
+                ],
             }
         ]
         link_system_to_gains = (
             load_source.set_index("source")
-            .drop(load_type)
+            .drop(load_type.title() + " System")
             .rename_axis("target")
             .apply(lambda x: 0.01, axis=1)
             .rename("value")

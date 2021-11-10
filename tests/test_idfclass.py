@@ -137,6 +137,14 @@ class TestIDF:
         ):
             assert wont_transition_correctly.simulate(ep_version="8.9.0")
 
+    def test_set_iddname(self):
+        """Set new iddname path."""
+        idf = IDF(as_version="9.2")
+        assert idf.iddname.endswith("V9-2-0-Energy+.idd")
+
+        idf.iddname = ""
+        assert idf._block is None  # assert block is reset to None
+
     def test_sql(self, idf_model):
         assert idf_model.sql_file.exists()
 

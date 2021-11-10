@@ -85,7 +85,6 @@ class IDF(GeomIDF):
 
     # dependencies: dict of <dependant value: independent value>
     _dependencies = {
-        "iddname": ["idfname", "as_version"],
         "idd_info": ["iddname", "idfname"],
         "idd_index": ["iddname", "idfname"],
         "idd_version": ["iddname", "idfname"],
@@ -175,6 +174,7 @@ class IDF(GeomIDF):
     def __init__(
         self,
         idfname: Optional[Union[str, IO, Path]] = None,
+        iddname: Optional[Union[str, IO, Path]] = None,
         epw=None,
         as_version: Union[str, EnergyPlusVersion] = settings.ep_version,
         annual=False,
@@ -249,8 +249,7 @@ class IDF(GeomIDF):
         self.output_directory = output_directory
 
         # Set dependants to None
-        self.file_version = kwargs.get("file_version", None)
-        self._iddname = None
+        self._iddname = Path(iddname) if iddname is not None else None
         self._idd_info = None
         self._idd_index = None
         self._idd_version = None
@@ -482,7 +481,7 @@ class IDF(GeomIDF):
 
     @property
     def iddname(self) -> Path:
-        """Return the iddname used to parse the idf model."""
+        """Get or set the iddname path used to parse the idf model."""
         if self._iddname is None:
             if self.file_version > self.as_version:
                 raise EnergyPlusVersionError(
@@ -491,6 +490,12 @@ class IDF(GeomIDF):
                 )
             self._iddname = self.file_version.current_idd_path
         return self._iddname
+
+    @iddname.setter
+    def iddname(self, value):
+        if value is not None:
+            value = Path(value)
+        self._iddname = value
 
     @property
     def file_version(self) -> EnergyPlusVersion:

@@ -230,7 +230,7 @@ class IDF(GeomIDF):
         self.idfname = idfname
         self.epw = epw
         self.file_version = kwargs.get("file_version", None)
-        self.as_version = as_version if as_version else settings.ep_version
+        self._as_version = as_version if as_version else settings.ep_version
         self._custom_processes = custom_processes
         self._include = include
         self.keep_data_err = keep_data_err
@@ -707,6 +707,8 @@ class IDF(GeomIDF):
     def as_version(self, value):
         # Parse value and check if above or bellow
         self._as_version = EnergyPlusVersion(value)
+        if self.file_version < EnergyPlusVersion(value):
+            self.upgrade(to_version=self.as_version, overwrite=False)
 
     @property
     def output_directory(self) -> Path:
@@ -1591,7 +1593,7 @@ class IDF(GeomIDF):
         elif self.file_version > to_version:
             raise EnergyPlusVersionError(self.name, self.file_version, to_version)
         else:
-            self.as_version = to_version  # set version number
+            self._as_version = to_version  # set version number
             # execute transitions
             tmp = (
                 self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]

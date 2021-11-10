@@ -194,6 +194,14 @@ class EnergyPlusVersion(Version):
     def current_install_location(self):
         return self.install_locations[self.dash]
 
+    @property
+    def idfversionupdater_dir(self) -> Path:
+        """Path: The path of the IDFVersionUpdater folder.
+
+        Uses the current module's ep_version.
+        """
+        return (self.current_install_dir / "PreProcess" / "IDFVersionUpdater").expand()
+
     def duplicate(self):
         """Get a copy of this object."""
         return self.__copy__()

@@ -91,7 +91,10 @@ class TransitionExe(EnergyPlusProgram):
                     log(f"{e}")
 
         if self._trans_exec is None:
-            copytree(self.idf.idfversionupdater_dir, self.running_directory)
+            copytree(
+                self.idf.file_version.latest().idfversionupdater_dir,
+                self.running_directory,
+            )
             self._trans_exec = {
                 EnergyPlusVersion(
                     re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
@@ -228,7 +231,9 @@ class TransitionThread(Thread):
             EnergyPlusVersion(
                 re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
             ): exec
-            for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
+            for exec in EnergyPlusVersion.latest().idfversionupdater_dir.files(
+                "Transition-V*"
+            )
         }
 
     @property
@@ -269,6 +274,7 @@ class TransitionThread(Thread):
                 )
             else:
                 self.idf._reset_dependant_vars("idfname")
+                self.idf.iddname = None  # make sure iddname is reset as well
 
     def failure_callback(self):
         """Read stderr and pass to logger."""

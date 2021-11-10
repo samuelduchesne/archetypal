@@ -137,6 +137,16 @@ class TestIDF:
         ):
             assert wont_transition_correctly.simulate(ep_version="8.9.0")
 
+    def test_as_version(self):
+        """Setting `as_version` should trigger an upgrade."""
+        idf = IDF(as_version="9.1")
+        assert idf.file_version == EnergyPlusVersion("9.1")
+        assert idf.iddname.endswith("V9-1-0-Energy+.idd")
+
+        idf.as_version = "9.2"
+        assert idf.file_version == EnergyPlusVersion("9.2")
+        assert idf.iddname.endswith("V9-2-0-Energy+.idd")
+
     def test_set_iddname(self):
         """Set new iddname path."""
         idf = IDF(as_version="9.2")

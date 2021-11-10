@@ -229,6 +229,7 @@ class IDF(GeomIDF):
             include = []
         self.idfname = idfname
         self.epw = epw
+        self.file_version = kwargs.get("file_version", None)
         self.as_version = as_version if as_version else settings.ep_version
         self._custom_processes = custom_processes
         self._include = include

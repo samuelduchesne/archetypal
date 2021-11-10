@@ -127,10 +127,6 @@ class TestIDF:
         natvent_v9_1_0.epw = "newepw.epw"
         assert natvent_v9_1_0.epw == Path("newepw.epw")
 
-        with pytest.raises(AttributeError):
-            # illigal to set iddname, since it is a calculated property
-            natvent_v9_1_0.iddname = "this_name"
-
     def test_transition_error(self, config, wont_transition_correctly):
         with pytest.raises(
             (EnergyPlusProcessError, EnergyPlusVersionError, CalledProcessError)

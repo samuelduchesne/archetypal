@@ -147,6 +147,10 @@ class TestIDF:
         assert idf.file_version == EnergyPlusVersion("9.2")
         assert idf.iddname.endswith("V9-2-0-Energy+.idd")
 
+        # Setting a version lower than file version should raise an error.
+        with pytest.raises(AssertionError):
+            idf.as_version = "9.0"
+
     def test_set_iddname(self):
         """Set new iddname path."""
         idf = IDF(as_version="9.2")

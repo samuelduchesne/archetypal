@@ -706,6 +706,10 @@ class IDF(GeomIDF):
     @as_version.setter
     def as_version(self, value):
         # Parse value and check if above or bellow
+        assert EnergyPlusVersion(value) >= self.file_version, (
+            "Cannot set a version number lower than the "
+            f"current file version number: {self.file_version}"
+        )
         self._as_version = EnergyPlusVersion(value)
         if self.file_version < EnergyPlusVersion(value):
             self.upgrade(to_version=self.as_version, overwrite=False)

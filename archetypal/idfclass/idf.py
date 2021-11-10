@@ -26,10 +26,16 @@ import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata
+from eppy.idf_msequence import Idf_MSequence
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from geomeppy import IDF as GeomIDF
 from geomeppy.geom.polygons import Polygon3D
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
+from geomeppy.recipes import (
+    _has_correct_orientation,
+    _is_window,
+    window_vertices_given_wall,
+)
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
 from path import Path
@@ -2148,6 +2154,110 @@ class IDF(GeomIDF):
         fieldname = [item for item in theobject.objls if item.endswith("Name")][0]
         theobject[fieldname] = newname
         return theobject
+
+    def set_wwr(
+        self,
+        wwr: float,
+        construction: Optional[str]=None,
+        force: bool=False,
+        wwr_map: Optional[dict]= None,
+        orientation: Optional[str]=None,
+        surfaces: Optional[Iterable] =None,
+    ):
+        """Set Window-to-Wall Ratio of all external walls.
+
+        Different WWR can be applied to specific wall orientations using the
+        `wwr_map` dictionary. This map is a dict of wwr values, keyed by
+        `wall.azimuth`, which overrides the default passed as `wwr`. Note that
+        `wall.azimuth` is rounded to the closest integer.
+
+        They can also be applied to walls oriented to a compass point, e.g. north,
+        which will apply to walls which have an azimuth within 45 degrees of due north.
+
+        Args:
+            wwr: The window to wall ratio to apply to all orientations. If wwr_map is
+                specified, `wwr` is the default wwr for oreintations not defined in
+                the mapping.
+            construction: Name of a window construction to apply.
+            force: True to remove all subsurfaces before setting the WWR.
+            wwr_map: Mapping from wall orientation (azimuth) to WWR, e.g.
+                {180: 0.25, 90: 0.2}.
+            orientation: One of "north", "east", "south", "west". Walls within 45
+                degrees will be affected.
+            surfaces: Iterable of surfaces to set the window to wall ratio of.
+        """
+        # Taken from `geomeppy.idf.IDF.set_wwr` since pull request is not being
+        # reviewed as of 2021-11-10.
+
+        try:
+            ggr = self.idfobjects["GLOBALGEOMETRYRULES"][
+                0
+            ]  # type: Optional[Idf_MSequence]
+        except IndexError:
+            ggr = None
+
+            # check orientation
+        orientations = {
+            "north": 0.0,
+            "east": 90.0,
+            "south": 180.0,
+            "west": 270.0,
+            None: None,
+        }
+        degrees = orientations.get(orientation, None)
+        external_walls = filter(
+            lambda x: x.Outside_Boundary_Condition.lower() == "outdoors",
+            surfaces or self.getsurfaces("wall"),
+        )
+        external_walls = filter(
+            lambda x: _has_correct_orientation(x, degrees), external_walls
+        )
+        subsurfaces = self.getsubsurfaces()
+        base_wwr = wwr
+        for wall in external_walls:
+            # get any subsurfaces on the wall
+            wall_subsurfaces = list(
+                filter(lambda x: x.Building_Surface_Name == wall.Name, subsurfaces)
+            )
+            if not all(_is_window(wss) for wss in wall_subsurfaces) and not force:
+                raise ValueError(
+                    'Not all subsurfaces on wall "{name}" are windows. '
+                    "Use `force=True` to replace all subsurfaces.".format(
+                        name=wall.Name
+                    )
+                )
+
+            if wall_subsurfaces and not construction:
+                constructions = list(
+                    {
+                        wss.Construction_Name
+                        for wss in wall_subsurfaces
+                        if _is_window(wss)
+                    }
+                )
+                if len(constructions) > 1:
+                    raise ValueError(
+                        'Not all subsurfaces on wall "{name}" have the same construction'.format(
+                            name=wall.Name
+                        )
+                    )
+                construction = constructions[0]
+            # remove all subsurfaces
+            for ss in wall_subsurfaces:
+                self.removeidfobject(ss)
+            wwr = (wwr_map or {}).get(round(wall.azimuth), base_wwr)
+            if not wwr:
+                continue
+            coords = window_vertices_given_wall(wall, wwr)
+            window = self.newidfobject(
+                "FENESTRATIONSURFACE:DETAILED",
+                Name="%s window" % wall.Name,
+                Surface_Type="Window",
+                Construction_Name=construction or "",
+                Building_Surface_Name=wall.Name,
+                View_Factor_to_Ground="autocalculate",  # from the surface angle
+            )
+            window.setcoords(coords, ggr)
 
     def _energy_series(
         self,

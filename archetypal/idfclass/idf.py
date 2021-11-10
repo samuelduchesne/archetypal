@@ -174,7 +174,6 @@ class IDF(GeomIDF):
     def __init__(
         self,
         idfname: Optional[Union[str, IO, Path]] = None,
-        iddname: Optional[Union[str, IO, Path]] = None,
         epw=None,
         as_version: Union[str, EnergyPlusVersion] = settings.ep_version,
         annual=False,
@@ -194,6 +193,7 @@ class IDF(GeomIDF):
         name=None,
         output_directory=None,
         outputtype="standard",
+        iddname: Optional[Union[str, IO, Path]] = None,
         **kwargs,
     ):
         """Initialize an IDF object.

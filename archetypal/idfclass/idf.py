@@ -2240,12 +2240,12 @@ class IDF(GeomIDF):
                         )
                     )
                 construction = constructions[0]
-            # remove all subsurfaces
-            for ss in wall_subsurfaces:
-                self.removeidfobject(ss)
             wwr = (wwr_map or {}).get(round(wall.azimuth), base_wwr)
             if not wwr:
                 continue
+            # remove all subsurfaces
+            for ss in wall_subsurfaces:
+                self.removeidfobject(ss)
             coords = window_vertices_given_wall(wall, wwr)
             window = self.newidfobject(
                 "FENESTRATIONSURFACE:DETAILED",

@@ -2157,12 +2157,12 @@ class IDF(GeomIDF):
 
     def set_wwr(
         self,
-        wwr: float,
-        construction: Optional[str]=None,
-        force: bool=False,
-        wwr_map: Optional[dict]= None,
-        orientation: Optional[str]=None,
-        surfaces: Optional[Iterable] =None,
+        wwr: float = None,
+        construction: Optional[str] = None,
+        force: bool = False,
+        wwr_map: Optional[dict] = None,
+        orientation: Optional[str] = None,
+        surfaces: Optional[Iterable] = None,
     ):
         """Set Window-to-Wall Ratio of all external walls.
 
@@ -2190,9 +2190,7 @@ class IDF(GeomIDF):
         # reviewed as of 2021-11-10.
 
         try:
-            ggr = self.idfobjects["GLOBALGEOMETRYRULES"][
-                0
-            ]  # type: Optional[Idf_MSequence]
+            ggr: Optional[Idf_MSequence] = self.idfobjects["GLOBALGEOMETRYRULES"][0]
         except IndexError:
             ggr = None
 

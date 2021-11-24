@@ -3,7 +3,7 @@ import itertools
 import pytest
 
 from archetypal import IDF
-from archetypal.idfclass.sql import collect_output_by_name
+from archetypal.idfclass.sql import collect_output_by_name, available_datapoints
 
 metered_ressource_types = (
     "Electricity",
@@ -50,6 +50,24 @@ def sql_file():
 )
 def test_collect_meters(variable_or_meter, sql_file):
     """Test collecting outputs by name."""
+
+    df = collect_output_by_name(
+        sql_file, variable_or_meter, reporting_frequency="Hourly"
+    )
+
+    assert not df.empty
+
+
+def test_available_datapoints(sql_file):
+    """Test getting available datapoints in the sql_file"""
+    dps = available_datapoints(sql_file)
+    print(dps)
+
+    assert dps
+
+
+def test_collect_variables(sql_file):
+    variable_or_meter = ("Zone Mean Air Temperature",)
 
     df = collect_output_by_name(
         sql_file, variable_or_meter, reporting_frequency="Hourly"

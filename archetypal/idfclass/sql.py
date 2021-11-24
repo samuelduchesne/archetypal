@@ -2,16 +2,32 @@
 
 from datetime import timedelta
 from sqlite3 import connect
-from typing import Union, Optional
+from typing import Union, Optional, Sequence
 
 import pandas as pd
 from energy_pandas import EnergyDataFrame
 from pandas import to_datetime
 
 
+def available_datapoints(
+    sql_file: str,
+):
+    with connect(sql_file) as conn:
+        cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, Units, ReportingFrequency"
+        query = f"""
+                SELECT {cols} 
+                FROM ReportDataDictionary;
+                """
+        header_rows = pd.read_sql(
+            query,
+            conn,
+        )
+    return list(sorted(set(header_rows["Name"])))
+
+
 def collect_output_by_name(
     sql_file: str,
-    variable_or_meter: Union[str, list],
+    variable_or_meter: Union[str, Sequence],
     reporting_frequency: Optional[str] = "Monthly",
 ) -> EnergyDataFrame:
     """Get an EnergyDataFrame for a specified meter or variable.
@@ -112,17 +128,18 @@ def collect_output_by_name(
                 conn,
                 params={"warmup_flag": 0},
             )
-
-        # Pivot the data so that ReportDataDictionaryIndex becomes the column index.
-        data = data.pivot(
-            index=["Month", "Day", "Hour", "Minute", "Interval"],
-            columns=["ReportDataDictionaryIndex"],
-            values="Value",
+        # Join the header_rows on ReportDataDictionaryIndex
+        data = data.join(
+            header_rows[["IndexGroup", "KeyValue", "Name"]],
+            on="ReportDataDictionaryIndex",
         )
 
-        # Rename the columns ReportDataDictionaryIndex with the header_rows Name.
-        # From a number to a human-readable name
-        data.rename(header_rows["Name"].to_dict(), axis=1, inplace=True)
+        # Pivot the data so that ["Name", "KeyValue"] becomes the column MultiIndex.
+        data = data.pivot(
+            index=["Month", "Day", "Hour", "Minute", "Interval"],
+            columns=["IndexGroup", "KeyValue", "Name"],
+            values="Value",
+        )
 
         # reset the index to prepare the DatetimeIndex
         date_time_names = data.index.names

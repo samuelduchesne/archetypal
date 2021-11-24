@@ -50,8 +50,10 @@ def sql():
 )
 def test_collect_meters(variable_or_meter, sql):
     """Test collecting outputs by name."""
-
-    df = sql.collect_output_by_name(variable_or_meter, reporting_frequency="Hourly")
+    # environment_type=1 (Design Day) because data is only available for that period.
+    df = sql.collect_output_by_name(
+        variable_or_meter, reporting_frequency="Hourly", environment_type=1
+    )
 
     assert not df.empty
 
@@ -67,9 +69,11 @@ def test_available_datapoints(sql):
 def test_collect_variables(sql):
     variable_or_meter = ("Zone Mean Air Temperature",)
 
-    df = sql.collect_output_by_name(variable_or_meter, reporting_frequency="Hourly")
+    df = sql.collect_output_by_name(
+        variable_or_meter, reporting_frequency="Hourly", environment_type=1
+    )
 
-    assert not df.empty
+    assert df.shape == (48, 18)
 
 
 def test_collect_variables_raise(sql):

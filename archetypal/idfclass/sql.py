@@ -31,6 +31,7 @@ class Sql:
         * zone_info
         * environment_periods
     """
+
     _reporting_frequencies = (
         "HVAC System Timestep",
         "Zone Timestep",
@@ -100,6 +101,7 @@ class Sql:
         self,
         variable_or_meter: Union[str, Sequence],
         reporting_frequency: Union[_REPORTING_FREQUENCIES] = "Hourly",
+        environment_type: Union[Literal[1, 2, 3]] = 3,
     ) -> EnergyDataFrame:
         """Get an EnergyDataFrame for specified meters and variables.
 
@@ -111,7 +113,11 @@ class Sql:
             variable_or_meter (str or list): The name of an EnergyPlus output meter or
                 variable to be retrieved from the SQLite result file. This can also be an
                 array of output names for which all data collections should be retrieved.
-            reporting_frequency (str):
+            reporting_frequency (str): The reporting interval. One of ("HVAC System
+                Timestep", "Zone Timestep", "Hourly", "Daily", "Monthly" or "Run
+                Period"
+            environment_type (int): The environment type. (1 = Design Day, 2 = Design
+                Run Period, 3 = Weather Run Period). Default = 3.
 
         Returns:
             EnergyDataFrame: An EnergyDataFrame with the variable_or_meter as columns.
@@ -183,11 +189,18 @@ class Sql:
                               t.Minute,
                               t.Interval
                     FROM ReportData as rd 
-                            LEFT JOIN Time As t ON rd.TimeIndex = t.TimeIndex 
-                    WHERE ReportDataDictionaryIndex=? ORDER BY t.TimeIndex 
-                    AND (IFNULL(t.WarmupFlag, 0) = @warmup_flag);""",
+                            LEFT JOIN Time As t ON rd.TimeIndex = t.TimeIndex
+                            LEFT JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
+                    WHERE ReportDataDictionaryIndex=@rel_indices
+                    AND (IFNULL(t.WarmupFlag, 0) = @warmup_flag)
+                    AND p.EnvironmentType = @environment_type
+                    ORDER BY t.TimeIndex;""",
                     conn,
-                    params=[rel_indices[0], 0],
+                    params={
+                        "rel_indices": rel_indices[0],
+                        "warmup_flag": 0,
+                        "environment_type": environment_type,
+                    },
                 )
             else:
                 data = pd.read_sql(
@@ -200,11 +213,13 @@ class Sql:
                               t.Interval
                     FROM ReportData as rd
                             LEFT JOIN Time As t ON rd.TimeIndex = t.TimeIndex
+                            LEFT JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
                     WHERE ReportDataDictionaryIndex IN {tuple(rel_indices)}
                     AND (IFNULL(t.WarmupFlag, 0) = @warmup_flag)
+                    AND p.EnvironmentType = @environment_type
                     ORDER BY rd.ReportDataDictionaryIndex, t.TimeIndex;""",
                     conn,
-                    params={"warmup_flag": 0},
+                    params={"warmup_flag": 0, "environment_type": environment_type},
                 )
             # Join the header_rows on ReportDataDictionaryIndex
             data = data.join(

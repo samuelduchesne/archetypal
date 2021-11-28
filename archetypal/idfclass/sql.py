@@ -2,13 +2,14 @@
 import logging
 from datetime import timedelta
 from sqlite3 import connect
-from typing import List, Literal, Sequence, Union, Optional
+from typing import List, Literal, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergyDataFrame
 from pandas import to_datetime
 from path import Path
+
 
 _REPORTING_FREQUENCIES = Literal[
     "HVAC System Timestep",
@@ -18,6 +19,81 @@ _REPORTING_FREQUENCIES = Literal[
     "Monthly",
     "Run Period",
 ]
+
+
+class SqlOutput:
+    """Represents a single output from the Sql file."""
+
+    __slots__ = (
+        "_file_path",
+        "output_name",
+        "reporting_frequency",
+    )
+
+    def __init__(self, file_path, output_name, reporting_frequency):
+        self._file_path = file_path
+        self.output_name = output_name
+        self.reporting_frequency = reporting_frequency
+
+    def values(self, environment_type: int = 3, units: str = None) -> EnergyDataFrame:
+        """Get the time series values as an EnergyDataFrame.
+
+        Args:
+            environment_type (int): The environment type (1 = Design Day, 2 = Design
+                Run Period, 3 = Weather Run Period) for the series.
+            units (str): Convert original values to another unit. The original unit
+                is detected automatically and a dimensionality check is performed.
+
+        Returns:
+            (EnergyDataFrame): The time series as an EnergyDataFrame.
+        """
+        cols = (
+            "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, "
+            "Units, ReportingFrequency"
+        )
+        query = f"""
+            SELECT {cols} 
+            FROM ReportDataDictionary 
+            WHERE Name=@output_name 
+            AND ReportingFrequency=@reporting_frequency;
+        """
+        with connect(self._file_path) as conn:
+            header_rows = pd.read_sql(
+                query,
+                conn,
+                params={
+                    "output_name": self.output_name,
+                    "reporting_frequency": self.reporting_frequency,
+                },
+            )
+            header_rows.set_index("ReportDataDictionaryIndex", inplace=True)
+            # extract all data of the relevant type from ReportData
+            rel_indices = tuple(header_rows.index.to_list())
+            data = _extract_timeseries(conn, environment_type, header_rows, rel_indices)
+
+            if units is not None:
+                data = data.to_units(units)
+
+            return data
+
+
+class _SqlOutputs:
+    """Represents all the available outputs from the Sql file."""
+
+    def __init__(self, file_path: str, available_outputs: List[tuple]):
+        self._available_outputs = available_outputs
+        self._properties = {}
+
+        for output, reporting_frequency in self._available_outputs:
+            name = (
+                output.replace(":", "__").replace(" ", "_") + f"_{reporting_frequency}"
+            )
+            self._properties[name] = SqlOutput(file_path, output, reporting_frequency)
+            setattr(self, name, self._properties[name])
+
+    def __getitem__(self, meter_name):
+        """Get item by key."""
+        return self._properties[meter_name]
 
 
 class Sql:
@@ -52,6 +128,7 @@ class Sql:
         self._zone_info = None
         self._environment_periods = None
         self._tabular_data_keys = None
+        self._outputs = None
 
     @property
     def file_path(self):
@@ -69,8 +146,8 @@ class Sql:
         return self._tabular_data_keys
 
     @property
-    def available_outputs(self):
-        """Get a list of strings for available timeseries outputs that can be requested.
+    def available_outputs(self) -> List[tuple]:
+        """Get tuples (OutputName, ReportingFrequency) that can be requested.
 
         Any of these outputs when input to data_collections_by_output_name will
         yield a result with data collections.
@@ -78,6 +155,12 @@ class Sql:
         if not self._available_outputs:
             self._available_outputs = self._extract_available_outputs()
         return self._available_outputs
+
+    @property
+    def outputs(self):
+        if self._outputs is None:
+            self._outputs = _SqlOutputs(self.file_path, self.available_outputs)
+        return self._outputs
 
     @property
     def zone_info(self):
@@ -228,83 +311,7 @@ class Sql:
 
             # extract all data of the relevant type from ReportData
             rel_indices = tuple(header_rows.index.to_list())
-            if len(rel_indices) == 1:
-                data = pd.read_sql(
-                    """SELECT rd.Value,
-                              rd.ReportDataDictionaryIndex, 
-                              t.Month,
-                              t.Day,
-                              t.Hour,
-                              t.Minute,
-                              t.Interval
-                    FROM ReportData as rd 
-                            LEFT JOIN Time As t ON rd.TimeIndex = t.TimeIndex
-                            LEFT JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
-                    WHERE ReportDataDictionaryIndex=@rel_indices
-                    AND (IFNULL(t.WarmupFlag, 0) = @warmup_flag)
-                    AND p.EnvironmentType = @environment_type
-                    ORDER BY t.TimeIndex;""",
-                    conn,
-                    params={
-                        "rel_indices": rel_indices[0],
-                        "warmup_flag": 0,
-                        "environment_type": environment_type,
-                    },
-                )
-            else:
-                data = pd.read_sql(
-                    f"""SELECT rd.Value,
-                              rd.ReportDataDictionaryIndex,
-                              t.Month,
-                              t.Day,
-                              t.Hour,
-                              t.Minute,
-                              t.Interval
-                    FROM ReportData as rd
-                            LEFT JOIN Time As t ON rd.TimeIndex = t.TimeIndex
-                            LEFT JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
-                    WHERE ReportDataDictionaryIndex IN {tuple(rel_indices)}
-                    AND (IFNULL(t.WarmupFlag, 0) = @warmup_flag)
-                    AND p.EnvironmentType = @environment_type
-                    ORDER BY rd.ReportDataDictionaryIndex, t.TimeIndex;""",
-                    conn,
-                    params={"warmup_flag": 0, "environment_type": environment_type},
-                )
-            # Join the header_rows on ReportDataDictionaryIndex
-            data = data.join(
-                header_rows[["IndexGroup", "KeyValue", "Name"]],
-                on="ReportDataDictionaryIndex",
-            )
-
-            # Pivot the data so that ["Name", "KeyValue"] becomes the column MultiIndex.
-            data = data.pivot(
-                index=["Month", "Day", "Hour", "Minute", "Interval"],
-                columns=["IndexGroup", "KeyValue", "Name"],
-                values="Value",
-            )
-
-            # reset the index to prepare the DatetimeIndex
-            date_time_names = data.index.names
-            data.reset_index(inplace=True)
-            index = to_datetime(
-                {
-                    "year": 2018,
-                    "month": data.Month,
-                    "day": data.Day,
-                    "hour": data.Hour,
-                    "minute": data.Minute,
-                }
-            )
-            # Adjust timeindex by timedelta
-            index -= data["Interval"].apply(lambda x: timedelta(minutes=x))
-            index = pd.DatetimeIndex(index, freq="infer")
-            # get data
-            data = data.drop(columns=date_time_names)
-            data.index = index
-
-            # Create the EnergyDataFrame and set the units using dict
-            data = EnergyDataFrame(data)
-            data.units = header_rows.set_index("Name")["Units"].to_dict()
+            data = _extract_timeseries(conn, environment_type, header_rows, rel_indices)
 
         return data
 
@@ -377,3 +384,86 @@ class Sql:
             query = "SELECT * from EnvironmentPeriods"
             df = pd.read_sql(query, conn).set_index("EnvironmentPeriodIndex")
         return df
+
+
+def _extract_timeseries(
+    conn, environment_type, header_rows, rel_indices
+) -> EnergyDataFrame:
+    """Extract time series given indices."""
+    if len(rel_indices) == 1:
+        data = pd.read_sql(
+            """SELECT rd.Value,
+                      rd.ReportDataDictionaryIndex, 
+                      t.Month,
+                      t.Day,
+                      t.Hour,
+                      t.Minute,
+                      t.Interval
+            FROM ReportData as rd 
+                    LEFT JOIN Time As t ON rd.TimeIndex = t.TimeIndex
+                    LEFT JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
+            WHERE ReportDataDictionaryIndex=@rel_indices
+            AND (IFNULL(t.WarmupFlag, 0) = @warmup_flag)
+            AND p.EnvironmentType = @environment_type
+            ORDER BY t.TimeIndex;""",
+            conn,
+            params={
+                "rel_indices": rel_indices[0],
+                "warmup_flag": 0,
+                "environment_type": environment_type,
+            },
+        )
+    else:
+        data = pd.read_sql(
+            f"""SELECT rd.Value,
+                          rd.ReportDataDictionaryIndex,
+                          t.Month,
+                          t.Day,
+                          t.Hour,
+                          t.Minute,
+                          t.Interval
+                FROM ReportData as rd
+                        LEFT JOIN Time As t ON rd.TimeIndex = t.TimeIndex
+                        LEFT JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
+                WHERE ReportDataDictionaryIndex IN {tuple(rel_indices)}
+                AND (IFNULL(t.WarmupFlag, 0) = @warmup_flag)
+                AND p.EnvironmentType = @environment_type
+                ORDER BY rd.ReportDataDictionaryIndex, t.TimeIndex;""",
+            conn,
+            params={"warmup_flag": 0, "environment_type": environment_type},
+        )
+    # Join the header_rows on ReportDataDictionaryIndex
+    data = data.join(
+        header_rows[["IndexGroup", "KeyValue", "Name"]],
+        on="ReportDataDictionaryIndex",
+    )
+    # Pivot the data so that ["Name", "KeyValue"] becomes the column MultiIndex.
+    data = data.pivot(
+        index=["Month", "Day", "Hour", "Minute", "Interval"],
+        columns=["IndexGroup", "KeyValue", "Name"],
+        values="Value",
+    )
+    # reset the index to prepare the DatetimeIndex
+    date_time_names = data.index.names
+    data.reset_index(inplace=True)
+    index = to_datetime(
+        {
+            "year": 2018,
+            "month": data.Month,
+            "day": data.Day,
+            "hour": data.Hour,
+            "minute": data.Minute,
+        }
+    )
+    # Adjust timeindex by timedelta
+    index -= data["Interval"].apply(lambda x: timedelta(minutes=x))
+    index = pd.DatetimeIndex(index, freq="infer")
+    # get data
+    data = data.drop(columns=date_time_names, level="IndexGroup")
+    data.index = index
+    # Create the EnergyDataFrame and set the units using dict
+    data = EnergyDataFrame(data)
+    data.units = header_rows.set_index(["IndexGroup", "KeyValue", "Name"])[
+        "Units"
+    ].to_dict()
+    return data

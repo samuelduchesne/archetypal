@@ -1,4 +1,4 @@
-"""Test the SQL class"""
+"""Test the SQL class."""
 
 import itertools
 
@@ -6,7 +6,6 @@ import pytest
 
 from archetypal import IDF
 from archetypal.idfclass.sql import Sql
-
 
 # ref: https://bigladdersoftware.com/epx/docs/9-4/output-details-and-examples/eplusout-mdd.html#meter-variables-idf-format
 metered_ressource_types = (
@@ -65,12 +64,12 @@ def test_collect_meters(variable_or_meter, sql):
 def test_available_datapoints(sql):
     """Test getting available datapoints in the sql_file"""
     dps = sql.available_outputs
-    print(dps)
 
     assert dps
 
 
 def test_collect_variables(sql):
+    """Test collection variables."""
     variable_or_meter = ("Zone Mean Air Temperature",)
 
     df = sql.timeseries_by_name(
@@ -89,9 +88,10 @@ def test_collect_variables_raise(sql):
 
 
 def test_zone_info(sql):
+    """Test getting the zone info table."""
     df = sql.zone_info
 
-    print(df)
+    assert not df.empty
 
 
 def test_environment_periods(sql):
@@ -101,15 +101,31 @@ def test_environment_periods(sql):
 
 
 def test_tabular_data(sql):
+    """Test getting tabular data by name"""
     df = sql.tabular_data_by_name("AnnualBuildingUtilityPerformanceSummary", "End Uses")
-    print(df)
+    assert df.shape == (16, 6)
 
 
 def test_html_report(sql):
+    """Test getting the full html report."""
     df = sql.full_html_report()
-    print(df)
+    assert df is not None
+
 
 def test_tabular_data_keys(sql):
-    df = sql.tabular_data_keys
-    print(df)
-    assert df is not None
+    """Test getting tabular data keys."""
+    keys = sql.tabular_data_keys
+    assert keys[0] == (
+        "AnnualBuildingUtilityPerformanceSummary",
+        "Site and Source Energy",
+        "Entire Facility",
+    )
+
+
+def test_outputs(sql):
+    """Test getting an output from the Outputs property"""
+    output = sql.outputs["Heating__Electricity_Hourly"]
+
+    assert output is sql.outputs.Heating__Electricity_Hourly
+    assert output.reporting_frequency == "Hourly"
+    assert output.output_name == "Heating:Electricity"

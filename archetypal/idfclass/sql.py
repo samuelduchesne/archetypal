@@ -1,9 +1,10 @@
 """Module for parsing EnergyPlus SQLite result files into DataFrames."""
-
+import logging
 from datetime import timedelta
 from sqlite3 import connect
-from typing import List, Literal, Sequence, Union
+from typing import List, Literal, Sequence, Union, Optional
 
+import numpy as np
 import pandas as pd
 from energy_pandas import EnergyDataFrame
 from pandas import to_datetime
@@ -50,11 +51,22 @@ class Sql:
         self._available_outputs = None
         self._zone_info = None
         self._environment_periods = None
+        self._tabular_data_keys = None
 
     @property
     def file_path(self):
         """Get the path to the .sql file."""
         return self._file_path
+
+    @property
+    def tabular_data_keys(self):
+        """Get tuples of (ReportName, TableName, ReportForString) from tabular data."""
+        if self._tabular_data_keys is None:
+            with connect(self.file_path) as conn:
+                query = "SELECT DISTINCT ReportName, TableName, ReportForString FROM TabularDataWithStrings"
+                data = conn.execute(query)
+                self._tabular_data_keys = data.fetchall()
+        return self._tabular_data_keys
 
     @property
     def available_outputs(self):
@@ -74,7 +86,7 @@ class Sql:
         Any of these outputs when input to data_collections_by_output_name will
         yield a result with data collections.
         """
-        if not self._zone_info:
+        if self._zone_info is None:
             self._zone_info = self._extract_zone_info()
         return self._zone_info
 
@@ -85,9 +97,43 @@ class Sql:
         EnvironmentType: An enumeration of the environment type. (1 = Design Day,
             2 = Design Run Period, 3 = Weather Run Period).
         """
-        if not self._environment_periods:
+        if self._environment_periods is None:
             self._environment_periods = self._extract_environment_periods()
         return self._environment_periods
+
+    def full_html_report(self):
+        """Get the html report as a dictionary of DataFrames.
+
+        The dictionary keys are tuples of ("ReportName", "TableName",
+        "ReportForString").
+        """
+        with connect(self.file_path) as conn:
+            cols = (
+                "ReportName, TableName, ReportForString, ColumnName, RowName, "
+                "Units, Value"
+            )
+            query = f"SELECT {cols} FROM TabularDataWithStrings"
+            data = pd.read_sql(query, conn)
+
+        data.RowName = data.RowName.replace({"": np.NaN, "-": np.NaN})
+        data.dropna(subset=["RowName"], inplace=True)
+
+        all_df = {}
+        for name, df in data.groupby(["ReportName", "TableName", "ReportForString"]):
+            try:
+                pivoted = df.pivot(
+                    columns=["ColumnName", "Units"], index="RowName", values="Value"
+                )
+            except ValueError:
+                # Cannot pivot; return long form
+                pivoted = df
+            # apply to_numeric column-wise
+            pivoted = pivoted.apply(pd.to_numeric, errors="ignore")
+
+            # insert in final dict.
+            all_df[name] = pivoted
+
+        return all_df
 
     def timeseries_by_name(
         self,
@@ -124,6 +170,14 @@ class Sql:
         with connect(self.file_path) as conn:
             cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, Units, ReportingFrequency"
             if isinstance(variable_or_meter, str):  # assume it's a single output
+                if (
+                    variable_or_meter,
+                    reporting_frequency,
+                ) not in self.available_outputs:
+                    logging.warning(
+                        f"{(variable_or_meter, reporting_frequency)} not "
+                        f"an available output in the Sql file."
+                    )
                 query = f"""
                         SELECT {cols} 
                         FROM ReportDataDictionary 
@@ -254,13 +308,61 @@ class Sql:
 
         return data
 
+    def tabular_data_by_name(
+        self, report_name: str, table_name: str, report_for_string: Optional[str] = None
+    ) -> pd.DataFrame:
+        """Get (ReportName, TableName) data as DataFrame.
+
+        Args:
+            report_name (str): The name of the report.
+            table_name (str): The name of the table in the report.
+            report_for_string (str): The “For” string.
+
+        Returns:
+            (pd.DataFrame): A DataFrame.
+        """
+        with connect(self.file_path) as conn:
+            cols = "RowName, ColumnName, Value, Units"
+            query = f"""
+                SELECT {cols} FROM TabularDataWithStrings 
+                WHERE 
+                    (@report_name IS NULL OR ReportName=@report_name)
+                AND 
+                    (@table_name IS NULL OR TableName=@table_name)
+                AND 
+                    (@report_for_string IS NULL OR ReportForString=@report_for_string);
+            """
+            data = pd.read_sql(
+                query,
+                conn,
+                params={
+                    "report_name": report_name,
+                    "table_name": table_name,
+                    "report_for_string": report_for_string,
+                },
+            )
+            try:
+                pivoted = data.pivot(
+                    index="RowName", columns=["ColumnName", "Units"], values="Value"
+                )
+            except ValueError:
+                # Cannot pivot; return long-form DataFrame
+                pivoted = data
+                logging.warning(
+                    f"{(report_name, table_name, report_name)} cannot be "
+                    f"pivoted as RowName and ColumnName. The long-form "
+                    f"DataFrame has been returned."
+                )
+            pivoted = pivoted.apply(pd.to_numeric, errors="ignore")
+        return pivoted
+
     def _extract_available_outputs(self) -> List:
         """Extract the list of all available outputs from the SQLite file."""
         with connect(self.file_path) as conn:
-            cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, Units, ReportingFrequency"
-            query = f"SELECT {cols} FROM ReportDataDictionary"
-            header_rows = pd.read_sql(query, conn)
-        return list(sorted(set(header_rows["Name"])))
+            cols = "Name, ReportingFrequency"
+            query = f"SELECT DISTINCT {cols} FROM ReportDataDictionary"
+            data = conn.execute(query)
+            return data.fetchall()
 
     def _extract_zone_info(self):
         """Extract the Zones table from the SQLite file."""

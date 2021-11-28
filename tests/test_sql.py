@@ -1,3 +1,5 @@
+"""Test the SQL class"""
+
 import itertools
 
 import pytest
@@ -5,6 +7,8 @@ import pytest
 from archetypal import IDF
 from archetypal.idfclass.sql import Sql
 
+
+# ref: https://bigladdersoftware.com/epx/docs/9-4/output-details-and-examples/eplusout-mdd.html#meter-variables-idf-format
 metered_ressource_types = (
     "Electricity",
     "Gas",
@@ -51,9 +55,8 @@ def sql():
 def test_collect_meters(variable_or_meter, sql):
     """Test collecting outputs by name."""
     # environment_type=1 (Design Day) because data is only available for that period.
-    df = sql.collect_output_by_name(
-        variable_or_meter, reporting_frequency="Hourly", environment_type=1
-    )
+    df = sql.timeseries_by_name(variable_or_meter, reporting_frequency="Hourly",
+                                environment_type=1)
 
     assert not df.empty
 
@@ -69,9 +72,8 @@ def test_available_datapoints(sql):
 def test_collect_variables(sql):
     variable_or_meter = ("Zone Mean Air Temperature",)
 
-    df = sql.collect_output_by_name(
-        variable_or_meter, reporting_frequency="Hourly", environment_type=1
-    )
+    df = sql.timeseries_by_name(variable_or_meter, reporting_frequency="Hourly",
+                                environment_type=1)
 
     assert df.shape == (48, 18)
 
@@ -81,7 +83,7 @@ def test_collect_variables_raise(sql):
     variable_or_meter = ("Zone Mean Air Temperature",)
 
     with pytest.raises(AssertionError):
-        sql.collect_output_by_name(variable_or_meter, reporting_frequency="all")
+        sql.timeseries_by_name(variable_or_meter, reporting_frequency="all")
 
 
 def test_zone_info(sql):
@@ -91,6 +93,6 @@ def test_zone_info(sql):
 
 
 def test_environment_periods(sql):
+    """Test getting the environment_period"""
     df = sql.environment_periods
-
-    print(df)
+    assert not df.empty

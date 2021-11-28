@@ -89,25 +89,20 @@ class Sql:
             self._environment_periods = self._extract_environment_periods()
         return self._environment_periods
 
-    def _extract_available_outputs(self) -> List:
-        """Extract the list of all available outputs from the SQLite file."""
-        with connect(self.file_path) as conn:
-            cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, Units, ReportingFrequency"
-            query = f"SELECT {cols} FROM ReportDataDictionary"
-            header_rows = pd.read_sql(query, conn)
-        return list(sorted(set(header_rows["Name"])))
-
-    def collect_output_by_name(
+    def timeseries_by_name(
         self,
         variable_or_meter: Union[str, Sequence],
         reporting_frequency: Union[_REPORTING_FREQUENCIES] = "Hourly",
         environment_type: Union[Literal[1, 2, 3]] = 3,
     ) -> EnergyDataFrame:
-        """Get an EnergyDataFrame for specified meters and variables.
+        """Get an EnergyDataFrame for specified meters and/or variables.
 
         The returned DataFrame has a column MultiIndex with levels ["IndexGroup",
         "KeyValue", "Name"]. KeyValue corresponds to the zone name for variables
         while KeyValue is None for meters.
+
+        Note that if a an output name is not not available for the reporting
+        frequency or the environment type, the returned DataFrame will be empty.
 
         Args:
             variable_or_meter (str or list): The name of an EnergyPlus output meter or
@@ -259,6 +254,14 @@ class Sql:
 
         return data
 
+    def _extract_available_outputs(self) -> List:
+        """Extract the list of all available outputs from the SQLite file."""
+        with connect(self.file_path) as conn:
+            cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, Units, ReportingFrequency"
+            query = f"SELECT {cols} FROM ReportDataDictionary"
+            header_rows = pd.read_sql(query, conn)
+        return list(sorted(set(header_rows["Name"])))
+
     def _extract_zone_info(self):
         """Extract the Zones table from the SQLite file."""
         with connect(self.file_path) as conn:
@@ -267,6 +270,7 @@ class Sql:
         return df
 
     def _extract_environment_periods(self):
+        """Extract the EnvironmentPeriods table from the SQLite file."""
         with connect(self.file_path) as conn:
             query = "SELECT * from EnvironmentPeriods"
             df = pd.read_sql(query, conn).set_index("EnvironmentPeriodIndex")

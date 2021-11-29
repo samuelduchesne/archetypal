@@ -269,6 +269,7 @@ class TransitionThread(Thread):
                 )
             else:
                 self.idf._reset_dependant_vars("idfname")
+                self.idf.iddname = None  # make sure iddname is reset as well
 
     def failure_callback(self):
         """Read stderr and pass to logger."""

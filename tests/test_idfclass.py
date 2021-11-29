@@ -127,15 +127,19 @@ class TestIDF:
         natvent_v9_1_0.epw = "newepw.epw"
         assert natvent_v9_1_0.epw == Path("newepw.epw")
 
-        with pytest.raises(AttributeError):
-            # illigal to set iddname, since it is a calculated property
-            natvent_v9_1_0.iddname = "this_name"
-
     def test_transition_error(self, config, wont_transition_correctly):
         with pytest.raises(
             (EnergyPlusProcessError, EnergyPlusVersionError, CalledProcessError)
         ):
             assert wont_transition_correctly.simulate(ep_version="8.9.0")
+
+    def test_set_iddname(self):
+        """Set new iddname path."""
+        idf = IDF(as_version="9.2")
+        assert idf.iddname.endswith("V9-2-0-Energy+.idd")
+
+        idf.iddname = ""
+        assert idf._block is None  # assert block is reset to None
 
     def test_sql(self, idf_model):
         assert idf_model.sql_file.exists()

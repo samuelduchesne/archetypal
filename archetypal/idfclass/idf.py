@@ -2164,7 +2164,7 @@ class IDF(GeomIDF):
         orientation: Optional[str] = None,
         surfaces: Optional[Iterable] = None,
     ):
-        """Set Window-to-Wall Ratio of all external walls.
+        """Set Window-to-Wall Ratio of external walls.
 
         Different WWR can be applied to specific wall orientations using the
         `wwr_map` dictionary. This map is a dict of wwr values, keyed by
@@ -2179,7 +2179,7 @@ class IDF(GeomIDF):
                 specified, `wwr` is the default wwr for oreintations not defined in
                 the mapping.
             construction: Name of a window construction to apply.
-            force: True to remove all subsurfaces before setting the WWR.
+            force: True to create windows on walls that don't have any.
             wwr_map: Mapping from wall orientation (azimuth) to WWR, e.g.
                 {180: 0.25, 90: 0.2}.
             orientation: One of "north", "east", "south", "west". Walls within 45
@@ -2217,13 +2217,6 @@ class IDF(GeomIDF):
             wall_subsurfaces = list(
                 filter(lambda x: x.Building_Surface_Name == wall.Name, subsurfaces)
             )
-            if not all(_is_window(wss) for wss in wall_subsurfaces) and not force:
-                raise ValueError(
-                    'Not all subsurfaces on wall "{name}" are windows. '
-                    "Use `force=True` to replace all subsurfaces.".format(
-                        name=wall.Name
-                    )
-                )
 
             if wall_subsurfaces and not construction:
                 constructions = list(
@@ -2242,6 +2235,9 @@ class IDF(GeomIDF):
                 construction = constructions[0]
             wwr = (wwr_map or {}).get(round(wall.azimuth), base_wwr)
             if not wwr:
+                continue
+            if len(wall_subsurfaces) == 0 and not force:
+                # Don't create windows on walls that don't have any windows already.
                 continue
             # remove all subsurfaces
             for ss in wall_subsurfaces:

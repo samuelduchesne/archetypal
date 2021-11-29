@@ -1,6 +1,6 @@
 pytest
 pytest-cov
-sphinx~=4.1.2
+sphinx~=4.3.1
 sphinx_rtd_theme
 recommonmark
 sphinx-click

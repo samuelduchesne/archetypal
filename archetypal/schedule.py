@@ -1489,7 +1489,7 @@ class Schedule:
 
     def _repr_svg_(self):
         """SVG representation for iPython notebook."""
-        fig, ax = self.series.plot2d(cmap="Greys", show=False, fig_width=5, dpi=72)
+        fig, ax = self.series.plot2d(cmap="Greys", show=False, figsize=(7, 2), dpi=72)
         f = io.BytesIO()
         fig.savefig(f, format="svg")
         return f.getvalue()

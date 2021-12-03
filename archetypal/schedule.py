@@ -1294,7 +1294,11 @@ class Schedule:
         index = pd.date_range(
             start=self.startDate, periods=self.all_values.size, freq="1H"
         )
-        return EnergySeries(self.all_values, index=index, name=self.Name)
+        if self.Type is not None:
+            units = self.Type.UnitType
+        else:
+            units = None
+        return EnergySeries(self.all_values, index=index, name=self.Name, units=units)
 
     @staticmethod
     def get_schedule_type_limits_name(epbunch):
@@ -1489,7 +1493,14 @@ class Schedule:
 
     def _repr_svg_(self):
         """SVG representation for iPython notebook."""
-        fig, ax = self.series.plot2d(cmap="Greys", show=False, figsize=(7, 2), dpi=72)
+        if self.Type is not None:
+            vmin = self.Type.LowerLimit
+            vmax = self.Type.UpperLimit
+        else:
+            vmin, vmax = (0, 0)
+        fig, ax = self.series.plot2d(
+            cmap="Greys", show=False, figsize=(7, 2), dpi=72, vmin=vmin, vmax=vmax
+        )
         f = io.BytesIO()
         fig.savefig(f, format="svg")
         return f.getvalue()

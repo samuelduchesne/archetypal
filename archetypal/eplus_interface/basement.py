@@ -57,11 +57,17 @@ class BasementThread(Thread):
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        self.basement_exe = Path(
-            shutil.which(
-                "Basement", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
+        basemenet_exe = shutil.which(
+            "Basement", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
+        )
+        if basemenet_exe is None:
+            log(
+                f"The Basement program could not be found at "
+                f"'{self.eplus_home / 'PreProcess' / 'GrndTempCalc'}'",
+                lg.WARNING,
             )
-        ).copy(self.run_dir)
+            return
+        self.basement_exe = Path(basemenet_exe).copy(self.run_dir)
         self.basement_idd = (
             self.eplus_home / "PreProcess" / "GrndTempCalc" / "BasementGHT.idd"
         ).copy(self.run_dir)

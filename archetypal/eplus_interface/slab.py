@@ -58,9 +58,17 @@ class SlabThread(Thread):
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        self.slabexe = Path(
-            shutil.which("Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc")
-        ).copy(self.run_dir)
+        slab_exe = shutil.which(
+            "Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
+        )
+        if slab_exe is None:
+            log(
+                f"The Slab program could not be found at "
+                f"'{self.eplus_home / 'PreProcess' / 'GrndTempCalc'}'",
+                lg.WARNING,
+            )
+            return
+        self.slabexe = Path(slab_exe).copy(self.run_dir)
         self.slabidd = (
             self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
         ).copy(self.run_dir)

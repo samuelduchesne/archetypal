@@ -3,7 +3,7 @@
 Various functions for processing EnergyPlus models and retrieving results in
 different forms.
 """
-
+import io
 import itertools
 import logging as lg
 import math
@@ -332,6 +332,10 @@ class IDF(GeomIDF):
         body += f"\n\tVersion {self.file_version}\nSimulation Info:\n"
         body += sim_info
         return f"<{body}>"
+
+    def __copy__(self):
+        """Get a copy of self."""
+        return self.copy()
 
     @classmethod
     def from_example_files(cls, example_name, epw=None, **kwargs):
@@ -1427,6 +1431,15 @@ class IDF(GeomIDF):
         super(IDF, self).save(filename, lineendings, encoding)
         return Path(filename)
 
+    def copy(self):
+        """Return a copy of self as an in memory IDF.
+
+        The copy is a new IDF object with the same parameters and arguments as self
+        but is not attached to an file. Use IDF.saveas("idfname.idf", inplace=True)
+        to save the copy to a file inplace. self.idfname will now be idfname.idf
+        """
+        return self.saveas(io.StringIO(""))
+
     def save(self, lineendings="default", encoding="latin-1", **kwargs):
         """Write the IDF model to the text file.
 
@@ -1448,7 +1461,9 @@ class IDF(GeomIDF):
         log(f"saved '{self.name}' at '{self.idfname}'")
         return self
 
-    def saveas(self, filename, lineendings="default", encoding="latin-1"):
+    def saveas(
+        self, filename, lineendings="default", encoding="latin-1", inplace=False
+    ):
         """Save the IDF model as.
 
         Writes a new text file and load a new instance of the IDF class (new object).
@@ -1461,6 +1476,8 @@ class IDF(GeomIDF):
                 the line endings for the current system.
             encoding (str): Encoding to use for the saved file. The default is
                 'latin-1' which is compatible with the EnergyPlus IDFEditor.
+            inplace (bool): If True, applies the new filename to self directly,
+                else a new object is returned with the new filename.
 
         Returns:
             IDF: A new IDF object based on the new location file.
@@ -1490,8 +1507,18 @@ class IDF(GeomIDF):
                     name = Path(name).basename()
                 else:
                     name = file.basename()
-                file.copy(as_idf.simulation_dir / name)
-        return as_idf
+                try:
+                    file.copy(as_idf.simulation_dir / name)
+                except shutil.SameFileError:
+                    # A copy of self would have the same files in the simdir and
+                    # throw an error.
+                    pass
+        if inplace:
+            # If inplace, replace content of self with content of as_idf.
+            self.__dict__.update(as_idf.__dict__)
+        else:
+            # return the new object.
+            return as_idf
 
     def process_results(self):
         """Return the list of processed results.

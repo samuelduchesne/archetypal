@@ -72,6 +72,21 @@ class TestIDF:
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=wf, as_version="8.9.0")
 
+    def test_copy_saveas(self, idf_model, tmp_path):
+        """Test making a copy of self and two ways of saving as (inplace or not)."""
+        idf_copy = idf_model.copy()  # make a copy of self
+
+        assert idf_copy is not idf_model
+
+        # assert saveas modifies self inplace.
+        id_before = id(idf_copy)
+        idf_copy.saveas(tmp_path / "in.idf", inplace=True)
+        id_after = id(idf_copy)
+        assert id_after == id_before
+
+        # assert saveas returns another object
+        assert idf_copy.saveas(tmp_path / "in.idf", inplace=False) is not idf_copy
+
     def test_default_version_none(self):
         file = (
             "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD "

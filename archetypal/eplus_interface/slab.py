@@ -180,3 +180,9 @@ class SlabThread(Thread):
             )
         else:
             return Path(eplus_home)
+
+    def stop(self):
+        if self.p.poll() is None:
+            self.msg_callback("Attempting to cancel simulation ...")
+            self.cancelled = True
+            self.p.kill()

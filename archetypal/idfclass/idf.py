@@ -1361,14 +1361,19 @@ class IDF(GeomIDF):
         ).mkdir()
         # Run the ExpandObjects preprocessor program
         expandobjects_thread = ExpandObjectsThread(self, tmp)
-        expandobjects_thread.start()
-        expandobjects_thread.join()
-        while expandobjects_thread.is_alive():
-            time.sleep(1)
-        tmp.rmtree(ignore_errors=True)
-        e = expandobjects_thread.exception
-        if e is not None:
-            raise e
+        try:
+            expandobjects_thread.start()
+            expandobjects_thread.join()
+            # Give time to the subprocess to finish completely
+            while expandobjects_thread.is_alive():
+                time.sleep(1)
+        except (KeyboardInterrupt, SystemExit):
+            expandobjects_thread.stop()
+        finally:
+            tmp.rmtree(ignore_errors=True)
+            e = expandobjects_thread.exception
+            if e is not None:
+                raise e
 
         # Run the Basement preprocessor program if necessary
         tmp = (
@@ -1376,43 +1381,58 @@ class IDF(GeomIDF):
             + str(uuid.uuid1())[0:8]
         ).mkdir()
         basement_thread = BasementThread(self, tmp)
-        basement_thread.start()
-        basement_thread.join()
-        while basement_thread.is_alive():
-            time.sleep(1)
-        tmp.rmtree(ignore_errors=True)
-        e = basement_thread.exception
-        if e is not None:
-            raise e
+        try:
+            basement_thread.start()
+            basement_thread.join()
+            # Give time to the subprocess to finish completely
+            while basement_thread.is_alive():
+                time.sleep(1)
+        except KeyboardInterrupt:
+            basement_thread.stop()
+        finally:
+            tmp.rmtree(ignore_errors=True)
+            e = basement_thread.exception
+            if e is not None:
+                raise e
 
         # Run the Slab preprocessor program if necessary
         tmp = (
             self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]
         ).mkdir()
         slab_thread = SlabThread(self, tmp)
-        slab_thread.start()
-        slab_thread.join()
-        while slab_thread.is_alive():
-            time.sleep(1)
-        tmp.rmtree(ignore_errors=True)
-        e = slab_thread.exception
-        if e is not None:
-            raise e
+        try:
+            slab_thread.start()
+            slab_thread.join()
+            # Give time to the subprocess to finish completely
+            while slab_thread.is_alive():
+                time.sleep(1)
+        except KeyboardInterrupt:
+            slab_thread.stop()
+        finally:
+            tmp.rmtree(ignore_errors=True)
+            e = slab_thread.exception
+            if e is not None:
+                raise e
 
         # Run the energyplus program
         tmp = (
             self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]
         ).mkdir()
         running_simulation_thread = EnergyPlusThread(self, tmp)
-        running_simulation_thread.start()
-        running_simulation_thread.join()
-        while running_simulation_thread.is_alive():
-            time.sleep(1)
-        tmp.rmtree(ignore_errors=True)
-        e = running_simulation_thread.exception
-        if e is not None:
-            raise e
-        return self
+        try:
+            running_simulation_thread.start()
+            running_simulation_thread.join()
+            # Give time to the subprocess to finish completely
+            while running_simulation_thread.is_alive():
+                time.sleep(1)
+        except KeyboardInterrupt:
+            running_simulation_thread.stop()
+        finally:
+            tmp.rmtree(ignore_errors=True)
+            e = running_simulation_thread.exception
+            if e is not None:
+                raise e
+            return self
 
     def savecopy(self, filename, lineendings="default", encoding="latin-1"):
         """Save a copy of the file with the filename passed.

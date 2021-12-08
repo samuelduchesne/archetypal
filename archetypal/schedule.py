@@ -1316,6 +1316,14 @@ class Schedule:
         year = get_year_for_first_weekday(self.startDayOfTheWeek)
         return datetime(year, 1, 1)
 
+    def scale(self, diversity=0.1):
+        """Scale the schedule values by a diversity factor around the average."""
+        average = np.average(self.Values)
+        new_values = ((average - self.Values) * diversity) + self.Values
+
+        self.Values = new_values
+        return self
+
     def plot(self, **kwargs):
         """Plot the schedule. Implements the .loc accessor on the series object.
 

@@ -47,6 +47,14 @@ class TestSchedule:
         s = Schedule.from_epbunch(epbunch, start_day_of_the_week=0)
         yield s
 
+    def test_scale(self, schedules_in_necb_specific):
+        before_sum = sum(schedules_in_necb_specific.Values)
+        ax = schedules_in_necb_specific.series.iloc[0:24].plot()
+        assert pytest.approx(
+            before_sum, sum(schedules_in_necb_specific.scale(0.1).Values)
+        )
+        schedules_in_necb_specific.series.iloc[0:24].plot(ax=ax)
+
     def test_plot(self, schedules_in_necb_specific):
         schedules_in_necb_specific.plot(drawstyle="steps-post")
 

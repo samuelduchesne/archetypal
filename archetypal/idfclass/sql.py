@@ -2,14 +2,14 @@
 import logging
 from datetime import timedelta
 from sqlite3 import connect
-from typing import List, Literal, Optional, Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergyDataFrame
 from pandas import to_datetime
 from path import Path
-
+from typing_extensions import Literal
 
 _REPORTING_FREQUENCIES = Literal[
     "HVAC System Timestep",
@@ -52,9 +52,9 @@ class SqlOutput:
             "Units, ReportingFrequency"
         )
         query = f"""
-            SELECT {cols} 
-            FROM ReportDataDictionary 
-            WHERE Name=@output_name 
+            SELECT {cols}
+            FROM ReportDataDictionary
+            WHERE Name=@output_name
             AND ReportingFrequency=@reporting_frequency;
         """
         with connect(self._file_path) as conn:
@@ -152,7 +152,7 @@ class Sql:
         Any of these outputs when input to data_collections_by_output_name will
         yield a result with data collections.
         """
-        if not self._available_outputs:
+        if self._available_outputs is None:
             self._available_outputs = self._extract_available_outputs()
         return self._available_outputs
 
@@ -230,8 +230,8 @@ class Sql:
         "KeyValue", "Name"]. KeyValue corresponds to the zone name for variables
         while KeyValue is None for meters.
 
-        Note that if a an output name is not not available for the reporting
-        frequency or the environment type, the returned DataFrame will be empty.
+        Note that if an output name is not not available for the reporting
+        frequency or the environment type, the DataFrame can be empty.
 
         Args:
             variable_or_meter (str or list): The name of an EnergyPlus output meter or
@@ -262,9 +262,9 @@ class Sql:
                         f"an available output in the Sql file."
                     )
                 query = f"""
-                        SELECT {cols} 
-                        FROM ReportDataDictionary 
-                        WHERE Name=@output_name 
+                        SELECT {cols}
+                        FROM ReportDataDictionary
+                        WHERE Name=@output_name
                         AND ReportingFrequency=@reporting_frequency;
                         """
                 header_rows = pd.read_sql(
@@ -277,9 +277,9 @@ class Sql:
                 )
             elif len(variable_or_meter) == 1:  # assume it's a list
                 query = f"""
-                        SELECT {cols} 
-                        FROM ReportDataDictionary 
-                        WHERE Name=@output_name 
+                        SELECT {cols}
+                        FROM ReportDataDictionary
+                        WHERE Name=@output_name
                         AND ReportingFrequency=@reporting_frequency;
                         """
                 header_rows = pd.read_sql(
@@ -292,8 +292,8 @@ class Sql:
                 )
             else:  # assume it is a list of outputs
                 query = f"""
-                        SELECT {cols} 
-                        FROM ReportDataDictionary 
+                        SELECT {cols}
+                        FROM ReportDataDictionary
                         WHERE Name IN {tuple(variable_or_meter)}
                         AND ReportingFrequency=@reporting_frequency;"""
                 header_rows = pd.read_sql(
@@ -331,12 +331,12 @@ class Sql:
         with connect(self.file_path) as conn:
             cols = "RowName, ColumnName, Value, Units"
             query = f"""
-                SELECT {cols} FROM TabularDataWithStrings 
-                WHERE 
+                SELECT {cols} FROM TabularDataWithStrings
+                WHERE
                     (@report_name IS NULL OR ReportName=@report_name)
-                AND 
+                AND
                     (@table_name IS NULL OR TableName=@table_name)
-                AND 
+                AND
                     (@report_for_string IS NULL OR ReportForString=@report_for_string);
             """
             data = pd.read_sql(

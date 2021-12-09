@@ -5,11 +5,13 @@ import io
 import logging as lg
 from datetime import datetime, timedelta
 from itertools import groupby
+from typing import FrozenSet, Union
 
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
+from typing_extensions import Literal
 from validator_collection import checkers, validators
 
 from archetypal.utils import log
@@ -1112,11 +1114,11 @@ class Schedule:
 
     def __init__(
         self,
-        Name,
-        start_day_of_the_week=0,
-        strict=False,
-        Type=None,
-        Values=None,
+        Name: str,
+        start_day_of_the_week: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0,
+        strict: bool = False,
+        Type: Union[str, ScheduleTypeLimits] = None,
+        Values: np.ndarray = None,
         **kwargs,
     ):
         """Initialize object.
@@ -1603,8 +1605,16 @@ def _how(how):
         return "max"
 
 
-def get_year_for_first_weekday(weekday=0):
-    """Get the year that starts on 'weekday', eg. Monday=0."""
+def get_year_for_first_weekday(weekday: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0):
+    """Get the year that starts on 'weekday', eg. Monday=0.
+
+    Args:
+        weekday (int): 0-based day of week (Monday=0). Default is
+            None which looks for the start day in the IDF model.
+
+    Returns:
+        (int): The year number for which the first starts on :attr:`weekday`.
+    """
     import calendar
 
     if weekday > 6:

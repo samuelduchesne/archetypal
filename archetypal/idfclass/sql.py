@@ -393,7 +393,8 @@ def _extract_timeseries(
     if len(rel_indices) == 1:
         data = pd.read_sql(
             """SELECT rd.Value,
-                      rd.ReportDataDictionaryIndex, 
+                      rd.ReportDataDictionaryIndex,
+                      t.Year,
                       t.Month,
                       t.Day,
                       t.Hour,
@@ -417,6 +418,7 @@ def _extract_timeseries(
         data = pd.read_sql(
             f"""SELECT rd.Value,
                           rd.ReportDataDictionaryIndex,
+                          t.Year,
                           t.Month,
                           t.Day,
                           t.Hour,
@@ -439,7 +441,7 @@ def _extract_timeseries(
     )
     # Pivot the data so that ["Name", "KeyValue"] becomes the column MultiIndex.
     data = data.pivot(
-        index=["Month", "Day", "Hour", "Minute", "Interval"],
+        index=["Year", "Month", "Day", "Hour", "Minute", "Interval"],
         columns=["IndexGroup", "KeyValue", "Name"],
         values="Value",
     )
@@ -448,7 +450,7 @@ def _extract_timeseries(
     data.reset_index(inplace=True)
     index = to_datetime(
         {
-            "year": 2018,
+            "year": data.Year,
             "month": data.Month,
             "day": data.Day,
             "hour": data.Hour,

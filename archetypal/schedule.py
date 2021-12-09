@@ -1204,7 +1204,7 @@ class Schedule:
             Type:
             **kwargs:
         """
-        return cls(Name=Name, Values=Values, Type="Fraction", **kwargs)
+        return cls(Name=Name, Values=Values, Type=Type, **kwargs)
 
     @classmethod
     def from_epbunch(cls, epbunch, strict=False, Type=None, **kwargs):

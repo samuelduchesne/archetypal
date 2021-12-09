@@ -1505,7 +1505,7 @@ class Schedule:
             vmin = self.Type.LowerLimit
             vmax = self.Type.UpperLimit
         else:
-            vmin, vmax = (0, 0)
+            vmin, vmax = (None, None)
         fig, ax = self.series.plot2d(
             cmap="Greys", show=False, figsize=(7, 2), dpi=72, vmin=vmin, vmax=vmax
         )

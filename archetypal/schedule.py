@@ -1346,7 +1346,22 @@ class Schedule:
 
     def plot2d(self, **kwargs):
         """Plot the carpet plot of the schedule."""
-        return self.series.plot2d(**kwargs)
+        if self.Type is not None:
+            vmin = self.Type.LowerLimit
+            vmax = self.Type.UpperLimit
+        else:
+            vmin, vmax = (None, None)
+
+        pretty_plot_kwargs = {
+            "cmap": "Greys",
+            "show": True,
+            "figsize": (7, 2),
+            "dpi": 72,
+            "vmin": vmin,
+            "vmax": vmax,
+        }
+        pretty_plot_kwargs.update(kwargs)
+        return self.series.plot2d(**pretty_plot_kwargs)
 
     plot2d.__doc__ += EnergySeries.plot2d.__doc__
 

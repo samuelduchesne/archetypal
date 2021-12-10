@@ -1922,7 +1922,7 @@ class IDF(GeomIDF):
         except BadEPFieldError as e:
             raise e
         else:
-            # If object is supposed to be 'unique-object', deletes all objects to be
+            # If object is supposed to be 'unique-object', delete all objects to be
             # sure there is only one of them when creating new object
             # (see following line)
             if "unique-object" in set().union(
@@ -1930,22 +1930,23 @@ class IDF(GeomIDF):
             ):
                 for obj in existing_objs:
                     self.removeidfobject(obj)
-                    self.addidfobject(new_object)
                     log(
                         f"{obj} is a 'unique-object'; Removed and replaced with"
                         f" {new_object}",
                         lg.DEBUG,
                     )
+                self.addidfobject(new_object)
                 return new_object
             if new_object in existing_objs:
-                # If obj already exists, simply return
+                # If obj already exists, simply return the existing one.
                 log(
                     f"object '{new_object}' already exists in {self.name}. "
                     f"Skipping.",
                     lg.DEBUG,
                 )
-                return new_object
+                return next(x for x in existing_objs if x == new_object)
             elif new_object not in existing_objs and new_object.nameexists():
+                # Object does not exist (because not equal) but Name exists.
                 obj = self.getobject(
                     key=new_object.key.upper(), name=new_object.Name.upper()
                 )

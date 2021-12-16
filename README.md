@@ -41,9 +41,6 @@ Here is a short overview of features that are part of archetypal:
 
 `pip install -U archetypal`
 
-To check if the command line interface is installed correctly use
-`honeybee-energy --help`.
-
 ## Local Development
 
 1. Clone this repo locally

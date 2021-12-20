@@ -5,7 +5,7 @@ import io
 import logging as lg
 from datetime import datetime, timedelta
 from itertools import groupby
-from typing import FrozenSet, Union
+from typing import FrozenSet, Union, List
 
 import numpy as np
 import pandas as pd
@@ -1118,7 +1118,7 @@ class Schedule:
         start_day_of_the_week: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0,
         strict: bool = False,
         Type: Union[str, ScheduleTypeLimits] = None,
-        Values: np.ndarray = None,
+        Values: Union[List[Union[int, float]], np.ndarray] = None,
         **kwargs,
     ):
         """Initialize object.
@@ -1197,15 +1197,14 @@ class Schedule:
         self._name = value
 
     @classmethod
-    def from_values(cls, Name, Values, Type="Fraction", **kwargs):
-        """Create a Schedule from a list of Values.
-
-        Args:
-            Name:
-            Values:
-            Type:
-            **kwargs:
-        """
+    def from_values(
+        cls,
+        Name: str,
+        Values: List[Union[float, int]],
+        Type: str = "Fraction",
+        **kwargs,
+    ):
+        """Create a Schedule from a list of Values."""
         return cls(Name=Name, Values=Values, Type=Type, **kwargs)
 
     @classmethod
@@ -1325,6 +1324,49 @@ class Schedule:
 
         self.Values = new_values
         return self
+
+    def replace(self, new_values: Union[pd.Series]):
+        """Replace values with new values while keeping the full load hours constant.
+
+        Time steps that are not specified in `new_values` will be adjusted to keep
+        the full load hours of the schedule constant. No check whether the new schedule
+        stays between the bounds set by self.Type is done. Be aware.
+
+        """
+        assert isinstance(new_values.index, pd.DatetimeIndex), (
+            "The index of `new_values` must be a `pandas.DatetimeIndex`. Instead, "
+            f"`{type(new_values.index)}` was provided."
+        )
+        assert not self.series.index.difference(new_values.index).empty, (
+            "There is no overlap between self.index and new_values.index. Please "
+            "check your dates."
+        )
+
+        # create a copy of self.series as orig.
+        orig = self.series.copy()
+
+        new_data = new_values.values
+
+        # get the new_values index
+        idx = new_values.index
+
+        # compute the difference in values with the original data and the new data.
+        diff = orig.loc[idx] - new_data.reshape(-1)
+
+        # replace the original data with new values at their location.
+        orig.loc[idx] = new_values
+
+        # adjust remaining time steps with the average difference. Inplace.
+        orig.loc[orig.index.difference(idx)] += diff.sum() / len(
+            orig.index.difference(idx)
+        )
+        new = orig
+
+        # assert the sum has not changed as a sanity check.
+        np.testing.assert_array_almost_equal(self.series.sum(), new.sum())
+
+        # replace values of self with new values.
+        self.Values = new.tolist()
 
     def plot(self, **kwargs):
         """Plot the schedule. Implements the .loc accessor on the series object.

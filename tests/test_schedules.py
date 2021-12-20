@@ -95,6 +95,20 @@ class TestSchedule:
         )
         assert len(heating_sched.all_values) == 8760
 
+    def test_replace(self):
+        """Test replacing values while keeping full load hours constant."""
+        sch = Schedule.from_values("Test", [1] * 6 + [0.5] * 12 + [1] * 6)
+        new = pd.Series([1, 1], index=sch.series.index[11:13])
+
+        orig = sch.series.sum()
+
+        sch.replace(new)
+
+        new = sch.series.sum()
+
+        # assert the full load hours (sum) has not changed.
+        assert new == pytest.approx(orig)
+
 
 idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
 

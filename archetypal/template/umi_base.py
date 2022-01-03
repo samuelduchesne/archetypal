@@ -4,8 +4,10 @@ import itertools
 import math
 import re
 from collections.abc import Hashable, MutableSet
+from typing import Optional
 
 import numpy as np
+from pydantic import BaseModel, Field
 from validator_collection import validators
 
 from archetypal.utils import lcm
@@ -42,95 +44,26 @@ def _shorten_name(long_name):
         return long_name
 
 
-class UmiBase(object):
-    """Base class for template objects."""
+class UmiBase(BaseModel):
+    """Base class for template objects.
 
-    __slots__ = (
-        "_id",
-        "_datasource",
-        "_predecessors",
-        "_name",
-        "_category",
-        "_comments",
-        "_allow_duplicates",
-        "_unit_number",
-    )
-    _ids = itertools.count(0)  # unique id for each class instance
+    Args:
+        Name (str): Unique, the name of the object.
+        Category (str): Group objects by assigning the same category
+            identifier. Thies can be any string.
+        Comments (str): A comment displayed in the UmiTemplateLibrary.
+        DataSource (str): A description of the datasource of the object.
+            This helps identify from which data is the current object
+            created.
+        allow_duplicates (bool): If True, this object can be equal to another one
+            if it has a different name.
+        **kwargs:
+    """
 
-    def __init__(
-        self,
-        Name,
-        Category="Uncategorized",
-        Comments="",
-        DataSource=None,
-        allow_duplicates=False,
-        **kwargs,
-    ):
-        """The UmiBase class handles common properties to all Template objects.
-
-        Args:
-            Name (str): Unique, the name of the object.
-            Category (str): Group objects by assigning the same category
-                identifier. Thies can be any string.
-            Comments (str): A comment displayed in the UmiTemplateLibrary.
-            DataSource (str): A description of the datasource of the object.
-                This helps identify from which data is the current object
-                created.
-            allow_duplicates (bool): If True, this object can be equal to another one
-                if it has a different name.
-            **kwargs:
-        """
-
-        self.Name = Name
-        self.Category = Category
-        self.Comments = Comments
-        self.DataSource = DataSource
-
-        self.id = kwargs.get("id", None)
-        self.allow_duplicates = allow_duplicates
-        self.unit_number = next(self._ids)
-        self.predecessors = None
-
-    @property
-    def Name(self):
-        """Get or set the name of the object."""
-        return self._name
-
-    @Name.setter
-    def Name(self, value):
-        self._name = validators.string(value, coerce_value=True)
-
-    @property
-    def id(self):
-        """Get or set the id."""
-        return self._id
-
-    @id.setter
-    def id(self, value):
-        if value is None:
-            value = id(self)
-        self._id = validators.string(value, coerce_value=True)
-
-    @property
-    def DataSource(self):
-        """Get or set the datasource of the object."""
-        return self._datasource
-
-    @DataSource.setter
-    def DataSource(self, value):
-        self._datasource = validators.string(value, coerce_value=True, allow_empty=True)
-
-    @property
-    def Category(self):
-        """Get or set the Category attribute."""
-        return self._category
-
-    @Category.setter
-    def Category(self, value):
-        value = validators.string(value, coerce_value=True, allow_empty=True)
-        if value is None:
-            value = ""
-        self._category = value
+    Name: str = Field(..., description="Name of the object and unique id.")
+    Category: Optional[str] = ""
+    Comments: str = ""
+    DataSource: Optional[str] = ""
 
     @property
     def Comments(self):
@@ -378,11 +311,7 @@ class UmiBase(object):
             setattr(self, key, getattr(new_obj, key))
         return self
 
-    def validate(self):
-        """Validate UmiObjects and fills in missing values."""
-        return self
-
-    def mapping(self, validate=False):
+    def mapping(self, validate=True):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

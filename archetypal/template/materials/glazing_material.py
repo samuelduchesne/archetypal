@@ -2,6 +2,7 @@
 
 import collections
 
+from pydantic import Field, validator, PositiveFloat
 from sigfig import round
 from validator_collection import validators
 
@@ -19,213 +20,82 @@ class GlazingMaterial(MaterialBase):
     """
     _CREATED_OBJECTS = []
 
-    __slots__ = (
-        "_ir_emissivity_back",
-        "_ir_emissivity_front",
-        "_ir_transmittance",
-        "_visible_reflectance_back",
-        "_visible_reflectance_front",
-        "_visible_transmittance",
-        "_solar_reflectance_back",
-        "_solar_reflectance_front",
-        "_solar_transmittance",
-        "_dirt_factor",
-        "_conductivity",
+    Density: PositiveFloat = Field(
+        ...,
+        description="A number representing the density of the material in kg/m3. This "
+        "is essentially the mass of one cubic meter of the material.",
+    )
+    Conductivity: PositiveFloat = Field(..., description="Thermal conductivity (W/m-K)")
+    DirtFactor: float = Field(
+        ...,
+        description="This is a factor that corrects for the presence of dirt on the "
+        "glass. Using a material with dirt correction factor < 1.0 in the "
+        "construction for an interior window will result in an error message.",
+        ge=0,
+        le=1,
+    )
+    IREmissivityBack: float = Field(
+        ..., description="Back-side long-wave emissivity", ge=0, le=1
+    )
+    IREmissivityFront: float = Field(
+        ..., description="Front-side long-wave emissivity.", ge=0, le=1
+    )
+    IRTransmittance: float = Field(
+        ..., description="Long-wave transmittance at normal incidence.", ge=0, le=1
+    )
+    VisibleReflectanceBack: float = Field(
+        ...,
+        description="Back-side reflectance at normal incidence averaged over the "
+        "solar spectrum and weighted by the response of the human eye.",
+        ge=0,
+        le=1,
+    )
+    VisibleReflectanceFront: float = Field(
+        ...,
+        description="Front-side reflectance at normal incidence averaged over the "
+        "solar spectrum and weighted by the response of the human eye.",
+        ge=0,
+        le=1,
+    )
+    VisibleTransmittance: float = Field(
+        ...,
+        description="Transmittance at normal incidence averaged over the solar "
+        "spectrum and weighted by the response of the human eye.",
+    )
+    SolarReflectanceBack: float = Field(
+        ...,
+        description="Back-side reflectance at normal incidence averaged over the "
+        "solar spectrum.",
+        ge=0,
+        le=0,
+    )
+    SolarReflectanceFront: float = Field(
+        ...,
+        description="Front-side reflectance at normal incidence averaged over the "
+        "solar spectrum.",
+        ge=0,
+        le=0,
+    )
+    SolarTransmittance: float = Field(
+        ...,
+        description="Transmittance at normal incidence averaged over the solar "
+        "spectrum.",
+        ge=0,
+        le=1,
     )
 
-    def __init__(
-        self,
-        Name,
-        Density=2500,
-        Conductivity=0.9,
-        SolarTransmittance=0,
-        SolarReflectanceFront=0,
-        SolarReflectanceBack=0,
-        VisibleTransmittance=0,
-        VisibleReflectanceFront=0,
-        VisibleReflectanceBack=0,
-        IRTransmittance=0,
-        IREmissivityFront=0,
-        IREmissivityBack=0,
-        DirtFactor=1.0,
-        Cost=0.0,
-        **kwargs,
-    ):
-        """Initialize a GlazingMaterial object.
-
-        Args:
-            Name (str): The name of the GlazingMaterial.
-            Density (float): A number representing the density of the material
-                in kg/m3. This is essentially the mass of one cubic meter of the
-                material.
-            Conductivity (float): Thermal conductivity (W/m-K).
-            SolarTransmittance (float): Transmittance at normal incidence
-                averaged over the solar spectrum.
-            SolarReflectanceFront (float): Front-side reflectance at normal
-                incidence averaged over the solar spectrum.
-            SolarReflectanceBack (float): Back-side reflectance at normal
-                incidence averaged over the solar spectrum.
-            VisibleTransmittance (float): Transmittance at normal incidence
-                averaged over the solar spectrum and weighted by the response of
-                the human eye.
-            VisibleReflectanceFront (float): Front-side reflectance at normal
-                incidence averaged over the solar spectrum and weighted by the
-                response of the human eye.
-            VisibleReflectanceBack (float): Back-side reflectance at normal
-                incidence averaged over the solar spectrum and weighted by the
-                response of the human eye.
-            IRTransmittance (float): Long-wave transmittance at normal
-                incidence.
-            IREmissivityFront (float): Front-side long-wave emissivity.
-            IREmissivityBack (float): Back-side long-wave emissivity.
-            DirtFactor (float): This is a factor that corrects for the presence
-                of dirt on the glass. Using a material with dirt correction
-                factor < 1.0 in the construction for an interior window will
-                result in an error message.
-            **kwargs: keywords passed to the :class:`MaterialBase`
-                constructor. For more info, see :class:`MaterialBase`.
-        """
-        super(GlazingMaterial, self).__init__(Name, Cost=Cost, **kwargs)
-
-        self._solar_reflectance_front = 0
-        self._solar_reflectance_back = None
-        self._visible_reflectance_front = 0
-        self._visible_reflectance_back = None
-
-        self.Conductivity = Conductivity
-        self.Density = Density
-        self.DirtFactor = DirtFactor
-        self.IREmissivityBack = IREmissivityBack
-        self.IREmissivityFront = IREmissivityFront
-        self.IRTransmittance = IRTransmittance
-        self.VisibleReflectanceBack = VisibleReflectanceBack
-        self.VisibleReflectanceFront = VisibleReflectanceFront
-        self.VisibleTransmittance = VisibleTransmittance
-        self.SolarReflectanceBack = SolarReflectanceBack
-        self.SolarReflectanceFront = SolarReflectanceFront
-        self.SolarTransmittance = SolarTransmittance
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
-
-    @property
-    def Conductivity(self):
-        """Get or set the conductivity of the material [W/m-K]."""
-        return self._conductivity
-
-    @Conductivity.setter
-    def Conductivity(self, value):
-        self._conductivity = validators.float(value, minimum=0)
-
-    @property
-    def Density(self):
-        """Get or set the density of the material [J/kg-K]."""
-        return self._density
-
-    @Density.setter
-    def Density(self, value):
-        self._density = validators.float(value, minimum=0)
-
-    @property
-    def DirtFactor(self):
-        """Get or set the dirt correction factor [-]."""
-        return self._dirt_factor
-
-    @DirtFactor.setter
-    def DirtFactor(self, value):
-        if value == "":
-            value = 1
-        self._dirt_factor = validators.float(value, minimum=0, maximum=1)
-
-    @property
-    def IREmissivityBack(self):
-        """Get or set the infrared emissivity of the back side [-]."""
-        return float(self._ir_emissivity_back)
-
-    @IREmissivityBack.setter
-    def IREmissivityBack(self, value):
-        self._ir_emissivity_back = validators.float(value, False, 0.0, 1.0)
-
-    @property
-    def IREmissivityFront(self):
-        """Get or set the infrared emissivity of the front side [-]."""
-        return self._ir_emissivity_front
-
-    @IREmissivityFront.setter
-    def IREmissivityFront(self, value):
-        self._ir_emissivity_front = validators.float(value, False, 0.0, 1.0)
-
-    @property
-    def IRTransmittance(self):
-        """Get or set the infrared transmittance [-]."""
-        return self._ir_transmittance
-
-    @IRTransmittance.setter
-    def IRTransmittance(self, value):
-        self._ir_transmittance = validators.float(value, False, 0.0, 1.0)
-
-    @property
-    def VisibleReflectanceBack(self):
-        """Get or set the visible reflectance of the back side [-]."""
-        return self._visible_reflectance_back
-
-    @VisibleReflectanceBack.setter
-    def VisibleReflectanceBack(self, value):
-        self._visible_reflectance_back = validators.float(value, False, 0.0, 1.0)
-
-    @property
-    def VisibleReflectanceFront(self):
-        """Get or set the visible reflectance of the front side [-]."""
-        return self._visible_reflectance_front
-
-    @VisibleReflectanceFront.setter
-    def VisibleReflectanceFront(self, value):
-        self._visible_reflectance_front = validators.float(value, False, 0.0, 1.0)
-
-    @property
-    def VisibleTransmittance(self):
-        """Get or set the visible transmittance [-]."""
-        return self._visible_transmittance
-
-    @VisibleTransmittance.setter
-    def VisibleTransmittance(self, value):
-        assert value + self._visible_reflectance_front <= 1, (
+    @validator("VisibleTransmittance")
+    def visible_transmittance_check(cls, v, values, **kwargs):
+        assert v + values["VisibleReflectanceFront"] <= 1, (
             f"Sum of window transmittance and reflectance '"
-            f"{self._visible_reflectance_front}' is greater than 1."
+            f"{values['VisibleReflectanceFront']}' is greater than 1."
         )
-        if self._visible_reflectance_back is not None:
-            assert value + self._visible_reflectance_back <= 1, (
+        if values["VisibleReflectanceBack"] is not None:
+            assert v + values["VisibleReflectanceBack"] <= 1, (
                 f"Sum of window transmittance and reflectance '"
-                f"{self._visible_reflectance_back}' is greater than 1."
+                f"{values['VisibleReflectanceBack']}' is greater than 1."
             )
-        self._visible_transmittance = validators.float(value, False, 0.0, 1.0)
-
-    @property
-    def SolarReflectanceBack(self):
-        """Get or set the solar reflectance of the back side [-]."""
-        return self._solar_reflectance_back
-
-    @SolarReflectanceBack.setter
-    def SolarReflectanceBack(self, value):
-        self._solar_reflectance_back = validators.float(value, False, 0.0, 1.0)
-
-    @property
-    def SolarReflectanceFront(self):
-        """Get or set the solar reflectance of the front side [-]."""
-        return self._solar_reflectance_front
-
-    @SolarReflectanceFront.setter
-    def SolarReflectanceFront(self, value):
-        self._solar_reflectance_front = validators.float(value, False, 0.0, 1.0)
-
-    @property
-    def SolarTransmittance(self):
-        """Get or set the solar transmittance [-]."""
-        return self._solar_transmittance
-
-    @SolarTransmittance.setter
-    def SolarTransmittance(self, value):
-        self._solar_transmittance = validators.float(value, False, 0.0, 1.0)
+        return v
 
     def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two GlazingMaterial objects together.

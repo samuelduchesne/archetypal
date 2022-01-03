@@ -8,6 +8,7 @@ from enum import Enum
 
 import numpy as np
 import pandas as pd
+from pydantic import Field
 from sigfig import round
 from validator_collection import checkers, validators
 
@@ -17,7 +18,7 @@ from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
 
-class DimmingTypes(Enum):
+class DimmingTypes(int, Enum):
     """DimmingType class."""
 
     Continuous = 0
@@ -44,44 +45,48 @@ class ZoneLoad(UmiBase):
     """
     _CREATED_OBJECTS = []
 
-    __slots__ = (
-        "_dimming_type",
-        "_equipment_availability_schedule",
-        "_lights_availability_schedule",
-        "_occupancy_schedule",
-        "_equipment_power_density",
-        "_illuminance_target",
-        "_lighting_power_density",
-        "_people_density",
-        "_is_equipment_on",
-        "_is_lighting_on",
-        "_is_people_on",
-        "_area",
-        "_volume",
+    EquipmentPowerDensity: float = Field(
+        0, description="Equipment Power Density in the zone (W/m²)."
     )
-
-    def __init__(
-        self,
-        Name,
-        EquipmentPowerDensity=0,
-        EquipmentAvailabilitySchedule=None,
-        LightingPowerDensity=0,
-        LightsAvailabilitySchedule=None,
-        PeopleDensity=0,
-        OccupancySchedule=None,
-        IsEquipmentOn=True,
-        IsLightingOn=True,
-        IsPeopleOn=True,
-        DimmingType=DimmingTypes.Continuous,
-        IlluminanceTarget=500,
-        area=1,
-        volume=1,
-        **kwargs,
-    ):
-        """Initialize a new ZoneLoad object.
-
-        Args:
-            DimmingType (int): Different types to dim the lighting to respect the
+    EquipmentAvailabilitySchedule: UmiSchedule = Field(
+        ...,
+        description="The schedule that modifies the design level parameter for "
+        "electric equipment.",
+    )
+    LightingPowerDensity: float = Field(
+        0, description="Lighting Power Density in the zone (W/m²)."
+    )
+    LightsAvailabilitySchedule: UmiSchedule = Field(
+        description="The schedule that modifies the design level "
+        "parameter for lighting.",
+        default=UmiSchedule.constant_schedule()
+    )
+    PeopleDensity: float = Field(
+        0, description="Density of people in the zone (people/m²)."
+    )
+    OccupancySchedule: UmiSchedule = Field(
+        default=UmiSchedule.constant_schedule(),
+        description="The schedule that modifies the number of people parameter for "
+        "electric equipment.",
+    )
+    IsEquipmentOn: bool = Field(
+        False,
+        description="If True, heat gains from Equipment are taken into account for "
+        "the zone's load calculation.",
+    )
+    IsLightingOn: bool = Field(
+        False,
+        description="If True, heat gains from Lights are taken into account for the "
+        "zone's load calculation.",
+    )
+    IsPeopleOn: bool = Field(
+        False,
+        description="If True, heat gains from People are "
+        "taken into account for the zone's load calculation.",
+    )
+    DimmingType: DimmingTypes = Field(
+        DimmingTypes.Continuous,
+        description="""Different types to dim the lighting to respect the
                 IlluminanceTarget and taking into account the daylight illuminance:
                     - Continuous = 0, the overhead lights dim continuously and
                       linearly from (maximum electric power, maximum light output) to (
@@ -91,79 +96,17 @@ class ZoneLoad(UmiBase):
                     - Off = 1, Lights switch off completely when the minimum
                       dimming point is reached.
                     - Stepped = 2, the electric power input and light output vary
-                      in discrete, equally spaced steps.
-            EquipmentAvailabilitySchedule (UmiSchedule): The name of
-                the schedule (Day | Week | Year) that modifies the design level
-                parameter for electric equipment.
-            EquipmentPowerDensity (float): Equipment Power Density in the zone
-                (W/m²).
-            IlluminanceTarget (float): Number of lux to be respected in the zone
-            LightingPowerDensity (float): Lighting Power Density in the zone
-                (W/m²).
-            LightsAvailabilitySchedule (UmiSchedule): The name of the
-                schedule (Day | Week | Year) that modifies the design level
-                parameter for lighting.
-            OccupancySchedule (UmiSchedule): The name of the schedule
-                (Day | Week | Year) that modifies the number of people parameter
-                for electric equipment.
-            IsEquipmentOn (bool): If True, heat gains from Equipment are taken
-                into account for the zone's load calculation.
-            IsLightingOn (bool): If True, heat gains from Lights are taken into
-                account for the zone's load calculation.
-            IsPeopleOn (bool): If True, heat gains from People are taken into
-                account for the zone's load calculation.
-            PeopleDensity (float): Density of people in the zone (people/m²).
-            area (float): The floor area assiciated to this zone load object.
-            **kwargs: Other keywords passed to the parent constructor :class:`UmiBase`.
-        """
-        super(ZoneLoad, self).__init__(Name, **kwargs)
+                      in discrete, equally spaced steps.""",
+    )
+    IlluminanceTarget: float = Field(
+        500, description="Number of lux to be respected in the zone."
+    )
+    area: float = 1
+    volume: float = 1
 
-        self.EquipmentPowerDensity = EquipmentPowerDensity
-        self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
-        self.LightingPowerDensity = LightingPowerDensity
-        self.LightsAvailabilitySchedule = LightsAvailabilitySchedule
-        self.PeopleDensity = PeopleDensity
-        self.OccupancySchedule = OccupancySchedule
-        self.IsEquipmentOn = IsEquipmentOn
-        self.IsLightingOn = IsLightingOn
-        self.IsPeopleOn = IsPeopleOn
-        self.DimmingType = DimmingType
-        self.IlluminanceTarget = IlluminanceTarget
-        self.area = area
-        self.volume = volume
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
-
-    @property
-    def DimmingType(self):
-        """Get or set the dimming type.
-
-        Hint:
-            To set the value an int or a string is supported.
-            Choices are (<DimmingTypes.Continuous: 0>, <DimmingTypes.Off: 1>,
-            <DimmingTypes.Stepped: 2>)
-        """
-        return self._dimming_type
-
-    @DimmingType.setter
-    def DimmingType(self, value):
-        if checkers.is_string(value):
-            assert DimmingTypes[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in DimmingTypes)}"
-            )
-            self._dimming_type = DimmingTypes[value]
-        elif checkers.is_numeric(value):
-            assert DimmingTypes(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in DimmingTypes)}"
-            )
-            self._dimming_type = DimmingTypes(value)
-        elif isinstance(value, DimmingTypes):
-            self._dimming_type = value
-        else:
-            raise ValueError(f"Could not set DimmingType with value '{value}'")
 
     @property
     def EquipmentAvailabilitySchedule(self):

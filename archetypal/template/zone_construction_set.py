@@ -3,6 +3,7 @@
 import collections
 import logging as lg
 
+from pydantic import BaseModel, Field
 from validator_collection import validators
 
 from archetypal.template.constructions.opaque_construction import OpaqueConstruction
@@ -11,236 +12,50 @@ from archetypal.utils import log, reduce, timeit
 
 
 class ZoneConstructionSet(UmiBase):
-    """ZoneConstructionSet class."""
-    _CREATED_OBJECTS = []
+    """Create a ZoneConstructionSet object.
 
-    __slots__ = (
-        "_facade",
-        "_ground",
-        "_partition",
-        "_roof",
-        "_slab",
-        "_is_facade_adiabatic",
-        "_is_ground_adiabatic",
-        "_is_partition_adiabatic",
-        "_is_roof_adiabatic",
-        "_is_slab_adiabatic",
-        "_area",
-        "_volume",
+    Args:
+        Name (str): Name of the object. Must be Unique.
+        Facade (OpaqueConstruction): The OpaqueConstruction object representing
+            a facade.
+        Ground (OpaqueConstruction): The OpaqueConstruction object representing
+            a ground floor.
+        Partition (OpaqueConstruction): The OpaqueConstruction object representing
+            a partition wall.
+        Roof (OpaqueConstruction): The OpaqueConstruction object representing
+            a roof.
+        Slab (OpaqueConstruction): The OpaqueConstruction object representing
+            a slab.
+        IsFacadeAdiabatic (bool): If True, surface is adiabatic.
+        IsGroundAdiabatic (bool): If True, surface is adiabatic.
+        IsPartitionAdiabatic (bool): If True, surface is adiabatic.
+        IsRoofAdiabatic (bool): If True, surface is adiabatic.
+        IsSlabAdiabatic (bool): If True, surface is adiabatic.
+        **kwargs:
+    """
+
+    Facade: OpaqueConstruction = Field(...)
+    Ground: OpaqueConstruction = Field(...)
+    Partition: OpaqueConstruction = Field(...)
+    Roof: OpaqueConstruction = Field(...)
+    Slab: OpaqueConstruction = Field(...)
+    IsFacadeAdiabatic: OpaqueConstruction = Field(
+        False, description="If True, surface is adiabatic."
     )
-
-    def __init__(
-        self,
-        Name,
-        Facade=None,
-        Ground=None,
-        Partition=None,
-        Roof=None,
-        Slab=None,
-        IsFacadeAdiabatic=False,
-        IsGroundAdiabatic=False,
-        IsPartitionAdiabatic=False,
-        IsRoofAdiabatic=False,
-        IsSlabAdiabatic=False,
-        area=1,
-        volume=1,
-        **kwargs,
-    ):
-        """Create a ZoneConstructionSet object.
-
-        Args:
-            Name (str): Name of the object. Must be Unique.
-            Facade (OpaqueConstruction): The OpaqueConstruction object representing
-                a facade.
-            Ground (OpaqueConstruction): The OpaqueConstruction object representing
-                a ground floor.
-            Partition (OpaqueConstruction): The OpaqueConstruction object representing
-                a partition wall.
-            Roof (OpaqueConstruction): The OpaqueConstruction object representing
-                a roof.
-            Slab (OpaqueConstruction): The OpaqueConstruction object representing
-                a slab.
-            IsFacadeAdiabatic (bool): If True, surface is adiabatic.
-            IsGroundAdiabatic (bool): If True, surface is adiabatic.
-            IsPartitionAdiabatic (bool): If True, surface is adiabatic.
-            IsRoofAdiabatic (bool): If True, surface is adiabatic.
-            IsSlabAdiabatic (bool): If True, surface is adiabatic.
-            **kwargs:
-        """
-        super(ZoneConstructionSet, self).__init__(Name, **kwargs)
-        self.Slab = Slab
-        self.IsSlabAdiabatic = IsSlabAdiabatic
-        self.Roof = Roof
-        self.IsRoofAdiabatic = IsRoofAdiabatic
-        self.Partition = Partition
-        self.IsPartitionAdiabatic = IsPartitionAdiabatic
-        self.Ground = Ground
-        self.IsGroundAdiabatic = IsGroundAdiabatic
-        self.Facade = Facade
-        self.IsFacadeAdiabatic = IsFacadeAdiabatic
-        self.area = area
-        self.volume = volume
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
-
-    @property
-    def Facade(self):
-        """Get or set the Facade OpaqueConstruction."""
-        return self._facade
-
-    @Facade.setter
-    def Facade(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Facade must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
-        self._facade = value
-
-    @property
-    def Ground(self):
-        """Get or set the Ground OpaqueConstruction."""
-        return self._ground
-
-    @Ground.setter
-    def Ground(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Ground must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
-        self._ground = value
-
-    @property
-    def Partition(self):
-        """Get or set the Partition OpaqueConstruction."""
-        return self._partition
-
-    @Partition.setter
-    def Partition(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Partition must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
-        self._partition = value
-
-    @property
-    def Roof(self):
-        """Get or set the Roof OpaqueConstruction."""
-        return self._roof
-
-    @Roof.setter
-    def Roof(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Roof must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
-        self._roof = value
-
-    @property
-    def Slab(self):
-        """Get or set the Slab OpaqueConstruction."""
-        return self._slab
-
-    @Slab.setter
-    def Slab(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Slab must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
-        self._slab = value
-
-    @property
-    def IsFacadeAdiabatic(self):
-        """Get or set is facade adiabatic [bool]."""
-        return self._is_facade_adiabatic
-
-    @IsFacadeAdiabatic.setter
-    def IsFacadeAdiabatic(self, value):
-        assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsFacadeAdiabatic must be of type bool, "
-            f"not {type(value)}."
-        )
-        self._is_facade_adiabatic = value
-
-    @property
-    def IsGroundAdiabatic(self):
-        """Get or set is ground adiabatic [bool]."""
-        return self._is_ground_adiabatic
-
-    @IsGroundAdiabatic.setter
-    def IsGroundAdiabatic(self, value):
-        assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsGroundAdiabatic must be of type bool, "
-            f"not {type(value)}."
-        )
-        self._is_ground_adiabatic = value
-
-    @property
-    def IsPartitionAdiabatic(self):
-        """Get or set is partition adiabatic [bool]."""
-        return self._is_partition_adiabatic
-
-    @IsPartitionAdiabatic.setter
-    def IsPartitionAdiabatic(self, value):
-        assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsPartitionAdiabatic must be of type bool, "
-            f"not {type(value)}."
-        )
-        self._is_partition_adiabatic = value
-
-    @property
-    def IsRoofAdiabatic(self):
-        """Get or set is roof adiabatic [bool]."""
-        return self._is_roof_adiabatic
-
-    @IsRoofAdiabatic.setter
-    def IsRoofAdiabatic(self, value):
-        assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsRoofAdiabatic must be of type bool, "
-            f"not {type(value)}."
-        )
-        self._is_roof_adiabatic = value
-
-    @property
-    def IsSlabAdiabatic(self):
-        """Get or set is slab adiabatic [bool]."""
-        return self._is_slab_adiabatic
-
-    @IsSlabAdiabatic.setter
-    def IsSlabAdiabatic(self, value):
-        assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsSlabAdiabatic must be of type bool, "
-            f"not {type(value)}."
-        )
-        self._is_slab_adiabatic = value
-
-    @property
-    def area(self):
-        """Get or set the area of the zone [m²]."""
-        return self._area
-
-    @area.setter
-    def area(self, value):
-        self._area = validators.float(value, minimum=0)
-
-    @property
-    def volume(self):
-        """Get or set the volume of the zone [m³]."""
-        return self._volume
-
-    @volume.setter
-    def volume(self, value):
-        self._volume = validators.float(value, minimum=0)
+    IsGroundAdiabatic: OpaqueConstruction = Field(
+        False, description="If True, surface is adiabatic."
+    )
+    IsPartitionAdiabatic: OpaqueConstruction = Field(
+        False, description="If True, surface is adiabatic."
+    )
+    IsRoofAdiabatic: OpaqueConstruction = Field(
+        False, description="If True, surface is adiabatic."
+    )
+    IsSlabAdiabatic: OpaqueConstruction = Field(
+        False, description="If True, surface is adiabatic."
+    )
+    area: float = Field(1, ge=0)
+    volume: float = Field(1, ge=0)
 
     @classmethod
     @timeit
@@ -455,34 +270,7 @@ class ZoneConstructionSet(UmiBase):
 
         return data_dict
 
-    def validate(self):
-        """Validate object and fill in missing values."""
-        for attr in ["Slab", "Roof", "Partition", "Ground", "Facade"]:
-            if getattr(self, attr) is None:
-                # First try to get one from another zone that has the attr
-                zone = next(
-                    iter(
-                        filter(
-                            lambda x: getattr(x, attr, None) is not None,
-                            ZoneConstructionSet._CREATED_OBJECTS,
-                        )
-                    ),
-                    None,
-                )
-                if zone:
-                    setattr(self, attr, getattr(zone, attr))
-                else:
-                    # If not, default to a generic construction for last resort.
-                    setattr(self, attr, OpaqueConstruction.generic())
-                log(
-                    f"While validating {self}, the required attribute "
-                    f"'{attr}' was filled "
-                    f"with {getattr(self, attr)}",
-                    lg.DEBUG,
-                )
-        return self
-
-    def mapping(self, validate=False):
+    def mapping(self, validate=True):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

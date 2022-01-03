@@ -31,24 +31,7 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
-    _CREATED_OBJECTS = []
-
-    __slots__ = ("area",)
-
-    def __init__(self, Name, Layers, **kwargs):
-        """Initialize an OpaqueConstruction.
-
-        Args:
-            Layers (list of archetypal.MaterialLayer): List of MaterialLayers making
-                up the construction.
-            **kwargs: Other attributes passed to parent constructors such as
-                :class:`ConstructionBase`.
-        """
-        super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
-        self.area = 1
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+    area: float = 1
 
     @property
     def r_value(self):
@@ -427,7 +410,7 @@ class OpaqueConstruction(LayeredConstruction):
             "construction",
             "construction:internalsource",
         ), (
-            f"Expected ('Internalmass', 'Construction', 'construction:internalsource')."
+            f"Expected ('Internalmass', 'Construction', 'construction:internalsouce')."
             f"Got '{epbunch.key}'."
         )
         name = epbunch.Name

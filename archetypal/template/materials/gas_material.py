@@ -3,10 +3,49 @@
 import collections
 
 import numpy as np
+from pydantic import Field, validator
 from sigfig import round
+from typing_extensions import Literal
 from validator_collection import validators
 
 from .material_base import MaterialBase
+
+
+def conductivity_at_temperature(t_kelvin, pressure, type):
+    """Get the conductivity of the gas [W/(m-K)] at a given Kelvin temperature.
+
+    This method uses CoolProp to get the density. Note that the thermal
+    conductivity model is not available for Krypton, Xenon gases. Values from
+    the literature are used instead.
+
+    Args:
+        t_kelvin (float): The average temperature of the gas cavity in Kelvin.
+        pressure (float): The average pressure of the gas cavity in Pa.
+            Default is 101325 Pa for standard pressure at sea level.
+        type (str): One of
+    """
+    import CoolProp.CoolProp as CP
+
+    try:
+        return CP.PropsSI("conductivity", "T", t_kelvin, "P", pressure, type)
+    except ValueError:
+        # ValueError: Thermal conductivity model is not available for Krypton, Xenon
+        return {"krypton": 0.00943, "xenon": 5.65e-3}[type]
+
+
+def density_at_temperature(t_kelvin, pressure, type):
+    """Get the density of the gas [kg/m3] at a given temperature and pressure.
+
+    This method uses CoolProp to get the density.
+
+    Args:
+        t_kelvin (float): The average temperature of the gas cavity in Kelvin.
+        pressure (float): The average pressure of the gas cavity in Pa.
+            Default is 101325 Pa for standard pressure at sea level.
+    """
+    import CoolProp.CoolProp as CP
+
+    return CP.PropsSI("Dmass", "T", t_kelvin, "P", pressure, type)
 
 
 class GasMaterial(MaterialBase):
@@ -14,93 +53,24 @@ class GasMaterial(MaterialBase):
 
     .. image:: ../images/template/materials-gas.png
     """
-    _CREATED_OBJECTS = []
 
-    __slots__ = ("_type", "_conductivity", "_density")
+    _GASTYPES = Literal["air", "argon", "krypton", "xenon", "sf6"]
 
-    _GASTYPES = ("air", "argon", "krypton", "xenon", "sf6")
-
-    def __init__(
-        self, Name, Conductivity=None, Density=None, Category="Gases", **kwargs
-    ):
-        """Initialize object with parameters.
-
-        Args:
-            Name (str): The name of the GasMaterial.
-            Conductivity (float): Thermal conductivity (W/m-K).
-            Density (float): A number representing the density of the material
-                in kg/m3. This is essentially the mass of one cubic meter of the
-                material.
-            Category (str): Category is set as "Gases" for GasMaterial.
-            **kwargs: keywords passed to the MaterialBase constructor.
-        """
-        self.Name = Name
-        super(GasMaterial, self).__init__(self.Name, Category=Category, **kwargs)
-        self.Type = Name.upper()
-        self.Conductivity = Conductivity
-        self.Density = Density
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
-
-    @property
-    def Name(self):
-        """Get or set the name of the GasMaterial.
-
-        Choices are ("Air", "Argon", "Krypton", "Xenon").
-        """
-        return self._name
-
-    @Name.setter
-    def Name(self, value):
-        assert value.lower() in self._GASTYPES, (
-            f"Invalid value '{value}' for material gas type. Gas type must be one "
-            f"of the following:\n{self._GASTYPES}"
-        )
-        self._type = value.upper()
-        self._name = value
-
-    @property
-    def Type(self):
-        """Get or set the gas type. Alias of Name.
-
-        Choices are ("Air", "Argon", "Krypton", "Xenon").
-        """
-        return self._type
-
-    @Type.setter
-    def Type(self, value):
-        assert value.lower() in self._GASTYPES, (
-            f"Invalid value '{value}' for material gas type. Gas type must be one "
-            f"of the following:\n{self._GASTYPES}"
-        )
-        self._type = value.upper()
-        self._name = value
-
-    @property
-    def Conductivity(self):
-        """Get or set the conductivity of the gas at 0C [W/m-K]."""
-        return self._conductivity
-
-    @Conductivity.setter
-    def Conductivity(self, value):
-        if value is not None:
-            self._conductivity = validators.float(value, minimum=0)
-        else:
-            self._conductivity = self.conductivity_at_temperature(273.15)
-
-    @property
-    def Density(self):
-        """Get or set the density of the gas."""
-        return self._density
-
-    @Density.setter
-    def Density(self, value):
-        """Density of the gas at 0C and sea-level pressure [kg/m3]."""
-        if value is not None:
-            self._density = validators.float(value, minimum=0)
-        else:
-            self._density = self.density_at_temperature(273.15)
+    Type: _GASTYPES
+    Conductivity: float = Field(
+        description="Thermal conductivity (W/m-K).",
+        default_factory=lambda x: conductivity_at_temperature(
+            273.15, 101325, x.get("Type")
+        ),
+    )
+    Density: float = Field(
+        description="Density of the gas at 0C and sea-level pressure [J/kg-K].",
+        default_factory=lambda x: density_at_temperature(273.15, 101325, x.get("Type")),
+        ge=0,
+    )
+    Category: str = Field(
+        "Gases", description="Category is set as 'Gases' for GasMaterial."
+    )
 
     @property
     def molecular_weight(self):
@@ -207,18 +177,7 @@ class GasMaterial(MaterialBase):
         )
 
     def density_at_temperature(self, t_kelvin, pressure=101325):
-        """Get the density of the gas [kg/m3] at a given temperature and pressure.
-
-        This method uses CoolProp to get the density.
-
-        Args:
-            t_kelvin (float): The average temperature of the gas cavity in Kelvin.
-            pressure (float): The average pressure of the gas cavity in Pa.
-                Default is 101325 Pa for standard pressure at sea level.
-        """
-        import CoolProp.CoolProp as CP
-
-        return CP.PropsSI("Dmass", "T", t_kelvin, "P", pressure, self.Type)
+        return density_at_temperature(t_kelvin, pressure)
 
     def specific_heat_at_temperature(self, t_kelvin, pressure=101325):
         """Get the specific heat of the gas [J/(kg-K)] at a given Kelvin temperature.
@@ -253,24 +212,7 @@ class GasMaterial(MaterialBase):
             return {"krypton": 2.3219e-5, "xenon": 2.1216e-5}[self.Type.lower()]
 
     def conductivity_at_temperature(self, t_kelvin, pressure=101325):
-        """Get the conductivity of the gas [W/(m-K)] at a given Kelvin temperature.
-
-        This method uses CoolProp to get the density. Note that the thermal
-        conductivity model is not available for Krypton, Xenon gases. Values from the
-        literature are used instead.
-
-        Args:
-            t_kelvin (float): The average temperature of the gas cavity in Kelvin.
-            pressure (float): The average pressure of the gas cavity in Pa.
-                Default is 101325 Pa for standard pressure at sea level.
-        """
-        import CoolProp.CoolProp as CP
-
-        try:
-            return CP.PropsSI("conductivity", "T", t_kelvin, "P", pressure, self.Type)
-        except ValueError:
-            # ValueError: Thermal conductivity model is not available for Krypton, Xenon
-            return {"krypton": 0.00943, "xenon": 5.65e-3}[self.Type.lower()]
+        return conductivity_at_temperature(t_kelvin, pressure)
 
     def __hash__(self):
         """Return the hash value of self."""

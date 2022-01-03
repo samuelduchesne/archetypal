@@ -9,6 +9,7 @@ Notes:
 import math
 from typing import List, Union
 
+from pydantic import BaseModel, Field, validator
 from validator_collection import validators
 
 from archetypal.template.materials import GasMaterial
@@ -24,89 +25,11 @@ class ConstructionBase(UmiBase):
     https://umidocs.readthedocs.io/en/latest/docs/life-cycle-introduction.html#life-cycle-impact
     """
 
-    __slots__ = (
-        "_assembly_carbon",
-        "_assembly_cost",
-        "_assembly_energy",
-        "_dissassembly_carbon",
-        "_dissassembly_energy",
-    )
-
-    def __init__(
-        self,
-        Name,
-        AssemblyCarbon=0,
-        AssemblyCost=0,
-        AssemblyEnergy=0,
-        DisassemblyCarbon=0,
-        DisassemblyEnergy=0,
-        **kwargs,
-    ):
-        """Initialize a ConstructionBase object with parameters.
-
-        Args:
-            AssemblyCarbon (float): assembly carbon [kgCO2/m2].
-            AssemblyCost (float): assembly carbon [kgCO2/m2].
-            AssemblyEnergy (float): assembly energy [MJ/m2].
-            DisassemblyCarbon (float): disassembly carbon [kgCO2/m2].
-            DisassemblyEnergy (float): disassembly energy [MJ/m2].
-            **kwargs: keywords passed to UmiBase.
-        """
-        super(ConstructionBase, self).__init__(Name, **kwargs)
-        self.AssemblyCarbon = AssemblyCarbon
-        self.AssemblyCost = AssemblyCost
-        self.AssemblyEnergy = AssemblyEnergy
-        self.DisassemblyCarbon = DisassemblyCarbon
-        self.DisassemblyEnergy = DisassemblyEnergy
-
-    @property
-    def AssemblyCarbon(self):
-        """Get or set the assembly carbon [kgCO2/m2]."""
-        return self._assembly_carbon
-
-    @AssemblyCarbon.setter
-    def AssemblyCarbon(self, value):
-        self._assembly_carbon = float(value)
-
-    @property
-    def AssemblyCost(self):
-        """Get or set the assembly cost [$/m2]."""
-        return self._assembly_cost
-
-    @AssemblyCost.setter
-    def AssemblyCost(self, value):
-        self._assembly_cost = float(value)
-
-    @property
-    def AssemblyEnergy(self):
-        """Get or set the assembly energy [MJ/m2]."""
-        return self._assembly_energy
-
-    @AssemblyEnergy.setter
-    def AssemblyEnergy(self, value):
-        self._assembly_energy = float(value)
-
-    @property
-    def DisassemblyCarbon(self):
-        """Get or set the disassembly carbon [kgCO2/m2]."""
-        return self._dissassembly_carbon
-
-    @DisassemblyCarbon.setter
-    def DisassemblyCarbon(self, value):
-        self._dissassembly_carbon = float(value)
-
-    @property
-    def DisassemblyEnergy(self):
-        """Get or set the disassembly energy [MJ/m2]."""
-        return self._dissassembly_energy
-
-    @DisassemblyEnergy.setter
-    def DisassemblyEnergy(self, value):
-        self._dissassembly_energy = float(value)
-
-    def validate(self):
-        """Validate object and fill in missing values."""
-        return self
+    AssemblyCarbon: float = Field(0, description="assembly carbon [kgCO2/m2]")
+    AssemblyCost: float = Field(0, description="assembly carbon [$/m2]")
+    AssemblyEnergy: float = Field(0, description="assembly energy [MJ/m2]")
+    DisassemblyCarbon: float = Field(0, description="disassembly carbon [kgCO2/m2]")
+    DisassemblyEnergy: float = Field(0, description="disassembly energy [MJ/m2]")
 
     def duplicate(self):
         """Get copy of self."""
@@ -146,39 +69,22 @@ class LayeredConstruction(ConstructionBase):
             outside to inside.
     """
 
-    __slots__ = ("_layers",)
+    Layers: List[Union[MaterialLayer, GasLayer]] = Field(
+        ...,
+        min_items=1,
+        max_items=10,
+        description="A list of :class:`MaterialLayer` or :class:`GasLayer` objects.",
+    )
 
-    def __init__(self, Name, Layers, **kwargs):
-        """Initialize Layered Construction.
-
-        Args:
-            Layers (list of (MaterialLayer or GasLayer)): A list of
-                :class:`MaterialLayer` or :class:`GasLayer` objects.
-            **kwargs: Keywords passed to the :class:`ConstructionBase`
-                constructor.
-        """
-        super(LayeredConstruction, self).__init__(Name, **kwargs)
-        self.Layers = Layers
-
-    @property
-    def Layers(self) -> List[Union[MaterialLayer, GasLayer]]:
-        """Get or set the material layers."""
-        return self._layers
-
-    @Layers.setter
-    def Layers(self, value):
-        value = validators.iterable(value, minimum_length=1, maximum_length=10)
-        assert all(isinstance(a, (MaterialLayer, GasLayer)) for a in value), (
-            f"Input error for '{value}'. Layers must be a list of MaterialLayer "
-            f"or GasLayer objects only."
-        )
+    @validator("Layers")
+    def valid_layer(cls, value):
         assert isinstance(
             value[0], MaterialLayer
         ), "The outside layer cannot be a GasLayer"
         assert isinstance(
             value[-1], MaterialLayer
         ), "The inside layer cannot be a GasLayer"
-        self._layers = value
+        return value
 
     @property
     def r_value(self):

@@ -1,13 +1,15 @@
 """archetypal OpaqueMaterial."""
 
 import collections
+from typing import Optional
 
 from eppy.bunch_subclass import EpBunch
+from pydantic import Field, validator
 from validator_collection import validators
 
 from archetypal.template.materials import GasMaterial
-from archetypal.template.materials.material_base import MaterialBase
-from archetypal.utils import log, signif
+from archetypal.template.materials.material_base import MaterialBase, ROUGHNESS
+from archetypal.utils import log
 
 
 class OpaqueMaterial(MaterialBase):
@@ -16,211 +18,76 @@ class OpaqueMaterial(MaterialBase):
     .. image:: ../images/template/materials-opaque.png
     """
 
-    _CREATED_OBJECTS = []
-
-    _ROUGHNESS_TYPES = (
-        "VeryRough",
-        "Rough",
-        "MediumRough",
-        "MediumSmooth",
-        "Smooth",
-        "VerySmooth",
+    Conductivity: float = Field(..., description="")
+    Density: float = Field(..., description="")
+    Roughness: ROUGHNESS = Field(
+        ROUGHNESS.Rough,
+        description="A text value that indicated the roughness of your material. This "
+        "can be either 'VeryRough', 'Rough', 'MediumRough', 'MediumSmooth', "
+        "'Smooth', and 'VerySmooth'. The default is set to 'Rough'.",
+    )
+    SolarAbsorptance: float = Field(
+        ...,
+        description="An number between 0 and 1 that represents the absorptance of "
+        "solar radiation by the material. The default is set to 0.7, "
+        "which is common "
+        "for most non-metallic materials.",
+        ge=0,
+        le=1,
+    )
+    SpecificHeat: float = Field(
+        ...,
+        description="A number representing the specific heat capacity of the material "
+        "in J/kg-K. This is essentially the number of joules needed to raise one kg "
+        "of the material by 1 degree Kelvin. Only values of specific heat of 100 or "
+        "larger are allowed. Typical ranges are from 800 to 2000 J/(kg-K).",
+        ge=100,
+    )
+    ThermalEmittance: float = Field(
+        ...,
+        description="An number between 0 and 1 that represents the thermal "
+        "absorptance of the material. The default is set to 0.9, which is "
+        "common for "
+        "most non-metallic materials. For long wavelength radiant "
+        "exchange, thermal "
+        "emissivity and thermal emittance are equal to thermal "
+        "absorptance.",
+        ge=0,
+        le=1,
+    )
+    VisibleAbsorptance: Optional[float] = Field(
+        0.7,
+        description="An number between 0 and 1 that represents the absorptance of "
+        "visible light by the material. The default is set to 0.7, "
+        "which is common "
+        "for most non-metallic materials.",
+        ge=0,
+        le=1,
+    )
+    MoistureDiffusionResistance: float = Field(
+        ...,
+        description="The factor by which the vapor diffusion in the material is "
+        "impeded, as compared to diffusion in stagnant air [%].",
+        ge=0,
     )
 
-    __slots__ = (
-        "_roughness",
-        "_solar_absorptance",
-        "_specific_heat",
-        "_thermal_emittance",
-        "_visible_absorptance",
-        "_moisture_diffusion_resistance",
-        "_conductivity",
-        "_density",
-        "_key",
-    )
-
-    def __init__(
-        self,
-        Name,
-        Conductivity,
-        SpecificHeat,
-        SolarAbsorptance=0.7,
-        ThermalEmittance=0.9,
-        VisibleAbsorptance=0.7,
-        Roughness="Rough",
-        Cost=0,
-        Density=1,
-        MoistureDiffusionResistance=50,
-        EmbodiedCarbon=0.45,
-        EmbodiedEnergy=0,
-        TransportCarbon=0,
-        TransportDistance=0,
-        TransportEnergy=0,
-        SubstitutionRatePattern=None,
-        SubstitutionTimestep=20,
-        **kwargs,
-    ):
-        """Initialize an opaque material.
-
-        Args:
-            Name (str): The name of the material.
-            Conductivity (float): A number representing the conductivity of the
-                material in W/m-K. This is essentially the heat flow in Watts
-                across one meter thick of the material when the temperature
-                difference on either side is 1 Kelvin. Modeling layers with
-                conductivity higher than 5.0 W/(m-K) is not recommended.
-            SpecificHeat (float): A number representing the specific heat
-                capacity of the material in J/kg-K. This is essentially the
-                number of joules needed to raise one kg of the material by 1
-                degree Kelvin. Only values of specific heat of 100 or larger are
-                allowed. Typical ranges are from 800 to 2000 J/(kg-K).
-            SolarAbsorptance (float): An number between 0 and 1 that represents
-                the absorptance of solar radiation by the material. The default
-                is set to 0.7, which is common for most non-metallic materials.
-            ThermalEmittance (float): An number between 0 and 1 that represents
-                the thermal absorptance of the material. The default is set to
-                0.9, which is common for most non-metallic materials. For long
-                wavelength radiant exchange, thermal emissivity and thermal
-                emittance are equal to thermal absorptance.
-            VisibleAbsorptance (float): An number between 0 and 1 that
-                represents the absorptance of visible light by the material.
-                The default is set to 0.7, which is common for most non-metallic
-                materials.
-            Roughness (str): A text value that indicated the roughness of your
-                material. This can be either "VeryRough", "Rough",
-                "MediumRough", "MediumSmooth", "Smooth", and "VerySmooth". The
-                default is set to "Rough".
-            Density (float): A number representing the density of the material
-                in kg/m3. This is essentially the mass of one cubic meter of the
-                material.
-            MoistureDiffusionResistance (float): the factor by which the vapor
-                diffusion in the material is impeded, as compared to diffusion in
-                stagnant air [%].
-            **kwargs: keywords passed to parent constructors.
-        """
-        super(OpaqueMaterial, self).__init__(
-            Name,
-            Cost=Cost,
-            EmbodiedCarbon=EmbodiedCarbon,
-            EmbodiedEnergy=EmbodiedEnergy,
-            SubstitutionTimestep=SubstitutionTimestep,
-            TransportCarbon=TransportCarbon,
-            TransportDistance=TransportDistance,
-            TransportEnergy=TransportEnergy,
-            SubstitutionRatePattern=SubstitutionRatePattern,
-            **kwargs,
-        )
-
-        self.Conductivity = Conductivity
-        self.Density = Density
-        self.Roughness = Roughness
-        self.SolarAbsorptance = SolarAbsorptance
-        self.SpecificHeat = SpecificHeat
-        self.ThermalEmittance = ThermalEmittance
-        self.VisibleAbsorptance = VisibleAbsorptance
-        self.MoistureDiffusionResistance = MoistureDiffusionResistance
-
-        self._key: str = kwargs.get("_key", "")
-        # TODO: replace when NoMass and AirGap when properly is supported
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
-
-    @property
-    def Conductivity(self):
-        """Get or set the conductivity of the material [W/m-K]."""
-        return self._conductivity
-
-    @Conductivity.setter
-    def Conductivity(self, value):
-        value = validators.float(value, minimum=0)
-        self._conductivity = signif(value)
-
-    @property
-    def Density(self):
-        """Get or set the density of the material [J/kg-K]."""
-        return self._density
-
-    @Density.setter
-    def Density(self, value):
-        value = validators.float(value, minimum=0)
-        self._density = signif(value)
-
-    @property
-    def Roughness(self):
-        """Get or set the roughness of the material.
-
-        Hint:
-            choices are: "VeryRough", "Rough", "MediumRough", "MediumSmooth", "Smooth",
-            "VerySmooth".
-        """
-        return self._roughness
-
-    @Roughness.setter
-    def Roughness(self, value):
-        assert value in self._ROUGHNESS_TYPES, (
-            f"Invalid value '{value}' for material roughness. Roughness must be one "
-            f"of the following:\n{self._ROUGHNESS_TYPES}"
-        )
-        self._roughness = value
-
-    @property
-    def SolarAbsorptance(self):
-        """Get or set the solar absorptance of the material [-]."""
-        return self._solar_absorptance
-
-    @SolarAbsorptance.setter
-    def SolarAbsorptance(self, value):
-        if value == "" or value is None:
+    @validator("SolarAbsorptance")
+    def validate_solar_absorptance(cls, value):
+        if value == "":
             value = 0.7
-        self._solar_absorptance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        return value
 
-    @property
-    def SpecificHeat(self):
-        """Get or set the specific heat of the material [J/(kg-K)]."""
-        return self._specific_heat
-
-    @SpecificHeat.setter
-    def SpecificHeat(self, value):
-        value = validators.float(value, minimum=100)
-        self._specific_heat = signif(value)
-
-    @property
-    def ThermalEmittance(self):
-        """Get or set the thermal emittance of the material [-]."""
-        return self._thermal_emittance
-
-    @ThermalEmittance.setter
-    def ThermalEmittance(self, value):
-        if value == "" or value is None:
+    @validator("ThermalEmittance")
+    def validate_thermal_emittance(cls, value):
+        if value == "":
             value = 0.9
-        self._thermal_emittance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        return value
 
-    @property
-    def VisibleAbsorptance(self):
-        """Get or set the visible absorptance of the material [-]."""
-        return self._visible_absorptance
-
-    @VisibleAbsorptance.setter
-    def VisibleAbsorptance(self, value):
-        if value == "" or value is None or value is None:
+    @validator("VisibleAbsorptance")
+    def validate_visible_absorptance(cls, value):
+        if value == "":
             value = 0.7
-        self._visible_absorptance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
-
-    @property
-    def MoistureDiffusionResistance(self):
-        """Get or set the vapor resistance factor of the material [%]."""
-        return self._moisture_diffusion_resistance
-
-    @MoistureDiffusionResistance.setter
-    def MoistureDiffusionResistance(self, value):
-        self._moisture_diffusion_resistance = validators.float(value, minimum=0)
+        return value
 
     @classmethod
     def generic(cls, **kwargs):
@@ -518,23 +385,7 @@ class OpaqueMaterial(MaterialBase):
                 Visible_Absorptance=self.VisibleAbsorptance,
             )
 
-    def validate(self):
-        """Validate object and fill in missing values.
-
-        Hint:
-            Some OpaqueMaterial don't have a default value, therefore an empty string
-            is parsed. This breaks the UmiTemplate Editor, therefore we set a value
-            on these attributes (if necessary) in this validation step.
-        """
-        if getattr(self, "SolarAbsorptance") == "":
-            setattr(self, "SolarAbsorptance", 0.7)
-        if getattr(self, "ThermalEmittance") == "":
-            setattr(self, "ThermalEmittance", 0.9)
-        if getattr(self, "VisibleAbsorptance") == "":
-            setattr(self, "VisibleAbsorptance", 0.7)
-        return self
-
-    def mapping(self, validate=False):
+    def mapping(self, validate=True):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

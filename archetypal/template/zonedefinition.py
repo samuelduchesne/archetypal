@@ -3,8 +3,10 @@
 import collections
 import sqlite3
 import time
+from typing import List, Optional
 
-from eppy.bunch_subclass import BadEPFieldError
+from eppy.bunch_subclass import BadEPFieldError, EpBunch
+from pydantic import BaseModel, Field
 from sigfig import round
 from validator_collection import validators
 
@@ -20,313 +22,54 @@ from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.utils import log, settings
 
 
-class ZoneDefinition(UmiBase):
+class ZoneDefinition(BaseModel):
     """Zone settings class.
 
     .. image:: ../images/template/zoneinfo-zone.png
+
+    Name (str): Name of the object. Must be Unique.
+    Constructions (ZoneConstructionSet):
+    Loads (ZoneLoad): Loads of the zone defined with the lights,
+        equipment and occupancy parameters (see :class:`ZoneLoad`)
+    Conditioning (ZoneConditioning): Conditioning of the zone defined
+        with heating/cooling and mechanical ventilation parameters (see
+        :class:`ZoneConditioning`)
+    Ventilation (VentilationSetting): Ventilation settings of the zone
+        defined with the infiltration rate and natural ventilation
+        parameters (see :class:`VentilationSetting`)
+    DomesticHotWater (archetypal.template.dhw.DomesticHotWaterSetting):
+    DaylightMeshResolution (float):
+    DaylightWorkplaneHeight (float):
+    InternalMassConstruction (archetypal.OpaqueConstruction):
+    InternalMassExposedPerFloorArea:
+    Windows (WindowSetting): The WindowSetting object associated with
+        this zone.
+    area (float):
+    volume (float):
+    occupants (float):
+    **kwargs:
     """
     _CREATED_OBJECTS = []
 
-    __slots__ = (
-        "_internal_mass_exposed_per_floor_area",
-        "_constructions",
-        "_loads",
-        "_conditioning",
-        "_ventilation",
-        "_domestic_hot_water",
-        "_windows",
-        "_occupants",
-        "_daylight_mesh_resolution",
-        "_daylight_workplane_height",
-        "_internal_mass_construction",
-        "_is_part_of_conditioned_floor_area",
-        "_is_part_of_total_floor_area",
-        "_zone_surfaces",
-        "_volume",
-        "_multiplier",
-        "_area",
-        "_is_core",
-    )
-
-    def __init__(
-        self,
-        Name,
-        Constructions=None,
-        Loads=None,
-        Conditioning=None,
-        Ventilation=None,
-        DomesticHotWater=None,
-        DaylightMeshResolution=1,
-        DaylightWorkplaneHeight=0.8,
-        InternalMassConstruction=None,
-        InternalMassExposedPerFloorArea=1.05,
-        Windows=None,
-        area=1,
-        volume=1,
-        occupants=1,
-        is_part_of_conditioned_floor_area=True,
-        is_part_of_total_floor_area=True,
-        multiplier=1,
-        zone_surfaces=None,
-        is_core=False,
-        **kwargs,
-    ):
-        """Initialize :class:`Zone` object.
-
-        Args:
-            Name (str): Name of the object. Must be Unique.
-            Constructions (ZoneConstructionSet):
-            Loads (ZoneLoad): Loads of the zone defined with the lights,
-                equipment and occupancy parameters (see :class:`ZoneLoad`)
-            Conditioning (ZoneConditioning): Conditioning of the zone defined
-                with heating/cooling and mechanical ventilation parameters (see
-                :class:`ZoneConditioning`)
-            Ventilation (VentilationSetting): Ventilation settings of the zone
-                defined with the infiltration rate and natural ventilation
-                parameters (see :class:`VentilationSetting`)
-            DomesticHotWater (archetypal.template.dhw.DomesticHotWaterSetting):
-            DaylightMeshResolution (float):
-            DaylightWorkplaneHeight (float):
-            InternalMassConstruction (archetypal.OpaqueConstruction):
-            InternalMassExposedPerFloorArea:
-            Windows (WindowSetting): The WindowSetting object associated with
-                this zone.
-            area (float):
-            volume (float):
-            occupants (float):
-            **kwargs:
-        """
-        super(ZoneDefinition, self).__init__(Name, **kwargs)
-
-        self.Ventilation = Ventilation
-        self.Loads = Loads
-        self.Conditioning = Conditioning
-        self.Constructions = Constructions
-        self.DaylightMeshResolution = DaylightMeshResolution
-        self.DaylightWorkplaneHeight = DaylightWorkplaneHeight
-        self.DomesticHotWater = DomesticHotWater
-        self.InternalMassConstruction = InternalMassConstruction
-        self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
-
-        self.Windows = Windows  # This is not used in to_dict()
-
-        if zone_surfaces is None:
-            zone_surfaces = []
-        self.zone_surfaces = zone_surfaces
-        self.area = area
-        self.volume = volume
-        self.occupants = occupants
-        self.is_part_of_conditioned_floor_area = is_part_of_conditioned_floor_area
-        self.is_part_of_total_floor_area = is_part_of_total_floor_area
-        self.multiplier = multiplier
-        self.is_core = is_core
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
-
-    @property
-    def Constructions(self):
-        """Get or set the ZoneConstructionSet object."""
-        return self._constructions
-
-    @Constructions.setter
-    def Constructions(self, value):
-        if value is not None:
-            assert isinstance(value, ZoneConstructionSet), (
-                f"Input value error. Constructions must be of "
-                f"type {ZoneConstructionSet}, not {type(value)}."
-            )
-        self._constructions = value
-
-    @property
-    def Loads(self):
-        """Get or set the ZoneLoad object."""
-        return self._loads
-
-    @Loads.setter
-    def Loads(self, value):
-        if value is not None:
-            assert isinstance(value, ZoneLoad), (
-                f"Input value error. Loads must be of "
-                f"type {ZoneLoad}, not {type(value)}."
-            )
-        self._loads = value
-
-    @property
-    def Conditioning(self):
-        """Get or set the ZoneConditioning object."""
-        return self._conditioning
-
-    @Conditioning.setter
-    def Conditioning(self, value):
-        if value is not None:
-            assert isinstance(value, ZoneConditioning), (
-                f"Input value error. Conditioning must be of "
-                f"type {ZoneConditioning}, not {type(value)}."
-            )
-        self._conditioning = value
-
-    @property
-    def Ventilation(self):
-        """Get or set the VentilationSetting object."""
-        return self._ventilation
-
-    @Ventilation.setter
-    def Ventilation(self, value):
-        if value is not None:
-            assert isinstance(value, VentilationSetting), (
-                f"Input value error. Ventilation must be of "
-                f"type {VentilationSetting}, not {type(value)}."
-            )
-        self._ventilation = value
-
-    @property
-    def DomesticHotWater(self):
-        """Get or set the DomesticHotWaterSetting object."""
-        return self._domestic_hot_water
-
-    @DomesticHotWater.setter
-    def DomesticHotWater(self, value):
-        if value is not None:
-            assert isinstance(value, DomesticHotWaterSetting), (
-                f"Input value error. DomesticHotWater must be of "
-                f"type {DomesticHotWaterSetting}, not {type(value)}."
-            )
-        self._domestic_hot_water = value
-
-    @property
-    def DaylightMeshResolution(self):
-        """Get or set the daylight mesh resolution [m]."""
-        return self._daylight_mesh_resolution
-
-    @DaylightMeshResolution.setter
-    def DaylightMeshResolution(self, value):
-        self._daylight_mesh_resolution = validators.float(value, minimum=0)
-
-    @property
-    def DaylightWorkplaneHeight(self):
-        """Get or set the DaylightWorkplaneHeight [m]."""
-        return self._daylight_workplane_height
-
-    @DaylightWorkplaneHeight.setter
-    def DaylightWorkplaneHeight(self, value):
-        self._daylight_workplane_height = validators.float(value, minimum=0)
-
-    @property
-    def InternalMassConstruction(self):
-        """Get or set the internal mass construction object."""
-        return self._internal_mass_construction
-
-    @InternalMassConstruction.setter
-    def InternalMassConstruction(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error. InternalMassConstruction must be of "
-                f"type {OpaqueConstruction}, not {type(value)}."
-            )
-        self._internal_mass_construction = value
-
-    @property
-    def InternalMassExposedPerFloorArea(self):
-        """Get or set the internal mass exposed per floor area [-]."""
-        return self._internal_mass_exposed_per_floor_area
-
-    @InternalMassExposedPerFloorArea.setter
-    def InternalMassExposedPerFloorArea(self, value):
-        self._internal_mass_exposed_per_floor_area = validators.float(value, minimum=0)
-
-    @property
-    def Windows(self):
-        """Get or set the WindowSetting object."""
-        return self._windows
-
-    @Windows.setter
-    def Windows(self, value):
-        if value is not None:
-            assert isinstance(value, WindowSetting), (
-                f"Input value error. Windows must be of "
-                f"type {WindowSetting}, not {type(value)}."
-            )
-        self._windows = value
-
-    @property
-    def occupants(self):
-        """Get or set the number of occupants in the zone."""
-        return self._occupants
-
-    @occupants.setter
-    def occupants(self, value):
-        self._occupants = value
-
-    @property
-    def area(self):
-        """Get or set the area of the zone [m²]."""
-        return self._area
-
-    @area.setter
-    def area(self, value):
-        self._area = validators.float(value, minimum=0)
-
-    @property
-    def volume(self):
-        """Get or set the volume of the zone [m³]."""
-        return self._volume
-
-    @volume.setter
-    def volume(self, value):
-        self._volume = validators.float(value, minimum=0)
-
-    @property
-    def is_core(self):
-        """Get or set if the zone is a core zone [bool]."""
-        return self._is_core
-
-    @is_core.setter
-    def is_core(self, value):
-        assert isinstance(value, bool), value
-        self._is_core = value
-
-    @property
-    def multiplier(self):
-        """Get or set the zone multiplier.
-
-        Note: Zone multiplier is designed as a “multiplier” for floor
-        area, zone loads, and energy consumed by internal gains.
-        """
-        return self._multiplier
-
-    @multiplier.setter
-    def multiplier(self, value):
-        self._multiplier = validators.integer(value, minimum=1)
-
-    @property
-    def is_part_of_conditioned_floor_area(self):
-        """Get or set is part of conditioned area [bool]."""
-        return self._is_part_of_conditioned_floor_area
-
-    @is_part_of_conditioned_floor_area.setter
-    def is_part_of_conditioned_floor_area(self, value):
-        assert isinstance(value, bool)
-        self._is_part_of_conditioned_floor_area = value
-
-    @property
-    def is_part_of_total_floor_area(self):
-        """Get or set is part od the total building floor area [bool]."""
-        return self._is_part_of_total_floor_area
-
-    @is_part_of_total_floor_area.setter
-    def is_part_of_total_floor_area(self, value):
-        assert isinstance(value, bool)
-        self._is_part_of_total_floor_area = value
-
-    @property
-    def zone_surfaces(self):
-        """Get or set the list of surfaces for this zone."""
-        return self._zone_surfaces
-
-    @zone_surfaces.setter
-    def zone_surfaces(self, value):
-        self._zone_surfaces = validators.iterable(value, allow_empty=True)
+    Name: str
+    Constructions: ZoneConstructionSet = None
+    Loads: ZoneLoad = None
+    Conditioning: ZoneConditioning = None
+    Ventilation: VentilationSetting = None
+    DomesticHotWater: DomesticHotWaterSetting = None
+    DaylightMeshResolution: float = Field(1, ge=0)
+    DaylightWorkplaneHeight: float = Field(0.8, ge=0)
+    InternalMassConstruction: OpaqueConstruction = None
+    InternalMassExposedPerFloorArea: float = Field(1.05, ge=0)
+    Windows: WindowSetting = None
+    area: float = Field(1, ge=0)
+    volume: float = Field(1, ge=0)
+    occupants: float = Field(1, ge=0)
+    is_part_of_conditioned_floor_area: bool = True
+    is_part_of_total_floor_area: bool = True
+    multiplier: float = Field(1, ge=1)
+    zone_surfaces: List[Optional[EpBunch]] = []
+    is_core = False
 
     def to_dict(self):
         """Return ZoneDefinition dictionary representation."""

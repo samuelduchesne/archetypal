@@ -10,6 +10,8 @@ Notes:
 import collections
 from enum import Enum
 
+from pydantic import Field
+from typing_extensions import Literal
 from validator_collection import validators
 
 from archetypal.simple_glazing import calc_simple_glazing
@@ -57,51 +59,16 @@ class ShadingType(Enum):
         return self._value_ > other._value_
 
 
+_CATEGORIES = Literal["single", "double", "triple", "quadruple"]
+
+
 class WindowConstruction(LayeredConstruction):
     """Window Construction.
 
     .. image:: ../images/template/constructions-window.png
     """
 
-    _CREATED_OBJECTS = []
-
-    _CATEGORIES = ("single", "double", "triple", "quadruple")
-
-    __slots__ = ("_category",)
-
-    def __init__(self, Name, Layers, Category="Double", **kwargs):
-        """Initialize a WindowConstruction.
-
-        Args:
-            Name (str): Name of the WindowConstruction.
-            Layers (list of (MaterialLayer or GasLayer)): List of MaterialLayer and
-                GasLayer.
-            Category (str): "Single", "Double" or "Triple".
-            **kwargs: Other keywords passed to the constructor.
-        """
-        super(WindowConstruction, self).__init__(
-            Name,
-            Layers,
-            Category=Category,
-            **kwargs,
-        )
-        self.Category = Category  # set here for validators
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
-
-    @property
-    def Category(self):
-        """Get or set the Category. Choices are ("single", "double", "triple")."""
-        return self._category
-
-    @Category.setter
-    def Category(self, value):
-        assert value.lower() in self._CATEGORIES, (
-            f"Input error for value '{value}'. The "
-            f"Category must be one of ({self._CATEGORIES})"
-        )
-        self._category = value
+    Category: _CATEGORIES = Field(...)
 
     @property
     def gap_count(self):

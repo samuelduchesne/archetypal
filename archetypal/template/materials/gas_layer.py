@@ -2,14 +2,17 @@
 import collections
 import logging as lg
 import math
+from typing import Union
 
+from pydantic import BaseModel, Field
 from sigfig import round
 from validator_collection import validators
 
+from archetypal.template.materials.gas_material import GasMaterial
 from archetypal.utils import log
 
 
-class GasLayer(object):
+class GasLayer(BaseModel):
     """Class used to define one gas layer in a window construction assembly.
 
     This class has two attributes:
@@ -18,48 +21,10 @@ class GasLayer(object):
     2. Thickness (float): The thickness of the material in the layer.
     """
 
-    __slots__ = ("_material", "_thickness")
-
-    def __init__(self, Material, Thickness, **kwargs):
-        """Initialize a MaterialLayer object with parameters.
-
-        Args:
-            Material (GasMaterial):
-            Thickness (float): The thickness of the material in the
-                construction.
-        """
-        self.Material = Material
-        self.Thickness = Thickness
-
-    @property
-    def Material(self):
-        """Get or set the material of self."""
-        return self._material
-
-    @Material.setter
-    def Material(self, value):
-        from archetypal.template.materials import GasMaterial
-
-        assert isinstance(value, GasMaterial), (
-            f"Input value error for '{value}'. Value must be of type (GasMaterial), "
-            f"not {type(value)}."
-        )
-        self._material = value
-
-    @property
-    def Thickness(self):
-        """Get or set the material thickness [m]."""
-        return self._thickness
-
-    @Thickness.setter
-    def Thickness(self, value):
-        self._thickness = value
-        if value < 0.003:
-            log(
-                "Modeling layer thinner (less) than 0.003 m (not recommended) for "
-                f"MaterialLayer '{self}'",
-                lg.WARNING,
-            )
+    Material: Union[GasMaterial] = Field(...)
+    Thickness: float = Field(
+        ..., description="The thickness of the material in the construction."
+    )
 
     @property
     def resistivity(self):

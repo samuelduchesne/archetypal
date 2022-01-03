@@ -1,157 +1,63 @@
 """archetypal OpaqueMaterial."""
 
 import collections
+from typing import Optional
 
 import numpy as np
+from pydantic import Field
 from sigfig import round
 from validator_collection import validators
 
-from archetypal.template import GasMaterial
-from archetypal.template.materials.material_base import MaterialBase
+from archetypal.template.materials.material_base import MaterialBase, ROUGHNESS
 from archetypal.utils import log
 
 
 class NoMassMaterial(MaterialBase):
     """Use this component to create a custom no mass material."""
 
-    _CREATED_OBJECTS = []
-
-    _ROUGHNESS_TYPES = (
-        "VeryRough",
-        "Rough",
-        "MediumRough",
-        "MediumSmooth",
-        "Smooth",
-        "VerySmooth",
+    r_value: float = Field(
+        ...,
+        alias="RValue",
+        description="Number for the R-value of the material [m2-K/W].",
+        ge=0,
     )
-
-    __slots__ = (
-        "_roughness",
-        "_solar_absorptance",
-        "_thermal_emittance",
-        "_visible_absorptance",
-        "_moisture_diffusion_resistance",
-        "_r_value",
+    Roughness: ROUGHNESS = Field(
+        ROUGHNESS.Rough,
+        description="A text value that indicated the roughness of your material. This "
+        "can be either 'VeryRough', 'Rough', 'MediumRough', 'MediumSmooth', "
+        "'Smooth', and 'VerySmooth'. The default is set to 'Rough'.",
     )
-
-    def __init__(
-        self,
-        Name,
-        RValue,
-        SolarAbsorptance=0.7,
-        ThermalEmittance=0.9,
-        VisibleAbsorptance=0.7,
-        Roughness="Rough",
-        MoistureDiffusionResistance=50,
-        **kwargs,
-    ):
-        """Initialize an opaque material.
-
-        Args:
-            Name (str): The name of the material.
-            RValue (float): Number for the R-value of the material [m2-K/W].
-            SolarAbsorptance (float): An number between 0 and 1 that represents
-                the absorptance of solar radiation by the material. The default
-                is set to 0.7, which is common for most non-metallic materials.
-            ThermalEmittance (float): An number between 0 and 1 that represents
-                the thermal absorptance of the material. The default is set to
-                0.9, which is common for most non-metallic materials. For long
-                wavelength radiant exchange, thermal emissivity and thermal
-                emittance are equal to thermal absorptance.
-            VisibleAbsorptance (float): An number between 0 and 1 that
-                represents the absorptance of visible light by the material.
-                The default is set to 0.7, which is common for most non-metallic
-                materials.
-            Roughness (str): A text value that indicated the roughness of your
-                material. This can be either "VeryRough", "Rough",
-                "MediumRough", "MediumSmooth", "Smooth", and "VerySmooth". The
-                default is set to "Rough".
-            MoistureDiffusionResistance (float): the factor by which the vapor
-                diffusion in the material is impeded, as compared to diffusion in
-                stagnant air [%].
-            **kwargs: keywords passed to parent constructors.
-        """
-        super(NoMassMaterial, self).__init__(Name, **kwargs)
-        self.r_value = RValue
-        self.Roughness = Roughness
-        self.SolarAbsorptance = SolarAbsorptance
-        self.ThermalEmittance = ThermalEmittance
-        self.VisibleAbsorptance = VisibleAbsorptance
-        self.MoistureDiffusionResistance = MoistureDiffusionResistance
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
-
-    @property
-    def r_value(self):
-        """Get or set the thermal resistance [m2-K/W]."""
-        return self._r_value
-
-    @r_value.setter
-    def r_value(self, value):
-        self._r_value = validators.float(value, minimum=0)
-
-    @property
-    def Roughness(self):
-        """Get or set the roughness of the material.
-
-        Hint:
-            choices are: "VeryRough", "Rough", "MediumRough", "MediumSmooth", "Smooth",
-            "VerySmooth".
-        """
-        return self._roughness
-
-    @Roughness.setter
-    def Roughness(self, value):
-        assert value in self._ROUGHNESS_TYPES, (
-            f"Invalid value '{value}' for material roughness. Roughness must be one "
-            f"of the following:\n{self._ROUGHNESS_TYPES}"
-        )
-        self._roughness = value
-
-    @property
-    def SolarAbsorptance(self):
-        """Get or set the solar absorptance of the material [-]."""
-        return self._solar_absorptance
-
-    @SolarAbsorptance.setter
-    def SolarAbsorptance(self, value):
-        self._solar_absorptance = validators.float(value, minimum=0, maximum=1)
-
-    @property
-    def ThermalEmittance(self):
-        """Get or set the thermal emittance of the material [-]."""
-        return self._thermal_emittance
-
-    @ThermalEmittance.setter
-    def ThermalEmittance(self, value):
-        if value == "" or value is None:
-            value = 0.9
-        self._thermal_emittance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
-
-    @property
-    def VisibleAbsorptance(self):
-        """Get or set the visible absorptance of the material [-]."""
-        return self._visible_absorptance
-
-    @VisibleAbsorptance.setter
-    def VisibleAbsorptance(self, value):
-        if value == "" or value is None or value is None:
-            value = 0.7
-        self._visible_absorptance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
-
-    @property
-    def MoistureDiffusionResistance(self):
-        """Get or set the vapor resistance factor of the material [%]."""
-        return self._moisture_diffusion_resistance
-
-    @MoistureDiffusionResistance.setter
-    def MoistureDiffusionResistance(self, value):
-        self._moisture_diffusion_resistance = validators.float(value, minimum=0)
+    SolarAbsorptance: float = Field(
+        ...,
+        description="An number between 0 and 1 that represents the absorptance of "
+        "solar radiation by the material. The default is set to 0.7, which is common "
+        "for most non-metallic materials.",
+        ge=0,
+        le=1,
+    )
+    ThermalEmittance: float = Field(
+        ...,
+        description="An number between 0 and 1 that represents the thermal "
+        "absorptance of the material. The default is set to 0.9, which is common for "
+        "most non-metallic materials. For long wavelength radiant exchange, thermal "
+        "emissivity and thermal emittance are equal to thermal absorptance.",
+        ge=0,
+        le=1,
+    )
+    VisibleAbsorptance: Optional[float] = Field(
+        0.7,
+        description="An number between 0 and 1 that represents the absorptance of "
+        "visible light by the material. The default is set to 0.7, which is common "
+        "for most non-metallic materials.",
+        ge=0,
+        le=1,
+    )
+    MoistureDiffusionResistance = Field(
+        ...,
+        description="The factor by which the vapor diffusion in the material is "
+        "impeded, as compared to diffusion in stagnant air [%].",
+        ge=0,
+    )
 
     def combine(self, other, weights=None, allow_duplicates=False):
         """Combine two OpaqueMaterial objects.

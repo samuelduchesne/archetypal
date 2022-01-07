@@ -90,7 +90,7 @@ def config(
     settings.useful_idf_objects = useful_idf_objects
     settings.umitemplate = umitemplate
     settings.zone_weight.set_weigth_attr(default_weight_factor)
-    settings.ep_version = EnergyPlusVersion(ep_version).dash
+    settings.ep_version = ep_version
     settings.debug = debug
 
     # if logging is turned on, log that we are configured

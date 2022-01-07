@@ -1278,17 +1278,13 @@ class ZoneConditioning(UmiBase):
             ):
                 # Do HeatExchanger:AirToAir:SensibleAndLatent
 
-                (
-                    HeatRecoveryEfficiencyLatent,
-                    HeatRecoveryEfficiencySensible,
-                ) = self._get_recoverty_effectiveness(object, zone, zone_ep)
-                HeatRecoveryType = HeatRecoveryTypes.Enthalpy
-
-                comment = (
-                    "HeatRecoveryEfficiencies were calculated using "
-                    "simulation hourly values and averaged. Only values"
-                    " > 0 were used in the average calculation."
+                HeatRecoveryEfficiencyLatent = (
+                    object.Latent_Effectiveness_at_100_Heating_Air_Flow
                 )
+                HeatRecoveryEfficiencySensible = (
+                    object.Sensitble_Effectiveness_at_100_Heating_Air_Flow
+                )
+                HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
             elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow".upper():
                 # Do HeatExchanger:Dessicant:BalancedFlow

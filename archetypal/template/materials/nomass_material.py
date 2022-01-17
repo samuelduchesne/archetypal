@@ -6,6 +6,7 @@ import numpy as np
 from sigfig import round
 from validator_collection import validators
 
+from archetypal.template import GasMaterial
 from archetypal.template.materials.material_base import MaterialBase
 from archetypal.utils import log
 
@@ -119,7 +120,11 @@ class NoMassMaterial(MaterialBase):
 
     @ThermalEmittance.setter
     def ThermalEmittance(self, value):
-        self._thermal_emittance = validators.float(value, minimum=0, maximum=1)
+        if value == "" or value is None:
+            value = 0.9
+        self._thermal_emittance = validators.float(
+            value, minimum=0, maximum=1, allow_empty=True
+        )
 
     @property
     def VisibleAbsorptance(self):
@@ -128,6 +133,8 @@ class NoMassMaterial(MaterialBase):
 
     @VisibleAbsorptance.setter
     def VisibleAbsorptance(self, value):
+        if value == "" or value is None or value is None:
+            value = 0.7
         self._visible_absorptance = validators.float(
             value, minimum=0, maximum=1, allow_empty=True
         )
@@ -299,7 +306,6 @@ class NoMassMaterial(MaterialBase):
                 ThermalEmittance=epbunch.Thermal_Absorptance,
                 VisibleAbsorptance=epbunch.Visible_Absorptance,
                 Name=epbunch.Name,
-                idf=epbunch.theidf,
                 **kwargs,
             )
         elif epbunch.key.upper() == "MATERIAL:NOMASS":
@@ -313,41 +319,12 @@ class NoMassMaterial(MaterialBase):
                 ThermalEmittance=epbunch.Thermal_Absorptance,
                 VisibleAbsorptance=epbunch.Visible_Absorptance,
                 Name=epbunch.Name,
-                idf=epbunch.theidf,
                 **kwargs,
             )
         elif epbunch.key.upper() == "MATERIAL:AIRGAP":
             gas_prop = {
-                "AIR": dict(
-                    Conductivity=0.02436,
-                    Density=1.754,
-                    SpecificHeat=1000,
-                    ThermalEmittance=0.001,
-                ),
-                "ARGON": dict(
-                    Conductivity=0.016,
-                    Density=1.784,
-                    SpecificHeat=1000,
-                    ThermalEmittance=0.001,
-                ),
-                "KRYPTON": dict(
-                    Conductivity=0.0088,
-                    Density=3.749,
-                    SpecificHeat=1000,
-                    ThermalEmittance=0.001,
-                ),
-                "XENON": dict(
-                    Conductivity=0.0051,
-                    Density=5.761,
-                    SpecificHeat=1000,
-                    ThermalEmittance=0.001,
-                ),
-                "SF6": dict(
-                    Conductivity=0.001345,
-                    Density=6.17,
-                    SpecificHeat=1000,
-                    ThermalEmittance=0.001,
-                ),
+                obj.Name.upper(): obj.mapping()
+                for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
             }
             for gasname, properties in gas_prop.items():
                 if gasname.lower() in epbunch.Name.lower():
@@ -356,7 +333,6 @@ class NoMassMaterial(MaterialBase):
                         Name=epbunch.Name,
                         Thickness=thickness,
                         **properties,
-                        idf=epbunch.theidf,
                     )
                 else:
                     thickness = (
@@ -366,7 +342,6 @@ class NoMassMaterial(MaterialBase):
                         Name=epbunch.Name,
                         Thickness=thickness,
                         **gas_prop["AIR"],
-                        idf=epbunch.theidf,
                     )
         else:
             raise NotImplementedError(
@@ -461,26 +436,25 @@ class NoMassMaterial(MaterialBase):
         if not isinstance(other, NoMassMaterial):
             return NotImplemented
         else:
-            return all(
-                [
-                    self.r_value == other.r_value,
-                    self.SolarAbsorptance == other.SolarAbsorptance,
-                    self.ThermalEmittance == other.ThermalEmittance,
-                    self.VisibleAbsorptance == other.VisibleAbsorptance,
-                    self.Roughness == other.Roughness,
-                    self.Cost == other.Cost,
-                    self.MoistureDiffusionResistance
-                    == self.MoistureDiffusionResistance,
-                    self.EmbodiedCarbon == other.EmbodiedCarbon,
-                    self.EmbodiedEnergy == other.EmbodiedEnergy,
-                    self.TransportCarbon == other.TransportCarbon,
-                    self.TransportDistance == other.TransportDistance,
-                    self.TransportEnergy == other.TransportEnergy,
-                    np.array_equal(
-                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
-                    ),
-                    self.SubstitutionTimestep == other.SubstitutionTimestep,
-                ]
+            return self.__key__() == other.__key__()
+
+    def __key__(self):
+        """Get a tuple of attributes. Useful for hashing and comparing."""
+        return (
+                self.r_value,
+                self.SolarAbsorptance,
+                self.ThermalEmittance,
+                self.VisibleAbsorptance,
+                self.Roughness,
+                self.Cost,
+                self.MoistureDiffusionResistance,
+                self.EmbodiedCarbon,
+                self.EmbodiedEnergy,
+                self.TransportCarbon,
+                self.TransportDistance,
+                self.TransportEnergy,
+                self.SubstitutionRatePattern,
+                self.SubstitutionTimestep,
             )
 
     def __copy__(self):

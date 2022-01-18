@@ -361,6 +361,7 @@ class NoMassMaterial(MaterialBase):
         """
         return idf.newidfobject(
             "MATERIAL:NOMASS",
+            Name=self.Name,
             Roughness=self.Roughness,
             Thermal_Resistance=self.r_value,
             Thermal_Absorptance=self.ThermalEmittance,

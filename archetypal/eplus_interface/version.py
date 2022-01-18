@@ -97,6 +97,11 @@ class EnergyPlusVersion(Version):
         return "-".join(map(str, (self.major, self.minor, self.micro)))
 
     @property
+    def dot(self) -> str:
+        """Return the version number as a dot-separated string: "major.minor.micro"."""
+        return ".".join(map(str, (self.major, self.minor, self.micro)))
+
+    @property
     def current_idd_path(self):
         """Get the current Idd file path for this version."""
         return self.valid_idd_paths[self.dash]

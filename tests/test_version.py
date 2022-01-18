@@ -46,4 +46,4 @@ class TestEnergyPlusVersion:
         idd_version = EnergyPlusVersion("9.2")
         idd_version._valid_paths = {}  # fakes not finding any versions on machine.
 
-        assert idd_version.valid_versions == set("9-2-0")
+        assert idd_version.valid_versions == {"9-2-0"}

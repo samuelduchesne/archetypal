@@ -250,7 +250,7 @@ class TestIDF:
 
     def test_init_version(self, idf):
         """Test creation of in-memory IDF file"""
-        assert idf.file_version.dash == settings.ep_version
+        assert idf.file_version.dot == settings.ep_version
 
         # test another instance in this session with a different version number.
         idf = IDF(as_version="8-9-0")

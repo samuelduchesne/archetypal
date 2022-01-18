@@ -1276,13 +1276,13 @@ class ZoneConditioning(UmiBase):
             elif (
                 object.key.upper() == "HeatExchanger:AirToAir:SensibleAndLatent".upper()
             ):
-                # Do HeatExchanger:AirToAir:SensibleAndLatent
+                # Do HeatExchanger:AirToAir:SensibleAndLatent calculation
 
                 HeatRecoveryEfficiencyLatent = (
                     object.Latent_Effectiveness_at_100_Heating_Air_Flow
                 )
                 HeatRecoveryEfficiencySensible = (
-                    object.Sensitble_Effectiveness_at_100_Heating_Air_Flow
+                    object.Sensible_Effectiveness_at_100_Heating_Air_Flow
                 )
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 

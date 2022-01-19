@@ -235,6 +235,7 @@ class IDF(GeomIDF):
             include = []
         self.idfname = idfname
         self.epw = epw
+        self._as_version = None  # set privatly to set `file_version`
         self.file_version = kwargs.get("file_version", None)
         self.as_version = as_version if as_version else self.file_version
         self._custom_processes = custom_processes
@@ -507,17 +508,13 @@ class IDF(GeomIDF):
     @property
     def file_version(self) -> EnergyPlusVersion:
         """Return the :class:`EnergyPlusVersion` of the idf text file."""
-        if self._file_version is None:
-            return EnergyPlusVersion(get_idf_version(self.idfname))
-        else:
-            return self._file_version
+        return self._file_version
 
     @file_version.setter
     def file_version(self, value):
         if value is None:
-            self._file_version = None
-        else:
-            self._file_version = EnergyPlusVersion(value)
+            value = get_idf_version(self.idfname)
+        self._file_version = EnergyPlusVersion(value)
 
     @property
     def custom_processes(self) -> list:
@@ -567,14 +564,12 @@ class IDF(GeomIDF):
     def idfname(self) -> Union[Path, StringIO]:
         """Path: The path of the active (parsed) idf model."""
         if self._idfname is None:
-            idfname = StringIO(f"VERSION, {self.as_version};")
+            idfname = StringIO(f"VERSION, {self.as_version or EnergyPlusVersion.current()};")
             self._idfname = idfname
             self._reset_dependant_vars("idfname")
         else:
-            if isinstance(self._idfname, StringIO):
-                pass
-            else:
-                self._idfname = Path(self._idfname).expand()
+            if not isinstance(self._idfname, StringIO):
+               self._idfname = Path(self._idfname).expand()
         return self._idfname
 
     @idfname.setter
@@ -705,12 +700,12 @@ class IDF(GeomIDF):
     @property
     def as_version(self):
         """Specify the desired :class:`EnergyPlusVersion` for the IDF model."""
-        if self._as_version is None:
-            self._as_version = EnergyPlusVersion.current()
-        return EnergyPlusVersion(self._as_version)
+        return self._as_version
 
     @as_version.setter
     def as_version(self, value):
+        if value is None:
+            value = EnergyPlusVersion.current()
         # Parse value and check if above or bellow
         self._as_version = EnergyPlusVersion(value)
 

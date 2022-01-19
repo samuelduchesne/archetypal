@@ -155,4 +155,4 @@ class ZoneWeight(object):
 zone_weight = ZoneWeight(n=0)
 
 # Latest version of EnergyPlus compatible with archetypal looks for ENERGYPLUS_VERSION in os.environ
-ep_version = os.getenv("ENERGYPLUS_VERSION", "9-2-0").replace("-", ".")
+ep_version = os.getenv("ENERGYPLUS_VERSION", "9-2-0")

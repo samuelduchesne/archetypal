@@ -418,7 +418,7 @@ class OpaqueConstruction(LayeredConstruction):
             **kwargs: keywords passed to the LayeredConstruction constructor.
         """
         assert epbunch.key.lower() in ("internalmass", "construction", 'construction:internalsource'), (
-            f"Expected ('Internalmass', 'Construction', 'construction:internalsouce')." f"Got '{epbunch.key}'."
+            f"Expected ('Internalmass', 'Construction', 'construction:internalsource')." f"Got '{epbunch.key}'."
         )
         name = epbunch.Name
 

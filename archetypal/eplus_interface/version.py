@@ -121,7 +121,7 @@ class EnergyPlusVersion(Version):
         """List the idd file version found on this machine."""
         if not self.valid_idd_paths:
             # Little hack in case E+ is not installed
-            _choices = set(settings.ep_version)
+            _choices = {settings.ep_version,}
         else:
             _choices = set(self.valid_idd_paths.keys())
 

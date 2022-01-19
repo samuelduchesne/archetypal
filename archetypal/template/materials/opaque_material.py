@@ -34,6 +34,7 @@ class OpaqueMaterial(MaterialBase):
         "_moisture_diffusion_resistance",
         "_conductivity",
         "_density",
+        "_key"
     )
 
     def __init__(
@@ -116,6 +117,9 @@ class OpaqueMaterial(MaterialBase):
         self.ThermalEmittance = ThermalEmittance
         self.VisibleAbsorptance = VisibleAbsorptance
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
+
+        self._key: str = kwargs.get("_key", "")
+        # TODO: replace when NoMass and AirGap is properly supported
 
     @property
     def Conductivity(self):
@@ -414,6 +418,7 @@ class OpaqueMaterial(MaterialBase):
                 ThermalEmittance=epbunch.Thermal_Absorptance,
                 VisibleAbsorptance=epbunch.Visible_Absorptance,
                 Name=epbunch.Name,
+                _key=epbunch.key.upper(),
                 **kwargs,
             )
         elif epbunch.key.upper() == "MATERIAL:AIRGAP":
@@ -429,6 +434,7 @@ class OpaqueMaterial(MaterialBase):
                         Name=epbunch.Name,
                         Thickness=thickness,
                         SpecificHeat=100.5,
+                        _key=epbunch.key.upper(),
                         **properties,
                     )
                 else:
@@ -440,6 +446,7 @@ class OpaqueMaterial(MaterialBase):
                         Name=epbunch.Name,
                         Thickness=thickness,
                         SpecificHeat=100.5,
+                        _key=epbunch.key.upper(),
                         **gas_prop["AIR"],
                     )
         else:
@@ -472,18 +479,36 @@ class OpaqueMaterial(MaterialBase):
         Returns:
             EpBunch: The EpBunch object added to the idf model.
         """
-        return idf.newidfobject(
-            "MATERIAL",
-            Name=self.Name,
-            Roughness=self.Roughness,
-            Thickness=thickness,
-            Conductivity=self.Conductivity,
-            Density=self.Density,
-            Specific_Heat=self.SpecificHeat,
-            Thermal_Absorptance=self.ThermalEmittance,
-            Solar_Absorptance=self.SolarAbsorptance,
-            Visible_Absorptance=self.VisibleAbsorptance,
-        )
+        if self._key == "MATERIAL:NOMASS":
+            # Special case for Material:NoMass
+            return idf.newidfobject(
+                "MATERIAL:NOMASS",
+                Name=self.Name,
+                Roughness=self.Roughness,
+                Thermal_Resistance=thickness / self.Conductivity,
+                Thermal_Absorptance=self.ThermalEmittance,
+                Solar_Absorptance=self.SolarAbsorptance,
+                Visible_Absorptance=self.VisibleAbsorptance,
+            )
+        elif self._key == "MATERIAL:AIRGAP":
+            return idf.newidfobject(
+                "MATERIAL:AIRGAP",
+                Name=self.Name,
+                Thermal_Resistance=thickness / self.Conductivity,
+            )
+        else:
+            return idf.newidfobject(
+                "MATERIAL",
+                Name=self.Name,
+                Roughness=self.Roughness,
+                Thickness=thickness,
+                Conductivity=self.Conductivity,
+                Density=self.Density,
+                Specific_Heat=self.SpecificHeat,
+                Thermal_Absorptance=self.ThermalEmittance,
+                Solar_Absorptance=self.SolarAbsorptance,
+                Visible_Absorptance=self.VisibleAbsorptance,
+            )
 
     def validate(self):
         """Validate object and fill in missing values.

@@ -252,7 +252,13 @@ class IDF(GeomIDF):
         self.prep_outputs = prep_outputs
         self._position = position
         self.output_prefix = None
-        self.name = self.idfname.basename() if isinstance(self.idfname, Path) else name
+        self.name = (
+            name
+            if name is not None
+            else self.idfname.basename()
+            if isinstance(self.idfname, Path)
+            else None
+        )
         self.output_directory = output_directory
 
         # Set dependants to None
@@ -902,6 +908,14 @@ class IDF(GeomIDF):
 
         app_path_guess = self.file_version.current_install_dir
         find_and_launch("EP-Launch", app_path_guess, filepath.abspath())
+
+    def open_err(self):
+        """Open last simulation err file in texteditor."""
+        import webbrowser
+
+        filepath, *_ = self.simulation_dir.files("*.err")
+
+        webbrowser.open(filepath.abspath())
 
     def open_mdd(self):
         """Open .mdd file in browser.

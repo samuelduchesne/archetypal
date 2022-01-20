@@ -1,3 +1,6 @@
+import io
+from sqlite3 import connect
+
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergyDataFrame
@@ -5,7 +8,7 @@ from energy_pandas.units import unit_registry
 
 
 class EndUseBalance:
-    HVAC_INPUT_SENSIBLE = (
+    HVAC_INPUT_SENSIBLE = (  # not multiplied by zone or group multipliers
         "Zone Air Heat Balance System Air Transfer Rate",
         "Zone Air Heat Balance System Convective Heat Gain Rate",
     )
@@ -129,6 +132,8 @@ class EndUseBalance:
             reporting_frequency=idf.outputs.reporting_frequency,
             units=power_units,
         )
+        # _hvac_input = cls.apply_multipliers(_hvac_input, idf)  # zone-level output
+
         _hvac_input_heated_surface = (
             idf.variables.OutputVariable.collect_by_output_name(
                 cls.HVAC_INPUT_HEATED_SURFACE,
@@ -136,6 +141,9 @@ class EndUseBalance:
                 units=units,
             )
         )
+        # zone-level output
+        # _hvac_input_heated_surface = cls.apply_multipliers(_hvac_input_heated_surface, idf)
+
         _hvac_input_cooled_surface = (
             idf.variables.OutputVariable.collect_by_output_name(
                 cls.HVAC_INPUT_COOLED_SURFACE,
@@ -143,8 +151,10 @@ class EndUseBalance:
                 units=units,
             )
         )
+        # _hvac_input_cooled_surface = cls.apply_multipliers(_hvac_input_cooled_surface, idf)  # zone-level output
+
         # convert power to energy assuming the reporting frequency
-        freq = pd.infer_freq(_hvac_input.index)
+        freq = pd.infer_freq(_hvac_input.iloc[:3,].index)
         assert freq == "H", "A reporting frequency other than H is not yet supported."
         freq_to_unit = {"H": "hr"}
         _hvac_input = _hvac_input.apply(
@@ -156,6 +166,7 @@ class EndUseBalance:
             .m
         )
 
+        # concat sensible hvac with heated surfaces
         _hvac_input = pd.concat(
             filter(
                 lambda x: not x.empty,
@@ -170,6 +181,8 @@ class EndUseBalance:
             verify_integrity=True,
         )
 
+        # compute rolling sign for each zone (determines if zone is in heating or
+        # cooling model.)
         rolling_sign = cls.get_rolling_sign_change(_hvac_input)
 
         # Create both heating and cooling masks
@@ -178,70 +191,80 @@ class EndUseBalance:
 
         heating = _hvac_input[is_heating].fillna(0)
         cooling = _hvac_input[is_cooling].fillna(0)
+
+        # Get internal gain components: lighting, people, equipment, solar
         lighting = idf.variables.OutputVariable.collect_by_output_name(
             cls.LIGHTING,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
-        lighting = cls.apply_multipliers(lighting, idf)
+        lighting = cls.apply_multipliers(lighting, idf)  # zone-level output
         people_gain = idf.variables.OutputVariable.collect_by_output_name(
             cls.PEOPLE_GAIN,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
-        people_gain = cls.apply_multipliers(people_gain, idf)
+        people_gain = cls.apply_multipliers(people_gain, idf)  # zone-level output
         equipment = idf.variables.OutputVariable.collect_by_output_name(
             cls.EQUIP_GAINS,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
-        equipment = cls.apply_multipliers(equipment, idf)
+        equipment = cls.apply_multipliers(equipment, idf)  # zone-level output
         solar_gain = idf.variables.OutputVariable.collect_by_output_name(
             cls.SOLAR_GAIN,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        solar_gain = cls.apply_multipliers(solar_gain, idf)  # zone-level output
         infil_gain = idf.variables.OutputVariable.collect_by_output_name(
             cls.INFIL_GAIN,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        infil_gain = cls.apply_multipliers(infil_gain, idf)  # zone-level output
         infil_loss = idf.variables.OutputVariable.collect_by_output_name(
             cls.INFIL_LOSS,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        infil_loss = cls.apply_multipliers(infil_loss, idf)  # zone-level output
         vent_loss = idf.variables.OutputVariable.collect_by_output_name(
             cls.VENTILATION_LOSS,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        vent_loss = cls.apply_multipliers(vent_loss, idf)  # zone-level output
         vent_gain = idf.variables.OutputVariable.collect_by_output_name(
             cls.VENTILATION_GAIN,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        vent_gain = cls.apply_multipliers(vent_gain, idf)  # zone-level output
         nat_vent_gain = idf.variables.OutputVariable.collect_by_output_name(
             cls.NAT_VENT_GAIN,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        nat_vent_gain = cls.apply_multipliers(nat_vent_gain, idf)  # zone-level output
         nat_vent_loss = idf.variables.OutputVariable.collect_by_output_name(
             cls.NAT_VENT_LOSS,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        nat_vent_loss = cls.apply_multipliers(nat_vent_loss, idf)  # zone-level output
         mech_vent_gain = idf.variables.OutputVariable.collect_by_output_name(
             cls.MECHANICAL_VENT_GAIN,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        mech_vent_gain = cls.apply_multipliers(mech_vent_gain, idf)  # zone-level output
         mech_vent_loss = idf.variables.OutputVariable.collect_by_output_name(
             cls.MECHANICAL_VENT_LOSS,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
-
+        mech_vent_loss = cls.apply_multipliers(mech_vent_loss, idf)  # zone-level output
 
         # subtract losses from gains
         infiltration = None
@@ -265,11 +288,13 @@ class EndUseBalance:
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        window_loss = cls.apply_multipliers(window_loss, idf)
         window_gain = idf.variables.OutputVariable.collect_by_output_name(
             cls.WINDOW_GAIN,
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        window_gain = cls.apply_multipliers(window_gain, idf)
         window_flow = cls.subtract_loss_from_gain(window_gain, window_loss)
         window_flow = cls.subtract_solar_from_window_net(window_flow, solar_gain)
 
@@ -306,7 +331,11 @@ class EndUseBalance:
         return bal_obj
 
     @classmethod
-    def apply_multipliers(cls, data, idf):
+    def apply_multipliers(cls, data: pd.DataFrame, idf):
+        """Apply zone multipliers to corresponding columns base on Key_Name level."""
+        # if data is an empty DF, simply return.
+        if data.empty:
+            return data
         multipliers = (
             pd.Series(
                 {zone.Name.upper(): zone.Multiplier for zone in idf.idfobjects["ZONE"]},
@@ -315,10 +344,13 @@ class EndUseBalance:
             .replace({"": 1})
             .fillna(1)
         )
-        full_data = (data.stack("OutputVariable") * multipliers).unstack(
-            "OutputVariable").dropna(
-            how="all", axis=1
-        ).swaplevel(axis=1).rename_axis(data.columns.names, axis=1)
+        full_data = (
+            (data.stack("OutputVariable") * multipliers)
+            .unstack("OutputVariable")
+            .dropna(how="all", axis=1)
+            .swaplevel(axis=1)
+            .rename_axis(data.columns.names, axis=1)
+        )
         return full_data[data.columns]
 
     @classmethod
@@ -574,8 +606,8 @@ class EndUseBalance:
                 "solar_gain",
                 "infiltration",
                 "window_energy_flow",
-                # "nat_vent",
-                "mech_vent",
+                "nat_vent",
+                # "mech_vent",
             ]:
                 if not getattr(self, component).empty:
                     summary_by_component[component] = (
@@ -608,6 +640,7 @@ class EndUseBalance:
                 "solar_gain",
                 "infiltration",
                 "window_energy_flow",
+                "nat_vent",
             ]:
                 component_df = getattr(self, component)
                 if not component_df.empty:
@@ -723,17 +756,23 @@ class EndUseBalance:
             "District Cooling",
             "District Heating",
         )
-        system_input = (
-            self.idf.htm()["End Uses"]
-            .set_index("")
-            .head(-2)
-            .astype(float)
-            .filter(regex="|".join(energy_sources))  # filter out Water [m3]
-            .filter(
-                regex="|".join(end_uses),
-                axis=0,
+        with connect(next(iter(self.idf.simulation_dir.files("*.sql")))) as conn:
+            df = pd.read_sql(
+                'select * from "TabularDataWithStrings" as f where f."TableName" == "End Uses" and f."ReportName" == "AnnualBuildingUtilityPerformanceSummary"',
+                conn,
             )
-        )
+            system_input = df.pivot(
+                index="RowName", columns="ColumnName", values="Value"
+            ).loc[end_uses, energy_sources]
+            system_input = system_input.astype("float")
+            system_input = EnergyDataFrame(
+                system_input.values,
+                index=system_input.index,
+                columns=system_input.columns,
+            )
+            system_input.units = df.set_index("ColumnName").Units.to_dict()
+            system_input = system_input.to_units("kWh")
+
         system_input = (
             system_input.replace({0: np.NaN})
             .dropna(how="all")

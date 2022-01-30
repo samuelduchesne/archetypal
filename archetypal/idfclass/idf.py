@@ -700,7 +700,7 @@ class IDF(GeomIDF):
     @property
     def as_version(self):
         """Specify the desired :class:`EnergyPlusVersion` for the IDF model."""
-        return self._as_version
+        return EnergyPlusVersion(self._as_version)
 
     @as_version.setter
     def as_version(self, value):

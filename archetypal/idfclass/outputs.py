@@ -584,9 +584,14 @@ class Outputs:
             EndUseBalance.OPAQUE_ENERGY_FLOW,
             EndUseBalance.WINDOW_LOSS,
             EndUseBalance.WINDOW_GAIN,
+            EndUseBalance.MECHANICAL_VENT_GAIN,
+            EndUseBalance.MECHANICAL_VENT_LOSS,
+            EndUseBalance.HEAT_RECOVERY_LOSS,
+            EndUseBalance.HEAT_RECOVERY_GAIN
         ]:
             for item in group:
                 self._output_variables.add(item)
+        return self
 
     def add_load_balance_components(self):
 

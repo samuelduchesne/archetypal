@@ -194,7 +194,7 @@ class IDF(GeomIDF):
         output_suffix="L",
         epmacro=False,
         keep_data=True,
-        keep_data_err=False,
+        keep_data_err=True,
         position=0,
         name=None,
         output_directory=None,

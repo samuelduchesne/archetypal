@@ -581,11 +581,11 @@ class Outputs:
             EndUseBalance.VENTILATION_GAIN,
             EndUseBalance.NAT_VENT_GAIN,
             EndUseBalance.NAT_VENT_LOSS,
+            EndUseBalance.MECHANICAL_VENT_GAIN,
+            EndUseBalance.MECHANICAL_VENT_LOSS,
             EndUseBalance.OPAQUE_ENERGY_FLOW,
             EndUseBalance.WINDOW_LOSS,
             EndUseBalance.WINDOW_GAIN,
-            EndUseBalance.MECHANICAL_VENT_GAIN,
-            EndUseBalance.MECHANICAL_VENT_LOSS,
             EndUseBalance.HEAT_RECOVERY_LOSS,
             EndUseBalance.HEAT_RECOVERY_GAIN
         ]:

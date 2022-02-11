@@ -130,6 +130,7 @@ class Sql:
         self._tabular_data_keys = None
         self._outputs = None
         self._surfaces_table = None
+        self._constructions_table = None
 
     @property
     def file_path(self):
@@ -179,6 +180,12 @@ class Sql:
         if self._surfaces_table is None:
             self._surfaces_table = self._extract_surfaces_table()
         return self._surfaces_table
+
+    @property
+    def constructions_table(self):
+        if self._constructions_table is None:
+            self._constructions_table = self._extract_constructions_table()
+        return self._constructions_table
 
     @property
     def environment_periods(self):
@@ -390,6 +397,12 @@ class Sql:
         with connect(self.file_path) as conn:
             query = "SELECT * from Surfaces"
             df = pd.read_sql(query, conn).set_index(["ZoneIndex", "SurfaceIndex"])
+        return df
+
+    def _extract_constructions_table(self):
+        with connect(self.file_path) as conn:
+            query = "SELECT * from Constructions"
+            df = pd.read_sql(query, conn).set_index("ConstructionIndex")
         return df
 
     def _extract_environment_periods(self):

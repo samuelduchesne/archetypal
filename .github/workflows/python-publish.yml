@@ -23,11 +23,11 @@ jobs:
           - os: macos-11
             target: macos
             compiler: gcc
-          exclude:
-            - os: macos-11
-              python-version: 2.7
-            - os: windows-2019
-              python-version: 2.7
+        exclude:
+          - os: macos-11
+            python-version: 2.7
+          - os: windows-2019
+            python-version: 2.7
     steps:
     - name: checkout
       uses: actions/checkout@v2

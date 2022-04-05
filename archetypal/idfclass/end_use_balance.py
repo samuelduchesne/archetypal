@@ -75,7 +75,8 @@ class EndUseBalance:
         "Zone Mechanical Ventilation Heating Load Decrease Energy",
         "Zone Mechanical Ventilation Cooling Load Increase Energy",
     )
-    OPAQUE_ENERGY_FLOW = ("Surface Average Face Conduction Heat Transfer Energy",)
+    OPAQUE_ENERGY_FLOW = ("Surface Outside Face Conduction Heat Transfer Energy",)
+    OPAQUE_ENERGY_STORAGE = ("Surface Heat Storage Energy",)
     WINDOW_LOSS = ("Zone Windows Total Heat Loss Energy",)  # checked
     WINDOW_GAIN = ("Zone Windows Total Heat Gain Energy",)  # checked
     HEAT_RECOVERY_LOSS = ("Heat Exchanger Total Cooling Energy",)
@@ -95,9 +96,9 @@ class EndUseBalance:
         infiltration,
         mech_vent,
         nat_vent,
-        face_energy_flow,
         window_energy_flow,
         opaque_flow,
+        opaque_storage,
         window_flow,
         heat_recovery,
         is_cooling,
@@ -117,9 +118,9 @@ class EndUseBalance:
         self.infiltration = infiltration
         self.mech_vent = mech_vent
         self.nat_vent = nat_vent
-        self.face_energy_flow = face_energy_flow
         self.window_energy_flow = window_energy_flow
         self.opaque_flow = opaque_flow
+        self.opaque_storage = opaque_storage
         self.window_flow = window_flow
         self.heat_recovery = heat_recovery
         self.units = units
@@ -293,6 +294,12 @@ class EndUseBalance:
             reporting_frequency=idf.outputs.reporting_frequency,
             units=units,
         )
+        opaque_storage = idf.variables.OutputVariable.collect_by_output_name(
+            cls.OPAQUE_ENERGY_STORAGE,
+            reporting_frequency=idf.outputs.reporting_frequency,
+            units=units,
+        )
+        opaque_flow = opaque_flow - opaque_storage
         window_loss = idf.variables.OutputVariable.collect_by_output_name(
             cls.WINDOW_LOSS,
             reporting_frequency=idf.outputs.reporting_frequency,
@@ -309,11 +316,14 @@ class EndUseBalance:
         window_flow = cls.subtract_solar_from_window_net(window_flow, solar_gain)
 
         opaque_flow = cls.match_opaque_surface_to_zone(idf, opaque_flow)
+        opaque_storage = cls.match_opaque_surface_to_zone(idf, opaque_storage)
         if outdoor_surfaces_only:
             opaque_flow = opaque_flow.drop(
                 ["Surface", float("nan")], level="Outside_Boundary_Condition", axis=1
             )
-        face_energy_flow = opaque_flow
+            # opaque_storage = opaque_storage.drop(
+            #     ["Surface", float("nan")], level="Outside_Boundary_Condition", axis=1
+            # )
         window_energy_flow = window_flow
 
         bal_obj = cls(
@@ -329,9 +339,9 @@ class EndUseBalance:
             infiltration,
             mech_vent,
             nat_vent,
-            face_energy_flow,
             window_energy_flow,
             opaque_flow,
+            opaque_storage,
             window_flow,
             is_cooling,
             is_heating,
@@ -454,6 +464,12 @@ class EndUseBalance:
 
         # get the surface energy flow
         opaque_flow = sql.timeseries_by_name(cls.OPAQUE_ENERGY_FLOW).to_units(units)
+        opaque_storage = sql.timeseries_by_name(cls.OPAQUE_ENERGY_STORAGE).to_units(
+            units
+        )
+        opaque_storage_ = opaque_storage.copy()
+        opaque_storage_.columns = opaque_flow.columns
+        opaque_flow = - (opaque_flow + opaque_storage_)
         window_loss = sql.timeseries_by_name(cls.WINDOW_LOSS).to_units(units)
         window_loss = cls.apply_multipliers(window_loss, zone_multipliers)
         window_gain = sql.timeseries_by_name(cls.WINDOW_GAIN).to_units(units)
@@ -468,6 +484,9 @@ class EndUseBalance:
         opaque_flow = cls.match_opaque_surface_to_zone(
             sql.surfaces_table, opaque_flow, sql.zone_info
         )
+        opaque_storage = cls.match_opaque_surface_to_zone(
+            sql.surfaces_table, opaque_storage, sql.zone_info
+        )
         if outdoor_surfaces_only:
             # inside surfaces are identified by ExtBoundCond > 0
             inside_surfaces = sql.surfaces_table[lambda x: x["ExtBoundCond"] > 0][
@@ -478,7 +497,9 @@ class EndUseBalance:
             opaque_flow = opaque_flow.drop(
                 inside_surfaces, level="KeyValue", axis=1, errors="ignore"
             )
-        face_energy_flow = opaque_flow
+            opaque_storage = opaque_storage.drop(
+                inside_surfaces, level="KeyValue", axis=1, errors="ignore"
+            )
         window_energy_flow = window_flow
 
         bal_obj = cls(
@@ -494,9 +515,9 @@ class EndUseBalance:
             infiltration,
             mech_vent,
             nat_vent,
-            face_energy_flow,
             window_energy_flow,
             opaque_flow,
+            opaque_storage,
             window_flow,
             heat_recovery,
             is_cooling,
@@ -776,7 +797,7 @@ class EndUseBalance:
                     )
             for (surface_type), data in (
                 self.separate_gains_and_losses(
-                    "face_energy_flow", ["Zone_Name", "Surface_Type"]
+                    "opaque_flow", ["Zone_Name", "Surface_Type"]
                 )
                 .unstack("Zone_Name")
                 .groupby(level=["Surface_Type"], axis=1)
@@ -785,16 +806,16 @@ class EndUseBalance:
                     level=["Zone_Name", "Period", "Gain/Loss"], axis=1
                 ).sort_index(axis=1)
 
-            # level = "KeyValue"
-            # summary_by_component["heat_recovery"] = (
+            # for (surface_type), data in (
             #     self.separate_gains_and_losses(
-            #         "heat_recovery",
-            #         level=level,
+            #         "opaque_storage", ["Zone_Name", "Surface_Type"]
             #     )
-            #     .unstack(level)
-            #     .reorder_levels([level, "Period", "Gain/Loss"], axis=1)
-            #     .sort_index(axis=1)
-            # )
+            #     .unstack("Zone_Name")
+            #     .groupby(level=["Surface_Type"], axis=1)
+            # ):
+            #     summary_by_component[surface_type + " Storage"] = data.sum(
+            #         level=["Zone_Name", "Period", "Gain/Loss"], axis=1
+            #     ).sort_index(axis=1)
 
         else:
             summary_by_component = {}
@@ -954,9 +975,9 @@ class EndUseBalance:
         )
 
         system_input = (
-            system_input.replace({0: np.NaN})
-            .dropna(how="all")
-            .dropna(how="all", axis=1)
+            system_input
+            # .replace({0: np.NaN})
+            .dropna(how="all").dropna(how="all", axis=1)
         )
         system_input.rename_axis("source", axis=1, inplace=True)
         system_input.rename_axis("target", axis=0, inplace=True)
@@ -1041,7 +1062,7 @@ class EndUseBalance:
         load_target_data = load_target.to_dict(orient="records")
         link_system_to_gains = (
             load_source.set_index("source")
-            .drop(load_type.title() + " System")
+            .drop(load_type.title() + " System", errors="ignore")
             .rename_axis("target")
             .apply(lambda x: 0.01, axis=1)
             .rename("value")
@@ -1087,7 +1108,7 @@ class EndUseBalance:
         load_target_data = load_target.to_dict(orient="records")
         link_system_to_gains = (
             load_source.set_index("source")
-            .drop(load_type.title() + " System")
+            .drop(load_type.title() + " System", errors="ignore")
             .rename_axis("target")
             .apply(lambda x: 0.01, axis=1)
             .rename("value")

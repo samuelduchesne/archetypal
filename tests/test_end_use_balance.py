@@ -4,7 +4,6 @@ from archetypal.idfclass.end_use_balance import EndUseBalance
 
 
 class TestEndUseBalance:
-
     @pytest.fixture()
     def idf(self):
         idf = IDF.from_example_files(
@@ -42,7 +41,9 @@ class TestEndUseBalance:
 
     def test_from_idf(self, idf):
         """Test initializing with idf model."""
-        eu = EndUseBalance.from_idf(idf, outdoor_surfaces_only=True, units="GJ", power_units="W")
+        eu = EndUseBalance.from_sql_file(
+            idf.sql_file, outdoor_surfaces_only=True, units="GJ", power_units="W"
+        )
         # assert eu
         # assert not eu.component_summary().empty
         # assert not eu.separate_gains_and_losses("opaque_flow", ["Zone_Name"]).empty
@@ -55,10 +56,14 @@ class TestEndUseBalance:
 
     def test_from_idf_noOA(self, idf_noOA):
         """Test initializing with idf model."""
-        eu = EndUseBalance.from_idf(idf_noOA, outdoor_surfaces_only=True, units="GJ", power_units="W")
+        eu = EndUseBalance.from_sql_file(
+            idf_noOA.sql_file, outdoor_surfaces_only=True, units="GJ", power_units="W"
+        )
         to_df_sep = eu.to_df(separate_gains_and_losses=True)
         assert not to_df_sep.empty
 
     def test_to_sankey(self, idf):
-        eu = EndUseBalance.from_idf(idf, outdoor_surfaces_only=True, units="GJ", power_units="W")
+        eu = EndUseBalance.from_idf(
+            idf, outdoor_surfaces_only=True, units="GJ", power_units="W"
+        )
         sankey_data = eu.to_sankey()

@@ -39,7 +39,16 @@ Here is a short overview of features that are part of archetypal:
 
 ## Installation
 
-`pip install -U archetypal`
+Recommended to use a conda environement running python 3.8. Pip install should work on all platforms (linux, macOS and Windows).
+First,
+```cmd
+conda create -n venv python=3.8
+``` 
+`-n venv` is the name of your environement; it can be anything.
+Then,
+```cmd
+pip install -U archetypal
+```
 
 ## Local Development
 

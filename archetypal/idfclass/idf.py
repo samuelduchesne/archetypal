@@ -300,7 +300,7 @@ class IDF(GeomIDF):
                 self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
-            self._outputs = Outputs(idf=self, include_html=True, include_sqlite=True)
+            self._outputs = Outputs(idf=self, include_html=False, include_sqlite=False)
             if self.prep_outputs:
                 self._outputs.include_html = True
                 self._outputs.include_sqlite = True

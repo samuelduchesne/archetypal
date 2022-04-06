@@ -1668,13 +1668,13 @@ class IDF(GeomIDF):
             tmp = (
                 self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]
             ).makedirs_p()
-            slab_thread = TransitionThread(self, tmp, overwrite=overwrite)
-            slab_thread.start()
-            slab_thread.join()
-            while slab_thread.is_alive():
+            transition_thread = TransitionThread(self, tmp, overwrite=overwrite)
+            transition_thread.start()
+            transition_thread.join()
+            while transition_thread.is_alive():
                 time.sleep(1)
             tmp.rmtree(ignore_errors=True)
-            e = slab_thread.exception
+            e = transition_thread.exception
             if e is not None:
                 raise e
 

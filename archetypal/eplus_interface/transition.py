@@ -282,7 +282,9 @@ class TransitionThread(Thread):
         """Read stderr and pass to logger."""
         for line in self.p.stderr:
             self.msg_callback(line.decode("utf-8"), level=lg.ERROR)
-        raise CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
+        self.exception = CalledProcessError(
+            self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
+        )
 
     def cancelled_callback(self, stdin, stdout):
         """Call on cancelled."""
@@ -293,7 +295,7 @@ class TransitionThread(Thread):
         """Return the location of the EnergyPlus directory."""
         eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
         if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
+            self.exception = EnergyPlusVersionError(
                 msg=f"No EnergyPlus Executable found for version "
                 f"{EnergyPlusVersion(self.idf.as_version)}"
             )

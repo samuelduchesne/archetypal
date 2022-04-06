@@ -1,4 +1,3 @@
-import io
 from sqlite3 import connect
 
 import numpy as np

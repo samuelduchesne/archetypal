@@ -68,33 +68,41 @@ class LoadBalance:
             idf.outputs.VENT_GAIN, reporting_frequency=idf.outputs.reporting_frequency
         )
         nat_vent_gain = idf.variables.OutputVariable.collect_by_output_name(
-            idf.outputs.NAT_VENT_GAIN, reporting_frequency=idf.outputs.reporting_frequency
+            idf.outputs.NAT_VENT_GAIN,
+            reporting_frequency=idf.outputs.reporting_frequency,
         )
         nat_vent_loss = idf.variables.OutputVariable.collect_by_output_name(
-            idf.outputs.NAT_VENT_LOSS, reporting_frequency=idf.outputs.reporting_frequency
+            idf.outputs.NAT_VENT_LOSS,
+            reporting_frequency=idf.outputs.reporting_frequency,
         )
 
         # handle the case that both total elect/gas energy and zone gain are requested
         electric_equip = idf.variables.OutputVariable.collect_by_output_name(
-            idf.outputs.ELECTRIC_EQUIP[1], reporting_frequency=idf.outputs.reporting_frequency
+            idf.outputs.ELECTRIC_EQUIP[1],
+            reporting_frequency=idf.outputs.reporting_frequency,
         )
         if len(electric_equip) == 0:
             electric_equip = idf.variables.OutputVariable.collect_by_output_name(
-                idf.outputs.ELECTRIC_EQUIP, reporting_frequency=idf.outputs.reporting_frequency
+                idf.outputs.ELECTRIC_EQUIP,
+                reporting_frequency=idf.outputs.reporting_frequency,
             )
         gas_equip = idf.variables.OutputVariable.collect_by_output_name(
-            idf.outputs.GAS_EQUIP[1], reporting_frequency=idf.outputs.reporting_frequency
+            idf.outputs.GAS_EQUIP[1],
+            reporting_frequency=idf.outputs.reporting_frequency,
         )
         if len(gas_equip) == 0:
             gas_equip = idf.variables.OutputVariable.collect_by_output_name(
-                idf.outputs.GAS_EQUIP, reporting_frequency=idf.outputs.reporting_frequency
+                idf.outputs.GAS_EQUIP,
+                reporting_frequency=idf.outputs.reporting_frequency,
             )
         hot_water = idf.variables.OutputVariable.collect_by_output_name(
-            idf.outputs.HOT_WATER[1], reporting_frequency=idf.outputs.reporting_frequency
+            idf.outputs.HOT_WATER[1],
+            reporting_frequency=idf.outputs.reporting_frequency,
         )
         if len(hot_water) == 0:
             hot_water = idf.variables.OutputVariable.collect_by_output_name(
-                idf.outputs.HOT_WATER, reporting_frequency=idf.outputs.reporting_frequency
+                idf.outputs.HOT_WATER,
+                reporting_frequency=idf.outputs.reporting_frequency,
             )
 
         # subtract losses from gains
@@ -123,7 +131,8 @@ class LoadBalance:
 
         # get the surface energy flow
         opaque_flow = idf.variables.OutputVariable.collect_by_output_name(
-            idf.outputs.OPAQUE_ENERGY_FLOW, reporting_frequency=idf.outputs.reporting_frequency
+            idf.outputs.OPAQUE_ENERGY_FLOW,
+            reporting_frequency=idf.outputs.reporting_frequency,
         )
         window_loss = idf.variables.OutputVariable.collect_by_output_name(
             idf.outputs.WINDOW_LOSS, reporting_frequency=idf.outputs.reporting_frequency
@@ -136,7 +145,9 @@ class LoadBalance:
             window_flow = cls.subtract_loss_from_gain(window_gain, window_loss)
             window_flow = cls.match_window_to_zone(idf, window_flow)
         face_energy_flow = opaque_flow.add(
-            window_flow.sum(level=["Building_Surface_Name"], axis=1).rename(columns=str.upper),
+            window_flow.sum(level=["Building_Surface_Name"], axis=1).rename(
+                columns=str.upper
+            ),
             level="Key_Name",
             axis=1,
             fill_value=0,
@@ -179,7 +190,13 @@ class LoadBalance:
                 )
                 for window in idf.getsubsurfaces()
             ],
-            columns=["Name", "Building_Surface_Name", "Surface_Type", "Zone_Name", "Multiplier"],
+            columns=[
+                "Name",
+                "Building_Surface_Name",
+                "Surface_Type",
+                "Zone_Name",
+                "Multiplier",
+            ],
         ).set_index("Name")
         # Match the subsurface to the surface name and the zone name it belongs to.
         stacked = (
@@ -188,7 +205,9 @@ class LoadBalance:
                 window_to_surface_match.rename(index=str.upper),
                 on="Key_Name",
             )
-            .set_index(["Building_Surface_Name", "Surface_Type", "Zone_Name"], append=True)
+            .set_index(
+                ["Building_Surface_Name", "Surface_Type", "Zone_Name"], append=True
+            )
         )
         window_flow = stacked.drop(columns=["Multiplier"]).iloc[:, 0] * pd.to_numeric(
             stacked["Multiplier"]
@@ -197,7 +216,7 @@ class LoadBalance:
             level=["Key_Name", "Building_Surface_Name", "Surface_Type", "Zone_Name"]
         )
 
-        return window_flow #.groupby("Building_Surface_Name", axis=1).sum()
+        return window_flow  # .groupby("Building_Surface_Name", axis=1).sum()
 
     @classmethod
     def subtract_loss_from_gain(cls, load_gain, load_loss):

@@ -1,12 +1,13 @@
 from typing import Iterable
 
 from archetypal.idfclass.end_use_balance import EndUseBalance
+from archetypal.idfclass.extensions import get_name_attribute
 
 
 class Outputs:
     """Handles preparation of EnergyPlus outputs. Different instance methods
     allow to chain methods together and to add predefined bundles of outputs in
-    one go.
+    one go. `.apply()` is required at the end to apply the outputs to the IDF model.
 
     Examples:
         >>> from archetypal import IDF
@@ -117,18 +118,9 @@ class Outputs:
             a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]
         )
         self.output_meters = set(
-            getattr(a, "Key_Name")
-            if getattr(a, "Key_Name", True)
-            else getattr(a, "Name")  # Backwards compatibility
-            for a in idf.idfobjects["Output:Meter".upper()]
+            get_name_attribute(a) for a in idf.idfobjects["Output:Meter".upper()]
         )
-        # existing_ouputs = []
-        # for key in idf.getiddgroupdict()["Output Reporting"]:
-        #     if key not in ["Output:Variable", "Output:Meter"]:
-        #         existing_ouputs.extend(idf.idfobjects[key.upper()].to_dict())
-        # self.other_outputs = existing_ouputs
         self.other_outputs = outputs
-
         self.output_variables += tuple(variables or ())
         self.output_meters += tuple(meters or ())
         self.other_outputs += tuple(outputs or ())

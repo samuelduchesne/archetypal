@@ -15,7 +15,7 @@ class TestEndUseBalance:
             design_day=False,
             readvars=False,
         )
-        idf.saveas("AdultEducationCenter.idf")
+        idf = idf.saveas("AdultEducationCenter.idf")
         idf.outputs.add_load_balance_components()
         idf.outputs.add_end_use_balance_components()
         idf.outputs.add_sensible_heat_gain_summary_components()

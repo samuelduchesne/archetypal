@@ -1,3 +1,5 @@
+from tempfile import TemporaryFile
+
 import pytest
 from archetypal import IDF
 from archetypal.idfclass.end_use_balance import EndUseBalance
@@ -63,7 +65,8 @@ class TestEndUseBalance:
         assert not to_df_sep.empty
 
     def test_to_sankey(self, idf):
-        eu = EndUseBalance.from_idf(
-            idf, outdoor_surfaces_only=True, units="GJ", power_units="W"
+        eu = EndUseBalance.from_sql_file(
+            idf.sql_file, outdoor_surfaces_only=True, units="GJ", power_units="W"
         )
-        sankey_data = eu.to_sankey()
+        with TemporaryFile("w") as f:
+            eu.to_sankey(f)

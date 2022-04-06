@@ -9,7 +9,10 @@ from packaging.version import Version
 from path import Path
 
 from archetypal import settings
-from archetypal.eplus_interface.exceptions import InvalidEnergyPlusVersion
+from archetypal.eplus_interface.exceptions import (
+    EnergyPlusVersionError,
+    InvalidEnergyPlusVersion,
+)
 
 
 class EnergyPlusVersion(Version):
@@ -107,7 +110,12 @@ class EnergyPlusVersion(Version):
     @property
     def current_install_dir(self):
         """Get the current installation directory for this EnergyPlus version."""
-        return self.install_locations[self.dash]
+        try:
+            return self.install_locations[self.dash]
+        except KeyError:
+            raise EnergyPlusVersionError(
+                f"EnergyPlusVersion {self.dash} is not installed."
+            )
 
     @property
     def tuple(self) -> tuple:
@@ -119,7 +127,9 @@ class EnergyPlusVersion(Version):
         """List the idd file version found on this machine."""
         if not self.valid_idd_paths:
             # Little hack in case E+ is not installed
-            _choices = {settings.ep_version,}
+            _choices = {
+                settings.ep_version,
+            }
         else:
             _choices = set(self.valid_idd_paths.keys())
 

@@ -118,7 +118,7 @@ class Outputs:
         )
         self.output_meters = set(
             getattr(a, "Key_Name")
-            if getattr(a, "Key_Name")
+            if getattr(a, "Key_Name", True)
             else getattr(a, "Name")  # Backwards compatibility
             for a in idf.idfobjects["Output:Meter".upper()]
         )

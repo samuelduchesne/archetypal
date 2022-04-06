@@ -270,7 +270,7 @@ class EnergyPlusThread(Thread):
             with open(error_filename, "r") as stderr:
                 stderr_r = stderr.read()
             if self.idf.keep_data_err:
-                failed_dir = self.idf.simulation_dir.mkdir_p() / "failed"
+                failed_dir = self.idf.simulation_dir.mkdir_p()
                 try:
                     failed_dir.rmtree_p()
                 except PermissionError as e:

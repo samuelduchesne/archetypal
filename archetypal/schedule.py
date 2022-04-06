@@ -5,11 +5,13 @@ import io
 import logging as lg
 from datetime import datetime, timedelta
 from itertools import groupby
+from typing import FrozenSet, Union, List
 
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
+from typing_extensions import Literal
 from validator_collection import checkers, validators
 
 from archetypal.utils import log
@@ -1112,11 +1114,11 @@ class Schedule:
 
     def __init__(
         self,
-        Name,
-        start_day_of_the_week=0,
-        strict=False,
-        Type=None,
-        Values=None,
+        Name: str,
+        start_day_of_the_week: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0,
+        strict: bool = False,
+        Type: Union[str, ScheduleTypeLimits] = None,
+        Values: Union[List[Union[int, float]], np.ndarray] = None,
         **kwargs,
     ):
         """Initialize object.
@@ -1195,16 +1197,15 @@ class Schedule:
         self._name = value
 
     @classmethod
-    def from_values(cls, Name, Values, Type="Fraction", **kwargs):
-        """Create a Schedule from a list of Values.
-
-        Args:
-            Name:
-            Values:
-            Type:
-            **kwargs:
-        """
-        return cls(Name=Name, Values=Values, Type="Fraction", **kwargs)
+    def from_values(
+        cls,
+        Name: str,
+        Values: List[Union[float, int]],
+        Type: str = "Fraction",
+        **kwargs,
+    ):
+        """Create a Schedule from a list of Values."""
+        return cls(Name=Name, Values=Values, Type=Type, **kwargs)
 
     @classmethod
     def from_epbunch(cls, epbunch, strict=False, Type=None, **kwargs):
@@ -1294,7 +1295,11 @@ class Schedule:
         index = pd.date_range(
             start=self.startDate, periods=self.all_values.size, freq="1H"
         )
-        return EnergySeries(self.all_values, index=index, name=self.Name)
+        if self.Type is not None:
+            units = self.Type.UnitType
+        else:
+            units = None
+        return EnergySeries(self.all_values, index=index, name=self.Name, units=units)
 
     @staticmethod
     def get_schedule_type_limits_name(epbunch):
@@ -1311,6 +1316,57 @@ class Schedule:
         """Get the start date of the schedule. Satisfies `startDayOfTheWeek`."""
         year = get_year_for_first_weekday(self.startDayOfTheWeek)
         return datetime(year, 1, 1)
+
+    def scale(self, diversity=0.1):
+        """Scale the schedule values by a diversity factor around the average."""
+        average = np.average(self.Values)
+        new_values = ((average - self.Values) * diversity) + self.Values
+
+        self.Values = new_values
+        return self
+
+    def replace(self, new_values: Union[pd.Series]):
+        """Replace values with new values while keeping the full load hours constant.
+
+        Time steps that are not specified in `new_values` will be adjusted to keep
+        the full load hours of the schedule constant. No check whether the new schedule
+        stays between the bounds set by self.Type is done. Be aware.
+
+        """
+        assert isinstance(new_values.index, pd.DatetimeIndex), (
+            "The index of `new_values` must be a `pandas.DatetimeIndex`. Instead, "
+            f"`{type(new_values.index)}` was provided."
+        )
+        assert not self.series.index.difference(new_values.index).empty, (
+            "There is no overlap between self.index and new_values.index. Please "
+            "check your dates."
+        )
+
+        # create a copy of self.series as orig.
+        orig = self.series.copy()
+
+        new_data = new_values.values
+
+        # get the new_values index
+        idx = new_values.index
+
+        # compute the difference in values with the original data and the new data.
+        diff = orig.loc[idx] - new_data.reshape(-1)
+
+        # replace the original data with new values at their location.
+        orig.loc[idx] = new_values
+
+        # adjust remaining time steps with the average difference. Inplace.
+        orig.loc[orig.index.difference(idx)] += diff.sum() / len(
+            orig.index.difference(idx)
+        )
+        new = orig
+
+        # assert the sum has not changed as a sanity check.
+        np.testing.assert_array_almost_equal(self.series.sum(), new.sum())
+
+        # replace values of self with new values.
+        self.Values = new.tolist()
 
     def plot(self, **kwargs):
         """Plot the schedule. Implements the .loc accessor on the series object.
@@ -1334,7 +1390,22 @@ class Schedule:
 
     def plot2d(self, **kwargs):
         """Plot the carpet plot of the schedule."""
-        return self.series.plot2d(**kwargs)
+        if self.Type is not None:
+            vmin = self.Type.LowerLimit
+            vmax = self.Type.UpperLimit
+        else:
+            vmin, vmax = (None, None)
+
+        pretty_plot_kwargs = {
+            "cmap": "Greys",
+            "show": True,
+            "figsize": (7, 2),
+            "dpi": 72,
+            "vmin": vmin,
+            "vmax": vmax,
+        }
+        pretty_plot_kwargs.update(kwargs)
+        return self.series.plot2d(**pretty_plot_kwargs)
 
     plot2d.__doc__ += EnergySeries.plot2d.__doc__
 
@@ -1489,7 +1560,14 @@ class Schedule:
 
     def _repr_svg_(self):
         """SVG representation for iPython notebook."""
-        fig, ax = self.series.plot2d(cmap="Greys", show=False, figsize=(7, 2), dpi=72)
+        if self.Type is not None:
+            vmin = self.Type.LowerLimit
+            vmax = self.Type.UpperLimit
+        else:
+            vmin, vmax = (None, None)
+        fig, ax = self.series.plot2d(
+            cmap="Greys", show=False, figsize=(7, 2), dpi=72, vmin=vmin, vmax=vmax
+        )
         f = io.BytesIO()
         fig.savefig(f, format="svg")
         return f.getvalue()
@@ -1569,8 +1647,16 @@ def _how(how):
         return "max"
 
 
-def get_year_for_first_weekday(weekday=0):
-    """Get the year that starts on 'weekday', eg. Monday=0."""
+def get_year_for_first_weekday(weekday: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0):
+    """Get the year that starts on 'weekday', eg. Monday=0.
+
+    Args:
+        weekday (int): 0-based day of week (Monday=0). Default is
+            None which looks for the start day in the IDF model.
+
+    Returns:
+        (int): The year number for which the first starts on :attr:`weekday`.
+    """
     import calendar
 
     if weekday > 6:

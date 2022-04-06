@@ -130,3 +130,10 @@ bunch2db = {
     "Environment": "Run Period",
     "Annual": "Annual",
 }
+
+
+def get_name_attribute(__o: EpBunch):
+    try:
+        return getattr(__o, "Key_Name")
+    except BadEPFieldError:  # Backwards compatibility
+        return getattr(__o, "Name")

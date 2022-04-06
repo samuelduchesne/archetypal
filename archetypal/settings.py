@@ -128,7 +128,12 @@ resource_package = archetypal.__name__  # Could be any module/package name
 
 from energy_pandas.units import unit_registry
 
-unit_registry = unit_registry
+additional_units = (
+    "Dimensionless = dimensionless = Fraction = fraction",
+    "@alias degC = Temperature = temperature",
+)
+for unit in additional_units:
+    unit_registry.define(unit)
 
 
 class ZoneWeight(object):

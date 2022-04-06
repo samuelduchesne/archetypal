@@ -47,6 +47,14 @@ class TestSchedule:
         s = Schedule.from_epbunch(epbunch, start_day_of_the_week=0)
         yield s
 
+    def test_scale(self, schedules_in_necb_specific):
+        before_sum = sum(schedules_in_necb_specific.Values)
+        ax = schedules_in_necb_specific.series.iloc[0:24].plot()
+        assert pytest.approx(
+            before_sum, sum(schedules_in_necb_specific.scale(0.1).Values)
+        )
+        schedules_in_necb_specific.series.iloc[0:24].plot(ax=ax)
+
     def test_plot(self, schedules_in_necb_specific):
         schedules_in_necb_specific.plot(drawstyle="steps-post")
 
@@ -86,6 +94,20 @@ class TestSchedule:
             idf=idf,
         )
         assert len(heating_sched.all_values) == 8760
+
+    def test_replace(self):
+        """Test replacing values while keeping full load hours constant."""
+        sch = Schedule.from_values("Test", [1] * 6 + [0.5] * 12 + [1] * 6)
+        new = pd.Series([1, 1], index=sch.series.index[11:13])
+
+        orig = sch.series.sum()
+
+        sch.replace(new)
+
+        new = sch.series.sum()
+
+        # assert the full load hours (sum) has not changed.
+        assert new == pytest.approx(orig)
 
 
 idf_file = "tests/input_data/schedules/test_multizone_EP.idf"

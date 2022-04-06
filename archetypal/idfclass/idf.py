@@ -3,7 +3,7 @@
 Various functions for processing EnergyPlus models and retrieving results in
 different forms.
 """
-
+import io
 import itertools
 import logging as lg
 import math
@@ -194,7 +194,7 @@ class IDF(GeomIDF):
         output_suffix="L",
         epmacro=False,
         keep_data=True,
-        keep_data_err=False,
+        keep_data_err=True,
         position=0,
         name=None,
         output_directory=None,
@@ -252,7 +252,13 @@ class IDF(GeomIDF):
         self.prep_outputs = prep_outputs
         self._position = position
         self.output_prefix = None
-        self.name = self.idfname.basename() if isinstance(self.idfname, Path) else name
+        self.name = (
+            name
+            if name is not None
+            else self.idfname.basename()
+            if isinstance(self.idfname, Path)
+            else None
+        )
         self.output_directory = output_directory
 
         # Set dependants to None
@@ -294,23 +300,24 @@ class IDF(GeomIDF):
                 self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
-            self._outputs = Outputs(idf=self)
+            self._outputs = Outputs(idf=self, include_html=False, include_sqlite=False)
             if self.prep_outputs:
-                (
-                    self._outputs.add_basics()
-                    .add_umi_template_outputs()
-                    .add_custom(outputs=self.prep_outputs)
-                    .add_profile_gas_elect_ouputs()
-                    .apply()
-                )
+                self._outputs.include_html = True
+                self._outputs.include_sqlite = True
+                self._outputs.add_basics()
+                if isinstance(self.prep_outputs, list):
+                    self._outputs.add_custom(outputs=self.prep_outputs)
+                self._outputs.add_profile_gas_elect_outputs()
+                self._outputs.add_umi_template_outputs()
+                self._outputs.apply()
 
     @property
     def outputtype(self):
+        """Get or set the outputtype for the idf string representation of self."""
         return self._outputtype
 
     @outputtype.setter
     def outputtype(self, value):
-        """Get or set the outputtype for the idf string representation of self."""
         assert value in self.OUTPUTTYPES, (
             f'Invalid input "{value}" for output_type.'
             f"\nOutput type must be one of the following: {self.OUTPUTTYPES}"
@@ -332,6 +339,10 @@ class IDF(GeomIDF):
         body += f"\n\tVersion {self.file_version}\nSimulation Info:\n"
         body += sim_info
         return f"<{body}>"
+
+    def __copy__(self):
+        """Get a copy of self."""
+        return self.copy()
 
     @classmethod
     def from_example_files(cls, example_name, epw=None, **kwargs):
@@ -700,6 +711,10 @@ class IDF(GeomIDF):
 
     @prep_outputs.setter
     def prep_outputs(self, value):
+        assert isinstance(value, (bool, list)), (
+            f"Expected bool or list of dict for "
+            f"SimulationOutput outputs. Got {type(value)}."
+        )
         self._prep_outputs = value
 
     @property
@@ -898,6 +913,14 @@ class IDF(GeomIDF):
 
         app_path_guess = self.file_version.current_install_dir
         find_and_launch("EP-Launch", app_path_guess, filepath.abspath())
+
+    def open_err(self):
+        """Open last simulation err file in texteditor."""
+        import webbrowser
+
+        filepath, *_ = self.simulation_dir.files("*.err")
+
+        webbrowser.open(filepath.abspath())
 
     def open_mdd(self):
         """Open .mdd file in browser.
@@ -1357,14 +1380,19 @@ class IDF(GeomIDF):
         ).mkdir()
         # Run the ExpandObjects preprocessor program
         expandobjects_thread = ExpandObjectsThread(self, tmp)
-        expandobjects_thread.start()
-        expandobjects_thread.join()
-        while expandobjects_thread.is_alive():
-            time.sleep(1)
-        tmp.rmtree(ignore_errors=True)
-        e = expandobjects_thread.exception
-        if e is not None:
-            raise e
+        try:
+            expandobjects_thread.start()
+            expandobjects_thread.join()
+            # Give time to the subprocess to finish completely
+            while expandobjects_thread.is_alive():
+                time.sleep(1)
+        except (KeyboardInterrupt, SystemExit):
+            expandobjects_thread.stop()
+        finally:
+            tmp.rmtree(ignore_errors=True)
+            e = expandobjects_thread.exception
+            if e is not None:
+                raise e
 
         # Run the Basement preprocessor program if necessary
         tmp = (
@@ -1372,43 +1400,58 @@ class IDF(GeomIDF):
             + str(uuid.uuid1())[0:8]
         ).mkdir()
         basement_thread = BasementThread(self, tmp)
-        basement_thread.start()
-        basement_thread.join()
-        while basement_thread.is_alive():
-            time.sleep(1)
-        tmp.rmtree(ignore_errors=True)
-        e = basement_thread.exception
-        if e is not None:
-            raise e
+        try:
+            basement_thread.start()
+            basement_thread.join()
+            # Give time to the subprocess to finish completely
+            while basement_thread.is_alive():
+                time.sleep(1)
+        except KeyboardInterrupt:
+            basement_thread.stop()
+        finally:
+            tmp.rmtree(ignore_errors=True)
+            e = basement_thread.exception
+            if e is not None:
+                raise e
 
         # Run the Slab preprocessor program if necessary
         tmp = (
             self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]
         ).mkdir()
         slab_thread = SlabThread(self, tmp)
-        slab_thread.start()
-        slab_thread.join()
-        while slab_thread.is_alive():
-            time.sleep(1)
-        tmp.rmtree(ignore_errors=True)
-        e = slab_thread.exception
-        if e is not None:
-            raise e
+        try:
+            slab_thread.start()
+            slab_thread.join()
+            # Give time to the subprocess to finish completely
+            while slab_thread.is_alive():
+                time.sleep(1)
+        except KeyboardInterrupt:
+            slab_thread.stop()
+        finally:
+            tmp.rmtree(ignore_errors=True)
+            e = slab_thread.exception
+            if e is not None:
+                raise e
 
         # Run the energyplus program
         tmp = (
             self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]
         ).mkdir()
         running_simulation_thread = EnergyPlusThread(self, tmp)
-        running_simulation_thread.start()
-        running_simulation_thread.join()
-        while running_simulation_thread.is_alive():
-            time.sleep(1)
-        tmp.rmtree(ignore_errors=True)
-        e = running_simulation_thread.exception
-        if e is not None:
-            raise e
-        return self
+        try:
+            running_simulation_thread.start()
+            running_simulation_thread.join()
+            # Give time to the subprocess to finish completely
+            while running_simulation_thread.is_alive():
+                time.sleep(1)
+        except KeyboardInterrupt:
+            running_simulation_thread.stop()
+        finally:
+            tmp.rmtree(ignore_errors=True)
+            e = running_simulation_thread.exception
+            if e is not None:
+                raise e
+            return self
 
     def savecopy(self, filename, lineendings="default", encoding="latin-1"):
         """Save a copy of the file with the filename passed.
@@ -1426,6 +1469,15 @@ class IDF(GeomIDF):
         """
         super(IDF, self).save(filename, lineendings, encoding)
         return Path(filename)
+
+    def copy(self):
+        """Return a copy of self as an in memory IDF.
+
+        The copy is a new IDF object with the same parameters and arguments as self
+        but is not attached to an file. Use IDF.saveas("idfname.idf", inplace=True)
+        to save the copy to a file inplace. self.idfname will now be idfname.idf
+        """
+        return self.saveas(io.StringIO(""))
 
     def save(self, lineendings="default", encoding="latin-1", **kwargs):
         """Write the IDF model to the text file.
@@ -1448,7 +1500,9 @@ class IDF(GeomIDF):
         log(f"saved '{self.name}' at '{self.idfname}'")
         return self
 
-    def saveas(self, filename, lineendings="default", encoding="latin-1"):
+    def saveas(
+        self, filename, lineendings="default", encoding="latin-1", inplace=False
+    ):
         """Save the IDF model as.
 
         Writes a new text file and load a new instance of the IDF class (new object).
@@ -1461,6 +1515,8 @@ class IDF(GeomIDF):
                 the line endings for the current system.
             encoding (str): Encoding to use for the saved file. The default is
                 'latin-1' which is compatible with the EnergyPlus IDFEditor.
+            inplace (bool): If True, applies the new filename to self directly,
+                else a new object is returned with the new filename.
 
         Returns:
             IDF: A new IDF object based on the new location file.
@@ -1490,8 +1546,18 @@ class IDF(GeomIDF):
                     name = Path(name).basename()
                 else:
                     name = file.basename()
-                file.copy(as_idf.simulation_dir / name)
-        return as_idf
+                try:
+                    file.copy(as_idf.simulation_dir / name)
+                except shutil.SameFileError:
+                    # A copy of self would have the same files in the simdir and
+                    # throw an error.
+                    pass
+        if inplace:
+            # If inplace, replace content of self with content of as_idf.
+            self.__dict__.update(as_idf.__dict__)
+        else:
+            # return the new object.
+            return as_idf
 
     def process_results(self):
         """Return the list of processed results.
@@ -1602,13 +1668,13 @@ class IDF(GeomIDF):
             tmp = (
                 self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]
             ).makedirs_p()
-            slab_thread = TransitionThread(self, tmp, overwrite=overwrite)
-            slab_thread.start()
-            slab_thread.join()
-            while slab_thread.is_alive():
+            transition_thread = TransitionThread(self, tmp, overwrite=overwrite)
+            transition_thread.start()
+            transition_thread.join()
+            while transition_thread.is_alive():
                 time.sleep(1)
             tmp.rmtree(ignore_errors=True)
-            e = slab_thread.exception
+            e = transition_thread.exception
             if e is not None:
                 raise e
 
@@ -1875,7 +1941,7 @@ class IDF(GeomIDF):
         except BadEPFieldError as e:
             raise e
         else:
-            # If object is supposed to be 'unique-object', deletes all objects to be
+            # If object is supposed to be 'unique-object', delete all objects to be
             # sure there is only one of them when creating new object
             # (see following line)
             if "unique-object" in set().union(
@@ -1883,22 +1949,23 @@ class IDF(GeomIDF):
             ):
                 for obj in existing_objs:
                     self.removeidfobject(obj)
-                    self.addidfobject(new_object)
                     log(
                         f"{obj} is a 'unique-object'; Removed and replaced with"
                         f" {new_object}",
                         lg.DEBUG,
                     )
+                self.addidfobject(new_object)
                 return new_object
             if new_object in existing_objs:
-                # If obj already exists, simply return
+                # If obj already exists, simply return the existing one.
                 log(
                     f"object '{new_object}' already exists in {self.name}. "
                     f"Skipping.",
                     lg.DEBUG,
                 )
-                return new_object
+                return next(x for x in existing_objs if x == new_object)
             elif new_object not in existing_objs and new_object.nameexists():
+                # Object does not exist (because not equal) but Name exists.
                 obj = self.getobject(
                     key=new_object.key.upper(), name=new_object.Name.upper()
                 )
@@ -1930,6 +1997,17 @@ class IDF(GeomIDF):
         self._reset_dependant_vars("idfobjects")
         return new_object
 
+    def addidfobjects(self, new_objects):
+        """Add multiple IDF objects to the model.
+
+        Resetting dependent variables will wait after all objects have been added.
+        """
+        for new_object in new_objects:
+            key = new_object.key.upper()
+            self.idfobjects[key].append(new_object)
+        self._reset_dependant_vars("idfobjects")
+        return new_objects
+
     def removeidfobject(self, idfobject):
         """Remove an IDF object from the model.
 
@@ -1942,6 +2020,8 @@ class IDF(GeomIDF):
 
     def removeidfobjects(self, idfobjects: Iterable[EpBunch]):
         """Remove an IDF object from the model.
+
+        Resetting dependent variables will wait after all objects have been removed.
 
         Args:
             idfobjects: The object to remove from the model.

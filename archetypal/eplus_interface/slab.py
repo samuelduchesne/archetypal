@@ -58,9 +58,17 @@ class SlabThread(Thread):
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        self.slabexe = Path(
-            shutil.which("Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc")
-        ).copy(self.run_dir)
+        slab_exe = shutil.which(
+            "Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
+        )
+        if slab_exe is None:
+            log(
+                f"The Slab program could not be found at "
+                f"'{self.eplus_home / 'PreProcess' / 'GrndTempCalc'}'",
+                lg.WARNING,
+            )
+            return
+        self.slabexe = Path(slab_exe).copy(self.run_dir)
         self.slabidd = (
             self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
         ).copy(self.run_dir)
@@ -164,11 +172,19 @@ class SlabThread(Thread):
 
     @property
     def eplus_home(self):
-        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
-        if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
-            )
+        """Get the version-dependant directory where executables are installed."""
+        if self.idf.file_version <= EnergyPlusVersion("7.2"):
+            install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            return Path(eplus_home)
+            install_dir = (
+                self.idf.file_version.current_install_dir
+                / "PreProcess"
+                / "GrndTempCalc"
+            )
+        return install_dir
+
+    def stop(self):
+        if self.p.poll() is None:
+            self.msg_callback("Attempting to cancel simulation ...")
+            self.cancelled = True
+            self.p.kill()

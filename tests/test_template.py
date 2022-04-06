@@ -2917,12 +2917,8 @@ class TestZoneDefinition:
         assert zone == zone_dup
 
     def test_zone_volume(self, small_idf_copy):
-        """Test the zone volume for a sloped roof
-
-        Args:
-            small_idf_copy:
-        """
-        idf = small_idf_copy
+        """Test the zone volume for a sloped roof."""
+        idf = small_idf_copy.simulate()
         zone = idf.getobject("ZONE", "Perim")
         z = ZoneDefinition.from_epbunch(ep_bunch=zone, construct_parents=False)
         assert z.volume == pytest.approx(25.54, 1e-2)

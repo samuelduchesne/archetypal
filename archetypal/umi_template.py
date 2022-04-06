@@ -257,6 +257,7 @@ class UmiTemplateLibrary:
     def template_complexity_reduction(idfname, epw, **kwargs):
         """Wrap IDF, simulate and BuildingTemplate for parallel processing."""
         idf = IDF(idfname, epw=epw, **kwargs)
+        idf._outputs.add_umi_template_outputs()
 
         # remove daylight saving time modifiers
         for daylight in idf.idfobjects["RunPeriodControl:DaylightSavingTime".upper()]:

@@ -102,8 +102,10 @@ def get_idf_version(file, doted=True):
         else:
             versionid = ver_block[1].replace(".", "-") + "-0"
     except IndexError:
-        raise Exception("The IDF model does not contain a 'Version' object. "
-                        "Specify file_version=<version> in the IDF() constructor.")
+        raise Exception(
+            "The IDF model does not contain a 'Version' object. "
+            "Specify file_version=<version> in the IDF() constructor."
+        )
     except Exception as e:
         log('Version id for file "{}" cannot be found'.format(file))
         log("{}".format(e))

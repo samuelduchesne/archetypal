@@ -171,6 +171,9 @@ class TransitionThread(Thread):
 
         generator = TransitionExe(self.idf, tmp_dir=tmp)
 
+        # set the initial version from which we are transitioning
+        last_successful_transition = self.idf.file_version
+
         for trans in tqdm(
             generator,
             total=len(generator.transitions),
@@ -214,10 +217,14 @@ class TransitionThread(Thread):
                             time.time() - start_time
                         )
                     )
+                    last_successful_transition = trans.trans
                     self.success_callback()
                     for line in self.p.stderr:
                         self.msg_callback(line.decode("utf-8"))
                 else:
+                    # set the version of the IDF the latest it was able to transition
+                    # to.
+                    self.idf.as_version = last_successful_transition
                     self.msg_callback("Transition failed")
                     self.failure_callback()
 
@@ -275,7 +282,9 @@ class TransitionThread(Thread):
         """Read stderr and pass to logger."""
         for line in self.p.stderr:
             self.msg_callback(line.decode("utf-8"), level=lg.ERROR)
-        raise CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
+        self.exception = CalledProcessError(
+            self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
+        )
 
     def cancelled_callback(self, stdin, stdout):
         """Call on cancelled."""
@@ -286,7 +295,7 @@ class TransitionThread(Thread):
         """Return the location of the EnergyPlus directory."""
         eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
         if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
+            self.exception = EnergyPlusVersionError(
                 msg=f"No EnergyPlus Executable found for version "
                 f"{EnergyPlusVersion(self.idf.as_version)}"
             )

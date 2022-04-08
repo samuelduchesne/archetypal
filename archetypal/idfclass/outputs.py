@@ -276,9 +276,9 @@ class Outputs:
         assert isinstance(outputs, Iterable), "outputs must be some sort of iterable"
         for output in outputs:
             if "meter" in output["key"].lower():
-                self._output_meters.add(output)
+                self._output_meters.add(output["Key_Name"])
             elif "variable" in output["key"].lower():
-                self._output_variables.add(output)
+                self._output_variables.add(output["Variable_Name"])
             else:
                 self._other_outputs.append(output)
         return self

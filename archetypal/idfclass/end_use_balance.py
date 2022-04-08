@@ -564,8 +564,8 @@ class EndUseBalance:
             columns = None
         return EnergyDataFrame(
             (
-                _hvac_input_heated_surface.sum(level="Key_Name", axis=1)
-                - _hvac_input_cooled_surface.sum(level="Key_Name", axis=1)
+                _hvac_input_heated_surface.sum(level="KeyValue", axis=1)
+                - _hvac_input_cooled_surface.sum(level="KeyValue", axis=1)
             ).values,
             columns=columns,
             index=_hvac_input_heated_surface.index,

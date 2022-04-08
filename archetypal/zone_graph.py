@@ -397,7 +397,8 @@ class ZoneGraph(networkx.Graph):
 
         Examples:
             >>> import networkx as nx
-            >>> G = BuildingTemplate().from_idf
+            >>> from archetypal.umi_template import BuildingTemplate
+            >>> G = BuildingTemplate.from_idf()
             >>> G.plot_graph2d(nx.nx_agraph.graphviz_layout, ('dot'),
             >>>                font_color='w', legend=True, font_size=8,
             >>>                color_nodes='core',

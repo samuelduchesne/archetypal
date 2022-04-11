@@ -238,7 +238,7 @@ class IDF(GeomIDF):
         self.file_version = kwargs.get("file_version", None)
         self.as_version = as_version if as_version else settings.ep_version
         self._custom_processes = custom_processes
-        self._include = include
+        self.include = include
         self.keep_data_err = keep_data_err
         self._keep_data = keep_data
         self.output_suffix = output_suffix
@@ -539,6 +539,10 @@ class IDF(GeomIDF):
     def include(self) -> list:
         """Return list of external files attached to model."""
         return self._include
+
+    @include.setter
+    def include(self, value):
+        self._include = value
 
     @property
     def keep_data_err(self) -> bool:

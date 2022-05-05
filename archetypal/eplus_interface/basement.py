@@ -6,13 +6,12 @@ import subprocess
 import time
 from threading import Thread
 
-from eppy.runner.run_functions import paths_from_version
 from path import Path
 from tqdm import tqdm
 
 from archetypal.utils import log
 
-from ..eplus_interface.exceptions import EnergyPlusProcessError, EnergyPlusVersionError
+from ..eplus_interface.exceptions import EnergyPlusProcessError
 from ..eplus_interface.version import EnergyPlusVersion
 
 
@@ -57,20 +56,17 @@ class BasementThread(Thread):
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        basemenet_exe = shutil.which(
-            "Basement", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
-        )
+        basemenet_exe = shutil.which("Basement", path=self.eplus_home)
         if basemenet_exe is None:
             log(
-                f"The Basement program could not be found at "
-                f"'{self.eplus_home / 'PreProcess' / 'GrndTempCalc'}'",
+                f"The Basement program could not be found at " f"'{self.eplus_home}",
                 lg.WARNING,
             )
             return
+        else:
+            basemenet_exe = (self.eplus_home / Path(basemenet_exe)).expand()
         self.basement_exe = Path(basemenet_exe).copy(self.run_dir)
-        self.basement_idd = (
-            self.eplus_home / "PreProcess" / "GrndTempCalc" / "BasementGHT.idd"
-        ).copy(self.run_dir)
+        self.basement_idd = (self.eplus_home / "BasementGHT.idd").copy(self.run_dir)
         self.outfile = self.idf.name
 
         # The BasementGHTin.idf file is copied from the self.include list (
@@ -222,7 +218,7 @@ class BasementThread(Thread):
                 / "PreProcess"
                 / "GrndTempCalc"
             )
-        return install_dir
+        return install_dir.expand()
 
     def stop(self):
         if self.p.poll() is None:

@@ -6,14 +6,10 @@ import subprocess
 import time
 from threading import Thread
 
-from eppy.runner.run_functions import paths_from_version
 from path import Path
 from tqdm import tqdm
 
-from archetypal.eplus_interface.exceptions import (
-    EnergyPlusProcessError,
-    EnergyPlusVersionError,
-)
+from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
 from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
 
@@ -58,20 +54,15 @@ class SlabThread(Thread):
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        slab_exe = shutil.which(
-            "Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
-        )
+        slab_exe = shutil.which("Slab", path=self.eplus_home)
         if slab_exe is None:
             log(
-                f"The Slab program could not be found at "
-                f"'{self.eplus_home / 'PreProcess' / 'GrndTempCalc'}'",
+                f"The Slab program could not be found at " f"'{self.eplus_home}'",
                 lg.WARNING,
             )
             return
         self.slabexe = Path(slab_exe).copy(self.run_dir)
-        self.slabidd = (
-            self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
-        ).copy(self.run_dir)
+        self.slabidd = (self.eplus_home / "SlabGHT.idd").copy(self.run_dir)
 
         # The GHTin.idf file is copied from the self.include list (added by
         # ExpandObjects. If self.include is empty, no need to run Slab.
@@ -181,7 +172,7 @@ class SlabThread(Thread):
                 / "PreProcess"
                 / "GrndTempCalc"
             )
-        return install_dir
+        return install_dir.expand()
 
     def stop(self):
         if self.p.poll() is None:

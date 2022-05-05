@@ -19,7 +19,7 @@ from collections import defaultdict
 from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
-from typing import IO, Iterable, Optional, Union
+from typing import IO, Iterable, Optional, Tuple, Union
 
 import eppy
 import pandas as pd
@@ -251,6 +251,8 @@ class IDF(GeomIDF):
         self.annual = annual
         self.prep_outputs = prep_outputs
         self._position = position
+        self._translated = False
+        self._rotated = False
         self.output_prefix = None
         self.name = (
             name
@@ -2422,6 +2424,156 @@ class IDF(GeomIDF):
                             filename="transition_" + self.name,
                             log_dir=self.idfversionupdater_dir,
                         )
+
+    def to_world(self):
+        """Translate surfaces and subsurfaces to 'World' coordinates.
+
+        Notes:
+            Shading surfaces are already specified in world coordinates. Daylighting
+            reference points are also translated in this method.
+        """
+        from geomeppy.geom.vectors import Vector3D
+        from geomeppy.recipes import translate, translate_coords
+
+        if (
+            "world"
+            in [
+                o.Coordinate_System.lower()
+                for o in self.idfobjects["GLOBALGEOMETRYRULES"]
+            ]
+            or self.translated
+        ):
+            log("Model already set as World coordinates", level=lg.WARNING)
+            return
+        zone_angles = set(
+            z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]
+        )
+        # If Zones have Direction_of_Relative_North != 0, model needs to be rotated
+        # before translation.
+        if all(angle != 0 for angle in zone_angles):
+            self.rotate(None, (0, 0, 0))
+
+        zone_origin = {
+            zone.Name.upper(): Vector3D(zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
+            for zone in self.idfobjects["ZONE"]
+        }
+        surfaces = {s.Name.upper(): s for s in self.getsurfaces()}
+        subsurfaces = self.getsubsurfaces()
+        daylighting_refpoints = [
+            p for p in self.idfobjects["DAYLIGHTING:REFERENCEPOINT"]
+        ]
+
+        # Translate surfaces in the direction of their zone's origin vector.
+        for subsurf in subsurfaces:
+            zone_name = surfaces[subsurf.Building_Surface_Name.upper()].Zone_Name
+            translate([subsurf], zone_origin[zone_name.upper()])
+        for surf_name, surf in surfaces.items():
+            translate([surf], zone_origin[surf.Zone_Name.upper()])
+        for day in daylighting_refpoints:
+            zone_name = day.Zone_or_Space_Name
+            coords = translate_coords(day.coords, zone_origin[zone_name.upper()])
+            (
+                day.XCoordinate_of_Reference_Point,
+                day.YCoordinate_of_Reference_Point,
+                day.ZCoordinate_of_Reference_Point,
+            ) = coords[0]
+
+        # Edit the `GLOBALGEOMETRYRULES` to "World"
+        for obj in self.idfobjects["GLOBALGEOMETRYRULES"]:
+            obj.Coordinate_System = "World"
+            obj.Daylighting_Reference_Point_Coordinate_System = "World"
+            obj.Rectangular_Surface_Coordinate_System = "World"
+
+        # Set all zone origin vectors to (0,0,0)
+        for zone in self.idfobjects["ZONE"]:
+            zone.X_Origin, zone.Y_Origin, zone.Z_Origin = 0, 0, 0
+
+        self.translated = True
+        # Finally, rotate model if not already rotated.
+        if not self.rotated:
+            self.rotate(None, (0, 0, 0))
+
+    def view_model(self, test=False):
+        # type: (Optional[bool]) -> None
+        """Show a zoomable, rotatable representation of the IDF."""
+        from geomeppy.view_geometry import view_idf
+
+        if (
+            "relative"
+            in [
+                o.Coordinate_System.lower()
+                for o in self.idfobjects["GLOBALGEOMETRYRULES"]
+            ]
+            and self.coords_are_truly_relative
+        ):
+            raise Exception(
+                "Model is in relative coordinates and must be translated to world using "
+                "IDF.to_world()."
+            )
+        view_idf(idf=self, test=test)
+
+    @property
+    def coords_are_truly_relative(self):
+        """True if GlobalGeometryRules as `Relative` and Zone origins are not 0,0,0."""
+        ggr_asks_for_relative = "relative" in [
+            o.Coordinate_System.lower() for o in self.idfobjects["GLOBALGEOMETRYRULES"]
+        ]
+        all_zone_origin_at_0 = True
+        for z in self.idfobjects["ZONE"]:
+            xyz = (z.X_Origin, z.Y_Origin, z.Z_Origin)
+            coord = tuple(pd.to_numeric(pd.Series(xyz)).fillna(0))
+            if coord != (0, 0, 0):
+                all_zone_origin_at_0 = False
+        return ggr_asks_for_relative and not all_zone_origin_at_0
+
+    def rotate(self, angle: Optional[float] = None, anchor: Union[Tuple] = None):
+        """IF angle is None, rotate to North Axis."""
+        if not angle:
+            bldg_angle = self.idfobjects["BUILDING"][0].North_Axis
+            log(f"Building North Axis = {bldg_angle}", level=lg.DEBUG)
+            zone_angles = set(
+                z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]
+            )
+            assert (
+                len(zone_angles) == 1
+            ), "Not all zone have the same Direction_of_Relative_North"
+            zone_angle, *_ = zone_angles
+            log(f"Zone(s) North Axis = {zone_angle}", level=lg.DEBUG)
+            angle = -(bldg_angle + zone_angle)
+        if isinstance(anchor, tuple):
+            from geomeppy.geom.vectors import Vector3D
+
+            anchor = Vector3D(*anchor)
+        log(
+            f"Geometries rotated by {angle} degrees around "
+            f"{anchor or 'building centroid'}"
+        )
+        super(IDF, self).rotate(angle, anchor=anchor)
+
+        # after building is rotate, change the north axis and zone direction to zero.
+        self.idfobjects["BUILDING"][0].North_Axis = 0
+        for z in self.idfobjects["ZONE"]:
+            z.Direction_of_Relative_North = 0
+        # Mark the model as rotated
+        self.rotated = True
+
+    @property
+    def translated(self):
+        """Get or set if the model was translated (X, Y, Z)."""
+        return self._translated
+
+    @translated.setter
+    def translated(self, value):
+        self._translated = bool(value)
+
+    @property
+    def rotated(self):
+        """Get or set if the model was rotated."""
+        return self._rotated
+
+    @rotated.setter
+    def rotated(self, value):
+        self._rotated = bool(value)
 
 
 def _process_csv(file, working_dir, simulname):

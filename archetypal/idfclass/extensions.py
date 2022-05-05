@@ -45,6 +45,28 @@ def to_dict(self: EpBunch):
     return {k: v for k, v in zip(self.fieldnames, self.fieldvalues)}
 
 
+@extend_class(EpBunch)
+def __init__(self, obj, objls, objidd, *args, **kwargs):
+    """Extension of EpBunch to add daylighting:referencepoints coords."""
+    super(EpBunch, self).__init__(obj, objls, objidd, *args, **kwargs)
+    if self.key.upper() == "DAYLIGHTING:REFERENCEPOINT":
+        func_dict = {
+            "coords": get_coords,
+        }
+        self.__functions.update(func_dict)
+
+
+def get_coords(obj: EpBunch):
+    """Return tuple of X, Y, Z"""
+    return [
+        (
+            obj.XCoordinate_of_Reference_Point,
+            obj.YCoordinate_of_Reference_Point,
+            obj.ZCoordinate_of_Reference_Point,
+        ),
+    ]
+
+
 @extend_class(Idf_MSequence)
 def to_dict(self: Idf_MSequence):
     """Get the list of dict representation of the Idf_Msequence."""

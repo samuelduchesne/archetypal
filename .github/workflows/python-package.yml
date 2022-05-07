@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [ 3.7, 3.8 ]
+        python-version: [ 3.8, 3.9 ]
         os: [ ubuntu-latest ]  # later, add macos-latest, windows-latest
         energyplus-version: [ 9.2.0 ]  # later, add 9.4.0
         include:

@@ -2529,7 +2529,7 @@ class IDF(GeomIDF):
     def rotate(self, angle: Optional[float] = None, anchor: Union[Tuple] = None):
         """IF angle is None, rotate to North Axis."""
         if not angle:
-            bldg_angle = self.idfobjects["BUILDING"][0].North_Axis
+            bldg_angle = self.idfobjects["BUILDING"][0].North_Axis or 0
             log(f"Building North Axis = {bldg_angle}", level=lg.DEBUG)
             zone_angles = set(
                 z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]

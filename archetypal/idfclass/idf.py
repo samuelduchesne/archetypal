@@ -2253,7 +2253,6 @@ class IDF(GeomIDF):
         construction: Optional[str] = None,
         force: bool = False,
         wwr_map: Optional[dict] = None,
-        orientation: Optional[str] = None,
         surfaces: Optional[Iterable] = None,
     ):
         """Set Window-to-Wall Ratio of external walls.
@@ -2274,8 +2273,6 @@ class IDF(GeomIDF):
             force: True to create windows on walls that don't have any.
             wwr_map: Mapping from wall orientation (azimuth) to WWR, e.g.
                 {180: 0.25, 90: 0.2}.
-            orientation: One of "north", "east", "south", "west". Walls within 45
-                degrees will be affected.
             surfaces: Iterable of surfaces to set the window to wall ratio of.
         """
         # Taken from `geomeppy.idf.IDF.set_wwr` since pull request is not being
@@ -2286,64 +2283,55 @@ class IDF(GeomIDF):
         except IndexError:
             ggr = None
 
-            # check orientation
-        orientations = {
-            "north": 0.0,
-            "east": 90.0,
-            "south": 180.0,
-            "west": 270.0,
-            None: None,
-        }
-        degrees = orientations.get(orientation, None)
-        external_walls = filter(
-            lambda x: x.Outside_Boundary_Condition.lower() == "outdoors",
-            surfaces or self.getsurfaces("wall"),
-        )
-        external_walls = filter(
-            lambda x: _has_correct_orientation(x, degrees), external_walls
-        )
-        subsurfaces = self.getsubsurfaces()
-        base_wwr = wwr
-        for wall in external_walls:
-            # get any subsurfaces on the wall
-            wall_subsurfaces = list(
-                filter(lambda x: x.Building_Surface_Name == wall.Name, subsurfaces)
-            )
+        wwr_map = wwr_map or {0: wwr, 90: wwr, 180: wwr, 270: wwr}
 
-            if wall_subsurfaces and not construction:
-                constructions = list(
-                    {
-                        wss.Construction_Name
-                        for wss in wall_subsurfaces
-                        if _is_window(wss)
-                    }
-                )
-                if len(constructions) > 1:
-                    raise ValueError(
-                        'Not all subsurfaces on wall "{name}" have the same construction'.format(
-                            name=wall.Name
-                        )
-                    )
-                construction = constructions[0]
-            wwr = (wwr_map or {}).get(round(wall.azimuth), base_wwr)
-            if not wwr:
-                continue
-            if len(wall_subsurfaces) == 0 and not force:
-                # Don't create windows on walls that don't have any windows already.
-                continue
-            # remove all subsurfaces
-            for ss in wall_subsurfaces:
-                self.removeidfobject(ss)
-            coords = window_vertices_given_wall(wall, wwr)
-            window = self.newidfobject(
-                "FENESTRATIONSURFACE:DETAILED",
-                Name="%s window" % wall.Name,
-                Surface_Type="Window",
-                Construction_Name=construction or "",
-                Building_Surface_Name=wall.Name,
-                View_Factor_to_Ground="autocalculate",  # from the surface angle
+        # check orientation
+        for degrees, wwr in wwr_map.items():
+            external_walls = filter(
+                lambda x: x.Outside_Boundary_Condition.lower() == "outdoors",
+                surfaces or self.getsurfaces("wall"),
             )
-            window.setcoords(coords, ggr)
+            external_walls = filter(
+                lambda x: closest_cardinal_angle(x.azimuth) == degrees, external_walls
+            )
+            subsurfaces = self.getsubsurfaces()
+            for wall in external_walls:
+                # get any subsurfaces on the wall
+                wall_subsurfaces = list(
+                    filter(lambda x: x.Building_Surface_Name == wall.Name, subsurfaces)
+                )
+
+                if wall_subsurfaces and not construction:
+                    constructions = list(
+                        {
+                            wss.Construction_Name
+                            for wss in wall_subsurfaces
+                            if _is_window(wss)
+                        }
+                    )
+                    if len(constructions) > 1:
+                        raise ValueError(
+                            'Not all subsurfaces on wall "{name}" have the same construction'.format(
+                                name=wall.Name
+                            )
+                        )
+                    construction = constructions[0]
+                if len(wall_subsurfaces) == 0 and not force:
+                    # Don't create windows on walls that don't have any windows already.
+                    continue
+                # remove all subsurfaces
+                for ss in wall_subsurfaces:
+                    self.removeidfobject(ss)
+                coords = window_vertices_given_wall(wall, wwr)
+                window = self.newidfobject(
+                    "FENESTRATIONSURFACE:DETAILED",
+                    Name="%s window" % wall.Name,
+                    Surface_Type="Window",
+                    Construction_Name=construction or "",
+                    Building_Surface_Name=wall.Name,
+                    View_Factor_to_Ground="autocalculate",  # from the surface angle
+                )
+                window.setcoords(coords, ggr)
 
     def _energy_series(
         self,
@@ -2598,3 +2586,10 @@ def _process_csv(file, working_dir, simulname):
     else:
         log("file %s stored" % file)
         return df
+
+
+def closest_cardinal_angle(azimuth):
+    """Returns the closest bearing angle to the given azimuth angle."""
+    dirs = [0, 90, 180, 270]
+    ix = int(round(azimuth / (360.0 / len(dirs))))
+    return dirs[ix % len(dirs)]

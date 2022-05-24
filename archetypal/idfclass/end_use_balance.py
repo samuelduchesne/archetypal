@@ -9,6 +9,7 @@ from archetypal.idfclass.sql import Sql
 
 
 class EndUseBalance:
+    HVAC_MODE = ("Zone Predicted Sensible Load to Setpoint Heat Transfer Rate",)
     HVAC_INPUT_SENSIBLE = (  # not multiplied by zone or group multipliers
         "Zone Air Heat Balance System Air Transfer Rate",
         "Zone Air Heat Balance System Convective Heat Gain Rate",
@@ -168,8 +169,8 @@ class EndUseBalance:
             axis=1,
             verify_integrity=True,
         )
-
-        rolling_sign = cls.get_rolling_sign_change(_hvac_input)
+        mode = sql.timeseries_by_name(cls.HVAC_MODE)  # positive = Heating
+        rolling_sign = cls.get_rolling_sign_change(mode)
 
         # Create both heating and cooling masks
         is_heating = rolling_sign > 0

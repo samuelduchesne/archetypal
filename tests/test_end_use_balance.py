@@ -16,9 +16,7 @@ class TestEndUseBalance:
             readvars=False,
         )
         idf = idf.saveas("AdultEducationCenter.idf")
-        idf.outputs.add_load_balance_components()
         idf.outputs.add_end_use_balance_components()
-        idf.outputs.add_sensible_heat_gain_summary_components()
         idf.outputs.apply()
         idf.simulate()
         yield idf

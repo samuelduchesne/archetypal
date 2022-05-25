@@ -216,10 +216,9 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     )
     log(
         f"executing {len(file_paths)} file(s):\n{file_list}",
-        verbose=True,
     )
     weather, *_ = set_filepaths([weather])
-    log(f"using the '{weather.basename()}' weather file\n", verbose=True)
+    log(f"using the '{weather.basename()}' weather file\n")
 
     # Call UmiTemplateLibrary constructor with list of IDFs
     template = UmiTemplateLibrary.from_idf_files(
@@ -236,7 +235,6 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     template.save(path_or_buf=final_path)
     log(
         f"Successfully created template file at {final_path.abspath()}",
-        verbose=True,
     )
 
 
@@ -301,7 +299,6 @@ def transition(idf, to_version, cores, yes):
     file_paths, file_list = idf
     log(
         f"executing {len(file_paths)} file(s):\n{file_list}",
-        verbose=True,
     )
     if not yes:
         overwrite = click.confirm("Would you like to overwrite the file(s)?")

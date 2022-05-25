@@ -11,6 +11,8 @@ from pandas import to_datetime
 from path import Path
 from typing_extensions import Literal
 
+from archetypal.utils import log
+
 _REPORTING_FREQUENCIES = Literal[
     "HVAC System Timestep",
     "Zone Timestep",
@@ -326,7 +328,7 @@ class Sql:
             # extract all data of the relevant type from ReportData
             rel_indices = tuple(header_rows.index.to_list())
             data = _extract_timeseries(conn, environment_type, header_rows, rel_indices)
-        print(f"collected data for {variable_or_meter}")
+        log(f"collected data for {variable_or_meter}")
         return data
 
     def tabular_data_by_name(

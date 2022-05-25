@@ -103,9 +103,7 @@ def log(
     level=None,
     name=None,
     filename=None,
-    avoid_console=False,
     log_dir=None,
-    verbose=False,
 ):
     """Write a message to the log file and/or print to the the console.
 
@@ -124,44 +122,19 @@ def log(
         level = settings.log_level
     if name is None:
         name = settings.log_name
-    if filename is None:
+    if filename is None and settings.log_file:
         filename = settings.log_filename
-    logger = None
-    # if logging to file is turned on
-    if settings.log_file:
-        # get the current logger (or create a new one, if none), then log
-        # message at requested level
-        logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
-        if level == lg.DEBUG:
-            logger.debug(message)
-        elif level == lg.INFO:
-            logger.info(message)
-        elif level == lg.WARNING:
-            logger.warning(message)
-        elif level == lg.ERROR:
-            logger.error(message)
-
-    # if logging to console is turned on, convert message to ascii and print to
-    # the console
-    if settings.log_console or verbose or level == lg.ERROR and not avoid_console:
-        # capture current stdout, then switch it to the console, print the
-        # message, then switch back to what had been the stdout. this prevents
-        # logging to notebook - instead, it goes to console
-        standard_out = sys.stdout
-        sys.stdout = sys.__stdout__
-
-        # convert message to ascii for console display so it doesn't break
-        # windows terminals
-        message = (
-            unicodedata.normalize("NFKD", str(message))
-            .encode("ascii", errors="replace")
-            .decode()
-        )
-        tqdm.write(message)
-        sys.stdout = standard_out
-
-        if level == lg.WARNING:
-            warnings.warn(message)
+    # get the current logger (or create a new one, if none), then log
+    # message at requested level
+    logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
+    if level == lg.DEBUG:
+        logger.debug(message)
+    elif level == lg.INFO:
+        logger.info(message)
+    elif level == lg.WARNING:
+        logger.warning(message)
+    elif level == lg.ERROR:
+        logger.error(message)
 
     return logger
 
@@ -191,7 +164,7 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
     logger = lg.getLogger(name)
 
     # if a logger with this name is not already set up
-    if not getattr(logger, "handler_set", None):
+    if len(logger.handlers) == 0:
 
         # get today's date and construct a log filename
         todays_date = dt.datetime.today().strftime("%Y_%m_%d")
@@ -207,7 +180,9 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         # create file handler and log formatter and set them up
         try:
             handler = lg.FileHandler(log_filename, encoding="utf-8")
-        except:
+            if not settings.log_file:
+                raise ValueError()
+        except ValueError:
             handler = lg.StreamHandler()
         formatter = lg.Formatter(
             "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"

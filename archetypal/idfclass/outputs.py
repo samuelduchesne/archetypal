@@ -580,7 +580,7 @@ class Outputs:
             EndUseBalance.WINDOW_LOSS,
             EndUseBalance.WINDOW_GAIN,
             EndUseBalance.HEAT_RECOVERY_LOSS,
-            EndUseBalance.HEAT_RECOVERY_GAIN
+            EndUseBalance.HEAT_RECOVERY_GAIN,
         ]:
             for item in group:
                 self._output_variables.add(item)

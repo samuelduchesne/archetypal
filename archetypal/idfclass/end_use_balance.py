@@ -35,52 +35,36 @@ class EndUseBalance:
         "Zone Hot Water Equipment Convective Heating Energy",
         "Zone Other Equipment Convective Heating Energy",
     )
-    PEOPLE_GAIN = ("Zone People Sensible Heating Energy",)  # checked, Todo: +latent
+    PEOPLE_GAIN = ("Zone People Total Heating Energy",)  # checked
     SOLAR_GAIN = ("Zone Windows Total Transmitted Solar Radiation Energy",)  # checked
     INFIL_GAIN = (
-        "Zone Infiltration Sensible Heat Gain Energy",  # checked
-        # "Zone Infiltration Latent Heat Gain Energy",
-        "AFN Zone Infiltration Sensible Heat Gain Energy",
-        # "AFN Zone Infiltration Latent Heat Gain Energy",
+        "Zone Infiltration Total Heat Gain Energy",  # checked
+        "AFN Zone Infiltration Total Heat Gain Energy",
     )
     INFIL_LOSS = (
-        "Zone Infiltration Sensible Heat Loss Energy",  # checked
-        # "Zone Infiltration Latent Heat Loss Energy",
-        "AFN Zone Infiltration Sensible Heat Loss Energy",
-        # "AFN Zone Infiltration Latent Heat Loss Energy",
+        "Zone Infiltration Total Heat Loss Energy",  # checked
+        "AFN Zone Infiltration Total Heat Loss Energy",
     )
-    VENTILATION_LOSS = ("Zone Air System Sensible Heating Energy",)
-    VENTILATION_GAIN = ("Zone Air System Sensible Cooling Energy",)
+    VENTILATION_LOSS = ("Zone Air System Total Heating Energy",)
+    VENTILATION_GAIN = ("Zone Air System Total Cooling Energy",)
     NAT_VENT_GAIN = (
-        # "Zone Ventilation Total Heat Gain Energy",
-        "Zone Ventilation Sensible Heat Gain Energy",
-        # "Zone Ventilation Latent Heat Gain Energy",
-        "AFN Zone Ventilation Sensible Heat Gain Energy",
-        # "AFN Zone Ventilation Latent Heat Gain Energy",
+        "Zone Ventilation Total Heat Gain Energy",
+        "AFN Zone Ventilation Total Heat Gain Energy",
     )
     NAT_VENT_LOSS = (
-        # "Zone Ventilation Total Heat Loss Energy",
-        "Zone Ventilation Sensible Heat Loss Energy",
-        # "Zone Ventilation Latent Heat Loss Energy",
-        "AFN Zone Ventilation Sensible Heat Loss Energy",
-        # "AFN Zone Ventilation Latent Heat Loss Energy",
-    )
-    MECHANICAL_VENT_LOSS = (
-        "Zone Mechanical Ventilation No Load Heat Removal Energy",
-        "Zone Mechanical Ventilation Heating Load Increase Energy",
-        "Zone Mechanical Ventilation Cooling Load Decrease Energy",
-    )
-    MECHANICAL_VENT_GAIN = (
-        "Zone Mechanical Ventilation No Load Heat Addition Energy",
-        "Zone Mechanical Ventilation Heating Load Decrease Energy",
-        "Zone Mechanical Ventilation Cooling Load Increase Energy",
+        "Zone Ventilation Total Heat Loss Energy",
+        "AFN Zone Ventilation Total Heat Loss Energy",
     )
     OPAQUE_ENERGY_FLOW = ("Surface Outside Face Conduction Heat Transfer Energy",)
     OPAQUE_ENERGY_STORAGE = ("Surface Heat Storage Energy",)
     WINDOW_LOSS = ("Zone Windows Total Heat Loss Energy",)  # checked
     WINDOW_GAIN = ("Zone Windows Total Heat Gain Energy",)  # checked
-    HEAT_RECOVERY_LOSS = ("Heat Exchanger Total Cooling Energy",)
-    HEAT_RECOVERY_GAIN = ("Heat Exchanger Total Heating Energy",)
+    HRV_LOSS = ("Heat Exchanger Total Cooling Energy",)
+    HRV_GAIN = ("Heat Exchanger Total Heating Energy",)
+    AIR_SYSTEM = (
+        "Air System Heating Coil Total Heating Energy",
+        "Air System Cooling Coil Total Cooling Energy",
+    )
 
     def __init__(
         self,
@@ -101,6 +85,7 @@ class EndUseBalance:
         opaque_storage,
         window_flow,
         heat_recovery,
+        air_system,
         is_cooling,
         is_heating,
         units="J",
@@ -123,6 +108,7 @@ class EndUseBalance:
         self.opaque_storage = opaque_storage
         self.window_flow = window_flow
         self.heat_recovery = heat_recovery
+        self.air_system = air_system
         self.units = units
         self.use_all_solar = use_all_solar
         self.is_cooling = is_cooling
@@ -205,23 +191,10 @@ class EndUseBalance:
         nat_vent_gain = cls.apply_multipliers(nat_vent_gain, zone_multipliers)
         nat_vent_loss = sql.timeseries_by_name(cls.NAT_VENT_LOSS).to_units(units)
         nat_vent_loss = cls.apply_multipliers(nat_vent_loss, zone_multipliers)
-        mech_vent_gain = sql.timeseries_by_name(cls.MECHANICAL_VENT_GAIN).to_units(
-            units
-        )
-        mech_vent_gain = cls.apply_multipliers(mech_vent_gain, zone_multipliers)
-        mech_vent_loss = sql.timeseries_by_name(cls.MECHANICAL_VENT_LOSS).to_units(
-            units
-        )
-        mech_vent_loss = cls.apply_multipliers(mech_vent_loss, zone_multipliers)
-        heat_recovery_loss = sql.timeseries_by_name(cls.HEAT_RECOVERY_LOSS).to_units(
-            units
-        )
-        heat_recovery_gain = sql.timeseries_by_name(cls.HEAT_RECOVERY_GAIN).to_units(
-            units
-        )
-        heat_recovery = cls.subtract_loss_from_gain(
-            heat_recovery_gain, heat_recovery_loss, level="KeyValue"
-        )
+        hrv_loss = sql.timeseries_by_name(cls.HRV_LOSS).to_units(units)
+        hrv_gain = sql.timeseries_by_name(cls.HRV_GAIN).to_units(units)
+        hrv = cls.subtract_loss_from_gain(hrv_gain, hrv_loss, level="KeyValue")
+        air_system = sql.timeseries_by_name(cls.AIR_SYSTEM).to_units(units)
 
         # subtract losses from gains
         infiltration = None
@@ -297,7 +270,8 @@ class EndUseBalance:
             opaque_flow,
             opaque_storage,
             window_flow,
-            heat_recovery,
+            hrv,
+            air_system,
             is_cooling,
             is_heating,
             units,

@@ -126,7 +126,7 @@ def log(
         filename = settings.log_filename
     # get the current logger (or create a new one, if none), then log
     # message at requested level
-    logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
+    logger = get_logger(level=None, name=name, filename=filename, log_dir=log_dir)
     if level == lg.DEBUG:
         logger.debug(message)
     elif level == lg.INFO:
@@ -190,7 +190,6 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         handler.setFormatter(formatter)
         logger.addHandler(handler)
         logger.setLevel(level)
-        logger.handler_set = True
 
     return logger
 

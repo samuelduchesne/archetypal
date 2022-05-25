@@ -156,14 +156,14 @@ class EndUseBalance:
             verify_integrity=True,
         )
         mode = sql.timeseries_by_name(cls.HVAC_MODE)  # positive = Heating
-        rolling_sign = cls.get_rolling_sign_change(mode)
+        rolling_sign = cls.get_rolling_sign_change(mode).fillna(0)
 
         # Create both heating and cooling masks
-        is_heating = rolling_sign > 0
-        is_cooling = rolling_sign < 0
+        is_heating = rolling_sign.droplevel(["IndexGroup", "Name"], axis=1) == 1
+        is_cooling = rolling_sign.droplevel(["IndexGroup", "Name"], axis=1) == -1
 
-        heating = _hvac_input[is_heating].fillna(0)
-        cooling = _hvac_input[is_cooling].fillna(0)
+        heating = _hvac_input.mul(is_heating, level="KeyValue", axis=1)
+        cooling = _hvac_input.mul(is_cooling, level="KeyValue", axis=1)
 
         lighting = sql.timeseries_by_name(cls.LIGHTING).to_units(units)
         zone_multipliers = sql.zone_info.set_index("ZoneName")["Multiplier"].rename(
@@ -467,9 +467,7 @@ class EndUseBalance:
             index=system.index,
         )
 
-    def separate_gains_and_losses(
-        self, component, level="Key_Name", stack_on_level=None
-    ) -> EnergyDataFrame:
+    def separate_gains_and_losses(self, component, level="Key_Name") -> EnergyDataFrame:
         """Separate gains from losses when cooling and heating occurs for the component.
 
         Args:
@@ -484,38 +482,31 @@ class EndUseBalance:
         ), f"{component} is not a valid attribute of EndUseBalance."
         component_df = getattr(self, component)
         assert not component_df.empty, "Expected a component that is not empty."
-        if isinstance(level, str):
-            level = [level]
         print(component)
 
-        # mask when cooling occurs in zone (negative values)
-        mask = (self.is_cooling.stack("KeyValue") == True).any(axis=1)
+        c_df = getattr(self, component)
 
-        # get the dataframe using the attribute name, summarize by `level` and stack so that a Series is returned.
-        stacked = getattr(self, component).sum(level=level, axis=1).stack(level[0])
-
-        # concatenate the masked values with keys to easily create a MultiIndex when unstacking
+        # concatenate the Periods
         inter = pd.concat(
             [
-                stacked[mask].reindex(stacked.index),
-                stacked[~mask].reindex(stacked.index),
+                c_df.mul(self.is_cooling.rename_axis(level, axis=1), level=level),
+                c_df.mul(self.is_heating.rename_axis(level, axis=1), level=level),
             ],
             keys=["Cooling Periods", "Heating Periods"],
-            names=["Period"]
-            + stacked.index.names,  # prepend the new key name to the existing index names.
+            names=["Period"],
         )
 
         # mask when values are positive (gain)
         positive_mask = inter >= 0
 
-        # concatenate the masked values with keys to easily create a MultiIndex when unstacking
+        # concatenate the Gain/Loss
         final = pd.concat(
             [
                 inter[positive_mask].reindex(inter.index),
                 inter[~positive_mask].reindex(inter.index),
             ],
             keys=["Heat Gain", "Heat Loss"],
-            names=["Gain/Loss"] + inter.index.names,
+            names=["Gain/Loss"],
         ).unstack(["Period", "Gain/Loss"])
         final.sort_index(axis=1, inplace=True)
         return final
@@ -535,7 +526,6 @@ class EndUseBalance:
                 "infiltration",
                 "window_energy_flow",
                 "nat_vent",
-                "mech_vent",
             ]:
                 if not getattr(self, component).empty:
                     summary_by_component[component] = (
@@ -543,31 +533,16 @@ class EndUseBalance:
                             component,
                             level=level,
                         )
-                        .unstack(level)
-                        .reorder_levels([level, "Period", "Gain/Loss"], axis=1)
+                        .groupby(level=["KeyValue", "Period", "Gain/Loss"], axis=1)
+                        .sum()
                         .sort_index(axis=1)
                     )
-            for (surface_type), data in (
-                self.separate_gains_and_losses(
-                    "opaque_flow", ["Zone_Name", "Surface_Type"]
-                )
-                .unstack("Zone_Name")
-                .groupby(level=["Surface_Type"], axis=1)
-            ):
+            for (surface_type), data in self.separate_gains_and_losses(
+                "opaque_flow", level="Zone_Name"
+            ).groupby(level=["Surface_Type"], axis=1):
                 summary_by_component[surface_type] = data.sum(
                     level=["Zone_Name", "Period", "Gain/Loss"], axis=1
                 ).sort_index(axis=1)
-
-            # for (surface_type), data in (
-            #     self.separate_gains_and_losses(
-            #         "opaque_storage", ["Zone_Name", "Surface_Type"]
-            #     )
-            #     .unstack("Zone_Name")
-            #     .groupby(level=["Surface_Type"], axis=1)
-            # ):
-            #     summary_by_component[surface_type + " Storage"] = data.sum(
-            #         level=["Zone_Name", "Period", "Gain/Loss"], axis=1
-            #     ).sort_index(axis=1)
 
         else:
             summary_by_component = {}
@@ -581,20 +556,40 @@ class EndUseBalance:
                 "infiltration",
                 "window_energy_flow",
                 "nat_vent",
-                "mech_vent",
             ]:
                 component_df = getattr(self, component)
                 if not component_df.empty:
                     summary_by_component[component] = component_df.sum(
                         level=level, axis=1
                     ).sort_index(axis=1)
-            for (zone_name, surface_type), data in self.face_energy_flow.groupby(
+            for (zone_name, surface_type), data in self.opaque_flow.groupby(
                 level=["Zone_Name", "Surface_Type"], axis=1
             ):
                 summary_by_component[surface_type] = data.sum(
                     level="Zone_Name", axis=1
                 ).sort_index(axis=1)
             levels = ["Component", "Zone_Name"]
+
+        # Add contribution of heating/cooling outside air, if any
+        if not self.air_system.empty:
+            summary_by_component["air_system_heating"] = (
+                self.air_system.xs(
+                    "Air System Heating Coil Total Heating Energy", level="Name", axis=1
+                )
+                .assign(**{"Period": "Heating Periods", "Gain/Loss": "Heat Loss"})
+                .set_index(["Period", "Gain/Loss"], append=True)
+                .unstack(["Period", "Gain/Loss"])
+                .droplevel("IndexGroup", axis=1)
+            )
+            summary_by_component["air_system_cooling"] = (
+                self.air_system.xs(
+                    "Air System Cooling Coil Total Cooling Energy", level="Name", axis=1
+                )
+                .assign(**{"Period": "Cooling Periods", "Gain/Loss": "Heat Gain"})
+                .set_index(["Period", "Gain/Loss"], append=True)
+                .unstack(["Period", "Gain/Loss"])
+                .droplevel("IndexGroup", axis=1)
+            )
         return pd.concat(
             summary_by_component, axis=1, verify_integrity=True, names=levels
         )
@@ -668,6 +663,9 @@ class EndUseBalance:
                 "interior_equipment": "Equipment",
                 "window_energy_flow": "Windows",
                 "Wall": "Walls",
+                "air_system_heating": "OA Heating",
+                "air_system_cooling": "OA Cooling",
+                "cooling": "Cooling",
             },
             inplace=True,
         )
@@ -727,9 +725,9 @@ class EndUseBalance:
         )
 
         system_input = (
-            system_input
-            # .replace({0: np.NaN})
-            .dropna(how="all").dropna(how="all", axis=1)
+            system_input.replace({0: np.NaN})
+            .dropna(how="all")
+            .dropna(how="all", axis=1)
         )
         system_input.rename_axis("source", axis=1, inplace=True)
         system_input.rename_axis("target", axis=0, inplace=True)
@@ -764,21 +762,41 @@ class EndUseBalance:
             link_cooling_system_to_gains,
         ) = self._sankey_cooling(cooling_load, load_type="cooling")
 
-        return (
-            pd.DataFrame(
-                system_input_data
-                + link_heating_system_to_gains
-                + heating_energy_to_heating_system
-                + heating_load_source_data
-                + heating_load_target_data
-                + cooling_energy_to_heating_system
-                + cooling_load_source_data
-                + cooling_load_target_data
-                + link_cooling_system_to_gains
-            )
-            # .div(floor_area)
-            .to_csv(path_or_buf, index=False)
+        flows = pd.DataFrame(
+            system_input_data
+            + heating_energy_to_heating_system
+            + heating_load_source_data
+            + heating_load_target_data
+            + cooling_energy_to_heating_system
+            + cooling_load_source_data
+            + cooling_load_target_data
         )
+        # Fix the HVAC difference
+        diff = (
+            flows.loc[flows.source == "Heating Load", "value"].sum()
+            - flows.loc[flows.target == "Heating Load", "value"].sum()
+        )
+        flows.loc[flows.source == "Heating System", "value"] = (
+            flows.loc[flows.source == "Heating System", "value"] + diff
+        )
+
+        diff = (
+            flows.loc[flows.source == "Cooling Load", "value"].sum()
+            - flows.loc[flows.target == "Cooling Load", "value"].sum()
+        )
+        flows.loc[flows.source == "Cooling System", "value"] = (
+            flows.loc[flows.source == "Cooling System", "value"] + diff
+        )
+
+        # fix names
+        flows.replace({"OA Heating Heat Losses": "OA Heating"}, inplace=True)
+
+        # TO EUI
+        flows["value"] = flows["value"] / floor_area
+        links = pd.DataFrame(
+            link_heating_system_to_gains + link_cooling_system_to_gains
+        )
+        return pd.concat([flows, links]).to_csv(path_or_buf, index=False)
 
     def _sankey_heating(self, load, load_type="heating"):
         assert load_type in ["heating", "cooling"]

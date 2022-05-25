@@ -61,6 +61,8 @@ class EnergyPlusVersion(Version):
         if isinstance(version, str) and "-" in version:
             version = version.replace("-", ".")
         super(EnergyPlusVersion, self).__init__(version)
+        if self.dash not in self.valid_versions:
+            raise InvalidEnergyPlusVersion
 
     @classmethod
     def latest(cls):

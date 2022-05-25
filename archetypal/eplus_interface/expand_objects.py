@@ -9,6 +9,7 @@ from subprocess import CalledProcessError
 from threading import Thread
 
 from eppy.runner.run_functions import paths_from_version
+from packaging.version import Version
 from path import Path
 from tqdm import tqdm
 

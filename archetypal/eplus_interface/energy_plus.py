@@ -181,7 +181,7 @@ class EnergyPlusThread(Thread):
                 idfname=self.idfname,
                 epw=self.epw,
                 output_directory=self.run_dir,
-                ep_version=self.idf.as_version,
+                ep_version=self.idf.file_version,
                 annual=self.idf.annual,
                 convert=self.idf.convert,
                 design_day=self.idf.design_day,

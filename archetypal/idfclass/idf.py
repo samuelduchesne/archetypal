@@ -831,7 +831,7 @@ class IDF(GeomIDF):
         Uses the current module's ep_version.
         """
         return (
-            self.as_version.current_install_dir / "PreProcess" / "IDFVersionUpdater"
+            EnergyPlusVersion.latest().current_install_dir / "PreProcess" / "IDFVersionUpdater"
         ).expand()
 
     @property

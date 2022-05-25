@@ -211,7 +211,7 @@ class BasementThread(Thread):
     @property
     def eplus_home(self):
         """Get the version-dependant directory where executables are installed."""
-        if self.idf.file_version.dash <= Version("7.2"):
+        if self.idf.file_version <= Version("7.2"):
             install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
             install_dir = (

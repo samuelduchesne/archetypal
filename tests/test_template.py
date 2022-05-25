@@ -1839,7 +1839,7 @@ class TestZoneConstructionSet:
     def test_zone_construction_set_from_zone(self, warehouse):
         """Test from zone epbunch"""
         zone = warehouse.getobject("ZONE", "Office")
-        z = ZoneDefinition.from_epbunch(ep_bunch=zone)
+        z = ZoneDefinition.from_epbunch(ep_bunch=zone, construct_parents=False)
         constrSet_ = ZoneConstructionSet.from_zone(z)
 
     def test_zoneConstructionSet_from_to_dict(self):
@@ -1904,7 +1904,7 @@ class TestZoneLoad:
         """"""
         idf = warehouse
         zone = idf.getobject("ZONE", "Office")
-        z = ZoneDefinition.from_epbunch(ep_bunch=zone)
+        z = ZoneDefinition.from_epbunch(ep_bunch=zone, construct_parents=False)
         zone_loads = ZoneLoad.from_zone(z, zone)
 
         assert zone_loads.DimmingType == DimmingTypes.Off
@@ -2203,12 +2203,11 @@ class TestVentilationSetting:
 
     @pytest.fixture(
         scope="class",
-        params=["VentilationSimpleTest.idf", "RefBldgWarehouseNew2004_Chicago.idf"],
+        params=["VentilationSimpleTest.idf"],
     )
     def ventilatontests(self, config, request):
         """Create test cases with different ventilation definitions."""
 
-        eplusdir = EnergyPlusVersion.current().current_install_dir
         idf = IDF.from_example_files(
             request.param,
             epw="USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",

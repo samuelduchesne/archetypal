@@ -181,7 +181,7 @@ class IDF(GeomIDF):
         self,
         idfname: Optional[Union[str, IO, Path]] = None,
         epw=None,
-        as_version: Union[str, EnergyPlusVersion] = settings.ep_version,
+        as_version: Union[str, EnergyPlusVersion] = None,
         annual=False,
         design_day=False,
         expandobjects=False,
@@ -235,8 +235,8 @@ class IDF(GeomIDF):
             include = []
         self.idfname = idfname
         self.epw = epw
+        self.as_version = as_version
         self.file_version = kwargs.get("file_version", None)
-        self.as_version = as_version if as_version else settings.ep_version
         self._custom_processes = custom_processes
         self.include = include
         self.keep_data_err = keep_data_err
@@ -298,8 +298,9 @@ class IDF(GeomIDF):
             raise e
         else:
             self._original_cache = hash_model(self)
-            if self.file_version < self.as_version:
-                self.upgrade(to_version=self.as_version, overwrite=False)
+            if self.as_version is not None:
+                if self.file_version < self.as_version:
+                    self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
             self._outputs = Outputs(idf=self, include_html=False, include_sqlite=False)
@@ -444,15 +445,15 @@ class IDF(GeomIDF):
 
     def _read_idf(self):
         """Read idf file and return bunches."""
-        self._idd_info = IDF.IDD.get(str(self.as_version), None)
-        self._idd_index = IDF.IDDINDEX.get(str(self.as_version), None)
-        self._block = IDF.BLOCK.get(str(self.as_version), None)
+        self._idd_info = IDF.IDD.get(str(self.file_version), None)
+        self._idd_index = IDF.IDDINDEX.get(str(self.file_version), None)
+        self._block = IDF.BLOCK.get(str(self.file_version), None)
         bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
             self.idfname, self.iddname, self, commdct=self._idd_info, block=self._block
         )
-        self._block = IDF.BLOCK[str(self.as_version)] = block
-        self._idd_info = IDF.IDD[str(self.as_version)] = commdct
-        self._idd_index = IDF.IDDINDEX[str(self.as_version)] = idd_index
+        self._block = IDF.BLOCK[str(self.file_version)] = block
+        self._idd_info = IDF.IDD[str(self.file_version)] = commdct
+        self._idd_index = IDF.IDDINDEX[str(self.file_version)] = idd_index
         self._idfobjects = bunchdt
         self._model = data
         self._idd_version = versiontuple
@@ -503,11 +504,12 @@ class IDF(GeomIDF):
     def iddname(self) -> Path:
         """Get or set the iddname path used to parse the idf model."""
         if self._iddname is None:
-            if self.file_version > self.as_version:
-                raise EnergyPlusVersionError(
-                    f"{self.as_version} cannot be lower then "
-                    f"the version number set in the file: {self.file_version}"
-                )
+            if self.as_version is not None:
+                if self.file_version > self.as_version:
+                    raise EnergyPlusVersionError(
+                        f"{self.as_version} cannot be lower then "
+                        f"the version number set in the file: {self.file_version}"
+                    )
             self._iddname = self.file_version.current_idd_path
         return self._iddname
 
@@ -527,10 +529,9 @@ class IDF(GeomIDF):
 
     @file_version.setter
     def file_version(self, value):
-        if value is None:
-            self._file_version = None
-        else:
-            self._file_version = EnergyPlusVersion(value)
+        if value is not None:
+            value = EnergyPlusVersion(value)
+        self._file_version = value
 
     @property
     def custom_processes(self) -> list:
@@ -584,6 +585,8 @@ class IDF(GeomIDF):
     def idfname(self) -> Union[Path, StringIO]:
         """Path: The path of the active (parsed) idf model."""
         if self._idfname is None:
+            if self.as_version is None:
+                self.as_version = settings.ep_version
             idfname = StringIO(f"VERSION, {self.as_version};")
             self._idfname = idfname
             self._reset_dependant_vars("idfname")
@@ -726,14 +729,18 @@ class IDF(GeomIDF):
     @property
     def as_version(self):
         """Specify the desired :class:`EnergyPlusVersion` for the IDF model."""
-        if self._as_version is None:
-            self._as_version = EnergyPlusVersion.current()
-        return EnergyPlusVersion(self._as_version)
+        if self._as_version is not None:
+            return EnergyPlusVersion(self._as_version)
+        else:
+            return self._as_version
 
     @as_version.setter
     def as_version(self, value):
         # Parse value and check if above or bellow
-        self._as_version = EnergyPlusVersion(value)
+        if value is None:
+            self._as_version = None
+        else:
+            self._as_version = EnergyPlusVersion(value)
 
     @property
     def output_directory(self) -> Path:
@@ -824,9 +831,7 @@ class IDF(GeomIDF):
         Uses the current module's ep_version.
         """
         return (
-            EnergyPlusVersion.current().current_install_dir
-            / "PreProcess"
-            / "IDFVersionUpdater"
+            EnergyPlusVersion.latest().current_install_dir / "PreProcess" / "IDFVersionUpdater"
         ).expand()
 
     @property
@@ -1359,10 +1364,14 @@ class IDF(GeomIDF):
             if f"_{key}" in self.__dict__.keys():
                 setattr(self, key, value)
 
-        if self.as_version != EnergyPlusVersion(self.idd_version):
-            raise EnergyPlusVersionError(
-                None, self.idfname, EnergyPlusVersion(self.idd_version), self.as_version
-            )
+        if self.as_version is not None:
+            if self.as_version != EnergyPlusVersion(self.idd_version):
+                raise EnergyPlusVersionError(
+                    None,
+                    self.idfname,
+                    EnergyPlusVersion(self.idd_version),
+                    self.as_version,
+                )
 
         include = self.include
         if isinstance(include, str):

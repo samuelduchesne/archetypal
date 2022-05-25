@@ -9,6 +9,7 @@ from subprocess import CalledProcessError
 from threading import Thread
 
 from eppy.runner.run_functions import paths_from_version
+from packaging.version import Version
 from path import Path
 from tqdm import tqdm
 
@@ -151,7 +152,7 @@ class ExpandObjectsThread(Thread):
     @property
     def eplus_home(self):
         """Get the version-dependant directory where executables are installed."""
-        if self.idf.file_version <= EnergyPlusVersion("7.2"):
+        if self.idf.file_version <= Version("7.2"):
             install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
             install_dir = self.idf.file_version.current_install_dir

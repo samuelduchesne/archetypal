@@ -11,6 +11,7 @@ from tabulate import tabulate
 
 from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
+from archetypal.utils import log
 
 
 class Meter:
@@ -99,10 +100,11 @@ class Meter:
             reporting_frequency=bunch2db[reporting_frequency],
         )
         if report.empty:
-            logging.error(
+            log(
                 f"The variable is empty for environment_type `{environment_type}`. "
                 f"Try another environment_type (1, 2 or 3) or specify IDF.annual=True "
-                f"and rerun the simulation."
+                f"and rerun the simulation.",
+                level=logging.ERROR,
             )
         return EnergySeries.from_reportdata(
             report,

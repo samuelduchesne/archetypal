@@ -3,7 +3,7 @@ import logging
 from typing import Iterable
 
 import pandas as pd
-from energy_pandas import EnergyDataFrame, EnergySeries
+from energy_pandas import EnergyDataFrame
 from geomeppy.patches import EpBunch
 
 from archetypal.idfclass.extensions import bunch2db
@@ -92,10 +92,11 @@ class Variable:
             reporting_frequency=bunch2db[reporting_frequency],
         )
         if report.empty:
-            logging.error(
+            log(
                 f"The variable is empty for environment_type `{environment_type}`. "
                 f"Try another environment_type (1, 2 or 3) or specify IDF.annual=True "
-                f"and rerun the simulation."
+                f"and rerun the simulation.",
+                level=logging.WARNING,
             )
         return EnergyDataFrame.from_reportdata(
             report,

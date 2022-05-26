@@ -273,9 +273,10 @@ class Sql:
                     variable_or_meter,
                     reporting_frequency,
                 ) not in self.available_outputs:
-                    logging.warning(
+                    log(
                         f"{(variable_or_meter, reporting_frequency)} not "
-                        f"an available output in the Sql file."
+                        f"an available output in the Sql file.",
+                        level=logging.WARNING,
                     )
                 query = f"""
                         SELECT {cols} 
@@ -371,10 +372,11 @@ class Sql:
             except ValueError:
                 # Cannot pivot; return long-form DataFrame
                 pivoted = data
-                logging.warning(
+                log(
                     f"{(report_name, table_name, report_name)} cannot be "
                     f"pivoted as RowName and ColumnName. The long-form "
-                    f"DataFrame has been returned."
+                    f"DataFrame has been returned.",
+                    level=logging.WARNING,
                 )
             pivoted = pivoted.apply(pd.to_numeric, errors="ignore")
         return pivoted

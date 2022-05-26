@@ -4,24 +4,16 @@
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
-# OSMnx
-#
-# Copyright (c) 2019 Geoff Boeing https://geoffboeing.com/
-#
-# Part of the following code is a derivative work of the code from the OSMnx
-# project, which is licensed MIT License. This code therefore is also
-# licensed under the terms of the The MIT License (MIT).
-################################################################################
+
 import contextlib
 import datetime as dt
 import json
+import logging
 import logging as lg
 import multiprocessing
 import os
 import sys
 import time
-import unicodedata
-import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
 
@@ -32,7 +24,6 @@ from path import Path
 from tqdm.auto import tqdm
 
 from archetypal import __version__, settings
-from archetypal.eplus_interface.version import EnergyPlusVersion
 
 
 def config(
@@ -95,6 +86,7 @@ def config(
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
+        get_logger(name="archetypal")
         log("Configured archetypal")
 
 
@@ -126,7 +118,7 @@ def log(
         filename = settings.log_filename
     # get the current logger (or create a new one, if none), then log
     # message at requested level
-    logger = get_logger(level=None, name=name, filename=filename, log_dir=log_dir)
+    logger = logging.getLogger("archetypal")
     if level == lg.DEBUG:
         logger.debug(message)
     elif level == lg.INFO:
@@ -178,17 +170,17 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         if not log_dir.exists():
             log_dir.makedirs_p()
         # create file handler and log formatter and set them up
-        try:
-            handler = lg.FileHandler(log_filename, encoding="utf-8")
-            if not settings.log_file:
-                raise ValueError()
-        except ValueError:
-            handler = lg.StreamHandler()
         formatter = lg.Formatter(
             "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"
         )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        if settings.log_file:
+            handler = lg.FileHandler(log_filename, encoding="utf-8")
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+        if settings.log_console:
+            handler = lg.StreamHandler(sys.stdout)
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
         logger.setLevel(level)
 
     return logger

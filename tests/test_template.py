@@ -45,7 +45,7 @@ from archetypal.utils import reduce
 def small_idf(small_idf_obj):
     """An IDF model"""
     if small_idf_obj.sim_info is None:
-        idf.simulate()
+        small_idf_obj.simulate()
     yield small_idf_obj
 
 

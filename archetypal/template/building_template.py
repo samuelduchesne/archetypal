@@ -13,7 +13,7 @@ from itertools import chain, repeat
 import networkx
 from path import Path
 from sigfig import round
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from validator_collection import validators
 
 from archetypal.template.dhw import DomesticHotWaterSetting

@@ -7,7 +7,7 @@ from threading import Thread
 import eppy
 from eppy.runner.run_functions import paths_from_version
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,

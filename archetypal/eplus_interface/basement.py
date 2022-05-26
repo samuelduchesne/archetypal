@@ -8,7 +8,7 @@ from threading import Thread
 
 from packaging.version import Version
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal.utils import log
 

@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 from pandas.io.json import json_normalize
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal import __version__, settings
 from archetypal.eplus_interface.version import EnergyPlusVersion
@@ -598,8 +598,6 @@ def parallel_process(
         _executor_factory = ThreadPoolExecutor
     else:
         _executor_factory = executor
-
-    from tqdm import tqdm
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())

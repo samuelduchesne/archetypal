@@ -11,7 +11,7 @@ from threading import Thread
 from eppy.runner.run_functions import paths_from_version
 from packaging.version import Version
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
 from archetypal.eplus_interface.exceptions import EnergyPlusVersionError

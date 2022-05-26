@@ -1,5 +1,4 @@
 """ExpandObjects module"""
-
 import logging as lg
 import shutil
 import subprocess
@@ -8,14 +7,12 @@ from io import StringIO
 from subprocess import CalledProcessError
 from threading import Thread
 
-from eppy.runner.run_functions import paths_from_version
 from packaging.version import Version
 from path import Path
 from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
-from archetypal.eplus_interface.exceptions import EnergyPlusVersionError
-from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
 
 
@@ -65,46 +62,47 @@ class ExpandObjectsThread(Thread):
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
-            self.cmd = ExpandObjectsExe(self.idf).cmd
-            with tqdm(
-                unit_scale=True,
-                miniters=1,
-                desc=f"ExpandObjects #{self.idf.position}-{self.idf.name}",
-                position=self.idf.position,
-            ) as progress:
+            with logging_redirect_tqdm():
+                self.cmd = ExpandObjectsExe(self.idf).cmd
+                with tqdm(
+                    unit_scale=True,
+                    miniters=1,
+                    desc=f"{expand_object_exe} #{self.idf.position}-{self.idf.name}",
+                    position=self.idf.position,
+                ) as progress:
 
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=True,  # can use shell
-                    cwd=self.run_dir.abspath(),
-                )
-                start_time = time.time()
-                # self.msg_callback("ExpandObjects started")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8"))
-                    progress.update()
+                    self.p = subprocess.Popen(
+                        self.cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        shell=True,  # can use shell
+                        cwd=self.run_dir.abspath(),
+                    )
+                    start_time = time.time()
+                    # self.msg_callback("ExpandObjects started")
+                    for line in self.p.stdout:
+                        self.msg_callback(line.decode("utf-8").strip("\n"))
+                        progress.update()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+                    # We explicitly close stdout
+                    self.p.stdout.close()
 
-                # Wait for process to complete
-                self.p.wait()
+                    # Wait for process to complete
+                    self.p.wait()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("ExpandObjects cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            f"ExpandObjects completed in "
-                            f"{time.time() - start_time:,.2f} seconds"
-                        )
-                        self.success_callback()
+                    # Communicate callbacks
+                    if self.cancelled:
+                        self.msg_callback("ExpandObjects cancelled")
+                        # self.cancelled_callback(self.std_out, self.std_err)
                     else:
-                        self.failure_callback()
+                        if self.p.returncode == 0:
+                            self.msg_callback(
+                                f"ExpandObjects completed in "
+                                f"{time.time() - start_time:,.2f} seconds"
+                            )
+                            self.success_callback()
+                        else:
+                            self.failure_callback()
         except Exception as e:
             self.exception = e
             if self.p is not None:

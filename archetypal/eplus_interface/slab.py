@@ -9,6 +9,7 @@ from threading import Thread
 from packaging.version import Version
 from path import Path
 from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
 from archetypal.eplus_interface.version import EnergyPlusVersion
@@ -73,49 +74,50 @@ class SlabThread(Thread):
             return
 
         # Run Slab Program
-        with tqdm(
-            unit_scale=True,
-            miniters=1,
-            desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
-            position=self.idf.position,
-        ) as progress:
+        with logging_redirect_tqdm():
+            with tqdm(
+                unit_scale=True,
+                miniters=1,
+                desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+                position=self.idf.position,
+            ) as progress:
 
-            self.p = subprocess.Popen(
-                self.cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,  # can use shell
-                cwd=self.run_dir.abspath(),
-            )
-            start_time = time.time()
-            self.msg_callback("Begin Slab Temperature Calculation processing . . .")
-            for line in self.p.stdout:
-                self.msg_callback(line.decode("utf-8").strip("\n"))
-                progress.update()
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True,  # can use shell
+                    cwd=self.run_dir.abspath(),
+                )
+                start_time = time.time()
+                self.msg_callback("Begin Slab Temperature Calculation processing . . .")
+                for line in self.p.stdout:
+                    self.msg_callback(line.decode("utf-8").strip("\n"))
+                    progress.update()
 
-            # We explicitly close stdout
-            self.p.stdout.close()
+                # We explicitly close stdout
+                self.p.stdout.close()
 
-            # Wait for process to complete
-            self.p.wait()
+                # Wait for process to complete
+                self.p.wait()
 
-            # Communicate callbacks
-            if self.cancelled:
-                self.msg_callback("RunSlab cancelled")
-                # self.cancelled_callback(self.std_out, self.std_err)
-            else:
-                if self.p.returncode == 0:
-                    self.msg_callback(
-                        "RunSlab completed in {:,.2f} seconds".format(
-                            time.time() - start_time
-                        )
-                    )
-                    self.success_callback()
-                    for line in self.p.stderr:
-                        self.msg_callback(line.decode("utf-8"))
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("RunSlab cancelled")
+                    # self.cancelled_callback(self.std_out, self.std_err)
                 else:
-                    self.msg_callback("RunSlab failed")
-                    self.failure_callback()
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "RunSlab completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                        for line in self.p.stderr:
+                            self.msg_callback(line.decode("utf-8"))
+                    else:
+                        self.msg_callback("RunSlab failed")
+                        self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         """Pass message to logger."""

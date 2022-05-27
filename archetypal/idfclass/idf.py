@@ -2332,6 +2332,7 @@ class IDF(GeomIDF):
                     continue
                 # remove all subsurfaces
                 for ss in wall_subsurfaces:
+                    self.rename(ss.key.upper(), ss.Name, "%s window" % wall.Name)
                     self.removeidfobject(ss)
                 coords = window_vertices_given_wall(wall, wwr)
                 window = self.newidfobject(

@@ -13,7 +13,8 @@ from threading import Thread
 
 from eppy.runner.run_functions import paths_from_version
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
 from archetypal.eplus_interface.exceptions import (
@@ -174,59 +175,60 @@ class TransitionThread(Thread):
         # set the initial version from which we are transitioning
         last_successful_transition = self.idf.file_version
 
-        for trans in tqdm(
-            generator,
-            total=len(generator.transitions),
-            unit_scale=True,
-            miniters=1,
-            position=self.idf.position,
-            desc=f"Transition #{self.idf.position}-{self.idf.name}",
-        ):
-            # Get executable using shutil.which (determines the extension
-            # based on the platform, eg: .exe. And copy the executable to tmp
-            self.run_dir = Path(tmp).expand()
+        with logging_redirect_tqdm():
+            for trans in tqdm(
+                generator,
+                total=len(generator.transitions),
+                unit_scale=True,
+                miniters=1,
+                position=self.idf.position,
+                desc=f"Transition #{self.idf.position}-{self.idf.name}",
+            ):
+                # Get executable using shutil.which (determines the extension
+                # based on the platform, eg: .exe. And copy the executable to tmp
+                self.run_dir = Path(tmp).expand()
 
-            # Run Transition Program
-            self.cmd = trans.cmd()
-            self.p = subprocess.Popen(
-                self.cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=False,  # cannot use shell
-                cwd=self.run_dir,
-            )
-            start_time = time.time()
-            self.msg_callback("Transition started")
-            for line in self.p.stdout:
-                self.msg_callback(line.decode("utf-8").strip("\n"))
+                # Run Transition Program
+                self.cmd = trans.cmd()
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=False,  # cannot use shell
+                    cwd=self.run_dir,
+                )
+                start_time = time.time()
+                self.msg_callback("Transition started")
+                for line in self.p.stdout:
+                    self.msg_callback(line.decode("utf-8").strip("\n"))
 
-            # We explicitly close stdout
-            self.p.stdout.close()
+                # We explicitly close stdout
+                self.p.stdout.close()
 
-            # Wait for process to complete
-            self.p.wait()
+                # Wait for process to complete
+                self.p.wait()
 
-            # Communicate callbacks
-            if self.cancelled:
-                self.msg_callback("Transition cancelled")
-                # self.cancelled_callback(self.std_out, self.std_err)
-            else:
-                if self.p.returncode == 0:
-                    self.msg_callback(
-                        "Transition completed in {:,.2f} seconds".format(
-                            time.time() - start_time
-                        )
-                    )
-                    last_successful_transition = trans.trans
-                    self.success_callback()
-                    for line in self.p.stderr:
-                        self.msg_callback(line.decode("utf-8"))
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("Transition cancelled")
+                    # self.cancelled_callback(self.std_out, self.std_err)
                 else:
-                    # set the version of the IDF the latest it was able to transition
-                    # to.
-                    self.idf.as_version = last_successful_transition
-                    self.msg_callback("Transition failed")
-                    self.failure_callback()
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "Transition completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        last_successful_transition = trans.trans
+                        self.success_callback()
+                        for line in self.p.stderr:
+                            self.msg_callback(line.decode("utf-8"))
+                    else:
+                        # set the version of the IDF the latest it was able to transition
+                        # to.
+                        self.idf.as_version = last_successful_transition
+                        self.msg_callback("Transition failed")
+                        self.failure_callback()
 
     @property
     def trans_exec(self) -> dict:

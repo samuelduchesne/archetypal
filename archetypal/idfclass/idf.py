@@ -40,7 +40,7 @@ from pandas import DataFrame, Series
 from pandas.errors import ParserError
 from path import Path
 from tabulate import tabulate
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal.eplus_interface.basement import BasementThread
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
@@ -831,7 +831,9 @@ class IDF(GeomIDF):
         Uses the current module's ep_version.
         """
         return (
-            EnergyPlusVersion.latest().current_install_dir / "PreProcess" / "IDFVersionUpdater"
+            EnergyPlusVersion.latest().current_install_dir
+            / "PreProcess"
+            / "IDFVersionUpdater"
         ).expand()
 
     @property

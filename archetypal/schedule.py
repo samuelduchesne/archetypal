@@ -5,7 +5,7 @@ import io
 import logging as lg
 from datetime import datetime, timedelta
 from itertools import groupby
-from typing import FrozenSet, Union, List
+from typing import FrozenSet, List, Union
 
 import numpy as np
 import pandas as pd

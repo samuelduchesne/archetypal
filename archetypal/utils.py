@@ -4,24 +4,16 @@
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
-# OSMnx
-#
-# Copyright (c) 2019 Geoff Boeing https://geoffboeing.com/
-#
-# Part of the following code is a derivative work of the code from the OSMnx
-# project, which is licensed MIT License. This code therefore is also
-# licensed under the terms of the The MIT License (MIT).
-################################################################################
+
 import contextlib
 import datetime as dt
 import json
+import logging
 import logging as lg
 import multiprocessing
 import os
 import sys
 import time
-import unicodedata
-import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
 
@@ -29,10 +21,9 @@ import numpy as np
 import pandas as pd
 from pandas.io.json import json_normalize
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal import __version__, settings
-from archetypal.eplus_interface.version import EnergyPlusVersion
 
 
 def config(
@@ -95,6 +86,7 @@ def config(
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
+        get_logger(name="archetypal")
         log("Configured archetypal")
 
 
@@ -103,9 +95,7 @@ def log(
     level=None,
     name=None,
     filename=None,
-    avoid_console=False,
     log_dir=None,
-    verbose=False,
 ):
     """Write a message to the log file and/or print to the the console.
 
@@ -124,44 +114,22 @@ def log(
         level = settings.log_level
     if name is None:
         name = settings.log_name
-    if filename is None:
+    if filename is None and settings.log_file:
         filename = settings.log_filename
-    logger = None
-    # if logging to file is turned on
-    if settings.log_file:
-        # get the current logger (or create a new one, if none), then log
-        # message at requested level
-        logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
-        if level == lg.DEBUG:
-            logger.debug(message)
-        elif level == lg.INFO:
-            logger.info(message)
-        elif level == lg.WARNING:
-            logger.warning(message)
-        elif level == lg.ERROR:
-            logger.error(message)
-
-    # if logging to console is turned on, convert message to ascii and print to
-    # the console
-    if settings.log_console or verbose or level == lg.ERROR and not avoid_console:
-        # capture current stdout, then switch it to the console, print the
-        # message, then switch back to what had been the stdout. this prevents
-        # logging to notebook - instead, it goes to console
-        standard_out = sys.stdout
-        sys.stdout = sys.__stdout__
-
-        # convert message to ascii for console display so it doesn't break
-        # windows terminals
-        message = (
-            unicodedata.normalize("NFKD", str(message))
-            .encode("ascii", errors="replace")
-            .decode()
-        )
-        tqdm.write(message)
-        sys.stdout = standard_out
-
-        if level == lg.WARNING:
-            warnings.warn(message)
+    # get the current logger (or create a new one, if none), then log
+    # message at requested level
+    if settings.log_file or settings.log_console:
+        logger = get_logger(name=name, filename=filename, log_dir=log_dir)
+    else:
+        logger = logging.getLogger(name)
+    if level == lg.DEBUG:
+        logger.debug(message)
+    elif level == lg.INFO:
+        logger.info(message)
+    elif level == lg.WARNING:
+        logger.warning(message)
+    elif level == lg.ERROR:
+        logger.error(message)
 
     return logger
 
@@ -191,7 +159,7 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
     logger = lg.getLogger(name)
 
     # if a logger with this name is not already set up
-    if not getattr(logger, "handler_set", None):
+    if len(logger.handlers) == 0:
 
         # get today's date and construct a log filename
         todays_date = dt.datetime.today().strftime("%Y_%m_%d")
@@ -205,17 +173,18 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         if not log_dir.exists():
             log_dir.makedirs_p()
         # create file handler and log formatter and set them up
-        try:
-            handler = lg.FileHandler(log_filename, encoding="utf-8")
-        except:
-            handler = lg.StreamHandler()
         formatter = lg.Formatter(
             "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"
         )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        if settings.log_file:
+            handler = lg.FileHandler(log_filename, encoding="utf-8")
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+        if settings.log_console:
+            handler = lg.StreamHandler(sys.stdout)
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
         logger.setLevel(level)
-        logger.handler_set = True
 
     return logger
 
@@ -624,8 +593,6 @@ def parallel_process(
         _executor_factory = ThreadPoolExecutor
     else:
         _executor_factory = executor
-
-    from tqdm import tqdm
 
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())

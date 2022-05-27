@@ -34,7 +34,7 @@ class OpaqueMaterial(MaterialBase):
         "_moisture_diffusion_resistance",
         "_conductivity",
         "_density",
-        "_key"
+        "_key",
     )
 
     def __init__(

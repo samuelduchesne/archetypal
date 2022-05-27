@@ -7,7 +7,7 @@ import matplotlib.colors
 import networkx
 import tabulate
 from eppy.bunch_subclass import EpBunch
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal.plot import save_and_show
 from archetypal.template.zonedefinition import is_core, resolve_obco

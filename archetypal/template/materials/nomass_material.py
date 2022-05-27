@@ -442,21 +442,21 @@ class NoMassMaterial(MaterialBase):
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""
         return (
-                self.r_value,
-                self.SolarAbsorptance,
-                self.ThermalEmittance,
-                self.VisibleAbsorptance,
-                self.Roughness,
-                self.Cost,
-                self.MoistureDiffusionResistance,
-                self.EmbodiedCarbon,
-                self.EmbodiedEnergy,
-                self.TransportCarbon,
-                self.TransportDistance,
-                self.TransportEnergy,
-                self.SubstitutionRatePattern,
-                self.SubstitutionTimestep,
-            )
+            self.r_value,
+            self.SolarAbsorptance,
+            self.ThermalEmittance,
+            self.VisibleAbsorptance,
+            self.Roughness,
+            self.Cost,
+            self.MoistureDiffusionResistance,
+            self.EmbodiedCarbon,
+            self.EmbodiedEnergy,
+            self.TransportCarbon,
+            self.TransportDistance,
+            self.TransportEnergy,
+            self.SubstitutionRatePattern,
+            self.SubstitutionTimestep,
+        )
 
     def __copy__(self):
         """Create a copy of self."""

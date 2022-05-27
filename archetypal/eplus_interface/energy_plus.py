@@ -200,7 +200,7 @@ class EnergyPlusThread(Thread):
             self.exception = e
             self.p.kill()  # kill process to be sure
             return
-        with logging_redirect_tqdm():
+        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
             # Start process with tqdm bar
             with tqdm(
                 unit_scale=False,

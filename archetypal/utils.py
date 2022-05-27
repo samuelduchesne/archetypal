@@ -118,7 +118,10 @@ def log(
         filename = settings.log_filename
     # get the current logger (or create a new one, if none), then log
     # message at requested level
-    logger = logging.getLogger("archetypal")
+    if settings.log_file or settings.log_console:
+        logger = get_logger(name=name, filename=filename, log_dir=log_dir)
+    else:
+        logger = logging.getLogger(name)
     if level == lg.DEBUG:
         logger.debug(message)
     elif level == lg.INFO:

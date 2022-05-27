@@ -14,7 +14,6 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from archetypal.utils import log
 
 from ..eplus_interface.exceptions import EnergyPlusProcessError
-from ..eplus_interface.version import EnergyPlusVersion
 
 
 class BasementThread(Thread):
@@ -91,7 +90,7 @@ class BasementThread(Thread):
         self.msg_callback(f"Weather File: {self.epw}")
 
         # Run Slab Program
-        with logging_redirect_tqdm():
+        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
             with tqdm(
                 unit_scale=True,
                 miniters=1,

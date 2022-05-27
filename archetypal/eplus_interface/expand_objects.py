@@ -62,7 +62,7 @@ class ExpandObjectsThread(Thread):
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
-            with logging_redirect_tqdm():
+            with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
                 self.cmd = ExpandObjectsExe(self.idf).cmd
                 with tqdm(
                     unit_scale=True,

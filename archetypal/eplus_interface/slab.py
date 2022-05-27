@@ -74,7 +74,7 @@ class SlabThread(Thread):
             return
 
         # Run Slab Program
-        with logging_redirect_tqdm():
+        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
             with tqdm(
                 unit_scale=True,
                 miniters=1,

@@ -560,6 +560,7 @@ class Outputs:
 
     def add_end_use_balance_components(self):
         for group in [
+            EndUseBalance.HVAC_MODE,
             EndUseBalance.HVAC_INPUT_SENSIBLE,
             EndUseBalance.HVAC_INPUT_HEATED_SURFACE,
             EndUseBalance.HVAC_INPUT_COOLED_SURFACE,
@@ -573,14 +574,13 @@ class Outputs:
             EndUseBalance.VENTILATION_GAIN,
             EndUseBalance.NAT_VENT_GAIN,
             EndUseBalance.NAT_VENT_LOSS,
-            EndUseBalance.MECHANICAL_VENT_GAIN,
-            EndUseBalance.MECHANICAL_VENT_LOSS,
             EndUseBalance.OPAQUE_ENERGY_FLOW,
             EndUseBalance.OPAQUE_ENERGY_STORAGE,
             EndUseBalance.WINDOW_LOSS,
             EndUseBalance.WINDOW_GAIN,
-            EndUseBalance.HEAT_RECOVERY_LOSS,
-            EndUseBalance.HEAT_RECOVERY_GAIN,
+            EndUseBalance.HRV_LOSS,
+            EndUseBalance.HRV_GAIN,
+            EndUseBalance.AIR_SYSTEM,
         ]:
             for item in group:
                 self._output_variables.add(item)

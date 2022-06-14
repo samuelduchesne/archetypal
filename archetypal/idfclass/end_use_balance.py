@@ -9,6 +9,7 @@ from archetypal.idfclass.sql import Sql
 
 
 class EndUseBalance:
+    HVAC_MODE = ("Zone Predicted Sensible Load to Setpoint Heat Transfer Rate",)
     HVAC_INPUT_SENSIBLE = (  # not multiplied by zone or group multipliers
         "Zone Air Heat Balance System Air Transfer Rate",
         "Zone Air Heat Balance System Convective Heat Gain Rate",
@@ -34,52 +35,36 @@ class EndUseBalance:
         "Zone Hot Water Equipment Convective Heating Energy",
         "Zone Other Equipment Convective Heating Energy",
     )
-    PEOPLE_GAIN = ("Zone People Sensible Heating Energy",)  # checked, Todo: +latent
+    PEOPLE_GAIN = ("Zone People Total Heating Energy",)  # checked
     SOLAR_GAIN = ("Zone Windows Total Transmitted Solar Radiation Energy",)  # checked
     INFIL_GAIN = (
-        "Zone Infiltration Sensible Heat Gain Energy",  # checked
-        # "Zone Infiltration Latent Heat Gain Energy",
-        "AFN Zone Infiltration Sensible Heat Gain Energy",
-        # "AFN Zone Infiltration Latent Heat Gain Energy",
+        "Zone Infiltration Total Heat Gain Energy",  # checked
+        "AFN Zone Infiltration Total Heat Gain Energy",
     )
     INFIL_LOSS = (
-        "Zone Infiltration Sensible Heat Loss Energy",  # checked
-        # "Zone Infiltration Latent Heat Loss Energy",
-        "AFN Zone Infiltration Sensible Heat Loss Energy",
-        # "AFN Zone Infiltration Latent Heat Loss Energy",
+        "Zone Infiltration Total Heat Loss Energy",  # checked
+        "AFN Zone Infiltration Total Heat Loss Energy",
     )
-    VENTILATION_LOSS = ("Zone Air System Sensible Heating Energy",)
-    VENTILATION_GAIN = ("Zone Air System Sensible Cooling Energy",)
+    VENTILATION_LOSS = ("Zone Air System Total Heating Energy",)
+    VENTILATION_GAIN = ("Zone Air System Total Cooling Energy",)
     NAT_VENT_GAIN = (
-        # "Zone Ventilation Total Heat Gain Energy",
-        "Zone Ventilation Sensible Heat Gain Energy",
-        # "Zone Ventilation Latent Heat Gain Energy",
-        "AFN Zone Ventilation Sensible Heat Gain Energy",
-        # "AFN Zone Ventilation Latent Heat Gain Energy",
+        "Zone Ventilation Total Heat Gain Energy",
+        "AFN Zone Ventilation Total Heat Gain Energy",
     )
     NAT_VENT_LOSS = (
-        # "Zone Ventilation Total Heat Loss Energy",
-        "Zone Ventilation Sensible Heat Loss Energy",
-        # "Zone Ventilation Latent Heat Loss Energy",
-        "AFN Zone Ventilation Sensible Heat Loss Energy",
-        # "AFN Zone Ventilation Latent Heat Loss Energy",
-    )
-    MECHANICAL_VENT_LOSS = (
-        "Zone Mechanical Ventilation No Load Heat Removal Energy",
-        "Zone Mechanical Ventilation Heating Load Increase Energy",
-        "Zone Mechanical Ventilation Cooling Load Decrease Energy",
-    )
-    MECHANICAL_VENT_GAIN = (
-        "Zone Mechanical Ventilation No Load Heat Addition Energy",
-        "Zone Mechanical Ventilation Heating Load Decrease Energy",
-        "Zone Mechanical Ventilation Cooling Load Increase Energy",
+        "Zone Ventilation Total Heat Loss Energy",
+        "AFN Zone Ventilation Total Heat Loss Energy",
     )
     OPAQUE_ENERGY_FLOW = ("Surface Outside Face Conduction Heat Transfer Energy",)
     OPAQUE_ENERGY_STORAGE = ("Surface Heat Storage Energy",)
     WINDOW_LOSS = ("Zone Windows Total Heat Loss Energy",)  # checked
     WINDOW_GAIN = ("Zone Windows Total Heat Gain Energy",)  # checked
-    HEAT_RECOVERY_LOSS = ("Heat Exchanger Total Cooling Energy",)
-    HEAT_RECOVERY_GAIN = ("Heat Exchanger Total Heating Energy",)
+    HRV_LOSS = ("Heat Exchanger Total Cooling Energy",)
+    HRV_GAIN = ("Heat Exchanger Total Heating Energy",)
+    AIR_SYSTEM = (
+        "Air System Heating Coil Total Heating Energy",
+        "Air System Cooling Coil Total Cooling Energy",
+    )
 
     def __init__(
         self,
@@ -100,6 +85,7 @@ class EndUseBalance:
         opaque_storage,
         window_flow,
         heat_recovery,
+        air_system,
         is_cooling,
         is_heating,
         units="J",
@@ -122,6 +108,7 @@ class EndUseBalance:
         self.opaque_storage = opaque_storage
         self.window_flow = window_flow
         self.heat_recovery = heat_recovery
+        self.air_system = air_system
         self.units = units
         self.use_all_solar = use_all_solar
         self.is_cooling = is_cooling
@@ -168,15 +155,15 @@ class EndUseBalance:
             axis=1,
             verify_integrity=True,
         )
-
-        rolling_sign = cls.get_rolling_sign_change(_hvac_input)
+        mode = sql.timeseries_by_name(cls.HVAC_MODE)  # positive = Heating
+        rolling_sign = cls.get_rolling_sign_change(mode).fillna(0)
 
         # Create both heating and cooling masks
-        is_heating = rolling_sign > 0
-        is_cooling = rolling_sign < 0
+        is_heating = rolling_sign.droplevel(["IndexGroup", "Name"], axis=1) == 1
+        is_cooling = rolling_sign.droplevel(["IndexGroup", "Name"], axis=1) == -1
 
-        heating = _hvac_input[is_heating].fillna(0)
-        cooling = _hvac_input[is_cooling].fillna(0)
+        heating = _hvac_input.mul(is_heating, level="KeyValue", axis=1)
+        cooling = _hvac_input.mul(is_cooling, level="KeyValue", axis=1)
 
         lighting = sql.timeseries_by_name(cls.LIGHTING).to_units(units)
         zone_multipliers = sql.zone_info.set_index("ZoneName")["Multiplier"].rename(
@@ -204,23 +191,10 @@ class EndUseBalance:
         nat_vent_gain = cls.apply_multipliers(nat_vent_gain, zone_multipliers)
         nat_vent_loss = sql.timeseries_by_name(cls.NAT_VENT_LOSS).to_units(units)
         nat_vent_loss = cls.apply_multipliers(nat_vent_loss, zone_multipliers)
-        mech_vent_gain = sql.timeseries_by_name(cls.MECHANICAL_VENT_GAIN).to_units(
-            units
-        )
-        mech_vent_gain = cls.apply_multipliers(mech_vent_gain, zone_multipliers)
-        mech_vent_loss = sql.timeseries_by_name(cls.MECHANICAL_VENT_LOSS).to_units(
-            units
-        )
-        mech_vent_loss = cls.apply_multipliers(mech_vent_loss, zone_multipliers)
-        heat_recovery_loss = sql.timeseries_by_name(cls.HEAT_RECOVERY_LOSS).to_units(
-            units
-        )
-        heat_recovery_gain = sql.timeseries_by_name(cls.HEAT_RECOVERY_GAIN).to_units(
-            units
-        )
-        heat_recovery = cls.subtract_loss_from_gain(
-            heat_recovery_gain, heat_recovery_loss, level="KeyValue"
-        )
+        hrv_loss = sql.timeseries_by_name(cls.HRV_LOSS).to_units(units)
+        hrv_gain = sql.timeseries_by_name(cls.HRV_GAIN).to_units(units)
+        hrv = cls.subtract_loss_from_gain(hrv_gain, hrv_loss, level="KeyValue")
+        air_system = sql.timeseries_by_name(cls.AIR_SYSTEM).to_units(units)
 
         # subtract losses from gains
         infiltration = None
@@ -229,10 +203,6 @@ class EndUseBalance:
         if len(infil_gain) == len(infil_loss):
             infiltration = cls.subtract_loss_from_gain(
                 infil_gain, infil_loss, level="Name"
-            )
-        if not any((vent_gain.empty, vent_loss.empty, cooling.empty, heating.empty)):
-            mech_vent = cls.subtract_loss_from_gain(
-                mech_vent_gain, mech_vent_loss, level="Name"
             )
         if nat_vent_gain.shape == nat_vent_loss.shape:
             nat_vent = cls.subtract_loss_from_gain(
@@ -296,7 +266,8 @@ class EndUseBalance:
             opaque_flow,
             opaque_storage,
             window_flow,
-            heat_recovery,
+            hrv,
+            air_system,
             is_cooling,
             is_heating,
             units,
@@ -492,9 +463,7 @@ class EndUseBalance:
             index=system.index,
         )
 
-    def separate_gains_and_losses(
-        self, component, level="Key_Name", stack_on_level=None
-    ) -> EnergyDataFrame:
+    def separate_gains_and_losses(self, component, level="Key_Name") -> EnergyDataFrame:
         """Separate gains from losses when cooling and heating occurs for the component.
 
         Args:
@@ -509,38 +478,31 @@ class EndUseBalance:
         ), f"{component} is not a valid attribute of EndUseBalance."
         component_df = getattr(self, component)
         assert not component_df.empty, "Expected a component that is not empty."
-        if isinstance(level, str):
-            level = [level]
         print(component)
 
-        # mask when cooling occurs in zone (negative values)
-        mask = (self.is_cooling.stack("KeyValue") == True).any(axis=1)
+        c_df = getattr(self, component)
 
-        # get the dataframe using the attribute name, summarize by `level` and stack so that a Series is returned.
-        stacked = getattr(self, component).sum(level=level, axis=1).stack(level[0])
-
-        # concatenate the masked values with keys to easily create a MultiIndex when unstacking
+        # concatenate the Periods
         inter = pd.concat(
             [
-                stacked[mask].reindex(stacked.index),
-                stacked[~mask].reindex(stacked.index),
+                c_df.mul(self.is_cooling.rename_axis(level, axis=1), level=level),
+                c_df.mul(self.is_heating.rename_axis(level, axis=1), level=level),
             ],
             keys=["Cooling Periods", "Heating Periods"],
-            names=["Period"]
-            + stacked.index.names,  # prepend the new key name to the existing index names.
+            names=["Period"],
         )
 
         # mask when values are positive (gain)
         positive_mask = inter >= 0
 
-        # concatenate the masked values with keys to easily create a MultiIndex when unstacking
+        # concatenate the Gain/Loss
         final = pd.concat(
             [
                 inter[positive_mask].reindex(inter.index),
                 inter[~positive_mask].reindex(inter.index),
             ],
             keys=["Heat Gain", "Heat Loss"],
-            names=["Gain/Loss"] + inter.index.names,
+            names=["Gain/Loss"],
         ).unstack(["Period", "Gain/Loss"])
         final.sort_index(axis=1, inplace=True)
         return final
@@ -560,7 +522,6 @@ class EndUseBalance:
                 "infiltration",
                 "window_energy_flow",
                 "nat_vent",
-                "mech_vent",
             ]:
                 if not getattr(self, component).empty:
                     summary_by_component[component] = (
@@ -568,31 +529,16 @@ class EndUseBalance:
                             component,
                             level=level,
                         )
-                        .unstack(level)
-                        .reorder_levels([level, "Period", "Gain/Loss"], axis=1)
+                        .groupby(level=["KeyValue", "Period", "Gain/Loss"], axis=1)
+                        .sum()
                         .sort_index(axis=1)
                     )
-            for (surface_type), data in (
-                self.separate_gains_and_losses(
-                    "opaque_flow", ["Zone_Name", "Surface_Type"]
-                )
-                .unstack("Zone_Name")
-                .groupby(level=["Surface_Type"], axis=1)
-            ):
+            for (surface_type), data in self.separate_gains_and_losses(
+                "opaque_flow", level="Zone_Name"
+            ).groupby(level=["Surface_Type"], axis=1):
                 summary_by_component[surface_type] = data.sum(
                     level=["Zone_Name", "Period", "Gain/Loss"], axis=1
                 ).sort_index(axis=1)
-
-            # for (surface_type), data in (
-            #     self.separate_gains_and_losses(
-            #         "opaque_storage", ["Zone_Name", "Surface_Type"]
-            #     )
-            #     .unstack("Zone_Name")
-            #     .groupby(level=["Surface_Type"], axis=1)
-            # ):
-            #     summary_by_component[surface_type + " Storage"] = data.sum(
-            #         level=["Zone_Name", "Period", "Gain/Loss"], axis=1
-            #     ).sort_index(axis=1)
 
         else:
             summary_by_component = {}
@@ -606,20 +552,40 @@ class EndUseBalance:
                 "infiltration",
                 "window_energy_flow",
                 "nat_vent",
-                "mech_vent",
             ]:
                 component_df = getattr(self, component)
                 if not component_df.empty:
                     summary_by_component[component] = component_df.sum(
                         level=level, axis=1
                     ).sort_index(axis=1)
-            for (zone_name, surface_type), data in self.face_energy_flow.groupby(
+            for (zone_name, surface_type), data in self.opaque_flow.groupby(
                 level=["Zone_Name", "Surface_Type"], axis=1
             ):
                 summary_by_component[surface_type] = data.sum(
                     level="Zone_Name", axis=1
                 ).sort_index(axis=1)
             levels = ["Component", "Zone_Name"]
+
+        # Add contribution of heating/cooling outside air, if any
+        if not self.air_system.empty:
+            summary_by_component["air_system_heating"] = (
+                self.air_system.xs(
+                    "Air System Heating Coil Total Heating Energy", level="Name", axis=1
+                )
+                .assign(**{"Period": "Heating Periods", "Gain/Loss": "Heat Loss"})
+                .set_index(["Period", "Gain/Loss"], append=True)
+                .unstack(["Period", "Gain/Loss"])
+                .droplevel("IndexGroup", axis=1)
+            )
+            summary_by_component["air_system_cooling"] = (
+                self.air_system.xs(
+                    "Air System Cooling Coil Total Cooling Energy", level="Name", axis=1
+                )
+                .assign(**{"Period": "Cooling Periods", "Gain/Loss": "Heat Gain"})
+                .set_index(["Period", "Gain/Loss"], append=True)
+                .unstack(["Period", "Gain/Loss"])
+                .droplevel("IndexGroup", axis=1)
+            )
         return pd.concat(
             summary_by_component, axis=1, verify_integrity=True, names=levels
         )
@@ -693,6 +659,9 @@ class EndUseBalance:
                 "interior_equipment": "Equipment",
                 "window_energy_flow": "Windows",
                 "Wall": "Walls",
+                "air_system_heating": "OA Heating",
+                "air_system_cooling": "OA Cooling",
+                "cooling": "Cooling",
             },
             inplace=True,
         )
@@ -752,9 +721,9 @@ class EndUseBalance:
         )
 
         system_input = (
-            system_input
-            # .replace({0: np.NaN})
-            .dropna(how="all").dropna(how="all", axis=1)
+            system_input.replace({0: np.NaN})
+            .dropna(how="all")
+            .dropna(how="all", axis=1)
         )
         system_input.rename_axis("source", axis=1, inplace=True)
         system_input.rename_axis("target", axis=0, inplace=True)
@@ -789,21 +758,41 @@ class EndUseBalance:
             link_cooling_system_to_gains,
         ) = self._sankey_cooling(cooling_load, load_type="cooling")
 
-        return (
-            pd.DataFrame(
-                system_input_data
-                + link_heating_system_to_gains
-                + heating_energy_to_heating_system
-                + heating_load_source_data
-                + heating_load_target_data
-                + cooling_energy_to_heating_system
-                + cooling_load_source_data
-                + cooling_load_target_data
-                + link_cooling_system_to_gains
-            )
-            # .div(floor_area)
-            .to_csv(path_or_buf, index=False)
+        flows = pd.DataFrame(
+            system_input_data
+            + heating_energy_to_heating_system
+            + heating_load_source_data
+            + heating_load_target_data
+            + cooling_energy_to_heating_system
+            + cooling_load_source_data
+            + cooling_load_target_data
         )
+        # Fix the HVAC difference
+        diff = (
+            flows.loc[flows.source == "Heating Load", "value"].sum()
+            - flows.loc[flows.target == "Heating Load", "value"].sum()
+        )
+        flows.loc[flows.source == "Heating System", "value"] = (
+            flows.loc[flows.source == "Heating System", "value"] + diff
+        )
+
+        diff = (
+            flows.loc[flows.source == "Cooling Load", "value"].sum()
+            - flows.loc[flows.target == "Cooling Load", "value"].sum()
+        )
+        flows.loc[flows.source == "Cooling System", "value"] = (
+            flows.loc[flows.source == "Cooling System", "value"] + diff
+        )
+
+        # fix names
+        flows.replace({"OA Heating Heat Losses": "OA Heating"}, inplace=True)
+
+        # TO EUI
+        flows["value"] = flows["value"] / floor_area
+        links = pd.DataFrame(
+            link_heating_system_to_gains + link_cooling_system_to_gains
+        )
+        return pd.concat([flows, links]).to_csv(path_or_buf, index=False)
 
     def _sankey_heating(self, load, load_type="heating"):
         assert load_type in ["heating", "cooling"]

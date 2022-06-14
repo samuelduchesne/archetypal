@@ -204,10 +204,6 @@ class EndUseBalance:
             infiltration = cls.subtract_loss_from_gain(
                 infil_gain, infil_loss, level="Name"
             )
-        if not any((vent_gain.empty, vent_loss.empty, cooling.empty, heating.empty)):
-            mech_vent = cls.subtract_loss_from_gain(
-                mech_vent_gain, mech_vent_loss, level="Name"
-            )
         if nat_vent_gain.shape == nat_vent_loss.shape:
             nat_vent = cls.subtract_loss_from_gain(
                 nat_vent_gain, nat_vent_loss, level="Name"

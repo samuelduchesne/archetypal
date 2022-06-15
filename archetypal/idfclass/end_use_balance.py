@@ -662,6 +662,7 @@ class EndUseBalance:
                 "air_system_heating": "OA Heating",
                 "air_system_cooling": "OA Cooling",
                 "cooling": "Cooling",
+                "heating": "Heating",
             },
             inplace=True,
         )
@@ -818,7 +819,7 @@ class EndUseBalance:
         load_source = load_source.rename({"Component": "source"}, axis=1)
         load_source["source"] = load_source["source"] + " Gain"
         load_source = load_source.replace(
-            {f"{load_type} Gain": load_type.title() + " System"}
+            {f"{load_type.title()} Gain": load_type.title() + " System"}
         )
 
         load_source_data = load_source.to_dict(orient="records")
@@ -856,7 +857,7 @@ class EndUseBalance:
         load_source = load_source.rename({"Component": "source"}, axis=1)
         load_source["source"] = load_source["source"] + " Losses"
         load_source = load_source.replace(
-            {f"{load_type} Losses": load_type.title() + " System"}
+            {f"{load_type.title()} Losses": load_type.title() + " System"}
         )
         load_source_data = load_source.to_dict(orient="records")
 

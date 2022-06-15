@@ -706,7 +706,7 @@ class EndUseBalance:
                 columns=system_input.columns,
             )
             system_input.units = df.set_index("ColumnName").Units.to_dict()
-            system_input = system_input.to_units("kWh")
+            system_input = system_input.to_units(self.units)
 
         floor_area = pd.to_numeric(
             Sql(self.sql_file)

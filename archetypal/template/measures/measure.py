@@ -41,6 +41,7 @@ class Measure:
         """Return a representation of self."""
         return self.description
 
+
 class SetMechanicalVentilation(Measure):
     """Set the Mechanical Ventilation."""
 
@@ -59,18 +60,27 @@ class SetMechanicalVentilation(Measure):
         )
         if ventilation_schedule is not None:
             self.SetCoreVentilation = lambda building_template: setattr(
-                building_template.Core.Ventilation, "ScheduledVentilationSchedule", ventilation_schedule
+                building_template.Core.Ventilation,
+                "ScheduledVentilationSchedule",
+                ventilation_schedule,
             )
             self.SetPerimVentilation = lambda building_template: setattr(
-                building_template.Perimeter.Ventilation, "ScheduledVentilationSchedule", ventilation_schedule
+                building_template.Perimeter.Ventilation,
+                "ScheduledVentilationSchedule",
+                ventilation_schedule,
             )
         if ach > 0:
             self.SetCoreScheduledVentilationOn = lambda building_template: setattr(
-                building_template.Perimeter.Ventilation, "IsScheduledVentilationOn", True
+                building_template.Perimeter.Ventilation,
+                "IsScheduledVentilationOn",
+                True,
             )
             self.SetPerimeterScheduledVentilationOn = lambda building_template: setattr(
-                building_template.Perimeter.Ventilation, "IsScheduledVentilationOn", True
+                building_template.Perimeter.Ventilation,
+                "IsScheduledVentilationOn",
+                True,
             )
+
 
 class SetCOP(Measure):
     """Set the COPs."""
@@ -198,6 +208,7 @@ class FacadeUpgradeBest(SetFacadeConstructionThermalResistanceToEnergyStar):
     name = "FacadeUpgradeBest"
     description = "rsi value from climaplusbeta.com"
     rsi_value_facade = 1 / 0.13
+    rsi_value_roof = 1 / 0.11
 
 
 class FacadeUpgradeMid(SetFacadeConstructionThermalResistanceToEnergyStar):
@@ -206,6 +217,7 @@ class FacadeUpgradeMid(SetFacadeConstructionThermalResistanceToEnergyStar):
     name = "FacadeUpgradeMid"
     description = "rsi value from climaplusbeta.com"
     rsi_value_facade = 1 / 0.34
+    rsi_value_roof = 1 / 0.33
 
 
 class FacadeUpgradeRegular(SetFacadeConstructionThermalResistanceToEnergyStar):
@@ -214,6 +226,7 @@ class FacadeUpgradeRegular(SetFacadeConstructionThermalResistanceToEnergyStar):
     name = "FacadeUpgradeRegular"
     description = "rsi value from climaplusbeta.com"
     rsi_value_facade = 1 / 1.66
+    rsi_value_roof = 1 / 2.37
 
 
 class FacadeUpgradeLow(SetFacadeConstructionThermalResistanceToEnergyStar):
@@ -222,6 +235,7 @@ class FacadeUpgradeLow(SetFacadeConstructionThermalResistanceToEnergyStar):
     name = "FacadeUpgradeLow"
     description = "rsi value from climaplusbeta.com"
     rsi_value_facade = 1 / 3.5
+    rsi_value_roof = 1 / 4.5
 
 
 class SetInfiltration(Measure):

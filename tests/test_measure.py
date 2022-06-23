@@ -54,7 +54,9 @@ class TestMeasure:
         previous_thickness = oc.total_thickness
         previous_r_value = oc.r_value
 
-        measure = SetFacadeConstructionThermalResistanceToEnergyStar(rsi_value_facade=3.08)
+        measure = SetFacadeConstructionThermalResistanceToEnergyStar(
+            rsi_value_facade=3.08, rsi_value_roof=7.2
+        )
         measure.apply_measure_to_whole_library(umi_library)
 
         # assert that the total wall r_value has increased.
@@ -83,7 +85,7 @@ class TestMeasure:
         measure.apply_measure_to_whole_library(umi_library)
 
         # assert that the total wall r_value has increased.
-        assert oc.r_value == pytest.approx(measure.rsi_value)
+        assert oc.r_value == pytest.approx(measure.rsi_value_facade)
 
     @pytest.mark.parametrize(
         "measure, infiltration_ach",

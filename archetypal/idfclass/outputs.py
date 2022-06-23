@@ -283,7 +283,7 @@ class Outputs:
                 self._other_outputs.append(output)
         return self
 
-    def add_basics(self, summary_report_kwargs={}, output_control_kwargs={}, sql_kwargs={}):
+    def add_basics(self):
         """Adds the summary report and the sql file to the idf outputs"""
         return (
             self.add_summary_report()
@@ -386,7 +386,7 @@ class Outputs:
         Returns:
             Outputs: self
         """
-        assert output_control_table_style in [
+        assert column_separator in [
             "Comma",
             "Tab",
             "Fixed",

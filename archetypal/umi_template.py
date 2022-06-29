@@ -4,6 +4,7 @@ import json
 import logging as lg
 from collections import OrderedDict
 from concurrent.futures.thread import ThreadPoolExecutor
+from copy import copy, deepcopy
 
 from pandas.io.common import get_handle
 from path import Path
@@ -143,6 +144,19 @@ class UmiTemplateLibrary:
         """Iterate over component groups. Yields tuple of (group, value)."""
         for group in self._LIB_GROUPS:
             yield group, self.__dict__[group]
+
+    def __add__(self, other: "UmiTemplateLibrary"):
+        """Combined """
+        for bld in other.BuildingTemplates:
+            for p, k, c in traverse(bld):
+                c.id = None
+
+        attrs = {}
+        for group, value in self:
+            attrs[group] = value + other.__dict__[group]
+
+        return self.__class__(**attrs, name=self.name)
+
 
     def _clear_components_list(self, except_groups=None):
         """Clear components lists except except_groups."""

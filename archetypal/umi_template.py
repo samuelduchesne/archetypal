@@ -147,16 +147,19 @@ class UmiTemplateLibrary:
 
     def __add__(self, other: "UmiTemplateLibrary"):
         """Combined """
-        for bld in other.BuildingTemplates:
-            for p, k, c in traverse(bld):
-                c.id = None
+        for key, group in other:
+            # for each group
+            for component in group:
+                component.id = None  # Reset the component's id
+                # traverse each object using generator
+                for parent, key, obj in traverse(component):
+                    obj.id = None  # Reset children ID
 
         attrs = {}
         for group, value in self:
             attrs[group] = value + other.__dict__[group]
 
         return self.__class__(**attrs, name=self.name)
-
 
     def _clear_components_list(self, except_groups=None):
         """Clear components lists except except_groups."""

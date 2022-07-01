@@ -35,6 +35,19 @@ from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
 class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
 
+    def test_add(self):
+        """Test combining two template library objects together."""
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+
+        a = UmiTemplateLibrary.open(file)
+        b = UmiTemplateLibrary.open(file)
+
+        c = a + b
+        assert c.name == a.name  # name of c hould be name of a (convention, first wins)
+        assert len(c.BuildingTemplates) == len(a.BuildingTemplates) + len(
+            b.BuildingTemplates
+        )  # Nb of templates should be double in this case.
+
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""
@@ -122,7 +135,7 @@ class TestUmiTemplate:
 
     @pytest.fixture()
     def manual_umitemplate_library(self, config):
-        """ Creates Umi template from scratch """
+        """Creates Umi template from scratch"""
 
         # region Defines materials
 

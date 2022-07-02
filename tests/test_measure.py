@@ -7,10 +7,10 @@ from archetypal.template.measures.measure import (
     FacadeUpgradeLow,
     FacadeUpgradeMid,
     FacadeUpgradeRegular,
-    SetFacadeConstructionThermalResistanceToEnergyStar,
+    InfiltrationMedium,
     InfiltrationRegular,
     InfiltrationTight,
-    InfiltrationMedium,
+    SetFacadeConstructionThermalResistanceToEnergyStar,
 )
 
 

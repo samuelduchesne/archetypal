@@ -835,6 +835,14 @@ class ZoneLoad(UmiBase):
         else:
             return self.__key__() == other.__key__()
 
+    @property
+    def children(self):
+        return (
+            self.EquipmentAvailabilitySchedule,
+            self.LightsAvailabilitySchedule,
+            self.OccupancySchedule,
+        )
+
 
 def _resolve_dimming_type(zone, zone_ep):
     """Resolve the dimming type for the Zone object.

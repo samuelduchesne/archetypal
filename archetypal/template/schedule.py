@@ -895,6 +895,10 @@ class WeekSchedule(UmiSchedule):
             ),
         )
 
+    @property
+    def children(self):
+        return self.Days
+
 
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
@@ -962,7 +966,7 @@ class YearSchedule(UmiSchedule):
                 keys.
             **kwargs: keywords passed to the constructor.
         """
-        Parts = [
+        Parts: List[YearSchedulePart] = [
             YearSchedulePart.from_dict(data, week_schedules)
             for data in data.pop("Parts", None)
         ]
@@ -1067,3 +1071,7 @@ class YearSchedule(UmiSchedule):
     def to_ref(self):
         """Return a ref pointer to self."""
         return {"$ref": str(self.id)}
+
+    @property
+    def children(self):
+        return (p.Schedule for p in self.Parts)

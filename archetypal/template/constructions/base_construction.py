@@ -331,3 +331,7 @@ class LayeredConstruction(ConstructionBase):
         return isinstance(other, LayeredConstruction) and all(
             [self.Layers == other.Layers]
         )
+
+    @property
+    def children(self):
+        return (l.Material for l in self.Layers)

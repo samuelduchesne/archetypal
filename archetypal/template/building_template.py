@@ -655,3 +655,7 @@ class BuildingTemplate(UmiBase):
                     self.Version == other.Version,
                 ]
             )
+
+    @property
+    def children(self):
+        return self.Core, self.Perimeter, self.Structure, self.Windows

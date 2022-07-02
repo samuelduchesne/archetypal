@@ -549,6 +549,10 @@ class ZoneConstructionSet(UmiBase):
         """Get copy of self."""
         return self.__class__(**self.mapping(validate=False))
 
+    @property
+    def children(self):
+        return self.Facade, self.Ground, self.Partition, self.Roof, self.Slab
+
 
 class SurfaceDispatcher:
     """Surface dispatcher class."""

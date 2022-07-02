@@ -1624,3 +1624,7 @@ class ZoneConditioning(UmiBase):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return self.CoolingSchedule, self.HeatingSchedule, self.MechVentSchedule

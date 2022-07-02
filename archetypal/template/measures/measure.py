@@ -1,9 +1,38 @@
 """Energy measures modules."""
+import functools
 import logging
 
 from archetypal.template.materials.material_layer import MaterialLayer
 
 log = logging.getLogger(__name__)
+
+
+def reducer(a, b):
+    return getattr(a, b) if type(a) not in [dict, list] else a[b]
+
+
+def get_path(root, address, parameter=None):
+    path = [root] + address if type(address) == list else [root, address]
+    if not parameter is None:
+        path = path + [parameter]
+    target = functools.reduce(reducer, path)
+    return target
+
+
+def set_path(root, address, parameter, value, validator):
+    path = [root] + address if type(address) == list else [root, address]
+    target = functools.reduce(reducer, path)
+    original_value = get_path(root, address, parameter)
+    execute = (
+        validator(original_value=original_value, new_value=value, root=root)
+        if validator
+        else True
+    )
+    if execute:
+        if type(target) in [dict, list]:
+            target[parameter] = value
+        else:
+            setattr(target, parameter, value)
 
 
 class Measure:
@@ -18,7 +47,12 @@ class Measure:
     description = ""
 
     def __init__(self):
-        pass
+        self.change_loggers = {}
+        self._props = set()
+        self.actions = set()
+
+    # TODO:
+    # def __add__(self,other): warn if property or method names shared
 
     def apply_measure_to_whole_library(self, umi_template_library, *args):
         """Apply this measure to all building templates in the library."""
@@ -37,6 +71,116 @@ class Measure:
             ) else None
             log.info(f"applied '{measure_argument}' to {building_template}")
 
+    def report_template_changelog(self, building_template):
+        """Return the a dict of changes that will occur if the measure is applied to a template
+
+        Args:
+            building_template (BuildingTemplate): The building template object.
+        """
+        change_log = {}
+        for name, get_changelog in self.change_loggers.items():
+            change = get_changelog(building_template)
+            if change["original_value"] != change["new_value"]:
+                change_log[name] = get_changelog(building_template)
+        return change_log
+
+    def report_library_changelog(self, umi_template_library):
+        """Return the a dict of changes that will occur if the measure is applied to the
+        whole library, stored by template
+
+        Args:
+            umi_template_library (UmiTemplateLibrary): The library to mutate
+        """
+        change_logs = {}
+        for bt in umi_template_library.BuildingTemplates:
+            change_log = self.report_template_changelog(bt)
+            if len(change_log.keys()) > 0:
+                change_logs[bt.Name] = change_log
+        return change_logs
+
+    def add_modifier(
+        self,
+        modifier_name=None,
+        modifier_prop=None,
+        default=None,
+        object_address=None,
+        object_parameter=None,
+        validator=None,
+    ):
+        """Add an action to the measure which will modify a template parameter with a new
+        property value stored in the measure
+
+        Args:
+            modifier_name (String): A name for the action
+            modifier_prop (String): A name for the measure prop to reference for the value
+            default (any | None): Default value for the measure prop to use
+            object_address (Array<String | int> | (building_template): Array<String | int>): Where to find the target in the template
+            object_parameter (String | int | (building_template, object_address): String | int): The name/index to change or how to construct it
+            validator ((original_value: any, new_value: any, root: any | None): Boolan)
+        """
+        # TODO: Allow missing object_parameter and non-list-non-callable object_address
+        # TODO: Consider extracting a modifier into its own class
+        log.info(
+            f"Adding {modifier_name} which uses prop {modifier_prop} to the measure {self.name}."
+        )
+
+        # Add the property to the measure's dict
+        if default is not None:
+            setattr(self, modifier_prop, default)
+            if modifier_prop not in self._props:
+                self._props.add(modifier_prop)
+        else:
+            if modifier_prop not in self._props:
+                log.error(
+                    f"Measure {self.name} does not yet have property {modifier_prop} and no default value was provided."
+                )
+                raise AttributeError
+
+        # Add a setter which dynamically finds the parameter to modify and uses the specified property from the measure
+
+        setattr(
+            self,
+            modifier_name,
+            lambda building_template: set_path(
+                root=building_template,
+                address=object_address(building_template)
+                if callable(object_address)
+                else object_address,
+                parameter=object_parameter(building_template, object_address)
+                if callable(object_parameter)
+                else object_parameter,
+                value=getattr(self, modifier_prop),
+                validator=validator,
+            ),
+        )
+
+        # Store a getter which takes in a template and produces a changelog.
+        self.change_loggers[modifier_name] = lambda building_template: {
+            "address": object_address(building_template)
+            if callable(object_address)
+            else object_address,
+            "parameter": object_parameter(building_template, object_address)
+            if callable(object_parameter)
+            else object_parameter,
+            "original_value": get_path(
+                root=building_template,
+                address=object_address(building_template)
+                if callable(object_address)
+                else object_address,
+                parameter=object_parameter(building_template, object_address)
+                if callable(object_parameter)
+                else object_parameter,
+            ),
+            "new_value": getattr(self, modifier_prop),
+        }
+
+    @property
+    def props(self):
+        props = {}
+        for prop in self._props:
+            props[prop] = getattr(self, prop)
+        return props
+
     def __repr__(self):
         """Return a representation of self."""
         return self.description
@@ -48,37 +192,53 @@ class SetMechanicalVentilation(Measure):
     name = "SetMechanicalVentilation"
     description = ""
 
-    def __init__(self, ach=3.5, ventilation_schedule=None):
+    def __init__(self, ventilation_ach=3.5, ventilation_schedule=None):
         """Initialize measure with parameters."""
         super(SetMechanicalVentilation, self).__init__()
 
-        self.SetCoreVentilationAch = lambda building_template: setattr(
-            building_template.Core.Ventilation, "ScheduledVentilationAch", ach
+        self.add_modifier(
+            modifier_name="SetCoreVentilationAch",
+            modifier_prop="ventilation_ach",
+            default=ventilation_ach,
+            object_address=["Core", "Ventilation"],
+            object_parameter="ScheduledVentilationAch",
         )
-        self.SetPerimVentilationAch = lambda building_template: setattr(
-            building_template.Perimeter.Ventilation, "ScheduledVentilationAch", ach
+
+        self.add_modifier(
+            modifier_name="SetPerimeterVentilationAch",
+            modifier_prop="ventilation_ach",
+            object_address=["Perimeter", "Ventilation"],
+            object_parameter="ScheduledVentilationAch",
         )
+
         if ventilation_schedule is not None:
-            self.SetCoreVentilation = lambda building_template: setattr(
-                building_template.Core.Ventilation,
-                "ScheduledVentilationSchedule",
-                ventilation_schedule,
+            self.add_modifier(
+                modifier_name="SetCoreVentilationSched",
+                modifier_prop="ventilation_schedule",
+                default=ventilation_schedule,
+                object_address=["Core", "Ventilation"],
+                object_parameter="ScheduledVentilationSchedule",
             )
-            self.SetPerimVentilation = lambda building_template: setattr(
-                building_template.Perimeter.Ventilation,
-                "ScheduledVentilationSchedule",
-                ventilation_schedule,
+            self.add_modifier(
+                modifier_name="SetPerimeterVentilationSched",
+                modifier_prop="ventilation_schedule",
+                object_address=["Perimeter", "Ventilation"],
+                object_parameter="ScheduledVentilationSchedule",
             )
-        if ach > 0:
-            self.SetCoreScheduledVentilationOn = lambda building_template: setattr(
-                building_template.Perimeter.Ventilation,
-                "IsScheduledVentilationOn",
-                True,
+
+        if ventilation_ach > 0:
+            self.add_modifier(
+                modifier_name="SetCoreVentilationStatus",
+                modifier_prop="ventilation_status",
+                default=True,
+                object_address=["Core", "Ventilation"],
+                object_parameter="IsScheduledVentilationOn",
             )
-            self.SetPerimeterScheduledVentilationOn = lambda building_template: setattr(
-                building_template.Perimeter.Ventilation,
-                "IsScheduledVentilationOn",
-                True,
+            self.add_modifier(
+                modifier_name="SetPerimeterVentilationStatus",
+                modifier_prop="ventilation_status",
+                object_address=["Perimeter", "Ventilation"],
+                object_parameter="IsScheduledVentilationOn",
             )
 
 
@@ -92,17 +252,31 @@ class SetCOP(Measure):
         """Initialize measure with parameters."""
         super(SetCOP, self).__init__()
 
-        self.SetCoreCoolingCOP = lambda building_template: setattr(
-            building_template.Core.Conditioning, "CoolingCoeffOfPerf", cooling_cop
+        self.add_modifier(
+            modifier_name="SetCoreCoolingCop",
+            modifier_prop="cooling_cop",
+            default=cooling_cop,
+            object_address=["Core", "Conditioning"],
+            object_parameter="CoolingCoeffOfPerf",
         )
-        self.SetPerimCoolingCOP = lambda building_template: setattr(
-            building_template.Perimeter.Conditioning, "CoolingCoeffOfPerf", cooling_cop
+        self.add_modifier(
+            modifier_name="SetPerimeterCoolingCop",
+            modifier_prop="cooling_cop",
+            object_address=["Perimeter", "Conditioning"],
+            object_parameter="CoolingCoeffOfPerf",
         )
-        self.SetCoreHeatingCOP = lambda building_template: setattr(
-            building_template.Core.Conditioning, "HeatingCoeffOfPerf", heating_cop
+        self.add_modifier(
+            modifier_name="SetCoreHeatingCop",
+            modifier_prop="heating_cop",
+            default=heating_cop,
+            object_address=["Core", "Conditioning"],
+            object_parameter="HeatingCoeffOfPerf",
         )
-        self.SetPerimHeatingCOP = lambda building_template: setattr(
-            building_template.Perimeter.Conditioning, "HeatingCoeffOfPerf", heating_cop
+        self.add_modifier(
+            modifier_name="SetPerimeterHeatingCop",
+            modifier_prop="heating_cop",
+            object_address=["Perimeter", "Conditioning"],
+            object_parameter="HeatingCoeffOfPerf",
         )
 
 
@@ -116,23 +290,31 @@ class EnergyStarUpgrade(Measure):
         """Initialize measure with parameters."""
         super(EnergyStarUpgrade, self).__init__()
 
-        self.SetCoreLightingPowerDensity = lambda building_template: setattr(
-            building_template.Core.Loads, "LightingPowerDensity", lighting_power_density
+        self.add_modifier(
+            modifier_name="SetCoreLightingPowerDensity",
+            modifier_prop="lighting_power_density",
+            default=lighting_power_density,
+            object_address=["Core", "Loads"],
+            object_parameter="LightingPowerDensity",
         )
-        self.SetPerimLightingPowerDensity = lambda building_template: setattr(
-            building_template.Perimeter.Loads,
-            "LightingPowerDensity",
-            lighting_power_density,
+        self.add_modifier(
+            modifier_name="SetPerimeterLightingPowerDensity",
+            modifier_prop="lighting_power_density",
+            object_address=["Perimeter", "Loads"],
+            object_parameter="LightingPowerDensity",
         )
-        self.SetCoreEquipementPowerDensity = lambda building_template: setattr(
-            building_template.Core.Loads,
-            "EquipmentPowerDensity",
-            equipment_power_density,
+        self.add_modifier(
+            modifier_name="SetCoreEquipmentPowerDensity",
+            modifier_prop="equipment_power_density",
+            default=equipment_power_density,
+            object_address=["Core", "Loads"],
+            object_parameter="EquipmentPowerDensity",
         )
-        self.SetPerimEquipementPowerDensity = lambda building_template: setattr(
-            building_template.Perimeter.Loads,
-            "EquipmentPowerDensity",
-            equipment_power_density,
+        self.add_modifier(
+            modifier_name="SetPerimeterEquipmentPowerDensity",
+            modifier_prop="equipment_power_density",
+            object_address=["Perimeter", "Loads"],
+            object_parameter="EquipmentPowerDensity",
         )
 
 
@@ -162,44 +344,39 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
         """
         super(SetFacadeConstructionThermalResistanceToEnergyStar, self).__init__()
 
-        if rsi_value_facade is not None:
-            self.rsi_value_facade = rsi_value_facade
-            self.rsi_value_roof = rsi_value_roof
+        def get_insulation_layer_path(building_template, structural_part):
+            constructions = building_template.Perimeter.Constructions
+            insulation_layer_index = getattr(
+                constructions, structural_part
+            ).infer_insulation_layer()
+            return [
+                "Perimeter",
+                "Constructions",
+                structural_part,
+                "Layers",
+                insulation_layer_index,
+            ]
 
-        self.AlterFacade = (
-            lambda building_template: self._set_insulation_layer_resistance(
-                building_template.Perimeter.Constructions.Facade, self.rsi_value_facade
-            )
+        # TODO: reproduce original warning in _set_insulation_layer_resistance
+        self.add_modifier(
+            modifier_name="AlterFacade",
+            modifier_prop="rsi_value_facade",
+            default=rsi_value_facade if rsi_value_facade else self.rsi_value_facade,
+            object_address=lambda building_template: get_insulation_layer_path(
+                building_template, "Facade"
+            ),
+            object_parameter="r_value",
         )
-        self.AlterRoof = (
-            lambda building_template: self._set_insulation_layer_resistance(
-                building_template.Perimeter.Constructions.Roof, self.rsi_value_roof
-            )
+
+        self.add_modifier(
+            modifier_name="AlterRoof",
+            modifier_prop="rsi_value_roof",
+            default=rsi_value_roof if rsi_value_roof else self.rsi_value_roof,
+            object_address=lambda building_template: get_insulation_layer_path(
+                building_template, "Roof"
+            ),
+            object_parameter="r_value",
         )
-
-    def _set_insulation_layer_resistance(self, opaque_construction, rsi_value):
-        """Set the insulation later to r_value = 3.08.
-
-        Hint:
-            See `Table 2`_: Minimum Effective Thermal Resistance of Opaque Assemblies.
-
-        .. _Table 2:
-            https://www.nrcan.gc.ca/energy-efficiency/energy-star-canada/
-            about-energy-star-canada/energy-star-announcements/energy-starr-
-            new-homes-standard-version-126/14178
-        """
-        # First, find the insulation layer
-        i = opaque_construction.infer_insulation_layer()
-        layer: MaterialLayer = opaque_construction.Layers[i]
-
-        # Then, change the r_value (which changes the thickness) of that layer only.
-        energy_star_rsi = rsi_value
-        if layer.r_value > energy_star_rsi:
-            log.debug(
-                f"r_value is already higher for material_layer '{layer}' of "
-                f"opaque_construction '{opaque_construction}'"
-            )
-        layer.r_value = energy_star_rsi
 
 
 class FacadeUpgradeBest(SetFacadeConstructionThermalResistanceToEnergyStar):
@@ -245,22 +422,13 @@ class SetInfiltration(Measure):
 
     def __init__(self, infiltration_ach=None):
         super().__init__()
-        if infiltration_ach is not None:
-            self.infiltration_ach = infiltration_ach
-
-        self.SetInfiltration = lambda building_template: setattr(
-            building_template.Perimeter.Ventilation,
-            "Infiltration",
-            self.infiltration_ach,
+        self.add_modifier(
+            modifier_name="SetInfiltration",
+            modifier_prop="infiltration_ach",
+            default=infiltration_ach if infiltration_ach else self.infiltration_ach,
+            object_address=["Perimeter", "Ventilation"],
+            object_parameter="Infiltration",
         )
-
-    def _apply(self, building_template):
-        """Only apply to Perimeter zone ventilation.
-
-        Args:
-            building_template (BuildingTemplate): The building template object.
-        """
-        building_template.Perimeter.Ventilation.Infiltration = self.infiltration_ach
 
 
 class InfiltrationRegular(SetInfiltration):

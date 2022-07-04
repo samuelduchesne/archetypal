@@ -19,20 +19,13 @@ def get_path(root, address, parameter=None):
     return target
 
 
-def set_path(root, address, parameter, value, validator):
+def set_path(root, address, parameter, value):
     path = [root] + address if type(address) == list else [root, address]
     target = functools.reduce(reducer, path)
-    original_value = get_path(root, address, parameter)
-    execute = (
-        validator(original_value=original_value, new_value=value, root=root)
-        if validator
-        else True
-    )
-    if execute:
-        if type(target) in [dict, list]:
-            target[parameter] = value
-        else:
-            setattr(target, parameter, value)
+    if type(target) in [dict, list]:
+        target[parameter] = value
+    else:
+        setattr(target, parameter, value)
 
 
 class Measure:
@@ -49,7 +42,7 @@ class Measure:
     def __init__(self):
         self.change_loggers = {}
         self._props = set()
-        self.actions = set()
+        self._actions = set()
 
     # TODO:
     # def __add__(self,other): warn if property or method names shared
@@ -69,7 +62,7 @@ class Measure:
             measure_argument(building_template, *args) if callable(
                 measure_argument
             ) else None
-            log.info(f"applied '{measure_argument}' to {building_template}")
+            # log.info(f"applied '{measure_argument}' to {building_template}")
 
     def report_template_changelog(self, building_template):
         """Return the a dict of changes that will occur if the measure is applied to a template
@@ -136,42 +129,62 @@ class Measure:
                 )
                 raise AttributeError
 
-        # Add a setter which dynamically finds the parameter to modify and uses the specified property from the measure
+        def _address(building_template):
+            return (
+                object_address(building_template)
+                if callable(object_address)
+                else object_address
+            )
 
+        def _parameter(building_template):
+            return (
+                object_parameter(building_template, object_address)
+                if callable(object_parameter)
+                else object_parameter
+            )
+
+        def _original_value(building_template):
+            return get_path(
+                root=building_template,
+                address=_address(building_template),
+                parameter=_parameter(building_template),
+            )
+
+        def _new_value(building_template):
+            executes = (
+                validator(
+                    original_value=_original_value(building_template),
+                    new_value=getattr(self, modifier_prop),
+                    root=building_template,
+                )
+                if validator
+                else True
+            )
+            return (
+                getattr(self, modifier_prop)
+                if executes
+                else _original_value(building_template)
+            )
+
+        # Add a setter which dynamically finds the parameter to modify and uses the specified property from the measure
         setattr(
             self,
             modifier_name,
             lambda building_template: set_path(
                 root=building_template,
-                address=object_address(building_template)
-                if callable(object_address)
-                else object_address,
-                parameter=object_parameter(building_template, object_address)
-                if callable(object_parameter)
-                else object_parameter,
-                value=getattr(self, modifier_prop),
-                validator=validator,
+                address=_address(building_template),
+                parameter=_parameter(building_template),
+                value=_new_value(building_template),
             ),
         )
+        self._actions.add(modifier_name)
 
         # Store a getter which takes in a template and produces a changelog.
         self.change_loggers[modifier_name] = lambda building_template: {
-            "address": object_address(building_template)
-            if callable(object_address)
-            else object_address,
-            "parameter": object_parameter(building_template, object_address)
-            if callable(object_parameter)
-            else object_parameter,
-            "original_value": get_path(
-                root=building_template,
-                address=object_address(building_template)
-                if callable(object_address)
-                else object_address,
-                parameter=object_parameter(building_template, object_address)
-                if callable(object_parameter)
-                else object_parameter,
-            ),
-            "new_value": getattr(self, modifier_prop),
+            "address": _address(building_template),
+            "parameter": _parameter(building_template),
+            "original_value": _original_value(building_template),
+            "new_value": _new_value(building_template),
         }
 
     @property
@@ -180,6 +193,13 @@ class Measure:
         for prop in self._props:
             props[prop] = getattr(self, prop)
         return props
+
+    @property
+    def actions(self):
+        actions = {}
+        for action in actions:
+            actions[action] = getattr(self, action)
+        return actions
 
     def __repr__(self):
         """Return a representation of self."""

@@ -10,6 +10,7 @@ from archetypal.template.measures.measure import (
     InfiltrationMedium,
     InfiltrationRegular,
     InfiltrationTight,
+    Measure,
     SetFacadeConstructionThermalResistanceToEnergyStar,
 )
 
@@ -101,3 +102,124 @@ class TestMeasure:
 
         for bldg in umi_library.BuildingTemplates:
             assert bldg.Perimeter.Ventilation.Infiltration == infiltration_ach
+
+    @pytest.mark.parametrize(
+        "modifier_name, modifier_prop, default, object_address, object_parameter, getExpectedValue",
+        [
+            (
+                "SetPerimeterCoolingSetpoint",
+                "cooling_setpoint",
+                27,
+                ["Perimeter", "Conditioning"],
+                "CoolingSetpoint",
+                # Explicitly tell the test where to find the correct val
+                lambda bt: bt.Perimeter.Conditioning.CoolingSetpoint,
+            ),
+            (
+                "SetCoreHeatingSetpoint",
+                "heating_setpoint",
+                20,
+                ["Core", "Conditioning"],
+                "HeatingSetpoint",
+                lambda bt: bt.Core.Conditioning.HeatingSetpoint,
+            ),
+        ],
+    )
+    def test_create_basic_measure(
+        self,
+        modifier_name,
+        modifier_prop,
+        default,
+        object_address,
+        object_parameter,
+        umi_library,
+        getExpectedValue,
+    ):
+        """Test building custom measures with the add_modifier method"""
+
+        # Define a custom measure
+        class MyMeasure(Measure):
+            name = "MyMeasure"
+            description = "Test Measure"
+
+            def __init__(self):
+                """Initialize measure with parameters."""
+                super(MyMeasure, self).__init__()
+
+                self.add_modifier(
+                    modifier_name=modifier_name,
+                    modifier_prop=modifier_prop,
+                    default=default,
+                    object_address=object_address,
+                    object_parameter=object_parameter,
+                )
+
+        # create the measure
+        measure = MyMeasure()
+
+        # Check that the getters are working
+        expectedProps = {}
+        expectedProps[modifier_prop] = default
+        assert measure.props == expectedProps
+        assert measure._props == {modifier_prop}
+        assert measure._actions == {modifier_name}
+
+        # Test the measure application works
+        measure.apply_measure_to_whole_library(umi_library)
+
+        for bldg in umi_library.BuildingTemplates:
+            assert getExpectedValue(bldg) == default
+
+    def test_validated_measure(self, umi_library):
+        """Test validated measures"""
+        measure = Measure()
+        measure.name = "Cooling Setpoints"
+        measure.description = (
+            "Set Cooling setpoints conditionally (only if they improve)"
+        )
+
+        print("here testing")
+
+        def gtValidator(original_value, new_value, root):
+            print(f"validating {root.Name}")
+            print(f"Original Value: { original_value }")
+            print(f"New Value: { new_value }")
+            return new_value > original_value
+
+        # Only adjust cooling cop if the new value is greater
+        measure.add_modifier(
+            modifier_name="SetPerimCoolingCoP",
+            modifier_prop="cooling_CoP",
+            default=0.01,
+            object_address=["Perimeter", "Conditioning"],
+            object_parameter="CoolingCoeffOfPerf",
+            validator=gtValidator,
+        )
+        measure.add_modifier(
+            modifier_name="SetCoreCoolingCoP",
+            modifier_prop="cooling_cop",
+            default=0.01,
+            object_address=["Core", "Conditioning"],
+            object_parameter="CoolingCoeffOfPerf",
+            validator=gtValidator,
+        )
+
+        # Get the original value for each template and make sure it doesn't change
+        # since 0.01 is worse than all of the existing values
+        for bt in umi_library.BuildingTemplates:
+            original_perim_cool_cop = bt.Perimeter.Conditioning.CoolingCoeffOfPerf
+            original_core_cool_cop = bt.Core.Conditioning.CoolingCoeffOfPerf
+            measure.apply_measure_to_template(bt)
+            assert (
+                original_perim_cool_cop == bt.Perimeter.Conditioning.CoolingCoeffOfPerf
+            )
+            assert original_core_cool_cop == bt.Core.Conditioning.CoolingCoeffOfPerf
+
+        # update the measure
+        measure.cooling_cop = 6
+
+        # Test that all values now update
+        measure.apply_measure_to_whole_library(umi_library)
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Perimeter.Conditioning.CoolingCoeffOfPerf == 6
+            assert bt.Core.Conditioning.CoolingCoeffOfPerf == 6

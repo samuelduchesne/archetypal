@@ -8,23 +8,48 @@ log = logging.getLogger(__name__)
 
 
 def reducer(a, b):
-    return getattr(a, b) if type(a) not in [dict, list] else a[b]
+    """Given an object, get an index/key
+
+    Args:
+        a (object): object to access
+        b (key/index): something which can be used to access the object
+    """
+    try:
+        return a[b]
+    except TypeError:
+        # Type error thrown when __getitem__ is not defined
+        return getattr(a, b)
 
 
-def get_path(root, address, parameter=None):
+def get_path(root, address):
+    """Given a path, get a value
+
+    Args:
+        root (object): the base object
+        address (Array<string>): Where to find the target value
+    """
     path = [root] + address if type(address) == list else [root, address]
-    if not parameter is None:
-        path = path + [parameter]
     target = functools.reduce(reducer, path)
     return target
 
 
-def set_path(root, address, parameter, value):
-    path = [root] + address if type(address) == list else [root, address]
+def set_path(root, address, value):
+    """Given a path and a value, set a value
+
+    Args:
+        root (object): the base object
+        address (Array<string>): The where to find the target object
+        parameter (string): The final key for the target object
+        value (any): Value to set
+    """
+    fullpath = [root] + address if type(address) == list else [root, address]
+    path = fullpath[0:-1]
+    parameter = fullpath[-1]
     target = functools.reduce(reducer, path)
-    if type(target) in [dict, list]:
+    try:
         target[parameter] = value
-    else:
+    except TypeError:
+        # Type error thrown when __setitem__ is not defined
         setattr(target, parameter, value)
 
 
@@ -97,7 +122,6 @@ class Measure:
         modifier_prop=None,
         default=None,
         object_address=None,
-        object_parameter=None,
         validator=None,
     ):
         """Add an action to the measure which will modify a template parameter with a new
@@ -108,7 +132,6 @@ class Measure:
             modifier_prop (String): A name for the measure prop to reference for the value
             default (any | None): Default value for the measure prop to use
             object_address (Array<String | int> | (building_template): Array<String | int>): Where to find the target in the template
-            object_parameter (String | int | (building_template, object_address): String | int): The name/index to change or how to construct it
             validator ((original_value: any, new_value: any, root: any | None): Boolan)
         """
         # TODO: Allow missing object_parameter and non-list-non-callable object_address
@@ -137,17 +160,16 @@ class Measure:
             )
 
         def _parameter(building_template):
-            return (
-                object_parameter(building_template, object_address)
-                if callable(object_parameter)
-                else object_parameter
-            )
+            path = _address(building_template)
+            if type(path) == list:
+                return path[-1]
+            else:
+                return path
 
         def _original_value(building_template):
             return get_path(
                 root=building_template,
                 address=_address(building_template),
-                parameter=_parameter(building_template),
             )
 
         def _new_value(building_template):
@@ -173,7 +195,6 @@ class Measure:
             lambda building_template: set_path(
                 root=building_template,
                 address=_address(building_template),
-                parameter=_parameter(building_template),
                 value=_new_value(building_template),
             ),
         )
@@ -181,7 +202,7 @@ class Measure:
 
         # Store a getter which takes in a template and produces a changelog.
         self.change_loggers[modifier_name] = lambda building_template: {
-            "address": _address(building_template),
+            "address": _address(building_template)[0:-1],
             "parameter": _parameter(building_template),
             "original_value": _original_value(building_template),
             "new_value": _new_value(building_template),
@@ -220,15 +241,13 @@ class SetMechanicalVentilation(Measure):
             modifier_name="SetCoreVentilationAch",
             modifier_prop="ventilation_ach",
             default=ventilation_ach,
-            object_address=["Core", "Ventilation"],
-            object_parameter="ScheduledVentilationAch",
+            object_address=["Core", "Ventilation", "ScheduledVentilationAch"],
         )
 
         self.add_modifier(
             modifier_name="SetPerimeterVentilationAch",
             modifier_prop="ventilation_ach",
-            object_address=["Perimeter", "Ventilation"],
-            object_parameter="ScheduledVentilationAch",
+            object_address=["Perimeter", "Ventilation", "ScheduledVentilationAch"],
         )
 
         if ventilation_schedule is not None:
@@ -236,14 +255,12 @@ class SetMechanicalVentilation(Measure):
                 modifier_name="SetCoreVentilationSched",
                 modifier_prop="ventilation_schedule",
                 default=ventilation_schedule,
-                object_address=["Core", "Ventilation"],
-                object_parameter="ScheduledVentilationSchedule",
+                object_address=["Core", "Ventilation", "ScheduledVentilationSchedule"],
             )
             self.add_modifier(
                 modifier_name="SetPerimeterVentilationSched",
                 modifier_prop="ventilation_schedule",
-                object_address=["Perimeter", "Ventilation"],
-                object_parameter="ScheduledVentilationSchedule",
+                object_address=["Perimeter", "Ventilation", "ScheduledVentilationAch"],
             )
 
         if ventilation_ach > 0:
@@ -251,14 +268,12 @@ class SetMechanicalVentilation(Measure):
                 modifier_name="SetCoreVentilationStatus",
                 modifier_prop="ventilation_status",
                 default=True,
-                object_address=["Core", "Ventilation"],
-                object_parameter="IsScheduledVentilationOn",
+                object_address=["Core", "Ventilation", "IsScheduledVentilationOn"],
             )
             self.add_modifier(
                 modifier_name="SetPerimeterVentilationStatus",
                 modifier_prop="ventilation_status",
-                object_address=["Perimeter", "Ventilation"],
-                object_parameter="IsScheduledVentilationOn",
+                object_address=["Perimeter", "Ventilation", "IsScheduledVentilationOn"],
             )
 
 
@@ -276,27 +291,23 @@ class SetCOP(Measure):
             modifier_name="SetCoreCoolingCop",
             modifier_prop="cooling_cop",
             default=cooling_cop,
-            object_address=["Core", "Conditioning"],
-            object_parameter="CoolingCoeffOfPerf",
+            object_address=["Core", "Conditioning", "CoolingCoeffOfPerf"],
         )
         self.add_modifier(
             modifier_name="SetPerimeterCoolingCop",
             modifier_prop="cooling_cop",
-            object_address=["Perimeter", "Conditioning"],
-            object_parameter="CoolingCoeffOfPerf",
+            object_address=["Perimeter", "Conditioning", "CoolingCoeffOfPerf"],
         )
         self.add_modifier(
             modifier_name="SetCoreHeatingCop",
             modifier_prop="heating_cop",
             default=heating_cop,
-            object_address=["Core", "Conditioning"],
-            object_parameter="HeatingCoeffOfPerf",
+            object_address=["Core", "Conditioning", "HeatingCoeffOfPerf"],
         )
         self.add_modifier(
             modifier_name="SetPerimeterHeatingCop",
             modifier_prop="heating_cop",
-            object_address=["Perimeter", "Conditioning"],
-            object_parameter="HeatingCoeffOfPerf",
+            object_address=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"],
         )
 
 
@@ -314,27 +325,23 @@ class EnergyStarUpgrade(Measure):
             modifier_name="SetCoreLightingPowerDensity",
             modifier_prop="lighting_power_density",
             default=lighting_power_density,
-            object_address=["Core", "Loads"],
-            object_parameter="LightingPowerDensity",
+            object_address=["Core", "Loads", "LightingPowerDensity"],
         )
         self.add_modifier(
             modifier_name="SetPerimeterLightingPowerDensity",
             modifier_prop="lighting_power_density",
-            object_address=["Perimeter", "Loads"],
-            object_parameter="LightingPowerDensity",
+            object_address=["Perimeter", "Loads", "LightingPowerDensity"],
         )
         self.add_modifier(
             modifier_name="SetCoreEquipmentPowerDensity",
             modifier_prop="equipment_power_density",
             default=equipment_power_density,
-            object_address=["Core", "Loads"],
-            object_parameter="EquipmentPowerDensity",
+            object_address=["Core", "Loads", "EquipmentPowerDensity"],
         )
         self.add_modifier(
             modifier_name="SetPerimeterEquipmentPowerDensity",
             modifier_prop="equipment_power_density",
-            object_address=["Perimeter", "Loads"],
-            object_parameter="EquipmentPowerDensity",
+            object_address=["Perimeter", "Loads", "EquipmentPowerDensity"],
         )
 
 
@@ -375,6 +382,7 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
                 structural_part,
                 "Layers",
                 insulation_layer_index,
+                "r_value",
             ]
 
         # TODO: reproduce original warning in _set_insulation_layer_resistance
@@ -385,7 +393,6 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
             object_address=lambda building_template: get_insulation_layer_path(
                 building_template, "Facade"
             ),
-            object_parameter="r_value",
         )
 
         self.add_modifier(
@@ -395,7 +402,6 @@ class SetFacadeConstructionThermalResistanceToEnergyStar(Measure):
             object_address=lambda building_template: get_insulation_layer_path(
                 building_template, "Roof"
             ),
-            object_parameter="r_value",
         )
 
 
@@ -446,8 +452,7 @@ class SetInfiltration(Measure):
             modifier_name="SetInfiltration",
             modifier_prop="infiltration_ach",
             default=infiltration_ach if infiltration_ach else self.infiltration_ach,
-            object_address=["Perimeter", "Ventilation"],
-            object_parameter="Infiltration",
+            object_address=["Perimeter", "Ventilation", "Infiltration"],
         )
 
 

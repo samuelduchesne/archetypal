@@ -104,14 +104,13 @@ class TestMeasure:
             assert bldg.Perimeter.Ventilation.Infiltration == infiltration_ach
 
     @pytest.mark.parametrize(
-        "modifier_name, modifier_prop, default, object_address, object_parameter, getExpectedValue",
+        "modifier_name, modifier_prop, default, object_address, getExpectedValue",
         [
             (
                 "SetPerimeterCoolingSetpoint",
                 "cooling_setpoint",
                 27,
-                ["Perimeter", "Conditioning"],
-                "CoolingSetpoint",
+                ["Perimeter", "Conditioning", "CoolingSetpoint"],
                 # Explicitly tell the test where to find the correct val
                 lambda bt: bt.Perimeter.Conditioning.CoolingSetpoint,
             ),
@@ -119,8 +118,7 @@ class TestMeasure:
                 "SetCoreHeatingSetpoint",
                 "heating_setpoint",
                 20,
-                ["Core", "Conditioning"],
-                "HeatingSetpoint",
+                ["Core", "Conditioning", "HeatingSetpoint"],
                 lambda bt: bt.Core.Conditioning.HeatingSetpoint,
             ),
         ],
@@ -131,7 +129,6 @@ class TestMeasure:
         modifier_prop,
         default,
         object_address,
-        object_parameter,
         umi_library,
         getExpectedValue,
     ):
@@ -151,7 +148,6 @@ class TestMeasure:
                     modifier_prop=modifier_prop,
                     default=default,
                     object_address=object_address,
-                    object_parameter=object_parameter,
                 )
 
         # create the measure
@@ -191,16 +187,14 @@ class TestMeasure:
             modifier_name="SetPerimCoolingCoP",
             modifier_prop="cooling_CoP",
             default=0.01,
-            object_address=["Perimeter", "Conditioning"],
-            object_parameter="CoolingCoeffOfPerf",
+            object_address=["Perimeter", "Conditioning", "CoolingCoeffOfPerf"],
             validator=gtValidator,
         )
         measure.add_modifier(
             modifier_name="SetCoreCoolingCoP",
             modifier_prop="cooling_cop",
             default=0.01,
-            object_address=["Core", "Conditioning"],
-            object_parameter="CoolingCoeffOfPerf",
+            object_address=["Core", "Conditioning", "CoolingCoeffOfPerf"],
             validator=gtValidator,
         )
 

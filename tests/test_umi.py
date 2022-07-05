@@ -67,6 +67,11 @@ class TestUmiTemplate:
         assert len(c.OpaqueMaterials) < nb_materials_before
         assert len(c.OpaqueConstructions) == nb_opaque_constructions
 
+        # test wrong inclusion
+        with pytest.raises(AssertionError):
+            # missing S.
+            c.unique_components("OpaqueMaterial")
+
     def test_graph(self):
         """Test initialization of networkx DiGraph"""
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"

@@ -4,6 +4,7 @@ import json
 import logging as lg
 from collections import OrderedDict
 from concurrent.futures.thread import ThreadPoolExecutor
+from copy import copy, deepcopy
 from typing import List
 
 import networkx as nx
@@ -192,7 +193,6 @@ class UmiTemplateLibrary:
         processors=-1,
         keep_all_zones=False,
         unique_components=None,
-        debug=False,
         **kwargs,
     ):
         """Initialize an UmiTemplateLibrary object from one or more idf_files.
@@ -644,9 +644,7 @@ class UmiTemplateLibrary:
 
         return data_dict
 
-    def unique_components(
-        self, *args: str, exceptions: List[str] = None, keep_orphaned=False
-    ):
+    def unique_components(self, *args: str, exceptions: List[str] = None):
         """Keep only unique components.
 
         Starts by clearing all objects in self except self.BuildingTemplates.
@@ -657,13 +655,11 @@ class UmiTemplateLibrary:
         object in the graph.
 
         Args:
-            *args (str): UmiBase class names that should be replaced with a
+            *args (str): UmiBase class names that should not be replaced with a
                 unique equivalent. For example, if only "OpaqueMaterials" should be
-                unique, then use self.unique_components("OpaqueMaterials"). If none
-                are provided, all umi components be unique.
+                unique, then use self.unique_components("OpaqueMaterials")
             exceptions (List[str]): A list of UmiBase class names that will not be
-                cleared from self.
-            keep_orphaned (bool): if True, orphaned objects are kept.
+                cleared and therefore, not be
         """
         if keep_orphaned:
             G = self.to_graph(include_orphans=True)
@@ -726,21 +722,7 @@ class UmiTemplateLibrary:
         for key, group in self:
             for component in group:
                 for parent, key, child in parent_key_child_traversal(component):
-                    if isinstance(child, UmiSchedule) and not isinstance(
-                        child, (DaySchedule, WeekSchedule, YearSchedule)
-                    ):
-                        y, ws, ds = child.to_year_week_day()
-                        if not any(o.id == y.id for o in self.YearSchedules):
-                            self.YearSchedules.append(y)
-                        for w in ws:
-                            if not any(o.id == w.id for o in self.WeekSchedules):
-                                self.WeekSchedules.append(w)
-                        for d in ds:
-                            if not any(o.id == d.id for o in self.DaySchedules):
-                                self.DaySchedules.append(d)
-                        # finally, replace it with y
-                        setattr(parent, key, y)
-                    elif isinstance(child, UmiBase):
+                    if isinstance(child, UmiBase):
                         obj_list = self.__dict__[child.__class__.__name__ + "s"]
                         if not any(o.id == child.id for o in obj_list):
                             # Important to compare on UmiBase.id and not on identity.
@@ -766,7 +748,6 @@ class UmiTemplateLibrary:
                 obj for obj in self.object_list if obj.id not in (n.id for n in G)
             ]
             for orphan in orphans:
-                G.add_node(orphan)
                 for parent, child in parent_child_traversal(orphan):
                     if parent:
                         G.add_edge(parent, child)
@@ -843,7 +824,7 @@ def parent_key_child_traversal(parent):
                     yield from parent_key_child_traversal(child)
 
 
-def parent_child_traversal(parent: UmiBase):
+def parent_child_traversal(parent):
     """Iterate over all children of the parent.
 
     This generator recursively yields (parent, child) tuples. It uses the
@@ -853,7 +834,3 @@ def parent_child_traversal(parent: UmiBase):
     for child in parent.children:
         yield parent, child
         yield from parent_child_traversal(child)
-
-
-def traverse(parent):
-    return parent_child_traversal(parent)

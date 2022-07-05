@@ -450,7 +450,10 @@ class YearSchedulePart:
 
     def __str__(self):
         """Return string representation of self."""
-        return str(self.to_dict())
+        return repr(self)
+
+    def __repr__(self):
+        return "".join([f"{k}={v}" for k, v in self.to_dict().items()])
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""

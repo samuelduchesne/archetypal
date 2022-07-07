@@ -759,6 +759,17 @@ class ZoneDefinition(UmiBase):
         """Return a copy of self."""
         return self.__class__(**self.mapping(validate=False))
 
+    @property
+    def children(self):
+        return (
+            self.Conditioning,
+            self.Constructions,
+            self.DomesticHotWater,
+            self.InternalMassConstruction,
+            self.Loads,
+            self.Ventilation,
+        )
+
 
 def resolve_obco(ep_bunch):
     """Resolve the outside boundary condition of a surface.

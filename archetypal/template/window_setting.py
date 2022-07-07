@@ -913,3 +913,12 @@ class WindowSetting(UmiBase):
             DataSource=self.DataSource,
             Name=self.Name,
         )
+
+    @property
+    def children(self):
+        return (
+            self.AfnWindowAvailability,
+            self.Construction,
+            self.ShadingSystemAvailabilitySchedule,
+            self.ZoneMixingAvailabilitySchedule,
+        )

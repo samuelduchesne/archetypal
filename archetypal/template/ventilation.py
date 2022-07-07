@@ -931,6 +931,10 @@ class VentilationSetting(UmiBase):
 
         return infiltration_epbunch, ventilation_epbunch, natural_epbunch
 
+    @property
+    def children(self):
+        return self.NatVentSchedule, self.ScheduledVentilationSchedule
+
 
 def do_infiltration(index, inf_df):
     """Get infiltration information of the zone.

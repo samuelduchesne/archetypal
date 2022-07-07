@@ -259,3 +259,7 @@ class StructureInformation(ConstructionBase):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return (m.Material for m in self.MassRatios)

@@ -536,6 +536,10 @@ class DomesticHotWaterSetting(UmiBase):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
 
+    @property
+    def children(self):
+        return (self.WaterSchedule,)
+
 
 def water_main_correlation(t_out_avg, max_diff):
     """Based on the correlation developed by Craig Christensen and Jay Burch.

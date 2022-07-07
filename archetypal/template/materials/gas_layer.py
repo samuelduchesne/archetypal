@@ -372,3 +372,7 @@ class GasLayer(object):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(self.Material, self.Thickness)
+
+    @property
+    def children(self):
+        return (self.Material,)

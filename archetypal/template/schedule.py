@@ -4,6 +4,7 @@ import calendar
 import collections
 import hashlib
 from datetime import datetime
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -450,7 +451,10 @@ class YearSchedulePart:
 
     def __str__(self):
         """Return string representation of self."""
-        return str(self.to_dict())
+        return repr(self)
+
+    def __repr__(self):
+        return "".join([f"{k}={v}" for k, v in self.to_dict().items()])
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
@@ -895,6 +899,10 @@ class WeekSchedule(UmiSchedule):
             ),
         )
 
+    @property
+    def children(self):
+        return self.Days
+
 
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
@@ -962,7 +970,7 @@ class YearSchedule(UmiSchedule):
                 keys.
             **kwargs: keywords passed to the constructor.
         """
-        Parts = [
+        Parts: List[YearSchedulePart] = [
             YearSchedulePart.from_dict(data, week_schedules)
             for data in data.pop("Parts", None)
         ]
@@ -1067,3 +1075,7 @@ class YearSchedule(UmiSchedule):
     def to_ref(self):
         """Return a ref pointer to self."""
         return {"$ref": str(self.id)}
+
+    @property
+    def children(self):
+        return (p.Schedule for p in self.Parts)

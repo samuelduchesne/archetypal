@@ -180,6 +180,10 @@ class UmiBase(object):
     def predecessors(self, value):
         self._predecessors = value
 
+    @property
+    def children(self):
+        return ()
+
     def duplicate(self):
         """Get copy of self."""
         return self.__copy__()

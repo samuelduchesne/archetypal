@@ -201,7 +201,7 @@ class ShoeBox(IDF):
             system (str): Name of HVAC system template. Default
                 :"SimpleIdealLoadsSystem".
             building_template (BuildingTemplate):
-            ddy_file:
+            ddy_file (str): A design day file.
             ground_temperature (int or list): The ground temperature in degC. If a
                 single numeric value is passed, the value is applied to all months.
                 If a list is passed, it must have len == 12.

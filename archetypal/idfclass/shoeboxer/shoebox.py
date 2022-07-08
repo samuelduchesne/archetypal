@@ -173,7 +173,7 @@ class ShoeBox(IDF):
         )
         idf.newidfobject(
             "SIMULATIONCONTROL",
-            Do_Zone_Sizing_Calculation="No",
+            Do_Zone_Sizing_Calculation="Yes",
             Do_System_Sizing_Calculation="No",
             Run_Simulation_for_Sizing_Periods="No",
             Do_HVAC_Sizing_Simulation_for_Sizing_Periods="No",

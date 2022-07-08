@@ -1,5 +1,4 @@
 """HVAC Templates Module."""
-from enum import Enum
 
 
 class HVACTemplate:
@@ -127,9 +126,8 @@ class BaseboardHeatingSystem(HVACTemplate):
         )
 
 
-class HVACTemplates(HVACTemplate, Enum):
-    """Choices of HVACTemplate"""
-
-    BaseboardHeatingSystem = BaseboardHeatingSystem()
-    SimpleIdealLoadsSystem = SimpleIdealLoadsSystem()
-    PTHP = PTHP()
+HVACTemplates = {
+    "BaseboardHeatingSystem": BaseboardHeatingSystem(),
+    "SimpleIdealLoadsSystem": SimpleIdealLoadsSystem(),
+    "PTHP": PTHP(),
+}

@@ -184,7 +184,7 @@ class ShoeBox(IDF):
     def from_template(
         cls,
         building_template,
-        system=HVACTemplates.SimpleIdealLoadsSystem.name,
+        system="SimpleIdealLoadsSystem",
         ddy_file=None,
         height=3,
         number_of_stories=1,

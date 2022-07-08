@@ -4,6 +4,17 @@ from archetypal import UmiTemplateLibrary
 
 from archetypal.idfclass.shoeboxer import ShoeBox
 from archetypal.idfclass.shoeboxer.hvac_templates import HVACTemplates
+from archetypal.idfclass.shoeboxer.topology import (
+    Triangle,
+    Rectangle,
+    Trapezoid,
+    L_Shape,
+    T_Shape,
+    CrossShape,
+    U_Shape,
+    H_Shape,
+    TopologyBase,
+)
 from archetypal.template import BuildingTemplate
 
 CWEC_EPW = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -56,23 +67,32 @@ class TestShoebox:
         # sb.view_model()
         # sb.meters.OutputMeter.Heating__EnergyTransfer.values().plot2d()
 
-    def test_from_template_zone_dict(self, building_template, template):
+    @pytest.mark.parametrize(
+        "topology",
+        [
+            Triangle(),
+            Rectangle(),
+            Trapezoid(),
+            L_Shape(),
+            T_Shape(),
+            CrossShape(),
+            U_Shape(),
+            H_Shape(),
+        ],
+    )
+    def test_from_template_zone_dict(
+        self, building_template, template, topology: TopologyBase
+    ):
         name = "test_zones.idf"
         sb = ShoeBox.from_template(
             building_template,
+            system="PTHP",
             ddy_file=DDY_FILE,
             epw=CWEC_EPW,
             zones_data=[
                 {
                     "name": "",
-                    "coordinates": [
-                        (20, 0),
-                        (20, 10),
-                        (10, 10),
-                        (10, 20),
-                        (0, 20),
-                        (0, 0),
-                    ],
+                    "coordinates": topology.coords,
                     "height": 4 * 3,
                     "num_stories": 3,
                     "zoning": "core/perim",
@@ -82,5 +102,12 @@ class TestShoebox:
             name=name,
         )
         # assert there are 15 zones
-        assert len(sb.idfobjects["ZONE"]) == 21
+        # assert len(sb.idfobjects["ZONE"]) == 21
         # sb.view_model()
+        sb.saveas(f"idf_{topology.__class__.__name__}.idf")
+
+
+class TestTopology:
+    def test_triangle(self):
+        t = Triangle()
+        print(t.coords)

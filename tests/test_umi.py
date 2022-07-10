@@ -84,6 +84,11 @@ class TestUmiTemplate:
         G = a.to_graph(include_orphans=True)
         assert len(G) > n_nodes
 
+    def test_object_by_id(self, two_identical_libraries):
+        """Test getting an object by its id."""
+        lib, _ = two_identical_libraries
+        assert lib.objects_by_id["1"].id == "1"
+
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""

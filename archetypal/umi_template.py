@@ -184,6 +184,18 @@ class UmiTemplateLibrary:
             objs.extend(group)
         return objs
 
+    @property
+    def objects_by_id(self):
+        """Get dictionary of objects with their id as a key.
+
+        Note:
+            Includes orphaned objects.
+        """
+        objs_dict = {}
+        for name, group in self:
+            objs_dict.update({obj.id: obj for obj in group})
+        return objs_dict
+
     @classmethod
     def from_idf_files(
         cls,

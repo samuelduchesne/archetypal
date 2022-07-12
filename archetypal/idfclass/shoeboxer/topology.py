@@ -11,7 +11,7 @@ from enum import Enum
 from typing import Optional
 
 from pint import Quantity
-from pydantic import BaseModel, PositiveFloat
+from pydantic import BaseModel, PositiveFloat, Extra, validator, root_validator
 
 from archetypal.settings import unit_registry
 
@@ -25,7 +25,13 @@ class Direction(float, Enum):
     NORTH_EAST = 1.5
     EAST_NORTH_EAST = 1.75
     EAST = 2
+    EAST_SOUTH_EAST = 2.25
+    SOUTH_EAST = 2.5
+    SOUTH_SOUTH_EAST = 2.75
     SOUTH = 3
+    SOUTH_SOUTH_WEST = 3.25
+    SOUTH_WEST = 3.5
+    WEST_SOUTH_WEST = 3.75
     WEST = 4
     WEST_NORTH_WEST = 0.75
     NORTH_WEST = 0.5
@@ -82,15 +88,31 @@ class TopologyBase(BaseModel):
     floor_to_floor: Meters = "12 ft"
 
     class Config:
+        validate_assignment = True
         validate_all = True
+        extra = Extra.allow
 
     @property
     def coords(self):
         raise NotImplemented
 
+    @property
+    def shapely_polygon(self):
+        from shapely.geometry import Polygon
+
+        return Polygon(self.coords)
+
+    def validate_shape(self):
+        """Validate shape. Uses :func:`~shapely.geometry.base.BaseGeometry.is_valid`."""
+        assert self.shapely_polygon.is_valid
+
 
 class Triangle(TopologyBase):
-    """This is my class.
+    """Triangle Shape.
+
+    X1 > 0
+    Y1 > 0
+    X2 >= 0
 
     ::
                X2
@@ -110,6 +132,13 @@ class Triangle(TopologyBase):
     X2: Optional[Meters] = "67.10 ft"
     Y1: Optional[Meters] = "111.80 ft"
 
+    @root_validator()
+    def validate_points(cls, v):
+        """Validate points."""
+        assert v["X1"] > 0, "X1 > 0"
+        assert v["Y1"] > 0, "Y1 > 0"
+        return v
+
     @property
     def coords(self):
         return [
@@ -121,7 +150,11 @@ class Triangle(TopologyBase):
 
 
 class Rectangle(TopologyBase):
-    """
+    """Rectangle shape.
+
+    X1 > 0
+    Y1 > 0
+
     ::
          |  +-------------------+
          |  |                   |
@@ -136,6 +169,13 @@ class Rectangle(TopologyBase):
 
     X1: Optional[Meters] = "111.80 ft"
     Y1: Optional[Meters] = "111.80 ft"
+
+    @root_validator()
+    def validate_points(cls, v):
+        """Validate points."""
+        assert v["X1"] > 0, "X1 > 0"
+        assert v["Y1"] > 0, "Y1 > 0"
+        return v
 
     @property
     def coords(self):
@@ -167,6 +207,15 @@ class Trapezoid(TopologyBase):
     X2: Optional[Meters] = "109.80 ft"
     X3: Optional[Meters] = "32.80 ft"
     Y1: Optional[Meters] = "87.70 ft"
+
+    @root_validator()
+    def validate_points(cls, v):
+        """Validate points."""
+        assert v["X1"] > 0, "X1 > 0"
+        assert v["X2"] > 0, "X2 > 0"
+        assert v["X3"] >= 0, "X3 >= 0"
+        assert v["Y1"] > 0, "Y1 > 0"
+        return v
 
     @property
     def coords(self):
@@ -203,6 +252,17 @@ class L_Shape(TopologyBase):
     X2: Optional[Meters] = "60.00 ft"
     Y1: Optional[Meters] = "134.15 ft"
     Y2: Optional[Meters] = "60.00 ft"
+
+    @root_validator()
+    def validate_points(cls, v):
+        """Validate points."""
+        assert v["X1"] > 0, "X1 > 0"
+        assert v["X1"] > v["X2"], "X1 > X2"
+        assert v["X2"] > 0, "X2 > 0"
+        assert v["Y1"] > 0, "Y1 > 0"
+        assert v["Y1"] > v["Y2"], "Y1 > Y2"
+        assert v["Y2"] > 0, "Y2 > 0"
+        return v
 
     @property
     def coords(self):
@@ -242,6 +302,19 @@ class T_Shape(TopologyBase):
     X3: Optional[Meters] = "62.75 ft"
     Y1: Optional[Meters] = "109.15 ft"
     Y2: Optional[Meters] = "46.40 ft"
+
+    @root_validator()
+    def validate_points(cls, v):
+        """Validate points."""
+        assert v["X1"] > 0, "X1 > 0"
+        assert v["X1"] > v["X2"] + v["X3"], "X1 > X2 + X3"
+        assert v["X1"] > v["X2"]
+        assert v["X2"] > 0, "X2 > 0"
+        assert v["X3"] > 0, "X3 > 0"
+        assert v["Y1"] > 0, "Y1 > 0"
+        assert v["Y1"] > v["Y2"], "Y1 > Y2"
+        assert v["Y2"] > 0, "Y2 > 0"
+        return v
 
     @property
     def coords(self):
@@ -291,6 +364,19 @@ class CrossShape(TopologyBase):
     Y2: Optional[Meters] = "50 ft"
     Y3: Optional[Meters] = "50 ft"
 
+    @root_validator()
+    def validate_points(cls, v):
+        """Validate points."""
+        assert v["X1"] > 0, "X1 > 0"
+        assert v["X1"] > v["X2"] + v["X3"], "X1 > X2 + X3"
+        assert v["X2"] > 0, "X2 > 0"
+        assert v["X3"] > 0, "X3 > 0"
+        assert v["Y1"] > 0, "Y1 > 0"
+        assert v["Y1"] > v["Y2"], "Y1 > Y2"
+        assert v["Y2"] > 0, "Y2 > 0"
+        assert v["Y3"] > 0, "Y3 > 0"
+        return v
+
     @property
     def coords(self):
         return [
@@ -318,6 +404,21 @@ class U_Shape(TopologyBase):
     Y2: Optional[Meters] = "93.25 ft"
     Y3: Optional[Meters] = "55.75 ft"
 
+    @root_validator()
+    def validate_points(cls, v):
+        """Validate points."""
+        assert v["X1"] > 0, "X1 > 0"
+        assert v["X1"] > v["X2"] + v["X3"], "X1 > X2 + X3"
+        assert v["X1"] > v["X2"], "X1 > 0"
+        assert v["X2"] > 0, "X2 > 0"
+        assert v["X3"] > 0, "X3 > 0"
+        assert v["Y1"] > 0, "Y1 > 0"
+        assert v["Y1"] > v["Y3"], "Y1 > Y3"
+        assert v["Y2"] > 0, "Y2 > 0"
+        assert v["Y2"] > v["Y3"], "Y2 > Y3"
+        assert v["Y3"] > 0, "Y3 > 0"
+        return v
+
     @property
     def coords(self):
         return [
@@ -327,7 +428,7 @@ class U_Shape(TopologyBase):
             (self.X1 - self.X3, self.Y2),
             (self.X1 - self.X3, self.Y3),
             (self.X2, self.Y3),
-            (self.X2, self.Y2),
+            (self.X2, self.Y1),
             (0, self.Y1),
             (0, 0),
         ]
@@ -340,6 +441,20 @@ class H_Shape(TopologyBase):
     Y1: Optional[Meters] = "117.05 ft"
     Y2: Optional[Meters] = "35.40 ft"
     Y3: Optional[Meters] = "46.25 ft"
+
+    @root_validator()
+    def validate_points(cls, v):
+        """Validate points."""
+        assert v["X1"] > 0, "X1 > 0"
+        assert v["X1"] > v["X2"] + v["X3"], "X1 > X2 + X3"
+        assert v["X1"] > v["X2"], "X1 > X2"
+        assert v["X2"] > 0, "X2 > 0"
+        assert v["X3"] > 0, "X3 > 0"
+        assert v["Y1"] > 0, "Y1 > 0"
+        assert v["Y2"] > 0, "Y2 > 0"
+        assert v["Y3"] > 0, "Y3 > 0"
+        assert v["Y1"] > v["Y2"], "Y1 > Y2"
+        return v
 
     @property
     def coords(self):

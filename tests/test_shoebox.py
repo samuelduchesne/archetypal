@@ -15,6 +15,17 @@ from archetypal.idfclass.shoeboxer.topology import (
     H_Shape,
     TopologyBase,
 )
+
+TOPOLOGIES = [
+    Triangle(),
+    Rectangle(),
+    Trapezoid(),
+    L_Shape(),
+    T_Shape(),
+    CrossShape(),
+    U_Shape(),
+    H_Shape(),
+]
 from archetypal.template import BuildingTemplate
 
 CWEC_EPW = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
@@ -67,19 +78,7 @@ class TestShoebox:
         # sb.view_model()
         # sb.meters.OutputMeter.Heating__EnergyTransfer.values().plot2d()
 
-    @pytest.mark.parametrize(
-        "topology",
-        [
-            Triangle(),
-            Rectangle(),
-            Trapezoid(),
-            L_Shape(),
-            T_Shape(),
-            CrossShape(),
-            U_Shape(),
-            H_Shape(),
-        ],
-    )
+    @pytest.mark.parametrize("topology", TOPOLOGIES)
     def test_from_template_zone_dict(
         self, building_template, template, topology: TopologyBase
     ):
@@ -111,3 +110,12 @@ class TestTopology:
     def test_triangle(self):
         t = Triangle()
         print(t.coords)
+
+    @pytest.mark.parametrize("topology, height", zip(TOPOLOGIES, range(3, 20)))
+    def test_form_factor(self, topology: TopologyBase, height):
+        perim = topology.shapely_polygon.length
+        footprint_area = topology.shapely_polygon.area
+        envelope_area = perim * height + footprint_area
+        heated_floor_area = footprint_area * (height / topology.floor_to_floor)
+        heat_loss_form_factor = envelope_area / heated_floor_area
+        print(heat_loss_form_factor)

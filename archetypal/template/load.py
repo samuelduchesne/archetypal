@@ -126,7 +126,7 @@ class ZoneLoad(UmiBase):
         self.IsEquipmentOn = IsEquipmentOn
         self.IsLightingOn = IsLightingOn
         self.IsPeopleOn = IsPeopleOn
-        self.DimmingType = DimmingTypes(DimmingType)
+        self.DimmingType = DimmingType
         self.IlluminanceTarget = IlluminanceTarget
         self.area = area
         self.volume = volume
@@ -151,7 +151,7 @@ class ZoneLoad(UmiBase):
             )
             self._dimming_type = DimmingTypes[value]
         elif checkers.is_numeric(value):
-            assert DimmingTypes[value], (
+            assert DimmingTypes(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in DimmingTypes)}"
             )

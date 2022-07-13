@@ -462,7 +462,6 @@ class VentilationSetting(UmiBase):
               "IsInfiltrationOn": true,
               "IsNatVentOn": false,
               "IsScheduledVentilationOn": false,
-              "VentilationType": 2,
               "NatVentMaxRelHumidity": 80.0,
               "NatVentMaxOutdoorAirTemp": 26.0,
               "NatVentMinOutdoorAirTemp": 20.0,
@@ -512,7 +511,6 @@ class VentilationSetting(UmiBase):
         data_dict["NatVentSchedule"] = self.NatVentSchedule.to_ref()
         data_dict["NatVentZoneTempSetpoint"] = round(self.NatVentZoneTempSetpoint, 3)
         data_dict["ScheduledVentilationAch"] = round(self.ScheduledVentilationAch, 3)
-        data_dict["VentilationType"] = self.VentilationType.value
         data_dict[
             "ScheduledVentilationSchedule"
         ] = self.ScheduledVentilationSchedule.to_ref()

@@ -404,12 +404,13 @@ class VentilationSetting(UmiBase):
             )
             self._ventilation_type = VentilationType[value]
         elif checkers.is_numeric(value):
-            assert VentilationType[value], (
+            assert VentilationType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in VentilationType)}"
             )
             self._ventilation_type = VentilationType(value)
-        self._ventilation_type = value
+        elif isinstance(value, VentilationType):
+            self._ventilation_type = value
 
     @property
     def Afn(self):

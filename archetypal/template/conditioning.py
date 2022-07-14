@@ -262,16 +262,16 @@ class ZoneConditioning(UmiBase):
         self.HeatingSchedule = HeatingSchedule
         self.CoolingSchedule = CoolingSchedule
         self.CoolingCoeffOfPerf = CoolingCoeffOfPerf
-        self.CoolingLimitType = IdealSystemLimit(CoolingLimitType)
-        self.CoolingFuelType = FuelType(CoolingFuelType)
+        self.CoolingLimitType = CoolingLimitType
+        self.CoolingFuelType = CoolingFuelType
         self._cooling_setpoint = CoolingSetpoint  # setter without check
-        self.EconomizerType = EconomizerTypes(EconomizerType)
+        self.EconomizerType = EconomizerType
         self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
         self.HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible
-        self.HeatRecoveryType = HeatRecoveryTypes(HeatRecoveryType)
+        self.HeatRecoveryType = HeatRecoveryType
         self.HeatingCoeffOfPerf = HeatingCoeffOfPerf
-        self.HeatingLimitType = IdealSystemLimit(HeatingLimitType)
-        self.HeatingFuelType = FuelType(HeatingFuelType)
+        self.HeatingLimitType = HeatingLimitType
+        self.HeatingFuelType = HeatingFuelType
         self.HeatingSetpoint = HeatingSetpoint
         self.IsCoolingOn = IsCoolingOn
         self.IsHeatingOn = IsHeatingOn
@@ -413,7 +413,7 @@ class ZoneConditioning(UmiBase):
             )
             self._heating_limit_type = IdealSystemLimit[value]
         elif checkers.is_numeric(value):
-            assert IdealSystemLimit[value], (
+            assert IdealSystemLimit(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in IdealSystemLimit)}"
             )
@@ -435,7 +435,7 @@ class ZoneConditioning(UmiBase):
             )
             self._heating_fuel_type = FuelType[value]
         elif checkers.is_numeric(value):
-            assert FuelType[value], (
+            assert FuelType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in FuelType)}"
             )
@@ -493,7 +493,7 @@ class ZoneConditioning(UmiBase):
             )
             self._cooling_limit_type = IdealSystemLimit[value]
         elif checkers.is_numeric(value):
-            assert IdealSystemLimit[value], (
+            assert IdealSystemLimit(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in IdealSystemLimit)}"
             )
@@ -515,7 +515,7 @@ class ZoneConditioning(UmiBase):
             )
             self._cooling_fuel_type = FuelType[value]
         elif checkers.is_numeric(value):
-            assert FuelType[value], (
+            assert FuelType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in FuelType)}"
             )
@@ -559,7 +559,7 @@ class ZoneConditioning(UmiBase):
             )
             self._economizer_type = EconomizerTypes[value]
         elif checkers.is_numeric(value):
-            assert EconomizerTypes[value], (
+            assert EconomizerTypes(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in EconomizerTypes)}"
             )
@@ -595,7 +595,7 @@ class ZoneConditioning(UmiBase):
             )
             self._heat_recovery_type = HeatRecoveryTypes[value]
         elif checkers.is_numeric(value):
-            assert HeatRecoveryTypes[value], (
+            assert HeatRecoveryTypes(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in HeatRecoveryTypes)}"
             )

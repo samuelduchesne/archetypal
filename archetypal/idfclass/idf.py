@@ -369,25 +369,35 @@ class IDF(GeomIDF):
         from pathlib import Path as Pathlib
 
         example_name = Path(example_name)
-        file = next(
-            iter(
-                Pathlib(
-                    EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
-                ).rglob(f"{example_name.stem}.idf")
-            )
+        example_files_dir: Path = (
+            EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
         )
+        try:
+
+            file = next(
+                iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf"))
+            )
+        except StopIteration:
+            full_list = list(
+                map(lambda x: str(x.name), example_files_dir.files("*.idf"))
+            )
+            raise ValueError(f"Choose from: {sorted(full_list)}")
         if epw is not None:
             epw = Path(epw)
+
             if not epw.exists():
-                epw = next(
-                    iter(
-                        Pathlib(
-                            EnergyPlusVersion.current().current_install_dir
-                            / "WeatherData"
-                        ).rglob(f"{epw.stem}.epw")
-                    ),
-                    epw,
+                dir_weather_data_ = (
+                    EnergyPlusVersion.current().current_install_dir / "WeatherData"
                 )
+                try:
+                    epw = next(
+                        iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw"))
+                    )
+                except StopIteration:
+                    full_list = list(
+                        map(lambda x: str(x.name), dir_weather_data_.files("*.epw"))
+                    )
+                    raise ValueError(f"Choose EPW from: {sorted(full_list)}")
         return cls(file, epw=epw, **kwargs)
 
     def setiddname(self, iddname, testing=False):

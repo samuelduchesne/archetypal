@@ -146,7 +146,7 @@ class UmiTemplateLibrary:
             yield group, self.__dict__[group]
 
     def __add__(self, other: "UmiTemplateLibrary"):
-        """Combined """
+        """Combined"""
         for key, group in other:
             # for each group
             for component in group:
@@ -179,6 +179,7 @@ class UmiTemplateLibrary:
         name="unnamed",
         processors=-1,
         keep_all_zones=False,
+        debug=False,
         **kwargs,
     ):
         """Initialize an UmiTemplateLibrary object from one or more idf_files.
@@ -195,6 +196,7 @@ class UmiTemplateLibrary:
             weather (str or Path): Path to the weather file.
             name (str): The name of the Template File
             processors (int): Number of cores. Defaults to -1, all cores.
+            debug (bool): If True, will raise any error on any processed file.
             kwargs: keyword arguments passed to IDF().
 
         Raises:
@@ -222,7 +224,7 @@ class UmiTemplateLibrary:
             cls.template_complexity_reduction,
             processors=processors,
             use_kwargs=True,
-            debug=True,
+            debug=debug,
             position=None,
             executor=ThreadPoolExecutor,
         )

@@ -846,3 +846,9 @@ def parent_child_traversal(parent):
     for child in parent.children:
         yield parent, child
         yield from parent_child_traversal(child)
+
+
+def traverse(parent):
+    """Iterate over all children of the parent. 
+    """
+    return parent_child_traversal(parent)

@@ -2579,6 +2579,51 @@ class IDF(GeomIDF):
         super(IDF, self).translate(vector=vector)
         self.translated = True
 
+    def material_quantities(self):
+        """Get material quantities."""
+        from archetypal.template import WindowConstruction, OpaqueConstruction
+
+        volume_by_mat = defaultdict(float)
+        for surface_type in ["Wall", "Roof"]:
+            for surf in self.getsurfaces(surface_type):
+                if surf.Outside_Boundary_Condition.lower() in [
+                    "adiabatic",
+                    "surface",
+                    "zone",
+                ]:
+                    continue
+                surface_gross_area = surf.area
+                surf_net_area = 0
+                multiplier = float(
+                    surf.get_referenced_object("Zone_Name").Multiplier or 1)
+                print(multiplier)
+
+                total_window_area_for_surface = 0
+                for subsurface in surf.subsurfaces:
+                    construction = subsurface.get_referenced_object("Construction_Name")
+
+                    window = WindowConstruction.from_epbunch(construction)
+                    total_window_area_for_surface += subsurface.area
+                    for lyr in window.Layers:
+                        volume_by_mat[("Window", lyr.Material)] += (
+                                lyr.Thickness * subsurface.area * multiplier
+                        )
+
+                # calculate the net area for the surface (minus total window area)
+                surf_net_area = surface_gross_area - total_window_area_for_surface
+
+                # Create an OpaqueConstruction object to retrieve layer properties
+                constr = OpaqueConstruction.from_epbunch(
+                    surf.get_referenced_object("Construction_Name")
+                )
+                constr.area = surf_net_area
+
+                for lyr in constr.Layers:
+                    volume_by_mat[(surface_type, lyr.Material)] += (
+                            lyr.Thickness * constr.area * multiplier
+                    )
+        return dict(volume_by_mat)
+
     @property
     def translated(self):
         """Get or set if the model was translated (X, Y, Z)."""

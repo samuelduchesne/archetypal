@@ -67,7 +67,7 @@ class GasLayer(object):
 
     @resistivity.setter
     def resistivity(self, value):
-        self.Material.Conductivity = 1 / float(value)
+        self.Material.Conductivity = 1 / validators.float(value, minimum=0)
 
     @property
     def r_value(self):
@@ -80,7 +80,16 @@ class GasLayer(object):
 
     @r_value.setter
     def r_value(self, value):
-        self.Thickness = float(value) * self.Material.Conductivity
+        self.Thickness = validators.float(value, minimum=0) * self.Material.Conductivity
+
+    @property
+    def u_value(self):
+        """Get or set the heat transfer coefficient [W/(m2⋅K)]."""
+        return 1 / self.r_value
+
+    @u_value.setter
+    def u_value(self, value):
+        self.r_value = 1 / validators.float(value, minimum=0)
 
     @property
     def heat_capacity(self):
@@ -322,9 +331,10 @@ class GasLayer(object):
         )
 
     def to_epbunch(self, idf):
-        """Convert self to an epbunch given an IDF model.
+        """Convert self to an EpBunch given an IDF model.
 
         Notes:
+            The object is added to the idf model.
             The thickness is passed to the epbunch.
 
         Args:

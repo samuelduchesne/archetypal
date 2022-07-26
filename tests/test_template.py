@@ -957,13 +957,9 @@ class TestGasMaterial:
         gm_dict = {gm: "this_idf", gm_2: "same_idf"}
         assert len(gm_dict) == 1
 
-        gm_2.Name = "some other name"
-        # even if name changes, they should be equal
-        assert gm_2 == gm
-
         gm_dict = {gm: "this_idf", gm_2: "same_idf"}
         assert gm in gm_dict
-        assert len(gm_dict) == 2
+        assert len(gm_dict) == 1
 
         # if an attribute changed, equality is lost
         gm_2.Cost = 69
@@ -973,12 +969,9 @@ class TestGasMaterial:
         # don't have the same hash.
         assert len(set(gm_list)) == 2
 
-        # 2 GasMaterial from same json should not have the same hash if they
-        # have different names, not be the same object, yet be equal if they have the
-        # same layers (Material and Thickness)
+        # Test copy
         gm_3 = gm.duplicate()
-        gm_3.Name = "other name"
-        assert hash(gm) != hash(gm_3)
+        assert hash(gm) == hash(gm_3)
         assert id(gm) != id(gm_3)
         assert gm is not gm_3
         assert gm == gm_3

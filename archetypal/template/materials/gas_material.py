@@ -54,7 +54,7 @@ class GasMaterial(MaterialBase):
             f"of the following:\n{self._GASTYPES}"
         )
         self._type = value.upper()
-        self._name = value.title()
+        self._name = value
 
     @property
     def Type(self):
@@ -71,7 +71,7 @@ class GasMaterial(MaterialBase):
             f"of the following:\n{self._GASTYPES}"
         )
         self._type = value.upper()
-        self._name = value.title()
+        self._name = value
 
     @property
     def Conductivity(self):

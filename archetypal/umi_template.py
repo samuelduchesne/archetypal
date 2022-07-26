@@ -146,6 +146,9 @@ class UmiTemplateLibrary:
         for group in self._LIB_GROUPS:
             yield group, self.__dict__[group]
 
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
     def __add__(self, other: "UmiTemplateLibrary"):
         """Combined"""
         for key, group in other:

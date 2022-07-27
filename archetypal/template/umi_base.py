@@ -270,6 +270,12 @@ class UmiBase(object):
         for attr, value in self.mapping().items():
             yield attr, value
 
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
+
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))

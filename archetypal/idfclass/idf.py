@@ -31,11 +31,7 @@ from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from geomeppy import IDF as GeomIDF
 from geomeppy.geom.polygons import Polygon3D
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
-from geomeppy.recipes import (
-    _has_correct_orientation,
-    _is_window,
-    window_vertices_given_wall,
-)
+from geomeppy.recipes import _is_window, window_vertices_given_wall
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
 from path import Path
@@ -369,25 +365,35 @@ class IDF(GeomIDF):
         from pathlib import Path as Pathlib
 
         example_name = Path(example_name)
-        file = next(
-            iter(
-                Pathlib(
-                    EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
-                ).rglob(f"{example_name.stem}.idf")
-            )
+        example_files_dir: Path = (
+            EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
         )
+        try:
+
+            file = next(
+                iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf"))
+            )
+        except StopIteration:
+            full_list = list(
+                map(lambda x: str(x.name), example_files_dir.files("*.idf"))
+            )
+            raise ValueError(f"Choose from: {sorted(full_list)}")
         if epw is not None:
             epw = Path(epw)
+
             if not epw.exists():
-                epw = next(
-                    iter(
-                        Pathlib(
-                            EnergyPlusVersion.current().current_install_dir
-                            / "WeatherData"
-                        ).rglob(f"{epw.stem}.epw")
-                    ),
-                    epw,
+                dir_weather_data_ = (
+                    EnergyPlusVersion.current().current_install_dir / "WeatherData"
                 )
+                try:
+                    epw = next(
+                        iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw"))
+                    )
+                except StopIteration:
+                    full_list = list(
+                        map(lambda x: str(x.name), dir_weather_data_.files("*.epw"))
+                    )
+                    raise ValueError(f"Choose EPW from: {sorted(full_list)}")
         return cls(file, epw=epw, **kwargs)
 
     def setiddname(self, iddname, testing=False):
@@ -2526,8 +2532,14 @@ class IDF(GeomIDF):
                 all_zone_origin_at_0 = False
         return ggr_asks_for_relative and not all_zone_origin_at_0
 
-    def rotate(self, angle: Optional[float] = None, anchor: Union[Tuple] = None):
-        """IF angle is None, rotate to North Axis."""
+    def rotate(
+        self, angle: Optional[float] = None, anchor: Tuple[float, float, float] = None
+    ):
+        """Rotate the IDF counterclockwise around `anchor` by the angle given (degrees).
+
+        IF angle is None, rotates to Direction_of_Relative_North specified in Zone
+        objects.
+        """
         if not angle:
             bldg_angle = self.idfobjects["BUILDING"][0].North_Axis or 0
             log(f"Building North Axis = {bldg_angle}", level=lg.DEBUG)
@@ -2556,6 +2568,16 @@ class IDF(GeomIDF):
             z.Direction_of_Relative_North = 0
         # Mark the model as rotated
         self.rotated = True
+
+    def translate(self, vector: Tuple[float, float, float]):
+        """Move the IDF in the direction given by a vector."""
+        if isinstance(vector, tuple):
+            from geomeppy.geom.vectors import Vector2D
+
+            vector = Vector2D(*vector)
+
+        super(IDF, self).translate(vector=vector)
+        self.translated = True
 
     @property
     def translated(self):

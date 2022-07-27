@@ -123,8 +123,8 @@ class WindowSetting(UmiBase):
         self.OperableArea = OperableArea
         self.ShadingSystemSetpoint = ShadingSystemSetpoint
         self.ShadingSystemTransmittance = ShadingSystemTransmittance
-        self.ShadingSystemType = ShadingType(ShadingSystemType)
-        self.Type = WindowType(Type)
+        self.ShadingSystemType = ShadingSystemType
+        self.Type = Type
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
@@ -195,7 +195,7 @@ class WindowSetting(UmiBase):
             )
             self._shading_system_type = ShadingType[value]
         elif checkers.is_numeric(value):
-            assert ShadingType[value], (
+            assert ShadingType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in ShadingType)}"
             )
@@ -336,7 +336,7 @@ class WindowSetting(UmiBase):
             )
             self._type = WindowType[value]
         elif checkers.is_numeric(value):
-            assert WindowType[value], (
+            assert WindowType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in WindowType)}"
             )

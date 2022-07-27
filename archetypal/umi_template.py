@@ -193,6 +193,7 @@ class UmiTemplateLibrary:
         processors=-1,
         keep_all_zones=False,
         unique_components=None,
+        debug=False,
         **kwargs,
     ):
         """Initialize an UmiTemplateLibrary object from one or more idf_files.
@@ -209,6 +210,7 @@ class UmiTemplateLibrary:
             weather (str or Path): Path to the weather file.
             name (str): The name of the Template File
             processors (int): Number of cores. Defaults to -1, all cores.
+            debug (bool): If True, will raise any error on any processed file.
             kwargs: keyword arguments passed to IDF().
 
         Raises:
@@ -236,7 +238,7 @@ class UmiTemplateLibrary:
             cls.template_complexity_reduction,
             processors=processors,
             use_kwargs=True,
-            debug=True,
+            debug=debug,
             position=None,
             executor=ThreadPoolExecutor,
         )

@@ -154,7 +154,18 @@ class TestUmiBase:
     """Series of tests for the :class:`UmiBase` class"""
 
     # todo: Implement tests for UmiBase class
-    pass
+    @pytest.fixture()
+    def umi_object(self):
+        yield OpaqueMaterial.generic()
+
+    def test_getitem(self, umi_object: OpaqueMaterial):
+        assert umi_object.Name == umi_object["Name"]
+
+    def test_setitem(self, umi_object: OpaqueMaterial):
+        new_name = "Hey!"
+        umi_object["Name"] = new_name
+        assert umi_object["Name"] == new_name
+        assert umi_object.Name == new_name
 
 
 class TestMaterialLayer:

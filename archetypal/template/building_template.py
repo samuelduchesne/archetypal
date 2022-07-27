@@ -353,7 +353,7 @@ class BuildingTemplate(UmiBase):
             **kwargs:
         """
         # initialize empty BuildingTemplate
-        name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
+        name = kwargs.pop("Name", Path(idf.name).stem)
 
         epbunch_zones = idf.idfobjects["ZONE"]
         zones = [

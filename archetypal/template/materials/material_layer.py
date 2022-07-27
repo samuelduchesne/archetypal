@@ -135,7 +135,7 @@ class MaterialLayer(object):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return id(self)
+        return hash(id(self))
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

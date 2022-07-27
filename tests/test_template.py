@@ -607,10 +607,9 @@ class TestOpaqueMaterial:
         om = OpaqueMaterial.from_dict(data)
         om_2 = om.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert om == om_2
-        assert hash(om) == hash(om_2)
+        assert hash(om) != hash(om_2)
         assert om is not om_2
 
         # hash is used to find object in lookup table
@@ -620,14 +619,6 @@ class TestOpaqueMaterial:
 
         om_list.append(om_2)
         assert om_2 in om_list
-
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(om_list)) == 1
-
-        # dict behavior
-        om_dict = {om: "this_idf", om_2: "same_idf"}
-        assert len(om_dict) == 1
 
         om_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -641,16 +632,12 @@ class TestOpaqueMaterial:
         om_2.Cost = 69
         assert om != om_2
 
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(om_list)) == 2
-
         # 2 OpaqueMaterial from different idf should have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
         # same characteristics (Thickness, Roughness, etc.)
         om_3 = om.duplicate()
         om_3.DataSource = "Other IDF"
-        assert hash(om) == hash(om_3)
+        assert hash(om) != hash(om_3)
         assert id(om) != id(om_3)
         assert om is not om_3
         assert om == om_3
@@ -847,10 +834,9 @@ class TestGlazingMaterial:
         mat_a = GlazingMaterial(Name="mat_ia", **sg_a)
         mat_b = copy(mat_a)
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert mat_a == mat_b
-        assert hash(mat_a) == hash(mat_b)
+        assert hash(mat_a) != hash(mat_b)
         assert mat_a is not mat_b
 
         # hash is used to find object in lookup table
@@ -861,13 +847,9 @@ class TestGlazingMaterial:
         glm_list.append(mat_b)
         assert mat_b in glm_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(glm_list)) == 1
-
         # dict behavior
         glm_dict = {mat_a: "this_idf", mat_b: "same_idf"}
-        assert len(glm_dict) == 1
+        assert len(glm_dict) == 2
 
         mat_b.Name = "some other name"
         # even if name changes, they should be equal
@@ -880,10 +862,6 @@ class TestGlazingMaterial:
         # if an attribute changed, equality is lost
         mat_b.Cost = 69
         assert mat_a != mat_b
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(glm_list)) == 2
 
         # 2 GasMaterial from same json should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
@@ -935,10 +913,9 @@ class TestGasMaterial:
         gm = gasMat_json[0]
         gm_2 = gm.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert gm == gm_2
-        assert hash(gm) == hash(gm_2)
+        assert hash(gm) != hash(gm_2)
         assert gm is not gm_2
 
         # hash is used to find object in lookup table
@@ -949,29 +926,21 @@ class TestGasMaterial:
         gm_list.append(gm_2)
         assert gm_2 in gm_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(gm_list)) == 1
-
         # dict behavior
         gm_dict = {gm: "this_idf", gm_2: "same_idf"}
-        assert len(gm_dict) == 1
+        assert len(gm_dict) == 2
 
         gm_dict = {gm: "this_idf", gm_2: "same_idf"}
         assert gm in gm_dict
-        assert len(gm_dict) == 1
+        assert len(gm_dict) == 2
 
         # if an attribute changed, equality is lost
         gm_2.Cost = 69
         assert gm != gm_2
 
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(gm_list)) == 2
-
         # Test copy
         gm_3 = gm.duplicate()
-        assert hash(gm) == hash(gm_3)
+        assert hash(gm) != hash(gm_3)
         assert id(gm) != id(gm_3)
         assert gm is not gm_3
         assert gm == gm_3
@@ -1189,10 +1158,9 @@ class TestOpaqueConstruction:
 
         oc_2 = construction_a.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert construction_a == oc_2
-        assert hash(construction_a) == hash(oc_2)
+        assert hash(construction_a) != hash(oc_2)
         assert construction_a is not oc_2
 
         # hash is used to find object in lookup table
@@ -1203,13 +1171,9 @@ class TestOpaqueConstruction:
         oc_list.append(oc_2)
         assert oc_2 in oc_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(oc_list)) == 1
-
         # dict behavior
         oc_dict = {construction_a: "this_idf", oc_2: "same_idf"}
-        assert len(oc_dict) == 1
+        assert len(oc_dict) == 2
 
         oc_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1218,10 +1182,6 @@ class TestOpaqueConstruction:
         oc_dict = {construction_a: "this_idf", oc_2: "same_idf"}
         assert construction_a in oc_dict
         assert len(oc_dict) == 2
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(oc_list)) == 2
 
         # 2 OpaqueConstruction from different idf should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
@@ -1642,11 +1602,10 @@ class TestStructureInformation:
     def test_hash_eq_struc_def(self, structure):
         """Test equality and hashing of :class:`OpaqueConstruction`."""
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         sd_2 = structure.duplicate()
         assert structure == sd_2
-        assert hash(structure) == hash(sd_2)
+        assert hash(structure) != hash(sd_2)
         assert structure is not sd_2
 
         # hash is used to find object in lookup table
@@ -1657,13 +1616,9 @@ class TestStructureInformation:
         sd_list.append(sd_2)
         assert sd_2 in sd_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(sd_list)) == 1
-
         # dict behavior
         sd_dict = {structure: "this_idf", sd_2: "same_idf"}
-        assert len(sd_dict) == 1
+        assert len(sd_dict) == 2
 
         sd_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1676,10 +1631,6 @@ class TestStructureInformation:
         # if an attribute changed, equality is lost
         sd_2.AssemblyCost = 69
         assert structure != sd_2
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(sd_list)) == 2
 
         # 2 GasMaterial from same json should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
@@ -1723,10 +1674,9 @@ class TestUmiSchedule:
         sched = UmiSchedule.from_epbunch(epbunch=ep_bunch)
         sched_2 = sched.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert sched == sched_2
-        assert hash(sched) == hash(sched_2)
+        assert hash(sched) != hash(sched_2)
         assert sched is not sched_2
 
         # hash is used to find object in lookup table
@@ -1737,13 +1687,9 @@ class TestUmiSchedule:
         sched_list.append(sched_2)
         assert sched_2 in sched_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(sched_list)) == 1
-
         # dict behavior
         sched_dict = {sched: "this_idf", sched_2: "same_idf"}
-        assert len(sched_dict) == 1
+        assert len(sched_dict) == 2
 
         sched_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -1757,10 +1703,6 @@ class TestUmiSchedule:
         sched_2.strict = True
         assert sched != sched_2
 
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(sched_list)) == 2
-
         # 2 UmiSchedule from different small_idf should have the same hash,
         # not be the same object, yet be equal if they have the same values
         sched_3 = UmiSchedule.from_epbunch(
@@ -1768,7 +1710,7 @@ class TestUmiSchedule:
         )
         assert sched is not sched_3
         assert sched == sched_3
-        assert hash(sched) == hash(sched_3)
+        assert hash(sched) != hash(sched_3)
         assert id(sched) != id(sched_3)
 
     def test_combine(self):
@@ -1970,10 +1912,9 @@ class TestZoneLoad:
         """Test equality and hashing of :class:`ZoneLoad`."""
         zl_2 = zl.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert zl == zl_2
-        assert hash(zl) == hash(zl_2)
+        assert hash(zl) != hash(zl_2)
         assert zl is not zl_2
 
         # hash is used to find object in lookup table
@@ -1984,13 +1925,9 @@ class TestZoneLoad:
         zl_list.append(zl_2)
         assert zl_2 in zl_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(zl_list)) == 1
-
         # dict behavior
         zl_dict = {zl: "this_idf", zl_2: "same_idf"}
-        assert len(zl_dict) == 1
+        assert len(zl_dict) == 2
 
         zl_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2003,10 +1940,6 @@ class TestZoneLoad:
         # if an attribute changed, equality is lost
         zl_2.IsEquipmentOn = False
         assert zl != zl_2
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(zl_list)) == 2
 
         # 2 ZoneLoad from different idf should not have the same hash even if they
         # have the same name, not be the same object, yet be equal if they have the
@@ -2142,10 +2075,9 @@ class TestZoneConditioning:
         zc = ZoneConditioning(Name="Conditioning 1")
         zc_2 = zc.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert zc == zc_2
-        assert hash(zc) == hash(zc_2)
+        assert hash(zc) != hash(zc_2)
         assert zc is not zc_2
 
         # hash is used to find object in lookup table
@@ -2156,13 +2088,9 @@ class TestZoneConditioning:
         zc_list.append(zc_2)
         assert zc_2 in zc_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(zc_list)) == 1
-
         # dict behavior
         zc_dict = {zc: "this_idf", zc_2: "same_idf"}
-        assert len(zc_dict) == 1
+        assert len(zc_dict) == 2
 
         zc_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2175,10 +2103,6 @@ class TestZoneConditioning:
         # if an attribute changed, equality is lost
         zc_2.IsCoolingOn = True
         assert zc != zc_2
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(zc_list)) == 2
 
         # 2 ZoneConditioning from different idf should not have the same hash if they
         # have different names, not be the same object, yet be equal if they have the
@@ -2297,10 +2221,9 @@ class TestVentilationSetting:
         )
         vent_2 = vent.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert vent == vent_2
-        assert hash(vent) == hash(vent_2)
+        assert hash(vent) != hash(vent_2)
         assert vent is not vent_2
 
         # hash is used to find object in lookup table
@@ -2311,13 +2234,9 @@ class TestVentilationSetting:
         vent_list.append(vent_2)
         assert vent_2 in vent_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(vent_list)) == 1
-
         # dict behavior
         vent_dict = {vent: "this_idf", vent_2: "same_idf"}
-        assert len(vent_dict) == 1
+        assert len(vent_dict) == 2
 
         vent_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2330,10 +2249,6 @@ class TestVentilationSetting:
         # if an attribute changed, equality is lost
         vent_2.Afn = True
         assert vent != vent_2
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(vent_list)) == 2
 
         # 2 VentilationSettings from different idf should not have the same hash if they
         # have same names, not be the same object, yet be equal if they have the
@@ -2555,10 +2470,9 @@ class TestDomesticHotWaterSetting:
         )
         dhw_2 = dhw.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert dhw == dhw_2
-        assert hash(dhw) == hash(dhw_2)
+        assert hash(dhw) != hash(dhw_2)
         assert dhw is not dhw_2
 
         # hash is used to find object in lookup table
@@ -2569,13 +2483,9 @@ class TestDomesticHotWaterSetting:
         dhw_list.append(dhw_2)
         assert dhw_2 in dhw_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(dhw_list)) == 1
-
         # dict behavior
         dhw_dict = {dhw: "this_idf", dhw_2: "same_idf"}
-        assert len(dhw_dict) == 1
+        assert len(dhw_dict) == 2
 
         dhw_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2588,10 +2498,6 @@ class TestDomesticHotWaterSetting:
         # if an attribute changed, equality is lost
         dhw_2.IsOn = False
         assert dhw != dhw_2
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(dhw_list)) == 2
 
 
 class TestWindowSetting:
@@ -2729,10 +2635,9 @@ class TestWindowSetting:
         wind = WindowSetting.from_surface(f_surf)
         wind_2 = wind.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert wind == wind_2
-        assert hash(wind) == hash(wind_2)
+        assert hash(wind) != hash(wind_2)
         assert wind is not wind_2
 
         # hash is used to find object in lookup table
@@ -2743,13 +2648,9 @@ class TestWindowSetting:
         wind_list.append(wind_2)
         assert wind_2 in wind_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(wind_list)) == 1
-
         # dict behavior
         wind_dict = {wind: "this_idf", wind_2: "same_idf"}
-        assert len(wind_dict) == 1
+        assert len(wind_dict) == 2
 
         wind_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2763,10 +2664,6 @@ class TestWindowSetting:
         wind_2.IsVirtualPartition = True
         assert wind != wind_2
 
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(wind_list)) == 2
-
         # 2 WindowSettings from different idf should not have the same hash
         # if they have different names, not be the same object, yet be equal if they
         # have the same values (Construction, Type, etc.)
@@ -2776,7 +2673,7 @@ class TestWindowSetting:
         assert idf is not idf_2
         assert f_surf is not f_surf_3
         assert f_surf != f_surf_3
-        assert hash(wind) == hash(wind_3)
+        assert hash(wind) != hash(wind_3)
         assert wind is not wind_3
         assert wind == wind_3
 
@@ -2964,10 +2861,9 @@ class TestZoneDefinition:
         )
         zone_2 = zone.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert zone == zone_2
-        assert hash(zone) == hash(zone_2)
+        assert hash(zone) != hash(zone_2)
         assert zone is not zone_2
 
         # hash is used to find object in lookup table
@@ -2978,13 +2874,9 @@ class TestZoneDefinition:
         zone_list.append(zone_2)
         assert zone_2 in zone_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(zone_list)) == 1
-
         # dict behavior
         zone_dict = {zone: "this_idf", zone_2: "same_idf"}
-        assert len(zone_dict) == 1
+        assert len(zone_dict) == 2
 
         zone_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -2997,10 +2889,6 @@ class TestZoneDefinition:
         # if an attribute changed, equality is lost
         zone_2.DaylightMeshResolution = 69
         assert zone != zone_2
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(zone_list)) == 2
 
         # 2 Zones from different idf should not have the same hash, not be the same
         # object, yet be equal if they have the same values (Conditioning, Loads, etc.).
@@ -3146,10 +3034,9 @@ class TestBuildingTemplate:
         bt = building_template
         bt_2 = building_template.duplicate()
 
-        # a copy of dhw should be equal and have the same hash, but still not be the
-        # same object
+        # a copy of dhw should be equal and not have the same hash
         assert bt == bt_2
-        assert hash(bt) == hash(bt_2)
+        assert hash(bt) != hash(bt_2)
         assert bt is not bt_2
 
         # hash is used to find object in lookup table
@@ -3160,13 +3047,9 @@ class TestBuildingTemplate:
         bt_list.append(bt_2)
         assert bt_2 in bt_list
 
-        # length of set() should be 1 since both objects are
-        # equal but don't have the same hash.
-        assert len(set(bt_list)) == 1
-
         # dict behavior
         bt_dict = {bt: "this_idf", bt_2: "same_idf"}
-        assert len(bt_dict) == 1
+        assert len(bt_dict) == 2
 
         bt_2.Name = "some other name"
         # even if name changes, they should be equal
@@ -3179,10 +3062,6 @@ class TestBuildingTemplate:
         # if an attribute changed, equality is lost
         bt_2.Lifespan = 69
         assert bt != bt_2
-
-        # length of set() should be 2 since both objects are not equal anymore and
-        # don't have the same hash.
-        assert len(set(bt_list)) == 2
 
     def test_reduce(self, zone_definition):
 

@@ -808,9 +808,7 @@ class ZoneLoad(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""

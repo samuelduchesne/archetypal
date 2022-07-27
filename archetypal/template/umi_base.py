@@ -255,7 +255,7 @@ class UmiBase(object):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.mro()[0].__name__, self.Name))
+        return hash(self.id)
 
     def __repr__(self):
         """Return a representation of self."""
@@ -399,7 +399,7 @@ class UmiBase(object):
             self.validate()
 
         return dict(
-            id=self.id,
+            # id=self.id,
             Name=self.Name,
             Category=self.Category,
             Comments=self.Comments,

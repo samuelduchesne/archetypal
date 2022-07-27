@@ -4,6 +4,7 @@ import logging as lg
 import math
 
 from sigfig import round
+from validator_collection import validators
 
 from archetypal.utils import log
 

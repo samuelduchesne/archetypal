@@ -242,28 +242,33 @@ class UmiTemplateLibrary:
             position=None,
             executor=ThreadPoolExecutor,
         )
-        for res in results:
+        for filename, res in results.items():
             if isinstance(res, EnergyPlusProcessError):
                 filename = (settings.logs_folder / "failed_reduce.txt").expand()
                 with open(filename, "a") as file:
                     file.writelines(res.write())
-                    log(f"EnergyPlusProcess errors listed in {filename}")
+                    log(
+                        f"EnergyPlusProcess error for {filename} listed in"
+                        f" {filename}: {res}",
+                        lg.ERROR,
+                    )
             elif isinstance(res, Exception):
-                if settings.debug:
+                if debug:
                     raise res
                 else:
                     log(
-                        f"Unable to create Building Template. Exception raised: "
-                        f"{str(res)}",
+                        f"Exception raised for {filename}: {res}",
                         lg.ERROR,
                     )
 
         # If all exceptions, raise them for debugging
-        if all(isinstance(x, Exception) for x in results):
-            raise Exception([res for res in results if isinstance(res, Exception)])
+        if all(isinstance(x, Exception) for x in results.values()):
+            raise Exception(
+                [res for res in results.values() if isinstance(res, Exception)]
+            )
 
         umi_template.BuildingTemplates = [
-            res for res in results if not isinstance(res, Exception)
+            res for res in results.values() if not isinstance(res, Exception)
         ]
 
         if keep_all_zones:
@@ -307,8 +312,10 @@ class UmiTemplateLibrary:
         for day in idf.idfobjects["RunPeriodControl:SpecialDays".upper()]:
             idf.removeidfobject(day)
 
-        if idf.sim_info is None:
+        try:
             idf.simulate()
+        except EnergyPlusProcessError as e:
+            return e
         return BuildingTemplate.from_idf(idf, **kwargs)
 
     @classmethod

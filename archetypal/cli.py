@@ -329,7 +329,7 @@ def transition(idf, to_version, cores, yes):
 
     # Save results to file (overwriting if True)
     file_list = []
-    for idf in results:
+    for idf in results.values():
         if isinstance(idf, IDF):
             if overwrite:
                 file_list.append(idf.original_idfname)

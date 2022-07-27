@@ -218,6 +218,7 @@ class UmiSchedule(Schedule, UmiBase):
         year.Comments = (
             f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
         )
+        year.quantity = self.quantity
         return year
 
     def get_unique(self):

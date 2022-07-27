@@ -943,7 +943,7 @@ class TestGasMaterial:
 
         gm_dict = {gm: "this_idf", gm_2: "same_idf"}
         assert gm in gm_dict
-        assert len(gm_dict) == 2
+        assert len(gm_dict) == 1
 
         # if an attribute changed, equality is lost
         gm_2.Cost = 69

@@ -7,6 +7,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from copy import copy, deepcopy
 from typing import List
 
+import networkx as nx
 from pandas.io.common import get_handle
 from path import Path
 
@@ -160,7 +161,9 @@ class UmiTemplateLibrary:
         for group, value in self:
             attrs[group] = value + other.__dict__[group]
 
-        return self.__class__(**attrs, name=self.name)
+        newlib = self.__class__(**attrs, name=self.name)
+        newlib.unique_components("GasMaterials", keep_orphaned=True)
+        return newlib
 
     def _clear_components_list(self, except_groups=None):
         """Clear components lists except except_groups."""
@@ -635,7 +638,9 @@ class UmiTemplateLibrary:
 
         return data_dict
 
-    def unique_components(self, *args: str, exceptions: List[str] = None):
+    def unique_components(
+        self, *args: str, exceptions: List[str] = None, keep_orphaned=False
+    ):
         """Keep only unique components.
 
         Starts by clearing all objects in self except self.BuildingTemplates.
@@ -646,12 +651,23 @@ class UmiTemplateLibrary:
         object in the graph.
 
         Args:
-            *args (str): UmiBase class names that should not be replaced with a
+            *args (str): UmiBase class names that should be replaced with a
                 unique equivalent. For example, if only "OpaqueMaterials" should be
-                unique, then use self.unique_components("OpaqueMaterials")
+                unique, then use self.unique_components("OpaqueMaterials"). If none
+                are provided, all umi components be unique.
             exceptions (List[str]): A list of UmiBase class names that will not be
-                cleared and therefore, not be
+                cleared from self.
+            keep_orphaned (bool): if True, orphaned objects are kept.
         """
+        if keep_orphaned:
+            G = self.to_graph(include_orphans=True)
+            connected_to_building = set()
+            for bldg in self.BuildingTemplates:
+                for obj in nx.dfs_preorder_nodes(G, bldg):
+                    connected_to_building.add(obj)
+            orphans = [
+                obj for obj in self.object_list if obj not in connected_to_building
+            ]
         self._clear_components_list(exceptions)  # First clear components
 
         # Inclusion is a set of object classes that will be unique.
@@ -678,6 +694,9 @@ class UmiTemplateLibrary:
                             )  # set unique object on key
 
         self.update_components_list(exceptions=exceptions)  # Update the components list
+        if keep_orphaned:
+            for obj in orphans:
+                self[obj.__class__.__name__ + "s"].append(obj)
         # that was cleared
 
     def replace_component(self, this, that) -> None:
@@ -728,6 +747,7 @@ class UmiTemplateLibrary:
                 obj for obj in self.object_list if obj.id not in (n.id for n in G)
             ]
             for orphan in orphans:
+                G.add_node(orphan)
                 for parent, child in parent_child_traversal(orphan):
                     if parent:
                         G.add_edge(parent, child)
@@ -804,7 +824,7 @@ def parent_key_child_traversal(parent):
                     yield from parent_key_child_traversal(child)
 
 
-def parent_child_traversal(parent):
+def parent_child_traversal(parent: UmiBase):
     """Iterate over all children of the parent.
 
     This generator recursively yields (parent, child) tuples. It uses the

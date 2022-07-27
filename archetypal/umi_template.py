@@ -30,6 +30,7 @@ from archetypal.template.schedule import (
     WeekSchedule,
     YearSchedule,
     YearSchedulePart,
+    UmiSchedule,
 )
 from archetypal.template.structure import MassRatio, StructureInformation
 from archetypal.template.umi_base import UmiBase, UniqueName
@@ -697,7 +698,6 @@ class UmiTemplateLibrary:
         if keep_orphaned:
             for obj in orphans:
                 self[obj.__class__.__name__ + "s"].append(obj)
-        # that was cleared
 
     def replace_component(self, this, that) -> None:
         """Replace all instances of `this` with `that`.
@@ -721,7 +721,21 @@ class UmiTemplateLibrary:
         for key, group in self:
             for component in group:
                 for parent, key, child in parent_key_child_traversal(component):
-                    if isinstance(child, UmiBase):
+                    if isinstance(child, UmiSchedule) and not isinstance(
+                        child, (DaySchedule, WeekSchedule, YearSchedule)
+                    ):
+                        y, ws, ds = child.to_year_week_day()
+                        if not any(o.id == y.id for o in self.YearSchedules):
+                            self.YearSchedules.append(y)
+                        for w in ws:
+                            if not any(o.id == w.id for o in self.WeekSchedules):
+                                self.WeekSchedules.append(w)
+                        for d in ds:
+                            if not any(o.id == d.id for o in self.DaySchedules):
+                                self.DaySchedules.append(d)
+                        # finally, replace it with y
+                        setattr(parent, key, y)
+                    elif isinstance(child, UmiBase):
                         obj_list = self.__dict__[child.__class__.__name__ + "s"]
                         if not any(o.id == child.id for o in obj_list):
                             # Important to compare on UmiBase.id and not on identity.

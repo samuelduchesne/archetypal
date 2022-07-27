@@ -1078,4 +1078,4 @@ class YearSchedule(UmiSchedule):
 
     @property
     def children(self):
-        return (p.Schedule for p in self.Parts)
+        return tuple(p.Schedule for p in self.Parts)

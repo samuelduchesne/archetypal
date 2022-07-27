@@ -334,4 +334,4 @@ class LayeredConstruction(ConstructionBase):
 
     @property
     def children(self):
-        return (l.Material for l in self.Layers)
+        return tuple(l.Material for l in self.Layers)

@@ -260,4 +260,4 @@ class StructureInformation(ConstructionBase):
 
     @property
     def children(self):
-        return (m.Material for m in self.MassRatios)
+        return tuple(m.Material for m in self.MassRatios)

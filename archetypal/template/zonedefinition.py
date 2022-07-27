@@ -120,6 +120,9 @@ class ZoneDefinition(UmiBase):
         self.multiplier = multiplier
         self.is_core = is_core
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Constructions(self):
         """Get or set the ZoneConstructionSet object."""

@@ -31,6 +31,9 @@ class UmiSchedule(Schedule, UmiBase):
         super(UmiSchedule, self).__init__(Name, **kwargs)
         self.quantity = quantity
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def quantity(self):
         """Get or set the schedule quantity."""

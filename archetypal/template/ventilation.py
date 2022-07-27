@@ -198,6 +198,9 @@ class VentilationSetting(UmiBase):
         self.area = area
         self.volume = volume
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def NatVentSchedule(self):
         """Get or set the natural ventilation schedule.

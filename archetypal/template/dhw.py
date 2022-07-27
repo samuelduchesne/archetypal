@@ -61,6 +61,9 @@ class DomesticHotWaterSetting(UmiBase):
         self.WaterSchedule = WaterSchedule
         self.area = area
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def FlowRatePerFloorArea(self):
         """Get or set the flow rate per flow area [m³/(hr·m²)]."""

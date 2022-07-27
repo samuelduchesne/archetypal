@@ -92,8 +92,6 @@ class UmiBase(object):
         self.unit_number = next(self._ids)
         self.predecessors = None
 
-        UmiBase.CREATED_OBJECTS.append(self)
-
     @property
     def Name(self):
         """Get or set the name of the object."""

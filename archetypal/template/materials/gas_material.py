@@ -39,6 +39,9 @@ class GasMaterial(MaterialBase):
         self.Conductivity = Conductivity
         self.Density = Density
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Name(self):
         """Get or set the name of the GasMaterial.

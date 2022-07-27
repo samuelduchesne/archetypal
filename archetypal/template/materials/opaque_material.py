@@ -119,7 +119,10 @@ class OpaqueMaterial(MaterialBase):
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
         self._key: str = kwargs.get("_key", "")
-        # TODO: replace when NoMass and AirGap is properly supported
+        # TODO: replace when NoMass and AirGap when properly is supported
+
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Conductivity(self):

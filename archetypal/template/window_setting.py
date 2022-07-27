@@ -131,6 +131,9 @@ class WindowSetting(UmiBase):
 
         self.area = area
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def area(self):
         """Get or set the area of the zone associated to this object [m²]."""

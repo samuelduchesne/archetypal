@@ -4,7 +4,6 @@ import json
 import logging as lg
 from collections import OrderedDict
 from concurrent.futures.thread import ThreadPoolExecutor
-from copy import copy, deepcopy
 from typing import List
 
 import networkx as nx
@@ -27,10 +26,10 @@ from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.materials.opaque_material import OpaqueMaterial
 from archetypal.template.schedule import (
     DaySchedule,
+    UmiSchedule,
     WeekSchedule,
     YearSchedule,
     YearSchedulePart,
-    UmiSchedule,
 )
 from archetypal.template.structure import MassRatio, StructureInformation
 from archetypal.template.umi_base import UmiBase, UniqueName

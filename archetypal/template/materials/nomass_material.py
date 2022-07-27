@@ -77,6 +77,9 @@ class NoMassMaterial(MaterialBase):
         self.VisibleAbsorptance = VisibleAbsorptance
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def r_value(self):
         """Get or set the thermal resistance [m2-K/W]."""

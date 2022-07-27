@@ -114,6 +114,9 @@ class BuildingTemplate(UmiBase):
         self.AuthorEmails = AuthorEmails if AuthorEmails else []
         self.Version = Version
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Perimeter(self):
         """Get or set the perimeter ZoneDefinition."""

@@ -45,6 +45,9 @@ class OpaqueConstruction(LayeredConstruction):
         super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
         self.area = 1
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def r_value(self):
         """Get or set the thermal resistance [K⋅m2/W] (excluding air films).

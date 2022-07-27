@@ -104,6 +104,9 @@ class GlazingMaterial(MaterialBase):
         self.SolarReflectanceFront = SolarReflectanceFront
         self.SolarTransmittance = SolarTransmittance
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Conductivity(self):
         """Get or set the conductivity of the material [W/m-K]."""

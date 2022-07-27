@@ -151,6 +151,9 @@ class StructureInformation(ConstructionBase):
         super(StructureInformation, self).__init__(Name, **kwargs)
         self.MassRatios = MassRatios
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def MassRatios(self):
         """Get or set the list of MassRatios."""

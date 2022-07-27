@@ -85,6 +85,9 @@ class WindowConstruction(LayeredConstruction):
         )
         self.Category = Category  # set here for validators
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Category(self):
         """Get or set the Category. Choices are ("single", "double", "triple")."""

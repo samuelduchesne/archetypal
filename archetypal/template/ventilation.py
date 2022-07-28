@@ -198,6 +198,9 @@ class VentilationSetting(UmiBase):
         self.area = area
         self.volume = volume
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def NatVentSchedule(self):
         """Get or set the natural ventilation schedule.
@@ -567,7 +570,7 @@ class VentilationSetting(UmiBase):
             IsScheduledVentilationOn,
             ScheduledVentilationAch,
             ScheduledVentilationSetpoint,
-        ) = do_scheduled_ventilation(index, sched_df, zone)
+        ) = do_scheduled_ventilation(index, sched_df, zone, zone_ep)
 
         z_vent = cls(
             Name=name,
@@ -729,9 +732,7 @@ class VentilationSetting(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""
@@ -1039,7 +1040,7 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
     )
 
 
-def do_scheduled_ventilation(index, scd_df, zone):
+def do_scheduled_ventilation(index, scd_df, zone, zone_ep):
     """Get schedule ventilation information of the zone.
 
     Args:
@@ -1051,12 +1052,12 @@ def do_scheduled_ventilation(index, scd_df, zone):
         try:
             IsScheduledVentilationOn = any(scd_df.loc[index, "Name"])
             schedule_name_ = scd_df.loc[index, "Schedule Name"]
-            epbunch = zone.idf.schedules_dict[schedule_name_.upper()]
+            epbunch = zone_ep.theidf.schedules_dict[schedule_name_.upper()]
             ScheduledVentilationSchedule = UmiSchedule.from_epbunch(epbunch)
             ScheduledVentilationAch = scd_df.loc[index, "ACH - Air Changes per Hour"]
             ScheduledVentilationSetpoint = resolve_temp(
                 scd_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
-                zone.idf,
+                zone_ep.theidf,
             )
         except Exception:
             ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
@@ -1183,7 +1184,10 @@ def nominal_ventilation(df):
     )
     tbpiv = (
         tbpiv.reset_index()
-        .groupby(["Archetype", "Zone Name", "Fan Type {Exhaust;Intake;Natural}"])
+        .groupby(
+            ["Archetype", "Zone Name", "Fan Type {Exhaust;Intake;Natural}"],
+            as_index=False,
+        )
         .apply(nominal_ventilation_aggregation)
     )
     return tbpiv
@@ -1205,8 +1209,13 @@ def nominal_ventilation_aggregation(x):
         aggregated accordingly.
     """
     how_dict = {
+        "Archetype": x["Archetype"][0],
+        "Zone Name": x["Zone Name"][0],
         "Name": top(x["Name"], x, "Zone Floor Area {m2}"),
         "Schedule Name": top(x["Schedule Name"], x, "Zone Floor Area {m2}"),
+        "Fan Type {Exhaust;Intake;Natural}": top(
+            x["Fan Type {Exhaust;Intake;Natural}"], x, "Zone Floor Area {m2}"
+        ),
         "Zone Floor Area {m2}": top(
             x["Zone Floor Area {m2}"], x, "Zone Floor Area {m2}"
         ),
@@ -1222,7 +1231,7 @@ def nominal_ventilation_aggregation(x):
         "Volume Flow Rate/person Area {m3/s/person}": weighted_mean(
             x.filter(like="Volume Flow Rate/person Area").squeeze(axis=1),
             x,
-            "Zone Floor " "Area {m2}",
+            "Zone Floor Area {m2}",
         ),
         "ACH - Air Changes per Hour": weighted_mean(
             x["ACH - Air Changes per Hour"], x, "Zone Floor Area {m2}"

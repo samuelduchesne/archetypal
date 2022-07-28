@@ -189,7 +189,7 @@ class TestIDF:
         }
         idfs = parallel_process(files, IDF, use_kwargs=True, processors=-1)
 
-        assert not any(isinstance(a, Exception) for a in idfs)
+        assert not any(isinstance(a, Exception) for a in idfs.values())
 
     def test_load_old(self, config, natvent, FiveZoneNightVent1):
         assert natvent.idd_version == (9, 2, 0)

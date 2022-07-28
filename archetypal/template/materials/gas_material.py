@@ -33,14 +33,35 @@ class GasMaterial(MaterialBase):
             Category (str): Category is set as "Gases" for GasMaterial.
             **kwargs: keywords passed to the MaterialBase constructor.
         """
-        super(GasMaterial, self).__init__(Name, Category=Category, **kwargs)
+        self.Name = Name
+        super(GasMaterial, self).__init__(self.Name, Category=Category, **kwargs)
         self.Type = Name.upper()
         self.Conductivity = Conductivity
         self.Density = Density
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
+    @property
+    def Name(self):
+        """Get or set the name of the GasMaterial.
+
+        Choices are ("Air", "Argon", "Krypton", "Xenon").
+        """
+        return self._name
+
+    @Name.setter
+    def Name(self, value):
+        assert value.lower() in self._GASTYPES, (
+            f"Invalid value '{value}' for material gas type. Gas type must be one "
+            f"of the following:\n{self._GASTYPES}"
+        )
+        self._type = value.upper()
+        self._name = value
+
     @property
     def Type(self):
-        """Get or set the gas type.
+        """Get or set the gas type. Alias of Name.
 
         Choices are ("Air", "Argon", "Krypton", "Xenon").
         """
@@ -52,7 +73,8 @@ class GasMaterial(MaterialBase):
             f"Invalid value '{value}' for material gas type. Gas type must be one "
             f"of the following:\n{self._GASTYPES}"
         )
-        self._type = value
+        self._type = value.upper()
+        self._name = value
 
     @property
     def Conductivity(self):
@@ -73,7 +95,7 @@ class GasMaterial(MaterialBase):
 
     @Density.setter
     def Density(self, value):
-        """Density of the gas at 0C and sea-level pressure [J/kg-K]."""
+        """Density of the gas at 0C and sea-level pressure [kg/m3]."""
         if value is not None:
             self._density = validators.float(value, minimum=0)
         else:
@@ -251,7 +273,7 @@ class GasMaterial(MaterialBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

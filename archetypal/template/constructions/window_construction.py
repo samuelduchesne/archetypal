@@ -85,6 +85,9 @@ class WindowConstruction(LayeredConstruction):
         )
         self.Category = Category  # set here for validators
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Category(self):
         """Get or set the Category. Choices are ("single", "double", "triple")."""
@@ -557,7 +560,7 @@ class WindowConstruction(LayeredConstruction):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

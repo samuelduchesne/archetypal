@@ -556,7 +556,7 @@ def parallel_process(
     position=0,
     debug=False,
     executor=None,
-):
+) -> dict:
     """A parallel version of the map function with a progress b
 
     Examples:
@@ -607,15 +607,16 @@ def parallel_process(
     }
 
     if processors == 1:
-        futures = []
-        out = []
-        for a in tqdm(in_dict, **kwargs):
-            if use_kwargs:
-                futures.append(submit(function, **in_dict[a]))
-            else:
-                futures.append(submit(function, in_dict[a]))
-        for job in futures:
-            out.append(job)
+        if use_kwargs:
+            out = {
+                filename: submit(function, **in_dict[filename])
+                for filename in tqdm(in_dict, **kwargs)
+            }
+        else:
+            out = {
+                filename: submit(function, in_dict[filename])
+                for filename in tqdm(in_dict, **kwargs)
+            }
     else:
         with _executor_factory(
             max_workers=processors,
@@ -638,30 +639,32 @@ def parallel_process(
                 settings.debug,
             ),
         ) as executor:
-            out = []
-            futures = []
+            out = {}
 
             if use_kwargs:
-                for a in in_dict:
-                    future = executor.submit(function, **in_dict[a])
-                    futures.append(future)
+                futures = {
+                    executor.submit(function, **in_dict[filename]): filename
+                    for filename in in_dict
+                }
             else:
-                for a in in_dict:
-                    future = executor.submit(function, in_dict[a])
-                    futures.append(future)
+                futures = {
+                    executor.submit(function, in_dict[filename]): filename
+                    for filename in in_dict
+                }
 
             # Print out the progress as tasks complete
-            for job in tqdm(as_completed(futures), **kwargs):
+            for future in tqdm(as_completed(futures), **kwargs):
                 # Read result from future
+                filename = futures[future]
                 try:
-                    result_done = job.result()
+                    result_done = future.result()
                 except Exception as e:
                     if debug:
                         lg.warning(str(e))
                         raise e
                     result_done = e
                 # Append to the list of results
-                out.append(result_done)
+                out[filename] = result_done
     return out
 
 

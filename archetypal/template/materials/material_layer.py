@@ -25,7 +25,7 @@ class MaterialLayer(object):
         """Initialize a MaterialLayer object with parameters.
 
         Args:
-            Material (OpaqueMaterial, GlazingMaterial, GasMaterial):
+            Material (OpaqueMaterial, GlazingMaterial):
             Thickness (float): The thickness of the material in the
                 construction.
         """
@@ -135,7 +135,7 @@ class MaterialLayer(object):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return id(self)
+        return hash(id(self))
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -162,3 +162,7 @@ class MaterialLayer(object):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(self.Material, self.Thickness)
+
+    @property
+    def children(self):
+        return (self.Material,)

@@ -31,6 +31,9 @@ class UmiSchedule(Schedule, UmiBase):
         super(UmiSchedule, self).__init__(Name, **kwargs)
         self.quantity = quantity
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def quantity(self):
         """Get or set the schedule quantity."""
@@ -218,6 +221,7 @@ class UmiSchedule(Schedule, UmiBase):
         year.Comments = (
             f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
         )
+        year.quantity = self.quantity
         return year
 
     def get_unique(self):
@@ -305,7 +309,7 @@ class UmiSchedule(Schedule, UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -1078,4 +1082,4 @@ class YearSchedule(UmiSchedule):
 
     @property
     def children(self):
-        return (p.Schedule for p in self.Parts)
+        return tuple(p.Schedule for p in self.Parts)

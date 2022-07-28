@@ -4,9 +4,9 @@ import json
 import logging as lg
 from collections import OrderedDict
 from concurrent.futures.thread import ThreadPoolExecutor
-from copy import copy, deepcopy
 from typing import List
 
+import networkx as nx
 from pandas.io.common import get_handle
 from path import Path
 
@@ -26,6 +26,7 @@ from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.materials.opaque_material import OpaqueMaterial
 from archetypal.template.schedule import (
     DaySchedule,
+    UmiSchedule,
     WeekSchedule,
     YearSchedule,
     YearSchedulePart,
@@ -146,6 +147,9 @@ class UmiTemplateLibrary:
         for group in self._LIB_GROUPS:
             yield group, self.__dict__[group]
 
+    def __getitem__(self, item):
+        return self.__dict__[item]
+
     def __add__(self, other: "UmiTemplateLibrary"):
         """Combined"""
         for key, group in other:
@@ -157,7 +161,9 @@ class UmiTemplateLibrary:
         for group, value in self:
             attrs[group] = value + other.__dict__[group]
 
-        return self.__class__(**attrs, name=self.name)
+        newlib = self.__class__(**attrs, name=self.name)
+        newlib.unique_components("GasMaterials", keep_orphaned=True)
+        return newlib
 
     def _clear_components_list(self, except_groups=None):
         """Clear components lists except except_groups."""
@@ -176,18 +182,6 @@ class UmiTemplateLibrary:
         for name, group in self:
             objs.extend(group)
         return objs
-
-    @property
-    def objects_by_id(self):
-        """Get dictionary of objects with their id as a key.
-
-        Note:
-            Includes orphaned objects.
-        """
-        objs_dict = {}
-        for name, group in self:
-            objs_dict.update({obj.id: obj for obj in group})
-        return objs_dict
 
     @classmethod
     def from_idf_files(
@@ -247,28 +241,33 @@ class UmiTemplateLibrary:
             position=None,
             executor=ThreadPoolExecutor,
         )
-        for res in results:
+        for filename, res in results.items():
             if isinstance(res, EnergyPlusProcessError):
                 filename = (settings.logs_folder / "failed_reduce.txt").expand()
                 with open(filename, "a") as file:
                     file.writelines(res.write())
-                    log(f"EnergyPlusProcess errors listed in {filename}")
+                    log(
+                        f"EnergyPlusProcess error for {filename} listed in"
+                        f" {filename}: {res}",
+                        lg.ERROR,
+                    )
             elif isinstance(res, Exception):
-                if settings.debug:
+                if debug:
                     raise res
                 else:
                     log(
-                        f"Unable to create Building Template. Exception raised: "
-                        f"{str(res)}",
+                        f"Exception raised for {filename}: {res}",
                         lg.ERROR,
                     )
 
         # If all exceptions, raise them for debugging
-        if all(isinstance(x, Exception) for x in results):
-            raise Exception([res for res in results if isinstance(res, Exception)])
+        if all(isinstance(x, Exception) for x in results.values()):
+            raise Exception(
+                [res for res in results.values() if isinstance(res, Exception)]
+            )
 
         umi_template.BuildingTemplates = [
-            res for res in results if not isinstance(res, Exception)
+            res for res in results.values() if not isinstance(res, Exception)
         ]
 
         if keep_all_zones:
@@ -312,8 +311,10 @@ class UmiTemplateLibrary:
         for day in idf.idfobjects["RunPeriodControl:SpecialDays".upper()]:
             idf.removeidfobject(day)
 
-        if idf.sim_info is None:
+        try:
             idf.simulate()
+        except EnergyPlusProcessError as e:
+            return e
         return BuildingTemplate.from_idf(idf, **kwargs)
 
     @classmethod
@@ -646,7 +647,9 @@ class UmiTemplateLibrary:
 
         return data_dict
 
-    def unique_components(self, *args: str, exceptions: List[str] = None):
+    def unique_components(
+        self, *args: str, exceptions: List[str] = None, keep_orphaned=False
+    ):
         """Keep only unique components.
 
         Starts by clearing all objects in self except self.BuildingTemplates.
@@ -657,12 +660,23 @@ class UmiTemplateLibrary:
         object in the graph.
 
         Args:
-            *args (str): UmiBase class names that should not be replaced with a
+            *args (str): UmiBase class names that should be replaced with a
                 unique equivalent. For example, if only "OpaqueMaterials" should be
-                unique, then use self.unique_components("OpaqueMaterials")
+                unique, then use self.unique_components("OpaqueMaterials"). If none
+                are provided, all umi components be unique.
             exceptions (List[str]): A list of UmiBase class names that will not be
-                cleared and therefore, not be
+                cleared from self.
+            keep_orphaned (bool): if True, orphaned objects are kept.
         """
+        if keep_orphaned:
+            G = self.to_graph(include_orphans=True)
+            connected_to_building = set()
+            for bldg in self.BuildingTemplates:
+                for obj in nx.dfs_preorder_nodes(G, bldg):
+                    connected_to_building.add(obj)
+            orphans = [
+                obj for obj in self.object_list if obj not in connected_to_building
+            ]
         self._clear_components_list(exceptions)  # First clear components
 
         # Inclusion is a set of object classes that will be unique.
@@ -689,7 +703,9 @@ class UmiTemplateLibrary:
                             )  # set unique object on key
 
         self.update_components_list(exceptions=exceptions)  # Update the components list
-        # that was cleared
+        if keep_orphaned:
+            for obj in orphans:
+                self[obj.__class__.__name__ + "s"].append(obj)
 
     def replace_component(self, this, that) -> None:
         """Replace all instances of `this` with `that`.
@@ -713,7 +729,21 @@ class UmiTemplateLibrary:
         for key, group in self:
             for component in group:
                 for parent, key, child in parent_key_child_traversal(component):
-                    if isinstance(child, UmiBase):
+                    if isinstance(child, UmiSchedule) and not isinstance(
+                        child, (DaySchedule, WeekSchedule, YearSchedule)
+                    ):
+                        y, ws, ds = child.to_year_week_day()
+                        if not any(o.id == y.id for o in self.YearSchedules):
+                            self.YearSchedules.append(y)
+                        for w in ws:
+                            if not any(o.id == w.id for o in self.WeekSchedules):
+                                self.WeekSchedules.append(w)
+                        for d in ds:
+                            if not any(o.id == d.id for o in self.DaySchedules):
+                                self.DaySchedules.append(d)
+                        # finally, replace it with y
+                        setattr(parent, key, y)
+                    elif isinstance(child, UmiBase):
                         obj_list = self.__dict__[child.__class__.__name__ + "s"]
                         if not any(o.id == child.id for o in obj_list):
                             # Important to compare on UmiBase.id and not on identity.
@@ -739,6 +769,7 @@ class UmiTemplateLibrary:
                 obj for obj in self.object_list if obj.id not in (n.id for n in G)
             ]
             for orphan in orphans:
+                G.add_node(orphan)
                 for parent, child in parent_child_traversal(orphan):
                     if parent:
                         G.add_edge(parent, child)
@@ -815,7 +846,7 @@ def parent_key_child_traversal(parent):
                     yield from parent_key_child_traversal(child)
 
 
-def parent_child_traversal(parent):
+def parent_child_traversal(parent: UmiBase):
     """Iterate over all children of the parent.
 
     This generator recursively yields (parent, child) tuples. It uses the
@@ -825,9 +856,3 @@ def parent_child_traversal(parent):
     for child in parent.children:
         yield parent, child
         yield from parent_child_traversal(child)
-
-
-def traverse(parent):
-    """Iterate over all children of the parent. 
-    """
-    return parent_child_traversal(parent)

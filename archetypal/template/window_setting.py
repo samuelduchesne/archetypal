@@ -131,6 +131,9 @@ class WindowSetting(UmiBase):
 
         self.area = area
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def area(self):
         """Get or set the area of the zone associated to this object [m²]."""
@@ -358,9 +361,7 @@ class WindowSetting(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

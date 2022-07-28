@@ -114,6 +114,9 @@ class BuildingTemplate(UmiBase):
         self.AuthorEmails = AuthorEmails if AuthorEmails else []
         self.Version = Version
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Perimeter(self):
         """Get or set the perimeter ZoneDefinition."""
@@ -353,7 +356,7 @@ class BuildingTemplate(UmiBase):
             **kwargs:
         """
         # initialize empty BuildingTemplate
-        name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
+        name = kwargs.pop("Name", Path(idf.name).stem)
 
         epbunch_zones = idf.idfobjects["ZONE"]
         zones = [
@@ -628,9 +631,7 @@ class BuildingTemplate(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

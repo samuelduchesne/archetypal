@@ -856,3 +856,7 @@ def parent_child_traversal(parent: UmiBase):
     for child in parent.children:
         yield parent, child
         yield from parent_child_traversal(child)
+
+
+def traverse(parent):
+    return parent_child_traversal(parent)

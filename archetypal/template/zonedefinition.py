@@ -120,6 +120,9 @@ class ZoneDefinition(UmiBase):
         self.multiplier = multiplier
         self.is_core = is_core
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Constructions(self):
         """Get or set the ZoneConstructionSet object."""
@@ -730,9 +733,7 @@ class ZoneDefinition(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -758,6 +759,17 @@ class ZoneDefinition(UmiBase):
     def __copy__(self):
         """Return a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return (
+            self.Conditioning,
+            self.Constructions,
+            self.DomesticHotWater,
+            self.InternalMassConstruction,
+            self.Loads,
+            self.Ventilation,
+        )
 
 
 def resolve_obco(ep_bunch):

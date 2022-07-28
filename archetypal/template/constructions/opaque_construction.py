@@ -45,6 +45,9 @@ class OpaqueConstruction(LayeredConstruction):
         super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
         self.area = 1
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def r_value(self):
         """Get or set the thermal resistance [K⋅m2/W] (excluding air films).
@@ -535,7 +538,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

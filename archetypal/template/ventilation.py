@@ -198,6 +198,9 @@ class VentilationSetting(UmiBase):
         self.area = area
         self.volume = volume
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def NatVentSchedule(self):
         """Get or set the natural ventilation schedule.
@@ -729,9 +732,7 @@ class VentilationSetting(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""
@@ -931,6 +932,10 @@ class VentilationSetting(UmiBase):
             log("No epbunch created since IsNatVentOn == False.")
 
         return infiltration_epbunch, ventilation_epbunch, natural_epbunch
+
+    @property
+    def children(self):
+        return self.NatVentSchedule, self.ScheduledVentilationSchedule
 
 
 def do_infiltration(index, inf_df):

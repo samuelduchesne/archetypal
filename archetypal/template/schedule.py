@@ -4,6 +4,7 @@ import calendar
 import collections
 import hashlib
 from datetime import datetime
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -29,6 +30,9 @@ class UmiSchedule(Schedule, UmiBase):
         """
         super(UmiSchedule, self).__init__(Name, **kwargs)
         self.quantity = quantity
+
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def quantity(self):
@@ -217,6 +221,7 @@ class UmiSchedule(Schedule, UmiBase):
         year.Comments = (
             f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
         )
+        year.quantity = self.quantity
         return year
 
     def get_unique(self):
@@ -304,7 +309,7 @@ class UmiSchedule(Schedule, UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -450,7 +455,10 @@ class YearSchedulePart:
 
     def __str__(self):
         """Return string representation of self."""
-        return str(self.to_dict())
+        return repr(self)
+
+    def __repr__(self):
+        return "".join([f"{k}={v}" for k, v in self.to_dict().items()])
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
@@ -895,6 +903,10 @@ class WeekSchedule(UmiSchedule):
             ),
         )
 
+    @property
+    def children(self):
+        return self.Days
+
 
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
@@ -962,7 +974,7 @@ class YearSchedule(UmiSchedule):
                 keys.
             **kwargs: keywords passed to the constructor.
         """
-        Parts = [
+        Parts: List[YearSchedulePart] = [
             YearSchedulePart.from_dict(data, week_schedules)
             for data in data.pop("Parts", None)
         ]
@@ -1067,3 +1079,7 @@ class YearSchedule(UmiSchedule):
     def to_ref(self):
         """Return a ref pointer to self."""
         return {"$ref": str(self.id)}
+
+    @property
+    def children(self):
+        return tuple(p.Schedule for p in self.Parts)

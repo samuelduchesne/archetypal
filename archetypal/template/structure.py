@@ -151,6 +151,9 @@ class StructureInformation(ConstructionBase):
         super(StructureInformation, self).__init__(Name, **kwargs)
         self.MassRatios = MassRatios
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def MassRatios(self):
         """Get or set the list of MassRatios."""
@@ -236,9 +239,7 @@ class StructureInformation(ConstructionBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -259,3 +260,7 @@ class StructureInformation(ConstructionBase):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return tuple(m.Material for m in self.MassRatios)

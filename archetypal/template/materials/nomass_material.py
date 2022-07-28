@@ -77,6 +77,9 @@ class NoMassMaterial(MaterialBase):
         self.VisibleAbsorptance = VisibleAbsorptance
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def r_value(self):
         """Get or set the thermal resistance [m2-K/W]."""
@@ -430,7 +433,7 @@ class NoMassMaterial(MaterialBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

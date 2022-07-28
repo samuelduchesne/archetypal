@@ -80,6 +80,9 @@ class ZoneConstructionSet(UmiBase):
         self.area = area
         self.volume = volume
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Facade(self):
         """Get or set the Facade OpaqueConstruction."""
@@ -534,9 +537,7 @@ class ZoneConstructionSet(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -548,6 +549,10 @@ class ZoneConstructionSet(UmiBase):
     def __copy__(self):
         """Get copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return self.Facade, self.Ground, self.Partition, self.Roof, self.Slab
 
 
 class SurfaceDispatcher:

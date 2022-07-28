@@ -92,8 +92,6 @@ class UmiBase(object):
         self.unit_number = next(self._ids)
         self.predecessors = None
 
-        UmiBase.CREATED_OBJECTS.append(self)
-
     @property
     def Name(self):
         """Get or set the name of the object."""
@@ -180,6 +178,10 @@ class UmiBase(object):
     def predecessors(self, value):
         self._predecessors = value
 
+    @property
+    def children(self):
+        return ()
+
     def duplicate(self):
         """Get copy of self."""
         return self.__copy__()
@@ -251,7 +253,7 @@ class UmiBase(object):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.mro()[0].__name__, self.Name))
+        return hash(self.id)
 
     def __repr__(self):
         """Return a representation of self."""
@@ -401,7 +403,7 @@ class UmiBase(object):
             self.validate()
 
         return dict(
-            id=self.id,
+            # id=self.id,
             Name=self.Name,
             Category=self.Category,
             Comments=self.Comments,

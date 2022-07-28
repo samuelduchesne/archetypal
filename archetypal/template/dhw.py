@@ -61,6 +61,9 @@ class DomesticHotWaterSetting(UmiBase):
         self.WaterSchedule = WaterSchedule
         self.area = area
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def FlowRatePerFloorArea(self):
         """Get or set the flow rate per flow area [m³/(hr·m²)]."""
@@ -504,9 +507,7 @@ class DomesticHotWaterSetting(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""
@@ -535,6 +536,10 @@ class DomesticHotWaterSetting(UmiBase):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return (self.WaterSchedule,)
 
 
 def water_main_correlation(t_out_avg, max_diff):

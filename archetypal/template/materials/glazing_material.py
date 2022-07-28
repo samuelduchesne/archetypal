@@ -104,6 +104,9 @@ class GlazingMaterial(MaterialBase):
         self.SolarReflectanceFront = SolarReflectanceFront
         self.SolarTransmittance = SolarTransmittance
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def Conductivity(self):
         """Get or set the conductivity of the material [W/m-K]."""
@@ -442,7 +445,7 @@ class GlazingMaterial(MaterialBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

@@ -131,6 +131,9 @@ class ZoneLoad(UmiBase):
         self.area = area
         self.volume = volume
 
+        # Only at the end append self to CREATED_OBJECTS
+        self.CREATED_OBJECTS.append(self)
+
     @property
     def DimmingType(self):
         """Get or set the dimming type.
@@ -808,9 +811,7 @@ class ZoneLoad(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""
@@ -834,6 +835,14 @@ class ZoneLoad(UmiBase):
             return NotImplemented
         else:
             return self.__key__() == other.__key__()
+
+    @property
+    def children(self):
+        return (
+            self.EquipmentAvailabilitySchedule,
+            self.LightsAvailabilitySchedule,
+            self.OccupancySchedule,
+        )
 
 
 def _resolve_dimming_type(zone, zone_ep):

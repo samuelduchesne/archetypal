@@ -1198,9 +1198,9 @@ class ZoneConditioning(UmiBase):
                     )
                 else:
                     cooling_sched = None
-        self.HeatingSetpoint = max(h_array)[0]
+        self.HeatingSetpoint = h_array.mean()
         self.HeatingSchedule = heating_sched
-        self.CoolingSetpoint = min(c_array)[0]
+        self.CoolingSetpoint = c_array.mean()
         self.CoolingSchedule = cooling_sched
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,

@@ -129,7 +129,8 @@ class BuildingTemplate(UmiBase):
         ), f"Expected a ZoneDefinition, not {type(value)}"
 
         value.link(self, "Perimeter")
-        self.Perimeter.unlink(self, "Perimeter")
+        if getattr(self, "Perimeter", None):
+            self.Perimeter.unlink(self, "Perimeter")
         self._perimeter = value
 
     @property
@@ -143,7 +144,8 @@ class BuildingTemplate(UmiBase):
             value, ZoneDefinition
         ), f"Expected a ZoneDefinition, not {type(value)}"
         value.link(self, "Perimeter")
-        self.Perimeter.unlink(self, "Perimeter")
+        if getattr(self, "Core", None):
+            self.Perimeter.unlink(self, "Core")
         self._core = value
 
     @property
@@ -633,6 +635,10 @@ class BuildingTemplate(UmiBase):
             ),
             None,
         )
+    @property
+    def ParentTemplates(self):
+        # bail out of the recursive call
+        return {self}
 
     def __hash__(self):
         """Return the hash value of self."""

@@ -9,7 +9,7 @@ import numpy as np
 from validator_collection import validators
 
 from archetypal.utils import lcm
-from archetypal.template.building_template import BuildingTemplate
+# from archetypal.template.building_template import BuildingTemplate
 
 
 def _resolve_combined_names(predecessors):
@@ -55,6 +55,7 @@ class UmiBase(object):
         "_comments",
         "_allow_duplicates",
         "_unit_number",
+        "_parents"
     )
     CREATED_OBJECTS = []
     _ids = itertools.count(0)  # unique id for each class instance
@@ -102,10 +103,8 @@ class UmiBase(object):
     def ParentTemplates(self):
         templates = set()
         for parent in self.Parents:
-            if isinstance(parent, BuildingTemplate):
-                templates.add(parent)
-            else:
-                templates = templates.union(parent.ParentTemplates)
+            templates = templates.union(parent.ParentTemplates)
+        return templates
     
     def link(self, parent, key):
         """Link this object as child to a parent

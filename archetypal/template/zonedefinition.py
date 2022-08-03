@@ -150,7 +150,8 @@ class ZoneDefinition(UmiBase):
                 f"type {ZoneLoad}, not {type(value)}."
             )
         value.link(self, "Loads")
-        self.Loads.unlink(self, "Loads")
+        if (getattr(self, "Loads", None)):
+            self.Loads.unlink(self, "Loads")
         self._loads = value
 
     @property

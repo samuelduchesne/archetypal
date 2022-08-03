@@ -9,6 +9,7 @@ import numpy as np
 from validator_collection import validators
 
 from archetypal.utils import lcm
+from archetypal.template.building_template import BuildingTemplate
 
 
 def _resolve_combined_names(predecessors):
@@ -91,6 +92,47 @@ class UmiBase(object):
         self.allow_duplicates = allow_duplicates
         self.unit_number = next(self._ids)
         self.predecessors = None
+        self._parents = {} # Stores a set for each parent which contains the fields where this object appears in that parent
+    
+    @property
+    def Parents(self): 
+        return self._parents.keys()
+    
+    @property
+    def ParentTemplates(self):
+        templates = set()
+        for parent in self.Parents:
+            if isinstance(parent, BuildingTemplate):
+                templates.add(parent)
+            else:
+                templates = templates.union(parent.ParentTemplates)
+    
+    def link(self, parent, key):
+        """Link this object as child to a parent
+
+            Args:
+                parent (UmiBase): the parent to link
+                key (str): the property which this child was used for in the parent and which should be unlinked.
+        """
+        try: 
+            self._parents[parent].add(key)
+        except KeyError:
+            self._parents[parent] = set()
+            self._parents[parent].add(key)
+
+
+    def unlink(self, parent, key):
+        """Unlink this object as a child from a parent
+
+            Args:
+                parent (UmiBase): the parent to unlink
+                key (str): the property which the child was used for in the parent and which should be unlinked.
+        """
+        assert isinstance(self._parents[parent], set), f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since the link does not exist"
+        assert key in self._parents[parent], f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since a {key} link does not exist"
+        self._parents[parent].remove(key)
+        if (len(self._parents[parent]) == 0):
+            self._parents.remove(parent)
 
     @property
     def Name(self):

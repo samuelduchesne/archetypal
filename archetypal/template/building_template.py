@@ -127,6 +127,9 @@ class BuildingTemplate(UmiBase):
         assert isinstance(
             value, ZoneDefinition
         ), f"Expected a ZoneDefinition, not {type(value)}"
+
+        value.link(self, "Perimeter")
+        self.Perimeter.unlink(self, "Perimeter")
         self._perimeter = value
 
     @property
@@ -139,6 +142,8 @@ class BuildingTemplate(UmiBase):
         assert isinstance(
             value, ZoneDefinition
         ), f"Expected a ZoneDefinition, not {type(value)}"
+        value.link(self, "Perimeter")
+        self.Perimeter.unlink(self, "Perimeter")
         self._core = value
 
     @property

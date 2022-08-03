@@ -131,7 +131,7 @@ class UmiBase(object):
         assert key in self._parents[parent], f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since a {key} link does not exist"
         self._parents[parent].remove(key)
         if (len(self._parents[parent]) == 0):
-            self._parents.remove(parent)
+            self._parents.pop(parent)
 
     @property
     def Name(self):

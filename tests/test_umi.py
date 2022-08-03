@@ -84,6 +84,21 @@ class TestUmiTemplate:
         G = a.to_graph(include_orphans=True)
         assert len(G) > n_nodes
 
+    def test_parent_templates(self):
+        """Test realtime graph structure determination of parent templates"""
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+
+        lib = UmiTemplateLibrary.open(file)
+        for bt in lib.BuildingTemplates:
+            assert bt in bt.Perimeter.ParentTemplates
+            assert bt in bt.Perimeter.Loads.ParentTemplates
+            assert bt in bt.Core.Loads.ParentTemplates
+            assert bt in bt.Core.ParentTemplates
+            bt.Perimeter.Loads = lib.ZoneLoads[0]
+            bt.Core.Loads = lib.ZoneLoads[0]
+        
+        assert {bt for bt in lib.BuildingTemplates} == lib.ZoneLoads[0].ParentTemplates
+
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""

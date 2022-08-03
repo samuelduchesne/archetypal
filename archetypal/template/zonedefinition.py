@@ -149,9 +149,9 @@ class ZoneDefinition(UmiBase):
                 f"Input value error. Loads must be of "
                 f"type {ZoneLoad}, not {type(value)}."
             )
-        value.link(self, "Loads")
         if (getattr(self, "Loads", None)):
             self.Loads.unlink(self, "Loads")
+        value.link(self, "Loads")
         self._loads = value
 
     @property

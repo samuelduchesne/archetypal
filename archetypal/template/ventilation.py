@@ -1209,8 +1209,8 @@ def nominal_ventilation_aggregation(x):
         aggregated accordingly.
     """
     how_dict = {
-        "Archetype": x["Archetype"][0],
-        "Zone Name": x["Zone Name"][0],
+        "Archetype": x["Archetype"].iloc[0],
+        "Zone Name": x["Zone Name"].iloc[0],
         "Name": top(x["Name"], x, "Zone Floor Area {m2}"),
         "Schedule Name": top(x["Schedule Name"], x, "Zone Floor Area {m2}"),
         "Fan Type {Exhaust;Intake;Natural}": top(

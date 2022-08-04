@@ -14,7 +14,7 @@ from validator_collection import validators
 from archetypal.template.materials import GasMaterial
 from archetypal.template.materials.gas_layer import GasLayer
 from archetypal.template.materials.material_layer import MaterialLayer
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, UmiBaseList
 
 
 class ConstructionBase(UmiBase):
@@ -158,6 +158,7 @@ class LayeredConstruction(ConstructionBase):
                 constructor.
         """
         super(LayeredConstruction, self).__init__(Name, **kwargs)
+        self._layers = UmiBaseList(self, "Layers")
         self.Layers = Layers
 
     @property
@@ -178,7 +179,7 @@ class LayeredConstruction(ConstructionBase):
         assert isinstance(
             value[-1], MaterialLayer
         ), "The inside layer cannot be a GasLayer"
-        self._layers = value
+        self.Layers.relink_list(value)
 
     @property
     def r_value(self):

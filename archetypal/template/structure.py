@@ -1,6 +1,7 @@
 """archetypal StructureInformation."""
 
 import collections
+from archetypal.template.umi_base import UmiBase, UmiBaseHelper, UmiBaseList
 
 from validator_collection import validators
 
@@ -8,7 +9,7 @@ from archetypal.template.constructions.base_construction import ConstructionBase
 from archetypal.template.materials.opaque_material import OpaqueMaterial
 
 
-class MassRatio(object):
+class MassRatio(UmiBaseHelper, object):
     """Handles the properties of the mass ratio for building template structure."""
 
     __slots__ = ("_high_load_ratio", "_material", "_normal_ratio")
@@ -21,6 +22,7 @@ class MassRatio(object):
             Material (OpaqueMaterial):
             NormalRatio (float):
         """
+        super(MassRatio, self).__init__(umi_base_property="Material", modifier_properties=["HighLoadRatio", "NormalRatio"])
         self.HighLoadRatio = HighLoadRatio
         self.Material = Material
         self.NormalRatio = NormalRatio
@@ -44,6 +46,7 @@ class MassRatio(object):
         assert isinstance(
             value, OpaqueMaterial
         ), f"Material must be of type OpaqueMaterial, not {type(value)}"
+        # TODO: Make this handle link/unlink
         self._material = value
 
     @property
@@ -149,6 +152,7 @@ class StructureInformation(ConstructionBase):
             **kwargs: keywords passed to the ConstructionBase constructor.
         """
         super(StructureInformation, self).__init__(Name, **kwargs)
+        self._mass_ratios = UmiBaseList(self, "MassRatios")
         self.MassRatios = MassRatios
 
         # Only at the end append self to CREATED_OBJECTS
@@ -161,8 +165,8 @@ class StructureInformation(ConstructionBase):
 
     @MassRatios.setter
     def MassRatios(self, value):
-        assert isinstance(value, list), "mass_ratio must be of a list of MassRatio"
-        self._mass_ratios = value
+        assert isinstance(value, (list, UmiBaseList)), "mass_ratio must be of a list of MassRatio"
+        self.MassRatios.relink_list(value)
 
     @classmethod
     def from_dict(cls, data, materials, **kwargs):

@@ -2,6 +2,7 @@
 import collections
 import logging as lg
 import math
+from archetypal.template.umi_base import UmiBaseHelper
 
 from sigfig import round
 from validator_collection import validators
@@ -9,7 +10,7 @@ from validator_collection import validators
 from archetypal.utils import log
 
 
-class GasLayer(object):
+class GasLayer(UmiBaseHelper, object):
     """Class used to define one gas layer in a window construction assembly.
 
     This class has two attributes:
@@ -28,6 +29,7 @@ class GasLayer(object):
             Thickness (float): The thickness of the material in the
                 construction.
         """
+        super(GasLayer, self).__init__(umi_base_property="Material", modifier_properties=["Thickness"])
         self.Material = Material
         self.Thickness = Thickness
 

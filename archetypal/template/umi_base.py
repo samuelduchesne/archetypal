@@ -106,26 +106,37 @@ class UmiBase(object):
             templates = templates.union(parent.ParentTemplates)
         return templates
     
+    def relink(self, new, attr):
+        """ Parents call this to link to a new child and unlink the old child for an attr
+
+        Args:
+            new (UmiBase): The new child
+            attr (str): The cache value to stor ein th link, which should match a Property getter
+
+        """
+        if getattr(self, attr, None):
+            getattr(self, attr).unlink(self, attr)
+        if new is not None:
+            new.link(self, attr)
+    
     def link(self, parent, key):
         """Link this object as child to a parent
 
-            Args:
-                parent (UmiBase): the parent to link
-                key (str): the property which this child was used for in the parent and which should be unlinked.
+        Args:
+            parent (UmiBase): the parent to link
+            key (str): the property which this child was used for in the parent and which should be unlinked.
         """
-        try: 
-            self._parents[parent].add(key)
-        except KeyError:
+        if parent not in self._parents:
             self._parents[parent] = set()
-            self._parents[parent].add(key)
 
+        self._parents[parent].add(key)
 
     def unlink(self, parent, key):
         """Unlink this object as a child from a parent
 
-            Args:
-                parent (UmiBase): the parent to unlink
-                key (str): the property which the child was used for in the parent and which should be unlinked.
+        Args:
+            parent (UmiBase): the parent to unlink
+            key (str): the property which the child was used for in the parent and which should be unlinked.
         """
         assert isinstance(self._parents[parent], set), f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since the link does not exist"
         assert key in self._parents[parent], f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since a {key} link does not exist"

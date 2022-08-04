@@ -400,6 +400,7 @@ class ZoneConditioning(UmiBase):
                 f"Input error with value {value}. HeatingSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
+        self.relink(value, "HeatingSchedule")
         self._heating_schedule = value
 
     @property
@@ -480,6 +481,7 @@ class ZoneConditioning(UmiBase):
                 f"Input error with value {value}. CoolingSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
+        self.relink(value, "CoolingSchedule")
         self._cooling_schedule = value
 
     @property
@@ -582,6 +584,7 @@ class ZoneConditioning(UmiBase):
                 f"Input error with value {value}. MechVentSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
+        self.relink(value, "MechVentSchedule")
         self._mech_vent_schedule = value
 
     @property

@@ -128,9 +128,7 @@ class BuildingTemplate(UmiBase):
             value, ZoneDefinition
         ), f"Expected a ZoneDefinition, not {type(value)}"
 
-        if getattr(self, "Perimeter", None):
-            self.Perimeter.unlink(self, "Perimeter")
-        value.link(self, "Perimeter")
+        self.relink(value, "Perimeter")
         self._perimeter = value
 
     @property
@@ -143,9 +141,7 @@ class BuildingTemplate(UmiBase):
         assert isinstance(
             value, ZoneDefinition
         ), f"Expected a ZoneDefinition, not {type(value)}"
-        if getattr(self, "Core", None):
-            self.Perimeter.unlink(self, "Core")
-        value.link(self, "Core")
+        self.relink(value, "Core")
         self._core = value
 
     @property
@@ -158,6 +154,7 @@ class BuildingTemplate(UmiBase):
         assert isinstance(
             value, StructureInformation
         ), f"Expected a StructureInformation, not {type(value)}"
+        self.relink(value, "Structure")
         self._structure_definition = value
 
     @property
@@ -170,6 +167,7 @@ class BuildingTemplate(UmiBase):
         assert isinstance(
             value, WindowSetting
         ), f"Expected a WindowSetting, not {type(value)}"
+        self.relink(value, "Windows")
         self._window_setting = value
 
     @property

@@ -178,6 +178,7 @@ class ZoneLoad(UmiBase):
             )
             # set quantity on schedule as well
             value.quantity = self.EquipmentPowerDensity
+        self.relink(value, "EquipmentAvailabilitySchedule")
         self._equipment_availability_schedule = value
 
     @property
@@ -225,6 +226,7 @@ class ZoneLoad(UmiBase):
             )
             # set quantity on schedule as well
             value.quantity = self.LightingPowerDensity
+        self.relink(value, "LightsAvailabilitySchedule")
         self._lights_availability_schedule = value
 
     @property
@@ -241,6 +243,7 @@ class ZoneLoad(UmiBase):
             )
             # set quantity on schedule as well
             value.quantity = self.PeopleDensity
+        self.relink(value, "OccupancySchedule")
         self._occupancy_schedule = value
 
     @property

@@ -217,6 +217,7 @@ class VentilationSetting(UmiBase):
                 f"Input error with value {value}. NatVentSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
+        self.relink(value, "NatVentSchedule")
         self._nat_ventilation_schedule = value
 
     @property
@@ -232,6 +233,7 @@ class VentilationSetting(UmiBase):
                 f"be an UmiSchedule, not a {type(value)}"
             )
             value.quantity = self.ScheduledVentilationAch
+        self.relink(value, "ScheduledVentilationSchedule")
         self._scheduled_ventilation_schedule = value
 
     @property

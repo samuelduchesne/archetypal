@@ -98,6 +98,7 @@ class DomesticHotWaterSetting(UmiBase):
                 f"Input error with value {value}. WaterSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
+        self.relink(value, "WaterSchedule")
         self._water_schedule = value
 
     @property

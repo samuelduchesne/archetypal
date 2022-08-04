@@ -135,6 +135,7 @@ class ZoneDefinition(UmiBase):
                 f"Input value error. Constructions must be of "
                 f"type {ZoneConstructionSet}, not {type(value)}."
             )
+        self.relink(value, "Constructions")
         self._constructions = value
 
     @property
@@ -149,9 +150,7 @@ class ZoneDefinition(UmiBase):
                 f"Input value error. Loads must be of "
                 f"type {ZoneLoad}, not {type(value)}."
             )
-        if (getattr(self, "Loads", None)):
-            self.Loads.unlink(self, "Loads")
-        value.link(self, "Loads")
+        self.relink(value, "Loads")
         self._loads = value
 
     @property
@@ -166,6 +165,7 @@ class ZoneDefinition(UmiBase):
                 f"Input value error. Conditioning must be of "
                 f"type {ZoneConditioning}, not {type(value)}."
             )
+        self.relink(value, "Conditioning")
         self._conditioning = value
 
     @property
@@ -180,6 +180,7 @@ class ZoneDefinition(UmiBase):
                 f"Input value error. Ventilation must be of "
                 f"type {VentilationSetting}, not {type(value)}."
             )
+        self.relink(value, "Ventilation")
         self._ventilation = value
 
     @property
@@ -194,6 +195,7 @@ class ZoneDefinition(UmiBase):
                 f"Input value error. DomesticHotWater must be of "
                 f"type {DomesticHotWaterSetting}, not {type(value)}."
             )
+        self.relink(value, "DomesticHotWater")
         self._domestic_hot_water = value
 
     @property
@@ -226,6 +228,7 @@ class ZoneDefinition(UmiBase):
                 f"Input value error. InternalMassConstruction must be of "
                 f"type {OpaqueConstruction}, not {type(value)}."
             )
+        self.relink(value, "InternalMassConstruction")
         self._internal_mass_construction = value
 
     @property
@@ -249,6 +252,7 @@ class ZoneDefinition(UmiBase):
                 f"Input value error. Windows must be of "
                 f"type {WindowSetting}, not {type(value)}."
             )
+        self.relink(value, "Windows")
         self._windows = value
 
     @property

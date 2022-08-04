@@ -95,6 +95,7 @@ class ZoneConstructionSet(UmiBase):
                 f"Input value error for {value}. Facade must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
+        self.relink(value, "Facade")
         self._facade = value
 
     @property
@@ -109,6 +110,7 @@ class ZoneConstructionSet(UmiBase):
                 f"Input value error for {value}. Ground must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
+        self.relink(value, "Ground")
         self._ground = value
 
     @property
@@ -123,6 +125,7 @@ class ZoneConstructionSet(UmiBase):
                 f"Input value error for {value}. Partition must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
+        self.relink(value, "Partition")
         self._partition = value
 
     @property
@@ -137,6 +140,7 @@ class ZoneConstructionSet(UmiBase):
                 f"Input value error for {value}. Roof must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
+        self.relink(value, "Roof")
         self._roof = value
 
     @property
@@ -151,6 +155,7 @@ class ZoneConstructionSet(UmiBase):
                 f"Input value error for {value}. Slab must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
+        self.relink(value, "Slab")
         self._slab = value
 
     @property

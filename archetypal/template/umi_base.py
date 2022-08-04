@@ -596,3 +596,71 @@ class UniqueName(str):
                 return cls.create_unique(name)
             else:
                 return cls.create_unique(name + "_1")
+
+class UmiBaseList:
+    """ This class is a hook for lists so that UmiBase fields which store lists 
+        can link and unlink list elements from a parent attr
+    """
+
+    def __init__(self, parent, attr, objects=[]):
+        assert isinstance(objects, list), "UmiBaseList must be initialized with a list"
+        assert isinstance(parent, UmiBase), "UmiBaseList's parent must be initialized with an UmiBase object"
+        assert isinstance(attr, str), "UmiBaseList's attr must be a str"
+        assert attr in dir(parent), f"UmiBaseList's attr '{attr}' is not a valid attr of parent {parent}"
+        self._attr = attr
+        self._parent = parent
+        self.link_list(objects)
+    
+    def __getitem__(self, index):
+        return self._objects[index]
+    
+    def __setitem__(self, index, value):
+        cache_key = f"{self._attr}_{index}"
+        if self[index]:
+            self[index].unlink(self._parent, cache_key)
+        value.link(self._parent, cache_key)
+        self._objects[index] = value
+    
+    def unlink_list(self):
+        for index, obj in enumerate(self._objects):
+            obj.unlink(self._parent, f"{self._attr}_{index}")
+        self._objects = []
+    
+    def link_list(self, objects):
+        self._objects = [None for obj in objects]
+        for i, obj in enumerate(objects):
+            self[i] = obj # fire the setter
+    
+    def relink_list(self, objects):
+        if len(self._objects) > 0:
+            self.unlink_list()
+        
+        new_list = objects._objects if isinstance(objects, UmiBaseList) else objects
+        self.link_list(new_list)
+    
+    def __len__(self):
+        return len(self._objects)
+            
+    def __getattr__(self, attr):
+        """ Provid access to underlying list methods"""
+        return getattr(self._objects, attr)
+    
+    #TODO: Define overrides for methods which mutate the list like clear, insert, pop, remove, append
+    # Currently they will mutate the underlying list but not the linking
+
+class UmiBaseHelper:
+    """ Base for Helper classes so that the UmiBase object can be 
+        found and operated on via the helper, e.g. for YearScheduleParts
+    """
+    def __init__(self, umi_base_property, modifier_properties=[]):
+        assert isinstance(umi_base_property, str), "'umi_base_property' must be a string"
+        assert isinstance(modifier_properties, list), "'modifier_properties' must be a list"
+        self._umi_base_property = umi_base_property
+        self._modifier_properties = modifier_properties
+    
+    def __getattr__(self, attr):
+        umi_base = getattr(self, self._umi_base_property)
+        return getattr(umi_base, attr)
+
+    
+

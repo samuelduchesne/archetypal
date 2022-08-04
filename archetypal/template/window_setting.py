@@ -182,6 +182,7 @@ class WindowSetting(UmiBase):
                 f"Input error with value {value}. AfnWindowAvailability must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
+        self.relink(value, "AfnWindowAvailability")
         self._afn_window_availability = value
 
     @property
@@ -238,6 +239,7 @@ class WindowSetting(UmiBase):
                 f"Input error with value {value}. ZoneMixingAvailabilitySchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
+        self.relink(value, "ShadingSystemAvailabilitySchedule")
         self._shading_system_availability_schedule = value
 
     @property
@@ -265,6 +267,7 @@ class WindowSetting(UmiBase):
                 f"Input error with value {value}. ZoneMixingAvailabilitySchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
+        self.relink(value, "ZoneMixingAvailabilitySchedule")
         self._zone_mixing_availability_schedule = value
 
     @property
@@ -288,6 +291,7 @@ class WindowSetting(UmiBase):
                 f"Input error with value {value}. Construction must "
                 f"be an WindowConstruction, not a {type(value)}"
             )
+        self.relink(value, "Construction")
         self._construction = value
 
     @property
@@ -368,6 +372,13 @@ class WindowSetting(UmiBase):
         if not isinstance(other, WindowSetting):
             return NotImplemented
         else:
+            # TODO: Figure out why __eq__ is being called against self             
+            # during a `link` call's write op to a _parents dict
+            # when hash should have matched the objects.
+            # This seems to be needed to prevent the eq test from
+            # calling == on properties which reference attrs that have not been set yet
+            if self.id == other.id:
+                return True
             return all(
                 [
                     self.Construction == other.Construction,

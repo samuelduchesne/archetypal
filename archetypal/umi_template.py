@@ -730,8 +730,22 @@ class UmiTemplateLibrary:
     @timeit
     def alternate_replace_component(self, this, that):
         this.replace_me_with(that)
-        self.update_components_list()
-
+        self.alternate_update_components_list()
+    
+    @timeit
+    def alternate_update_components_list(self, exceptions=None):
+        self._clear_components_list(exceptions)
+        for obj in UmiBase.CREATED_OBJECTS:
+            if not isinstance(obj, BuildingTemplate):
+                if (len(obj._parents) > 0):
+                    parent_templates = obj.ParentTemplates
+                    for bt in self.BuildingTemplates:
+                        if bt in obj.ParentTemplates:
+                            if bt in parent_templates:
+                                class_key = obj.__class__.__name__+"s"
+                                self[class_key].append(obj)
+                                break
+    
     @timeit
     def replace_component(self, this, that) -> None:
         """Replace all instances of `this` with `that`.
@@ -747,6 +761,7 @@ class UmiTemplateLibrary:
 
         self.update_components_list()
 
+    @timeit
     def update_components_list(self, exceptions=None):
         """Update the component groups with connected components."""
         # clear components list except BuildingTemplate

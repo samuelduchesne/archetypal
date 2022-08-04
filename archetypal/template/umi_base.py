@@ -106,6 +106,26 @@ class UmiBase(object):
             templates = templates.union(parent.ParentTemplates)
         return templates
     
+    def replace_me_with(self, other):
+        # Since the dict and sets will mutate
+        # We convert the keys and values to lists
+        parents = list(self._parents.keys())
+        parents_fields = [list(field) for field in self._parents.values()]
+        for i in range(len(parents)):
+            parent = parents[i]
+            references = parents_fields[i]
+            for cache_key in references:
+                matches = re.match(r"(.*)_([0-9]+$)", cache_key)
+                if matches:
+                    # Handle an indexed element
+                    listField = getattr(parent, matches.group(1))
+                    index = int(matches.group(2))
+                    listField[index] = other # UmiBaseList should handle the relinking
+                else:
+                    # handle a field swap
+                    setattr(parent, cache_key, other) # Setter should handle the relinking
+
+    
     def relink(self, new, attr):
         """ Parents call this to link to a new child and unlink the old child for an attr
 

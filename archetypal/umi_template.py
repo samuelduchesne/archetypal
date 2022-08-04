@@ -37,7 +37,7 @@ from archetypal.template.ventilation import VentilationSetting
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
-from archetypal.utils import CustomJSONEncoder, log, parallel_process
+from archetypal.utils import CustomJSONEncoder, log, parallel_process, timeit
 
 
 class UmiTemplateLibrary:
@@ -647,6 +647,26 @@ class UmiTemplateLibrary:
 
         return data_dict
 
+    def alternate_unique_components(self, *args: str, exceptions: List[str] = None, keep_orphaned=False):
+        """ First, we divide the lib groups into equivalence classes"""
+        equivalence_classes = {}
+        for key, group in self:
+            eq_map = {}
+            for obj in group:
+                match_found = False
+                for exemplar in eq_map.values():
+                    if obj == exemplar:
+                        eq_map[obj] = exemplar
+                        match_found = True
+                        break
+                if not match_found:
+                    eq_map[obj] = obj
+            equivalence_classes[key] = eq_map
+        
+        for eq_class, eq_map in equivalence_classes.items():
+            for obj, equivalent_object in eq_map.items():
+                obj.replace_me_with(equivalent_object)
+
     def unique_components(
         self, *args: str, exceptions: List[str] = None, keep_orphaned=False
     ):
@@ -707,6 +727,12 @@ class UmiTemplateLibrary:
             for obj in orphans:
                 self[obj.__class__.__name__ + "s"].append(obj)
 
+    @timeit
+    def alternate_replace_component(self, this, that):
+        this.replace_me_with(that)
+        self.update_components_list()
+
+    @timeit
     def replace_component(self, this, that) -> None:
         """Replace all instances of `this` with `that`.
 

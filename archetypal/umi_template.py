@@ -613,7 +613,7 @@ class UmiTemplateLibrary:
         # create dict values
         for group_name, group in self:
             # reset unique names for group
-            UniqueName.existing = set()
+            UniqueName.existing = {}
             obj: UmiBase
             for obj in group:
                 data = obj.to_dict()

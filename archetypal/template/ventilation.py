@@ -300,7 +300,7 @@ class VentilationSetting(UmiBase):
         )
         if value:
             assert (
-                self.ScheduledVentilationAch > 0
+                self.ScheduledVentilationAch >= 0
                 and self.ScheduledVentilationSchedule is not None
             ), (
                 f"IsScheduledVentilationOn cannot be 'True' if ScheduledVentilationAch "

@@ -62,6 +62,7 @@ class VentilationSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_infiltration",
@@ -198,8 +199,8 @@ class VentilationSetting(UmiBase):
         self.area = area
         self.volume = volume
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def NatVentSchedule(self):
@@ -681,24 +682,25 @@ class VentilationSetting(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.NatVentSchedule:
+        if self.NatVentSchedule is None:
             self.NatVentSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
-        if not self.ScheduledVentilationSchedule:
+        if self.ScheduledVentilationSchedule is None:
             self.ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
 
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
             validate:
         """
-        self.validate()
+        if validate:
+            self.validate()
 
         return dict(
             Afn=self.Afn,

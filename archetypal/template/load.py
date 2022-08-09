@@ -42,6 +42,7 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_dimming_type",
@@ -131,8 +132,8 @@ class ZoneLoad(UmiBase):
         self.area = area
         self.volume = volume
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def DimmingType(self):
@@ -598,31 +599,31 @@ class ZoneLoad(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.DimmingType:
+        if self.DimmingType is None:
             self.DimmingType = DimmingTypes.Continuous
-        if not self.EquipmentAvailabilitySchedule:
+        if self.EquipmentAvailabilitySchedule is None:
             self.EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule()
-        if not self.EquipmentPowerDensity:
+        if self.EquipmentPowerDensity is None:
             self.EquipmentPowerDensity = 0
-        if not self.IlluminanceTarget:
+        if self.IlluminanceTarget is None:
             self.IlluminanceTarget = 500
-        if not self.LightingPowerDensity:
+        if self.LightingPowerDensity is None:
             self.LightingPowerDensity = 0
-        if not self.LightsAvailabilitySchedule:
+        if self.LightsAvailabilitySchedule is None:
             self.LightsAvailabilitySchedule = UmiSchedule.constant_schedule()
-        if not self.OccupancySchedule:
+        if self.OccupancySchedule is None:
             self.OccupancySchedule = UmiSchedule.constant_schedule()
-        if not self.IsEquipmentOn:
+        if self.IsEquipmentOn is None:
             self.IsEquipmentOn = False
-        if not self.IsLightingOn:
+        if self.IsLightingOn is None:
             self.IsLightingOn = False
-        if not self.IsPeopleOn:
+        if self.IsPeopleOn is None:
             self.IsPeopleOn = False
-        if not self.PeopleDensity:
+        if self.PeopleDensity is None:
             self.PeopleDensity = 0
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

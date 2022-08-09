@@ -271,11 +271,7 @@ class UmiTemplateLibrary:
         ]
 
         if keep_all_zones:
-            _zones = set(
-                obj.get_unique()
-                for obj in UmiBase.CREATED_OBJECTS
-                if isinstance(obj, ZoneDefinition)
-            )
+            _zones = set(obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS)
             for zone in _zones:
                 umi_template.ZoneDefinitions.append(zone)
             exceptions = [ZoneDefinition.__name__]
@@ -341,17 +337,15 @@ class UmiTemplateLibrary:
         # with datastore, create each objects
         t = cls(name)
         t.GasMaterials = [
-            GasMaterial.from_dict(store, allow_duplicates=True)
+            GasMaterial.from_dict(store, allow_duplicates=False)
             for store in datastore["GasMaterials"]
         ]
         t.GlazingMaterials = [
-            GlazingMaterial.from_dict(
-                store,
-            )
+            GlazingMaterial.from_dict(store, allow_duplicates=False)
             for store in datastore["GlazingMaterials"]
         ]
         t.OpaqueMaterials = [
-            OpaqueMaterial.from_dict(store, allow_duplicates=True)
+            OpaqueMaterial.from_dict(store, allow_duplicates=False)
             for store in datastore["OpaqueMaterials"]
         ]
         t.OpaqueConstructions = [
@@ -616,7 +610,10 @@ class UmiTemplateLibrary:
             UniqueName.existing = set()
             obj: UmiBase
             for obj in group:
-                data = obj.to_dict()
+                try:
+                    data = obj.to_dict()
+                except AttributeError as e:
+                    raise AttributeError(f"{e} for {obj}")
                 data.update({"Name": UniqueName(data.get("Name"))})
                 data_dict.setdefault(group_name, []).append(data)
 

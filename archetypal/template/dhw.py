@@ -19,6 +19,7 @@ class DomesticHotWaterSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-dhw.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_flow_rate_per_floor_area",
@@ -61,8 +62,8 @@ class DomesticHotWaterSetting(UmiBase):
         self.WaterSchedule = WaterSchedule
         self.area = area
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def FlowRatePerFloorArea(self):
@@ -469,7 +470,7 @@ class DomesticHotWaterSetting(UmiBase):
 
         return reduce(DomesticHotWaterSetting.combine, z_dhw_list)
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

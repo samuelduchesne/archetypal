@@ -10,6 +10,7 @@ import datetime as dt
 import json
 import logging
 import logging as lg
+import math
 import multiprocessing
 import os
 import sys
@@ -766,3 +767,11 @@ class CustomJSONEncoder(json.JSONEncoder):
             return bool(obj)
 
         return obj
+
+
+def signif(x, digits=4):
+    """Return number rounded to significant digits."""
+    if x == 0 or not math.isfinite(x):
+        return x
+    digits -= math.ceil(math.log10(abs(x)))
+    return round(x, digits)

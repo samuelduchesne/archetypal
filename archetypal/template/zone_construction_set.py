@@ -12,6 +12,7 @@ from archetypal.utils import log, reduce, timeit
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_facade",
@@ -80,8 +81,8 @@ class ZoneConstructionSet(UmiBase):
         self.area = area
         self.volume = volume
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Facade(self):
@@ -463,7 +464,7 @@ class ZoneConstructionSet(UmiBase):
                     iter(
                         filter(
                             lambda x: getattr(x, attr, None) is not None,
-                            UmiBase.CREATED_OBJECTS,
+                            ZoneConstructionSet._CREATED_OBJECTS,
                         )
                     ),
                     None,
@@ -481,7 +482,7 @@ class ZoneConstructionSet(UmiBase):
                 )
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

@@ -2,6 +2,7 @@
 
 import collections
 import logging as lg
+import math
 
 from sigfig import round
 from validator_collection import validators
@@ -143,7 +144,10 @@ class MaterialLayer(object):
             return NotImplemented
         else:
             return all(
-                [self.Thickness == other.Thickness, self.Material == other.Material]
+                [
+                    math.isclose(self.Thickness, other.Thickness, abs_tol=0.001),
+                    self.Material == other.Material,
+                ]
             )
 
     def __repr__(self):

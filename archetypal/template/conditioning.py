@@ -88,6 +88,7 @@ class ZoneConditioning(UmiBase):
 
     .. image:: ../images/template/zoninfo-conditioning.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_cooling_setpoint",
@@ -285,8 +286,8 @@ class ZoneConditioning(UmiBase):
 
         self.area = area
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def area(self):
@@ -1487,14 +1488,14 @@ class ZoneConditioning(UmiBase):
             self.CoolingSchedule = UmiSchedule.constant_schedule()
         if self.MechVentSchedule is None:
             self.MechVentSchedule = UmiSchedule.constant_schedule()
-        if not self.IsMechVentOn:
+        if self.IsMechVentOn is None:
             self.IsMechVentOn = False
-        if not self.MinFreshAirPerPerson:
+        if self.MinFreshAirPerPerson is None:
             self.MinFreshAirPerPerson = 0
-        if not self.MinFreshAirPerArea:
+        if self.MinFreshAirPerArea is None:
             self.MinFreshAirPerArea = 0
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

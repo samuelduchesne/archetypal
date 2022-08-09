@@ -123,11 +123,10 @@ class TestUmiTemplate:
         ]
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.from_idf_files(
-            idf_source, wf, name="Mixed_Files", processors=-1
+            idf_source, wf, name="Mixed_Files", processors=-1, debug=True
         )
 
         data_dict = a.to_dict()
-        a.to_dict()
         assert no_duplicates(data_dict)
 
     @pytest.mark.skipif(

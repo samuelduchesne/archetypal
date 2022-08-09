@@ -7,7 +7,7 @@ from validator_collection import validators
 
 from archetypal.template.materials import GasMaterial
 from archetypal.template.materials.material_base import MaterialBase
-from archetypal.utils import log
+from archetypal.utils import log, signif
 
 
 class OpaqueMaterial(MaterialBase):
@@ -133,7 +133,8 @@ class OpaqueMaterial(MaterialBase):
 
     @Conductivity.setter
     def Conductivity(self, value):
-        self._conductivity = validators.float(value, minimum=0)
+        value = validators.float(value, minimum=0)
+        self._conductivity = signif(value)
 
     @property
     def Density(self):
@@ -142,7 +143,8 @@ class OpaqueMaterial(MaterialBase):
 
     @Density.setter
     def Density(self, value):
-        self._density = validators.float(value, minimum=0)
+        value = validators.float(value, minimum=0)
+        self._density = signif(value)
 
     @property
     def Roughness(self):
@@ -182,7 +184,8 @@ class OpaqueMaterial(MaterialBase):
 
     @SpecificHeat.setter
     def SpecificHeat(self, value):
-        self._specific_heat = validators.float(value, minimum=100)
+        value = validators.float(value, minimum=100)
+        self._specific_heat = signif(value)
 
     @property
     def ThermalEmittance(self):

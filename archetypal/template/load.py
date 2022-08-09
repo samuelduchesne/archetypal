@@ -623,7 +623,7 @@ class ZoneLoad(UmiBase):
             self.PeopleDensity = 0
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

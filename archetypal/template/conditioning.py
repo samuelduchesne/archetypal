@@ -1495,7 +1495,7 @@ class ZoneConditioning(UmiBase):
         if self.MinFreshAirPerArea is None:
             self.MinFreshAirPerArea = 0
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

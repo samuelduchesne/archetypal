@@ -493,7 +493,7 @@ class OpaqueConstruction(LayeredConstruction):
 
         return data_dict
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

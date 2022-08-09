@@ -247,7 +247,7 @@ class UmiSchedule(Schedule, UmiBase):
         """Validate object and fill in missing values."""
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -620,7 +620,7 @@ class DaySchedule(UmiSchedule):
 
         return data_dict
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -799,7 +799,7 @@ class WeekSchedule(UmiSchedule):
 
         return data_dict
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -1031,7 +1031,7 @@ class YearSchedule(UmiSchedule):
 
         return idf.newidfobject(key="Schedule:Year".upper(), **new_dict)
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

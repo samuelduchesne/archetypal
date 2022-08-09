@@ -365,7 +365,7 @@ class GlazingMaterial(MaterialBase):
             Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance=self.DirtFactor,
         )
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

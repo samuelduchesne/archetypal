@@ -337,7 +337,7 @@ class WindowConstruction(LayeredConstruction):
 
         return idf.newidfobject("CONSTRUCTION", **data)
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

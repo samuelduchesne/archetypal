@@ -427,6 +427,7 @@ class UmiBase(object):
                         (
                             x
                             for x in self._CREATED_OBJECTS
+                            if x == self
                         ),
                         key=lambda x: x.unit_number,
                     )

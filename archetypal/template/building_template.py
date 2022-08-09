@@ -565,7 +565,7 @@ class BuildingTemplate(UmiBase):
         """Replace recursively every objects with the first equivalent object."""
 
         def recursive_replace(umibase):
-            for key, obj in umibase.mapping().items():
+            for key, obj in umibase.mapping(validate=False).items():
                 if isinstance(
                     obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
                 ):

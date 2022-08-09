@@ -465,7 +465,7 @@ class OpaqueConstruction(LayeredConstruction):
             # Iterate over the construction's layers
             material = epbunch.get_referenced_object(layer)
             if material:
-                o = OpaqueMaterial.from_epbunch(material, allow_duplicates=True)
+                o = OpaqueMaterial.from_epbunch(material, allow_duplicates=False)
                 try:
                     thickness = material.Thickness
                 except BadEPFieldError:

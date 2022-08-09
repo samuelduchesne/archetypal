@@ -682,11 +682,11 @@ class VentilationSetting(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.NatVentSchedule:
+        if self.NatVentSchedule is None:
             self.NatVentSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
-        if not self.ScheduledVentilationSchedule:
+        if self.ScheduledVentilationSchedule is None:
             self.ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
@@ -699,7 +699,8 @@ class VentilationSetting(UmiBase):
         Args:
             validate:
         """
-        self.validate()
+        if validate:
+            self.validate()
 
         return dict(
             Afn=self.Afn,

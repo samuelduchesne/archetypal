@@ -1488,11 +1488,11 @@ class ZoneConditioning(UmiBase):
             self.CoolingSchedule = UmiSchedule.constant_schedule()
         if self.MechVentSchedule is None:
             self.MechVentSchedule = UmiSchedule.constant_schedule()
-        if not self.IsMechVentOn:
+        if self.IsMechVentOn is None:
             self.IsMechVentOn = False
-        if not self.MinFreshAirPerPerson:
+        if self.MinFreshAirPerPerson is None:
             self.MinFreshAirPerPerson = 0
-        if not self.MinFreshAirPerArea:
+        if self.MinFreshAirPerArea is None:
             self.MinFreshAirPerArea = 0
 
     def mapping(self, validate=True):

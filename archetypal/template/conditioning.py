@@ -307,7 +307,7 @@ class ZoneConditioning(UmiBase):
         assert (
             self._heating_setpoint < value
         ), "Heating setpoint must be lower than the cooling setpoint."
-        self._cooling_setpoint = validators.float(value, minimum=-100, maximum=50)
+        self._cooling_setpoint = validators.float(value, minimum=-100, maximum=100)
 
     @property
     def HeatingSetpoint(self):
@@ -319,7 +319,7 @@ class ZoneConditioning(UmiBase):
         assert (
             value < self._cooling_setpoint
         ), "Heating setpoint must be lower than the cooling setpoint."
-        self._heating_setpoint = validators.float(value)
+        self._heating_setpoint = validators.float(value, minimum=-100, maximum=100)
 
     @property
     def MaxCoolFlow(self):
@@ -1198,9 +1198,9 @@ class ZoneConditioning(UmiBase):
                     )
                 else:
                     cooling_sched = None
-        self.HeatingSetpoint = max(h_array)[0]
+        self.HeatingSetpoint = h_array.mean()
         self.HeatingSchedule = heating_sched
-        self.CoolingSetpoint = min(c_array)[0]
+        self.CoolingSetpoint = c_array.mean()
         self.CoolingSchedule = cooling_sched
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,

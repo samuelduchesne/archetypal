@@ -3,7 +3,7 @@ from operator import add
 
 from validator_collection import validators
 
-from archetypal.template.constructions.opaque_construction import OpaqueConstruction
+import archetypal.template.constructions.opaque_construction
 
 
 class InternalMass:
@@ -27,15 +27,18 @@ class InternalMass:
         )
 
     @property
-    def construction(self) -> OpaqueConstruction:
+    def construction(self):
         """Get or set the construction."""
         return self._construction
 
     @construction.setter
     def construction(self, value):
-        assert isinstance(value, OpaqueConstruction), (
+        assert isinstance(
+            value,
+            archetypal.template.constructions.opaque_construction.OpaqueConstruction,
+        ), (
             f"Input value error for {value}. construction must be of type "
-            f"{OpaqueConstruction}, not {type(value)}."
+            f"{archetypal.template.constructions.opaque_construction.OpaqueConstruction}, not {type(value)}."
         )
         self._construction = value
 
@@ -73,7 +76,9 @@ class InternalMass:
         for int_obj in internal_mass_objs:
             if int_obj.key.upper() == "INTERNALMASS":
                 mass_opaque_constructions.append(
-                    OpaqueConstruction.from_epbunch(int_obj, Category="Internal Mass")
+                    archetypal.template.constructions.opaque_construction.OpaqueConstruction.from_epbunch(
+                        int_obj, Category="Internal Mass"
+                    )
                 )
                 area += float(int_obj.Surface_Area)
 
@@ -94,7 +99,9 @@ class InternalMass:
         Args:
             zone_epbunch (EpBunch): A ZoneDefinition object.
         """
-        construction = OpaqueConstruction.generic_internalmass()
+        construction = (
+            archetypal.template.constructions.opaque_construction.OpaqueConstruction.generic_internalmass()
+        )
         return cls(
             surface_name=f"{zone_epbunch.Name} InternalMass",
             total_area_exposed_to_zone=0,

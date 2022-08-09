@@ -5,13 +5,15 @@ import logging as lg
 
 from validator_collection import validators
 
-from archetypal.template.constructions.opaque_construction import OpaqueConstruction
+import archetypal.template.constructions.opaque_construction as arch_oc
+import archetypal.template.zonedefinition
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -92,7 +94,7 @@ class ZoneConstructionSet(UmiBase):
     @Facade.setter
     def Facade(self, value):
         if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
+            assert isinstance(value, arch_oc.OpaqueConstruction), (
                 f"Input value error for {value}. Facade must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
@@ -106,7 +108,7 @@ class ZoneConstructionSet(UmiBase):
     @Ground.setter
     def Ground(self, value):
         if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
+            assert isinstance(value, arch_oc.OpaqueConstruction), (
                 f"Input value error for {value}. Ground must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
@@ -120,7 +122,7 @@ class ZoneConstructionSet(UmiBase):
     @Partition.setter
     def Partition(self, value):
         if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
+            assert isinstance(value, arch_oc.OpaqueConstruction), (
                 f"Input value error for {value}. Partition must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
@@ -134,7 +136,7 @@ class ZoneConstructionSet(UmiBase):
     @Roof.setter
     def Roof(self, value):
         if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
+            assert isinstance(value, arch_oc.OpaqueConstruction), (
                 f"Input value error for {value}. Roof must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
@@ -148,7 +150,7 @@ class ZoneConstructionSet(UmiBase):
     @Slab.setter
     def Slab(self, value):
         if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
+            assert isinstance(value, arch_oc.OpaqueConstruction), (
                 f"Input value error for {value}. Slab must be"
                 f" an OpaqueConstruction, not a {type(value)}"
             )
@@ -279,27 +281,27 @@ class ZoneConstructionSet(UmiBase):
 
         facades = set(facade)
         if facades:
-            facade = reduce(OpaqueConstruction.combine, facades)
+            facade = reduce(arch_oc.OpaqueConstruction.combine, facades)
         else:
             facade = None
         grounds = set(ground)
         if grounds:
-            ground = reduce(OpaqueConstruction.combine, grounds)
+            ground = reduce(arch_oc.OpaqueConstruction.combine, grounds)
         else:
             ground = None
         partitions = set(partition)
         if partitions:
-            partition = reduce(OpaqueConstruction.combine, partitions)
+            partition = reduce(arch_oc.OpaqueConstruction.combine, partitions)
         else:
             partition = None
         roofs = set(roof)
         if roofs:
-            roof = reduce(OpaqueConstruction.combine, roofs)
+            roof = reduce(arch_oc.OpaqueConstruction.combine, roofs)
         else:
             roof = None
         slabs = set(slab)
         if slabs:
-            slab = reduce(OpaqueConstruction.combine, slabs)
+            slab = reduce(arch_oc.OpaqueConstruction.combine, slabs)
         else:
             slab = None
 
@@ -411,17 +413,19 @@ class ZoneConstructionSet(UmiBase):
 
         # create a new object with the combined attributes
         new_obj = self.__class__(
-            Slab=OpaqueConstruction.combine(self.Slab, other.Slab),
+            Slab=arch_oc.OpaqueConstruction.combine(self.Slab, other.Slab),
             IsSlabAdiabatic=any([self.IsSlabAdiabatic, other.IsSlabAdiabatic]),
-            Roof=OpaqueConstruction.combine(self.Roof, other.Roof),
+            Roof=arch_oc.OpaqueConstruction.combine(self.Roof, other.Roof),
             IsRoofAdiabatic=any([self.IsRoofAdiabatic, other.IsRoofAdiabatic]),
-            Partition=OpaqueConstruction.combine(self.Partition, other.Partition),
+            Partition=arch_oc.OpaqueConstruction.combine(
+                self.Partition, other.Partition
+            ),
             IsPartitionAdiabatic=any(
                 [self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]
             ),
-            Ground=OpaqueConstruction.combine(self.Ground, other.Ground),
+            Ground=arch_oc.OpaqueConstruction.combine(self.Ground, other.Ground),
             IsGroundAdiabatic=any([self.IsGroundAdiabatic, other.IsGroundAdiabatic]),
-            Facade=OpaqueConstruction.combine(self.Facade, other.Facade),
+            Facade=arch_oc.OpaqueConstruction.combine(self.Facade, other.Facade),
             IsFacadeAdiabatic=any([self.IsFacadeAdiabatic, other.IsFacadeAdiabatic]),
             area=1 if self.area + other.area == 2 else self.area + other.area,
             volume=1 if self.volume + other.volume == 2 else self.volume + other.volume,
@@ -473,7 +477,7 @@ class ZoneConstructionSet(UmiBase):
                     setattr(self, attr, getattr(zone, attr))
                 else:
                     # If not, default to a generic construction for last resort.
-                    setattr(self, attr, OpaqueConstruction.generic())
+                    setattr(self, attr, arch_oc.OpaqueConstruction.generic())
                 log(
                     f"While validating {self}, the required attribute "
                     f"'{attr}' was filled "
@@ -552,6 +556,17 @@ class ZoneConstructionSet(UmiBase):
         return self.__class__(**self.mapping(validate=False))
 
     @property
+    def Parents(self):
+        """ Get the parents of the ZoneConstructionSet object"""
+        parents = {}
+        for zd in archetypal.template.zonedefinition.ZoneDefinition._CREATED_OBJECTS:
+            if zd.Constructions == self and zd.Constructions.Name == self.Name:
+                if zd not in parents:
+                    parents[zd] = set()
+                parents[zd].add("Constructions")
+        return parents
+
+    @property
     def children(self):
         return self.Facade, self.Ground, self.Partition, self.Roof, self.Slab
 
@@ -613,7 +628,7 @@ class SurfaceDispatcher:
             lg.DEBUG,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
+        oc = arch_oc.OpaqueConstruction.from_epbunch(
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
         oc.area = surf.area
@@ -627,7 +642,7 @@ class SurfaceDispatcher:
             lg.DEBUG,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
+        oc = arch_oc.OpaqueConstruction.from_epbunch(
             surf.get_referenced_object("Construction_Name")
         )
         oc.area = surf.area
@@ -640,7 +655,7 @@ class SurfaceDispatcher:
             "Construction".upper(), surf.Construction_Name
         )
         if the_construction:
-            oc = OpaqueConstruction.from_epbunch(the_construction)
+            oc = arch_oc.OpaqueConstruction.from_epbunch(the_construction)
             oc.area = surf.area
             oc.Category = "Partition"
             log(
@@ -662,7 +677,7 @@ class SurfaceDispatcher:
             lg.DEBUG,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
+        oc = arch_oc.OpaqueConstruction.from_epbunch(
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
         oc.area = surf.area
@@ -676,7 +691,7 @@ class SurfaceDispatcher:
             lg.DEBUG,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
+        oc = arch_oc.OpaqueConstruction.from_epbunch(
             surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         )
         oc.area = surf.area

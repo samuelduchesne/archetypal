@@ -31,6 +31,7 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -657,6 +658,13 @@ class BuildingTemplate(UmiBase):
                     self.Version == other.Version,
                 ]
             )
+
+    @property
+    def ParentTemplates(self):
+        """Bails out of Parent Templates recursive call from UmiBase
+        And returns array of self for concatenation
+        """
+        return {self}
 
     @property
     def children(self):

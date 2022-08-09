@@ -4,6 +4,7 @@ import collections
 
 from validator_collection import validators
 
+import archetypal.template.building_template
 from archetypal.template.constructions.base_construction import ConstructionBase
 from archetypal.template.materials.opaque_material import OpaqueMaterial
 
@@ -262,6 +263,19 @@ class StructureInformation(ConstructionBase):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def Parents(self):
+        """ Get the parents of the Structure object"""
+        parents = {}
+        for (
+            bt
+        ) in archetypal.template.building_template.BuildingTemplate._CREATED_OBJECTS:
+            if bt.Structure == self and bt.Structure.Name == self.Name:
+                if bt not in parents:
+                    parents[bt] = set()
+                parents[bt].add("Structure")
+        return parents
 
     @property
     def children(self):

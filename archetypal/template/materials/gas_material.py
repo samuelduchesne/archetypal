@@ -14,6 +14,7 @@ class GasMaterial(MaterialBase):
 
     .. image:: ../images/template/materials-gas.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = ("_type", "_conductivity", "_density")

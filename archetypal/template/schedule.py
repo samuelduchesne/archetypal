@@ -10,6 +10,11 @@ import numpy as np
 import pandas as pd
 from validator_collection import validators
 
+import archetypal.template.conditioning
+import archetypal.template.dhw
+import archetypal.template.load
+import archetypal.template.ventilation
+import archetypal.template.window_setting
 from archetypal.schedule import Schedule, _ScheduleParser, get_year_for_first_weekday
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log
@@ -17,6 +22,7 @@ from archetypal.utils import log
 
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
+
     _CREATED_OBJECTS = []
 
     __slots__ = ("_quantity",)
@@ -503,6 +509,8 @@ class YearSchedulePart:
 class DaySchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles daily schedules."""
 
+    _CREATED_OBJECTS = []
+
     __slots__ = ("_values",)
 
     def __init__(self, Name, Values, Category="Day", **kwargs):
@@ -517,6 +525,7 @@ class DaySchedule(UmiSchedule):
         super(DaySchedule, self).__init__(
             Category=Category, Name=Name, Values=Values, **kwargs
         )
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def all_values(self) -> np.ndarray:
@@ -715,10 +724,23 @@ class DaySchedule(UmiSchedule):
             ),
         )
 
+    @property
+    def Parents(self):
+        """ Get the parents of the WeekSchedule object"""
+        parents = {}
+        for ws in WeekSchedule._CREATED_OBJECTS:
+            for i, day in enumerate(ws.Days):
+                if day == self and day.Name == self.Name:
+                    if ws not in parents:
+                        parents[ws] = set()
+                    parents[ws].add(i)
+        return parents
+
 
 class WeekSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles weekly schedules."""
 
+    _CREATED_OBJECTS = []
     __slots__ = ("_days", "_values")
 
     def __init__(self, Name, Days=None, Category="Week", **kwargs):
@@ -730,6 +752,7 @@ class WeekSchedule(UmiSchedule):
         """
         super(WeekSchedule, self).__init__(Name, Category=Category, **kwargs)
         self.Days = Days
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Days(self):
@@ -905,12 +928,26 @@ class WeekSchedule(UmiSchedule):
         )
 
     @property
+    def Parents(self):
+        """ Get the parents of the WeekSchedule object"""
+        parents = {}
+        for ys in YearSchedule._CREATED_OBJECTS:
+            for i, part in enumerate(ys.Parts):
+                if part.Schedule == self and part.Schedule.Name == self.Name:
+                    if ys not in parents:
+                        parents[ys] = set()
+                    parents[ys].add(i)
+        return parents
+
+    @property
     def children(self):
         return self.Days
 
 
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
+
+    _CREATED_OBJECTS = []
 
     def __init__(self, Name, Type="Fraction", Parts=None, Category="Year", **kwargs):
         """Initialize a YearSchedule object with parameters.
@@ -930,6 +967,7 @@ class YearSchedule(UmiSchedule):
         super(YearSchedule, self).__init__(
             Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
         )
+        self._CREATED_OBJECTS.append(self)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -1080,6 +1118,72 @@ class YearSchedule(UmiSchedule):
     def to_ref(self):
         """Return a ref pointer to self."""
         return {"$ref": str(self.id)}
+
+    @property
+    def Parents(self):
+        """ Get the parents of the YearSchedule object"""
+        parents = {}
+        for ws in archetypal.template.window_setting.WindowSetting._CREATED_OBJECTS:
+            for scheduled_parameter in [
+                "AfnWindowAvailability",
+                "ShadingSystemAvailabilitySchedule",
+                "ZoneMixingAvailabilitySchedule",
+            ]:
+                if (
+                    getattr(ws, scheduled_parameter) == self
+                    and getattr(ws, scheduled_parameter).Name == self.Name
+                ):
+                    if ws not in parents:
+                        parents[ws] = set()
+                    parents[ws].add(scheduled_parameter)
+        for vs in archetypal.template.ventilation.VentilationSetting._CREATED_OBJECTS:
+            for scheduled_parameter in [
+                "NatVentSchedule",
+                "ScheduledVentilationSchedule",
+            ]:
+                if (
+                    getattr(vs, scheduled_parameter) == self
+                    and getattr(vs, scheduled_parameter).Name == self.Name
+                ):
+                    if vs not in parents:
+                        parents[vs] = set()
+                    parents[vs].add(scheduled_parameter)
+        for zl in archetypal.template.load.ZoneLoad._CREATED_OBJECTS:
+            for scheduled_parameter in [
+                "EquipmentAvailabilitySchedule",
+                "LightsAvailabilitySchedule",
+                "OccupancySchedule",
+            ]:
+                if (
+                    getattr(zl, scheduled_parameter) == self
+                    and getattr(zl, scheduled_parameter).Name == self.Name
+                ):
+                    if zl not in parents:
+                        parents[zl] = set()
+                    parents[zl].add(scheduled_parameter)
+        for dhw in archetypal.template.dhw.DomesticHotWaterSetting._CREATED_OBJECTS:
+            for scheduled_parameter in ["WaterSchedule"]:
+                if (
+                    getattr(dhw, scheduled_parameter) == self
+                    and getattr(dhw, scheduled_parameter).Name == self.Name
+                ):
+                    if dhw not in parents:
+                        parents[dhw] = set()
+                    parents[dhw].add(scheduled_parameter)
+        for hvac in archetypal.template.conditioning.ZoneConditioning._CREATED_OBJECTS:
+            for scheduled_parameter in [
+                "CoolingSchedule",
+                "HeatingSchedule",
+                "MechVentSchedule",
+            ]:
+                if (
+                    getattr(hvac, scheduled_parameter) == self
+                    and getattr(hvac, scheduled_parameter).Name == self.Name
+                ):
+                    if hvac not in parents:
+                        parents[hvac] = set()
+                    parents[hvac].add(scheduled_parameter)
+        return parents
 
     @property
     def children(self):

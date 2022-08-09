@@ -11,8 +11,9 @@ import pandas as pd
 from sigfig import round
 from validator_collection import checkers, validators
 
+import archetypal.template.schedule as arch_sch
+import archetypal.template.zonedefinition
 from archetypal import settings
-from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
@@ -42,6 +43,7 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -173,9 +175,9 @@ class ZoneLoad(UmiBase):
     @EquipmentAvailabilitySchedule.setter
     def EquipmentAvailabilitySchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
+            assert isinstance(value, arch_sch.UmiSchedule), (
                 f"Input value error for '{value}'. Value must be of type '"
-                f"{UmiSchedule}', not {type(value)}"
+                f"{arch_sch.UmiSchedule}', not {type(value)}"
             )
             # set quantity on schedule as well
             value.quantity = self.EquipmentPowerDensity
@@ -213,32 +215,32 @@ class ZoneLoad(UmiBase):
         )
 
     @property
-    def LightsAvailabilitySchedule(self) -> UmiSchedule:
+    def LightsAvailabilitySchedule(self):
         """Get or set the lights availability schedule."""
         return self._lights_availability_schedule
 
     @LightsAvailabilitySchedule.setter
     def LightsAvailabilitySchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
+            assert isinstance(value, arch_sch.UmiSchedule), (
                 f"Input value error for '{value}'. Value must be of type '"
-                f"{UmiSchedule}', not {type(value)}"
+                f"{arch_sch.UmiSchedule}', not {type(value)}"
             )
             # set quantity on schedule as well
             value.quantity = self.LightingPowerDensity
         self._lights_availability_schedule = value
 
     @property
-    def OccupancySchedule(self) -> UmiSchedule:
+    def OccupancySchedule(self):
         """Get or set the occupancy schedule."""
         return self._occupancy_schedule
 
     @OccupancySchedule.setter
     def OccupancySchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
+            assert isinstance(value, arch_sch.UmiSchedule), (
                 f"Input value error for '{value}'. Value must be if type '"
-                f"{UmiSchedule}', not {type(value)}"
+                f"{arch_sch.UmiSchedule}', not {type(value)}"
             )
             # set quantity on schedule as well
             value.quantity = self.PeopleDensity
@@ -401,7 +403,7 @@ class ZoneLoad(UmiBase):
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 level_ = float(series["DesignLevel"])
                 if level_ > 0:
-                    return UmiSchedule.from_epbunch(
+                    return arch_sch.UmiSchedule.from_epbunch(
                         zone_ep.theidf.schedules_dict[sched_name.upper()],
                         quantity=level_,
                     )
@@ -421,7 +423,7 @@ class ZoneLoad(UmiBase):
 
             if schedules:
                 EquipmentAvailabilitySchedule = reduce(
-                    UmiSchedule.combine,
+                    arch_sch.UmiSchedule.combine,
                     schedules,
                     quantity=True,
                 )
@@ -444,7 +446,7 @@ class ZoneLoad(UmiBase):
 
             if lighting_schedules:
                 LightsAvailabilitySchedule = reduce(
-                    UmiSchedule.combine,
+                    arch_sch.UmiSchedule.combine,
                     lighting_schedules,
                     quantity=True,
                 )
@@ -463,7 +465,7 @@ class ZoneLoad(UmiBase):
                     "Schedules t where ScheduleIndex=?"
                 )
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
-                return UmiSchedule.from_epbunch(
+                return arch_sch.UmiSchedule.from_epbunch(
                     zone_ep.theidf.schedules_dict[sched_name.upper()],
                     quantity=series["NumberOfPeople"],
                 )
@@ -479,7 +481,7 @@ class ZoneLoad(UmiBase):
 
             if occupancy_schedules:
                 OccupancySchedule = reduce(
-                    UmiSchedule.combine,
+                    arch_sch.UmiSchedule.combine,
                     occupancy_schedules,
                     quantity=lambda x: sum(obj.quantity for obj in x),
                 )
@@ -558,7 +560,7 @@ class ZoneLoad(UmiBase):
 
         new_attr = dict(
             DimmingType=max(self.DimmingType, other.DimmingType),
-            EquipmentAvailabilitySchedule=UmiSchedule.combine(
+            EquipmentAvailabilitySchedule=arch_sch.UmiSchedule.combine(
                 self.EquipmentAvailabilitySchedule,
                 other.EquipmentAvailabilitySchedule,
                 weights=[self.area, other.area],
@@ -571,13 +573,13 @@ class ZoneLoad(UmiBase):
             LightingPowerDensity=self.float_mean(
                 other, "LightingPowerDensity", weights
             ),
-            LightsAvailabilitySchedule=UmiSchedule.combine(
+            LightsAvailabilitySchedule=arch_sch.UmiSchedule.combine(
                 self.LightsAvailabilitySchedule,
                 other.LightsAvailabilitySchedule,
                 weights=[self.area, other.area],
                 quantity=True,
             ),
-            OccupancySchedule=UmiSchedule.combine(
+            OccupancySchedule=arch_sch.UmiSchedule.combine(
                 self.OccupancySchedule,
                 other.OccupancySchedule,
                 weights=[self.area, other.area],
@@ -602,7 +604,9 @@ class ZoneLoad(UmiBase):
         if self.DimmingType is None:
             self.DimmingType = DimmingTypes.Continuous
         if self.EquipmentAvailabilitySchedule is None:
-            self.EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule()
+            self.EquipmentAvailabilitySchedule = (
+                arch_sch.UmiSchedule.constant_schedule()
+            )
         if self.EquipmentPowerDensity is None:
             self.EquipmentPowerDensity = 0
         if self.IlluminanceTarget is None:
@@ -610,9 +614,9 @@ class ZoneLoad(UmiBase):
         if self.LightingPowerDensity is None:
             self.LightingPowerDensity = 0
         if self.LightsAvailabilitySchedule is None:
-            self.LightsAvailabilitySchedule = UmiSchedule.constant_schedule()
+            self.LightsAvailabilitySchedule = arch_sch.UmiSchedule.constant_schedule()
         if self.OccupancySchedule is None:
-            self.OccupancySchedule = UmiSchedule.constant_schedule()
+            self.OccupancySchedule = arch_sch.UmiSchedule.constant_schedule()
         if self.IsEquipmentOn is None:
             self.IsEquipmentOn = False
         if self.IsLightingOn is None:
@@ -836,6 +840,17 @@ class ZoneLoad(UmiBase):
             return NotImplemented
         else:
             return self.__key__() == other.__key__()
+
+    @property
+    def Parents(self):
+        """ Get the parents of the Loads object"""
+        parents = {}
+        for zd in archetypal.template.zonedefinition.ZoneDefinition._CREATED_OBJECTS:
+            if zd.Loads == self and zd.Loads.Name == self.Name:
+                if zd not in parents:
+                    parents[zd] = set()
+                parents[zd].add("Loads")
+        return parents
 
     @property
     def children(self):

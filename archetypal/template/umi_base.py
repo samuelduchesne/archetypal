@@ -410,8 +410,7 @@ class UmiBase(object):
                         (
                             x
                             for x in self._CREATED_OBJECTS
-                            if x == self
-                            and x.Name == self.Name
+                            if x == self and x.Name == self.Name
                         ),
                         key=lambda x: x.unit_number,
                     )
@@ -424,10 +423,7 @@ class UmiBase(object):
             obj = next(
                 iter(
                     sorted(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                        ),
+                        (x for x in self._CREATED_OBJECTS),
                         key=lambda x: x.unit_number,
                     )
                 ),
@@ -435,6 +431,15 @@ class UmiBase(object):
             )
 
         return obj
+
+    @property
+    def ParentTemplates(self):
+        """ Get the parent templates of an UmiBase object"""
+        templates = set()
+        for parent in self.Parents.keys():
+            # Recursive call terminates at Parent Template level, or if self.Parents is empty
+            templates = templates.union(parent.ParentTemplates)
+        return templates
 
 
 class UserSet(Hashable, MutableSet):

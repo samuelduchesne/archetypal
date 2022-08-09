@@ -12,6 +12,7 @@ from enum import Enum
 
 from validator_collection import validators
 
+import archetypal.template.window_setting
 from archetypal.simple_glazing import calc_simple_glazing
 from archetypal.template.constructions.base_construction import LayeredConstruction
 from archetypal.template.materials.gas_layer import GasLayer
@@ -779,3 +780,14 @@ class WindowConstruction(LayeredConstruction):
             abs(desired - actual) < 1.5 * 10 ** (-3)
             for desired, actual in zip(temperatures_last, temperatures_next)
         )
+
+    @property
+    def Parents(self):
+        """ Get the parents of the window Construction object"""
+        parents = {}
+        for ws in archetypal.template.window_setting.WindowSetting._CREATED_OBJECTS:
+            if ws.Construction == self and ws.Construction.Name == self.Name:
+                if ws not in parents:
+                    parents[ws] = set()
+                parents[ws].add("Construction")
+        return parents

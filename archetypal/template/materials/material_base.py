@@ -3,6 +3,7 @@
 import numpy as np
 from validator_collection import validators
 
+import archetypal.template.constructions
 from archetypal.template.umi_base import UmiBase
 
 
@@ -185,3 +186,40 @@ class MaterialBase(UmiBase):
     def validate(self):
         """Validate object and fill in missing values."""
         return self
+
+    @property
+    def Parents(self):
+        """ Get the parents of a Material object"""
+        parents = {}
+        for (
+            wc
+        ) in (
+            archetypal.template.constructions.window_construction.WindowConstruction._CREATED_OBJECTS
+        ):
+            for i, layer in enumerate(wc.Layers):
+                if layer.Material == self and layer.Material.Name == self.Name:
+                    if wc not in parents:
+                        parents[wc] = set()
+                    parents[wc].add(i)
+        for (
+            oc
+        ) in (
+            archetypal.template.constructions.opaque_construction.OpaqueConstruction._CREATED_OBJECTS
+        ):
+            for i, layer in enumerate(oc.Layers):
+                if layer.Material == self and layer.Material.Name == self.Name:
+                    if oc not in parents:
+                        parents[oc] = set()
+                    parents[oc].add(i)
+        for (
+            structure
+        ) in archetypal.template.structure.StructureInformation._CREATED_OBJECTS:
+            for i, mass_ratio in enumerate(structure.MassRatios):
+                if (
+                    mass_ratio.Material == self
+                    and mass_ratio.Material.Name == self.Name
+                ):
+                    if structure not in parents:
+                        parents[structure] = set()
+                    parents[structure].add(i)
+        return parents

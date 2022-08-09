@@ -8,12 +8,14 @@ from functools import reduce
 from validator_collection import checkers, validators
 from validator_collection.errors import EmptyValueError
 
+import archetypal.template.building_template
+import archetypal.template.schedule as arch_sch
+import archetypal.template.zonedefinition
 from archetypal.template.constructions.window_construction import (
     ShadingType,
     WindowConstruction,
     WindowType,
 )
-from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, timeit
 
@@ -36,6 +38,7 @@ class WindowSetting(UmiBase):
 
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -179,7 +182,7 @@ class WindowSetting(UmiBase):
     @AfnWindowAvailability.setter
     def AfnWindowAvailability(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
+            assert isinstance(value, arch_sch.UmiSchedule), (
                 f"Input error with value {value}. AfnWindowAvailability must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -235,7 +238,7 @@ class WindowSetting(UmiBase):
     @ShadingSystemAvailabilitySchedule.setter
     def ShadingSystemAvailabilitySchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
+            assert isinstance(value, arch_sch.UmiSchedule), (
                 f"Input error with value {value}. ZoneMixingAvailabilitySchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -262,7 +265,7 @@ class WindowSetting(UmiBase):
     @ZoneMixingAvailabilitySchedule.setter
     def ZoneMixingAvailabilitySchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
+            assert isinstance(value, arch_sch.UmiSchedule), (
                 f"Input error with value {value}. ZoneMixingAvailabilitySchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -434,9 +437,9 @@ class WindowSetting(UmiBase):
         """
         name = kwargs.pop("Name", Construction.Name + "_Window")
         construction = WindowConstruction.from_epbunch(Construction, **kwargs)
-        AfnWindowAvailability = UmiSchedule.constant_schedule()
-        ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule()
-        ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule()
+        AfnWindowAvailability = arch_sch.UmiSchedule.constant_schedule()
+        ShadingSystemAvailabilitySchedule = arch_sch.UmiSchedule.constant_schedule()
+        ZoneMixingAvailabilitySchedule = arch_sch.UmiSchedule.constant_schedule()
         return cls(
             Name=name,
             Construction=construction,
@@ -529,7 +532,9 @@ class WindowSetting(UmiBase):
             # get shading control schedule
             if shading_control["Shading_Control_Is_Scheduled"].upper() == "YES":
                 name = shading_control["Schedule_Name"]
-                attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.from_epbunch(
+                attr[
+                    "ShadingSystemAvailabilitySchedule"
+                ] = arch_sch.UmiSchedule.from_epbunch(
                     surface.theidf.schedules_dict[name.upper()]
                 )
             else:
@@ -538,11 +543,13 @@ class WindowSetting(UmiBase):
                 if shade_ctrl_type.lower() == "alwaysoff":
                     attr[
                         "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule(value=0, name="AlwaysOff")
+                    ] = arch_sch.UmiSchedule.constant_schedule(
+                        value=0, name="AlwaysOff"
+                    )
                 elif shade_ctrl_type.lower() == "alwayson":
                     attr[
                         "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule()
+                    ] = arch_sch.UmiSchedule.constant_schedule()
                 else:
                     log(
                         'Window "{}" uses a  window control type that '
@@ -552,7 +559,7 @@ class WindowSetting(UmiBase):
                     )
                     attr[
                         "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule()
+                    ] = arch_sch.UmiSchedule.constant_schedule()
             # get shading type
             if shading_control["Shading_Type"] != "":
                 mapping = {
@@ -568,7 +575,9 @@ class WindowSetting(UmiBase):
                 attr["ShadingSystemType"] = mapping[shading_control["Shading_Type"]]
         else:
             # Set default schedules
-            attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule()
+            attr[
+                "ShadingSystemAvailabilitySchedule"
+            ] = arch_sch.UmiSchedule.constant_schedule()
 
         # get airflow network
         afn = next(
@@ -586,14 +595,14 @@ class WindowSetting(UmiBase):
             leak = afn.get_referenced_object("Leakage_Component_Name")
             name = afn["Venting_Availability_Schedule_Name"]
             if name != "":
-                attr["AfnWindowAvailability"] = UmiSchedule.from_epbunch(
+                attr["AfnWindowAvailability"] = arch_sch.UmiSchedule.from_epbunch(
                     surface.theidf.schedules_dict[name.upper()]
                 )
             else:
-                attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule()
+                attr["AfnWindowAvailability"] = arch_sch.UmiSchedule.constant_schedule()
             name = afn["Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name"]
             if name != "":
-                attr["AfnTempSetpoint"] = UmiSchedule(
+                attr["AfnTempSetpoint"] = arch_sch.UmiSchedule(
                     Name=name, idf=surface.theidf
                 ).mean
             else:
@@ -642,11 +651,11 @@ class WindowSetting(UmiBase):
                     lg.WARNING,
                 )
         else:
-            attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
+            attr["AfnWindowAvailability"] = arch_sch.UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff"
             )
         # Todo: Zone Mixing is always off
-        attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(
+        attr["ZoneMixingAvailabilitySchedule"] = arch_sch.UmiSchedule.constant_schedule(
             value=0, Name="AlwaysOff"
         )
         DataSource = kwargs.pop("DataSource", surface.theidf.name)
@@ -737,7 +746,7 @@ class WindowSetting(UmiBase):
             ),
             AfnDischargeC=self.float_mean(other, "AfnDischargeC", weights),
             AfnTempSetpoint=self.float_mean(other, "AfnTempSetpoint", weights),
-            AfnWindowAvailability=UmiSchedule.combine(
+            AfnWindowAvailability=arch_sch.UmiSchedule.combine(
                 self.AfnWindowAvailability, other.AfnWindowAvailability, weights
             ),
             IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
@@ -755,12 +764,12 @@ class WindowSetting(UmiBase):
                 other, "ZoneMixingDeltaTemperature", weights
             ),
             ZoneMixingFlowRate=self.float_mean(other, "ZoneMixingFlowRate", weights),
-            ZoneMixingAvailabilitySchedule=UmiSchedule.combine(
+            ZoneMixingAvailabilitySchedule=arch_sch.UmiSchedule.combine(
                 self.ZoneMixingAvailabilitySchedule,
                 other.ZoneMixingAvailabilitySchedule,
                 weights,
             ),
-            ShadingSystemAvailabilitySchedule=UmiSchedule.combine(
+            ShadingSystemAvailabilitySchedule=arch_sch.UmiSchedule.combine(
                 self.ShadingSystemAvailabilitySchedule,
                 other.ShadingSystemAvailabilitySchedule,
                 weights,
@@ -869,16 +878,16 @@ class WindowSetting(UmiBase):
     def validate(self):
         """Validate object and fill in missing values."""
         if self.AfnWindowAvailability is None:
-            self.AfnWindowAvailability = UmiSchedule.constant_schedule(
+            self.AfnWindowAvailability = arch_sch.UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff"
             )
         if self.ShadingSystemAvailabilitySchedule is None:
-            self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
-                value=0, Name="AlwaysOff"
+            self.ShadingSystemAvailabilitySchedule = (
+                arch_sch.UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
             )
         if self.ZoneMixingAvailabilitySchedule is None:
-            self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
-                value=0, Name="AlwaysOff"
+            self.ZoneMixingAvailabilitySchedule = (
+                arch_sch.UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
             )
 
         return self
@@ -915,6 +924,24 @@ class WindowSetting(UmiBase):
             DataSource=self.DataSource,
             Name=self.Name,
         )
+
+    @property
+    def Parents(self):
+        """ Get the parents of the Window Settings object"""
+        parents = {}
+        for (
+            bt
+        ) in archetypal.template.building_template.BuildingTemplate._CREATED_OBJECTS:
+            if bt.Windows == self and bt.Windows.Name == self.Name:
+                if bt not in parents:
+                    parents[bt] = set()
+                parents[bt].add("Windows")
+        for zd in archetypal.template.zonedefinition.ZoneDefinition._CREATED_OBJECTS:
+            if zd.Windows == self and zd.Windows.Name == self.Name:
+                if zd not in parents:
+                    parents[zd] = set()
+                parents[zd].add("Windows")
+        return parents
 
     @property
     def children(self):

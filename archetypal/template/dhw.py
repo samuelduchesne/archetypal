@@ -8,8 +8,9 @@ from eppy import modeleditor
 from sigfig import round
 from validator_collection import validators
 
+import archetypal.template.schedule as arch_sch
+import archetypal.template.zonedefinition
 from archetypal import settings
-from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
@@ -19,6 +20,7 @@ class DomesticHotWaterSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-dhw.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -95,7 +97,7 @@ class DomesticHotWaterSetting(UmiBase):
     @WaterSchedule.setter
     def WaterSchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
+            assert isinstance(value, arch_sch.UmiSchedule), (
                 f"Input error with value {value}. WaterSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -239,7 +241,7 @@ class DomesticHotWaterSetting(UmiBase):
                 else obj.Hot_Water_Supply_Temperature_Schedule_Name
             )
             epbunch = obj.theidf.schedules_dict[schedule_name.upper()]
-            hot_schd = UmiSchedule.from_epbunch(epbunch)
+            hot_schd = arch_sch.UmiSchedule.from_epbunch(epbunch)
             hot_schds.append(hot_schd)
 
         return np.array([sched.all_values.mean() for sched in hot_schds]).mean()
@@ -255,7 +257,7 @@ class DomesticHotWaterSetting(UmiBase):
                 epbunch = obj.theidf.schedules_dict[
                     obj.Cold_Water_Supply_Temperature_Schedule_Name.upper()
                 ]
-                cold_schd_names = UmiSchedule.from_epbunch(epbunch)
+                cold_schd_names = arch_sch.UmiSchedule.from_epbunch(epbunch)
                 WaterTemperatureInlet.append(cold_schd_names.mean)
             else:
                 # If blank, water temperatures are calculated by the
@@ -269,7 +271,7 @@ class DomesticHotWaterSetting(UmiBase):
                     water_mains_temp = water_mains_temps[0]
                     if water_mains_temp.Calculation_Method.lower() == "schedule":
                         # From Schedule method
-                        mains_scd = UmiSchedule.from_epbunch(
+                        mains_scd = arch_sch.UmiSchedule.from_epbunch(
                             obj.theidf.schedules_dict[
                                 water_mains_temp.Schedule_Name.upper()
                             ]
@@ -307,7 +309,7 @@ class DomesticHotWaterSetting(UmiBase):
             UmiSchedule: The WaterSchedule
         """
         water_schds = [
-            UmiSchedule.from_epbunch(
+            arch_sch.UmiSchedule.from_epbunch(
                 obj.theidf.schedules_dict[obj.Flow_Rate_Fraction_Schedule_Name.upper()],
                 quantity=obj.Peak_Flow_Rate,
             )
@@ -315,7 +317,7 @@ class DomesticHotWaterSetting(UmiBase):
         ]
 
         return reduce(
-            UmiSchedule.combine,
+            arch_sch.UmiSchedule.combine,
             water_schds,
             weights=None,
             quantity=True,
@@ -388,7 +390,7 @@ class DomesticHotWaterSetting(UmiBase):
 
         meta = self._get_predecessors_meta(other)
         new_obj = DomesticHotWaterSetting(
-            WaterSchedule=UmiSchedule.combine(
+            WaterSchedule=arch_sch.UmiSchedule.combine(
                 self.WaterSchedule,
                 other.WaterSchedule,
                 weights=[
@@ -434,7 +436,7 @@ class DomesticHotWaterSetting(UmiBase):
         if not dhw_objs:
             # defaults with 0 flow rate.
             total_flow_rate = 0
-            water_schedule = UmiSchedule.constant_schedule()
+            water_schedule = arch_sch.UmiSchedule.constant_schedule()
             supply_temp = 60
             inlet_temp = 10
 
@@ -537,6 +539,17 @@ class DomesticHotWaterSetting(UmiBase):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def Parents(self):
+        """ Get the parents of the DomesticHotWater object"""
+        parents = {}
+        for zd in archetypal.template.zonedefinition.ZoneDefinition._CREATED_OBJECTS:
+            if zd.DomesticHotWater == self and zd.DomesticHotWater.Name == self.Name:
+                if zd not in parents:
+                    parents[zd] = set()
+                parents[zd].add("DomesticHotWater")
+        return parents
 
     @property
     def children(self):

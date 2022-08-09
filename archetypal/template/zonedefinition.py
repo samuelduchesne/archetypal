@@ -8,15 +8,16 @@ from eppy.bunch_subclass import BadEPFieldError
 from sigfig import round
 from validator_collection import validators
 
-from archetypal.template.conditioning import ZoneConditioning
-from archetypal.template.constructions.internal_mass import InternalMass
-from archetypal.template.constructions.opaque_construction import OpaqueConstruction
-from archetypal.template.dhw import DomesticHotWaterSetting
-from archetypal.template.load import ZoneLoad
+import archetypal.template.building_template
+import archetypal.template.conditioning as arch_cond
+import archetypal.template.constructions.internal_mass as arch_im  
+import archetypal.template.constructions.opaque_construction as arch_oc
+import archetypal.template.dhw as arch_dhw  
+import archetypal.template.load as arch_zl
+import archetypal.template.ventilation as arch_vent
+import archetypal.template.window_setting as arch_ws
+import archetypal.template.zone_construction_set as arch_zcs
 from archetypal.template.umi_base import UmiBase
-from archetypal.template.ventilation import VentilationSetting
-from archetypal.template.window_setting import WindowSetting
-from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.utils import log, settings
 
 
@@ -25,6 +26,7 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -132,9 +134,9 @@ class ZoneDefinition(UmiBase):
     @Constructions.setter
     def Constructions(self, value):
         if value is not None:
-            assert isinstance(value, ZoneConstructionSet), (
+            assert isinstance(value, arch_zcs.ZoneConstructionSet), (
                 f"Input value error. Constructions must be of "
-                f"type {ZoneConstructionSet}, not {type(value)}."
+                f"type {arch_zcs.ZoneConstructionSet}, not {type(value)}."
             )
         self._constructions = value
 
@@ -146,9 +148,9 @@ class ZoneDefinition(UmiBase):
     @Loads.setter
     def Loads(self, value):
         if value is not None:
-            assert isinstance(value, ZoneLoad), (
+            assert isinstance(value, arch_zl.ZoneLoad), (
                 f"Input value error. Loads must be of "
-                f"type {ZoneLoad}, not {type(value)}."
+                f"type {arch_zl.ZoneLoad}, not {type(value)}."
             )
         self._loads = value
 
@@ -160,9 +162,9 @@ class ZoneDefinition(UmiBase):
     @Conditioning.setter
     def Conditioning(self, value):
         if value is not None:
-            assert isinstance(value, ZoneConditioning), (
+            assert isinstance(value, arch_cond.ZoneConditioning), (
                 f"Input value error. Conditioning must be of "
-                f"type {ZoneConditioning}, not {type(value)}."
+                f"type {arch_cond.ZoneConditioning}, not {type(value)}."
             )
         self._conditioning = value
 
@@ -174,9 +176,9 @@ class ZoneDefinition(UmiBase):
     @Ventilation.setter
     def Ventilation(self, value):
         if value is not None:
-            assert isinstance(value, VentilationSetting), (
+            assert isinstance(value, arch_vent.VentilationSetting), (
                 f"Input value error. Ventilation must be of "
-                f"type {VentilationSetting}, not {type(value)}."
+                f"type {arch_vent.VentilationSetting}, not {type(value)}."
             )
         self._ventilation = value
 
@@ -188,9 +190,9 @@ class ZoneDefinition(UmiBase):
     @DomesticHotWater.setter
     def DomesticHotWater(self, value):
         if value is not None:
-            assert isinstance(value, DomesticHotWaterSetting), (
+            assert isinstance(value, arch_dhw.DomesticHotWaterSetting), (
                 f"Input value error. DomesticHotWater must be of "
-                f"type {DomesticHotWaterSetting}, not {type(value)}."
+                f"type {arch_dhw.DomesticHotWaterSetting}, not {type(value)}."
             )
         self._domestic_hot_water = value
 
@@ -220,9 +222,9 @@ class ZoneDefinition(UmiBase):
     @InternalMassConstruction.setter
     def InternalMassConstruction(self, value):
         if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
+            assert isinstance(value, arch_oc.OpaqueConstruction), (
                 f"Input value error. InternalMassConstruction must be of "
-                f"type {OpaqueConstruction}, not {type(value)}."
+                f"type {arch_oc.OpaqueConstruction}, not {type(value)}."
             )
         self._internal_mass_construction = value
 
@@ -243,9 +245,9 @@ class ZoneDefinition(UmiBase):
     @Windows.setter
     def Windows(self, value):
         if value is not None:
-            assert isinstance(value, WindowSetting), (
+            assert isinstance(value, arch_ws.WindowSetting), (
                 f"Input value error. Windows must be of "
-                f"type {WindowSetting}, not {type(value)}."
+                f"type {arch_ws.WindowSetting}, not {type(value)}."
             )
         self._windows = value
 
@@ -555,19 +557,23 @@ class ZoneDefinition(UmiBase):
         )
 
         if construct_parents:
-            zone.Constructions = ZoneConstructionSet.from_zone(zone, **kwargs)
-            zone.Conditioning = ZoneConditioning.from_zone(zone, ep_bunch, **kwargs)
-            zone.Ventilation = VentilationSetting.from_zone(zone, ep_bunch, **kwargs)
-            zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(
+            zone.Constructions = arch_zcs.ZoneConstructionSet.from_zone(zone, **kwargs)
+            zone.Conditioning = arch_cond.ZoneConditioning.from_zone(
+                zone, ep_bunch, **kwargs
+            )
+            zone.Ventilation = arch_vent.VentilationSetting.from_zone(
+                zone, ep_bunch, **kwargs
+            )
+            zone.DomesticHotWater = arch_dhw.DomesticHotWaterSetting.from_zone(
                 ep_bunch, **kwargs
             )
-            zone.Loads = ZoneLoad.from_zone(zone, ep_bunch, **kwargs)
-            internal_mass_from_zone = InternalMass.from_zone(ep_bunch)
+            zone.Loads = arch_zl.ZoneLoad.from_zone(zone, ep_bunch, **kwargs)
+            internal_mass_from_zone = arch_im.InternalMass.from_zone(ep_bunch)
             zone.InternalMassConstruction = internal_mass_from_zone.construction
             zone.InternalMassExposedPerFloorArea = (
                 internal_mass_from_zone.total_area_exposed_to_zone
             )
-            zone.Windows = WindowSetting.from_zone(zone, **kwargs)
+            zone.Windows = arch_ws.WindowSetting.from_zone(zone, **kwargs)
 
         log(
             'completed Zone "{}" constructor in {:,.2f} seconds'.format(
@@ -634,30 +640,32 @@ class ZoneDefinition(UmiBase):
             )
 
         new_attr = dict(
-            Conditioning=ZoneConditioning.combine(
+            Conditioning=arch_cond.ZoneConditioning.combine(
                 self.Conditioning, other.Conditioning, weights
             ),
-            Constructions=ZoneConstructionSet.combine(
+            Constructions=arch_zcs.ZoneConstructionSet.combine(
                 self.Constructions, other.Constructions, weights
             ),
-            Ventilation=VentilationSetting.combine(self.Ventilation, other.Ventilation),
-            Windows=WindowSetting.combine(self.Windows, other.Windows, weights),
+            Ventilation=arch_vent.VentilationSetting.combine(
+                self.Ventilation, other.Ventilation
+            ),
+            Windows=arch_ws.WindowSetting.combine(self.Windows, other.Windows, weights),
             DaylightMeshResolution=self.float_mean(
                 other, "DaylightMeshResolution", weights=weights
             ),
             DaylightWorkplaneHeight=self.float_mean(
                 other, "DaylightWorkplaneHeight", weights
             ),
-            DomesticHotWater=DomesticHotWaterSetting.combine(
+            DomesticHotWater=arch_dhw.DomesticHotWaterSetting.combine(
                 self.DomesticHotWater, other.DomesticHotWater
             ),
-            InternalMassConstruction=OpaqueConstruction.combine(
+            InternalMassConstruction=arch_oc.OpaqueConstruction.combine(
                 self.InternalMassConstruction, other.InternalMassConstruction
             ),
             InternalMassExposedPerFloorArea=self.float_mean(
                 other, "InternalMassExposedPerFloorArea", weights
             ),
-            Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
+            Loads=arch_zl.ZoneLoad.combine(self.Loads, other.Loads, weights),
         )
         new_obj = ZoneDefinition(**meta, **new_attr)
 
@@ -675,7 +683,7 @@ class ZoneDefinition(UmiBase):
     def validate(self):
         """Validate object and fill in missing values."""
         if not self.InternalMassConstruction:
-            internal_mass = InternalMass.generic_internalmass_from_zone(self)
+            internal_mass = arch_im.InternalMass.generic_internalmass_from_zone(self)
             self.InternalMassConstruction = internal_mass.construction
             self.InternalMassExposedPerFloorArea = (
                 internal_mass.total_area_exposed_to_zone
@@ -689,7 +697,7 @@ class ZoneDefinition(UmiBase):
             )
 
         if self.Conditioning is None:
-            self.Conditioning = ZoneConditioning(Name="Unconditioned Zone")
+            self.Conditioning = arch_cond.ZoneConditioning(Name="Unconditioned Zone")
 
         return self
 
@@ -760,6 +768,23 @@ class ZoneDefinition(UmiBase):
     def __copy__(self):
         """Return a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def Parents(self):
+        """ Get the parents of the ZoneDefinition object"""
+        parents = {}
+        for (
+            bt
+        ) in archetypal.template.building_template.BuildingTemplate._CREATED_OBJECTS:
+            if bt.Core == self and bt.Core.Name == self.Name:
+                if bt not in parents:
+                    parents[bt] = set()
+                parents[bt].add("Core")
+            if bt.Perimeter == self and bt.Perimeter.Name == self.Name:
+                if bt not in parents:
+                    parents[bt] = set()
+                parents[bt].add("Perimeter")
+        return parents
 
     @property
     def children(self):

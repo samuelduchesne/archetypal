@@ -408,7 +408,7 @@ class OpaqueConstruction(LayeredConstruction):
         return OpaqueConstruction(
             Name="InternalMass",
             Layers=[MaterialLayer(Material=mat, Thickness=0.15)],
-            Category="InternalMass",
+            Category="Internal Mass",
             **kwargs,
         )
 

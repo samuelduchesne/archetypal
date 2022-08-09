@@ -55,7 +55,6 @@ class UmiBase(object):
         "_allow_duplicates",
         "_unit_number",
     )
-    CREATED_OBJECTS = []
     _ids = itertools.count(0)  # unique id for each class instance
 
     def __init__(
@@ -239,15 +238,6 @@ class UmiBase(object):
         """Return UmiBase dictionary representation."""
         return {"$id": "{}".format(self.id), "Name": "{}".format(self.Name)}
 
-    @classmethod
-    def get_classref(cls, ref):
-        return next(
-            iter(
-                [value for value in UmiBase.CREATED_OBJECTS if value.id == ref["$ref"]]
-            ),
-            None,
-        )
-
     def get_ref(self, ref):
         pass
 
@@ -380,7 +370,7 @@ class UmiBase(object):
             return other
         if other is None:
             return self
-        self.CREATED_OBJECTS.remove(self)
+        self._CREATED_OBJECTS.remove(self)
         id = self.id
         new_obj = self.combine(other, allow_duplicates=allow_duplicates)
         new_obj.id = id
@@ -419,10 +409,9 @@ class UmiBase(object):
                     sorted(
                         (
                             x
-                            for x in UmiBase.CREATED_OBJECTS
+                            for x in self._CREATED_OBJECTS
                             if x == self
                             and x.Name == self.Name
-                            and type(x) == type(self)
                         ),
                         key=lambda x: x.unit_number,
                     )
@@ -437,8 +426,7 @@ class UmiBase(object):
                     sorted(
                         (
                             x
-                            for x in UmiBase.CREATED_OBJECTS
-                            if x == self and type(x) == type(self)
+                            for x in self._CREATED_OBJECTS
                         ),
                         key=lambda x: x.unit_number,
                     )

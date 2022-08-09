@@ -14,6 +14,8 @@ from archetypal.utils import log
 class NoMassMaterial(MaterialBase):
     """Use this component to create a custom no mass material."""
 
+    _CREATED_OBJECTS = []
+
     _ROUGHNESS_TYPES = (
         "VeryRough",
         "Rough",
@@ -77,8 +79,8 @@ class NoMassMaterial(MaterialBase):
         self.VisibleAbsorptance = VisibleAbsorptance
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def r_value(self):

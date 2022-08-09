@@ -31,6 +31,7 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_partition_ratio",
@@ -114,8 +115,8 @@ class BuildingTemplate(UmiBase):
         self.AuthorEmails = AuthorEmails if AuthorEmails else []
         self.Version = Version
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Perimeter(self):

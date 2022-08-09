@@ -31,6 +31,8 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
+    _CREATED_OBJECTS = []
+
     __slots__ = ("area",)
 
     def __init__(self, Name, Layers, **kwargs):
@@ -45,8 +47,8 @@ class OpaqueConstruction(LayeredConstruction):
         super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
         self.area = 1
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def r_value(self):

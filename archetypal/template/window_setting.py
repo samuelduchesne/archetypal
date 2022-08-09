@@ -36,6 +36,7 @@ class WindowSetting(UmiBase):
 
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_operable_area",
@@ -131,8 +132,8 @@ class WindowSetting(UmiBase):
 
         self.area = area
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def area(self):

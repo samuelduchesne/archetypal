@@ -25,6 +25,7 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_internal_mass_exposed_per_floor_area",
@@ -120,8 +121,8 @@ class ZoneDefinition(UmiBase):
         self.multiplier = multiplier
         self.is_core = is_core
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Constructions(self):

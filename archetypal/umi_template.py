@@ -273,8 +273,7 @@ class UmiTemplateLibrary:
         if keep_all_zones:
             _zones = set(
                 obj.get_unique()
-                for obj in UmiBase.CREATED_OBJECTS
-                if isinstance(obj, ZoneDefinition)
+                for obj in ZoneDefinition._CREATED_OBJECTS
             )
             for zone in _zones:
                 umi_template.ZoneDefinitions.append(zone)

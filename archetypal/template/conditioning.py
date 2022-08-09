@@ -88,6 +88,7 @@ class ZoneConditioning(UmiBase):
 
     .. image:: ../images/template/zoninfo-conditioning.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_cooling_setpoint",
@@ -285,8 +286,8 @@ class ZoneConditioning(UmiBase):
 
         self.area = area
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def area(self):

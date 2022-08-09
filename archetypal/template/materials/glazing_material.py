@@ -17,6 +17,7 @@ class GlazingMaterial(MaterialBase):
     .. image:: ../images/template/materials-glazing.png
 
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_ir_emissivity_back",
@@ -104,8 +105,8 @@ class GlazingMaterial(MaterialBase):
         self.SolarReflectanceFront = SolarReflectanceFront
         self.SolarTransmittance = SolarTransmittance
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Conductivity(self):

@@ -63,6 +63,8 @@ class WindowConstruction(LayeredConstruction):
     .. image:: ../images/template/constructions-window.png
     """
 
+    _CREATED_OBJECTS = []
+
     _CATEGORIES = ("single", "double", "triple", "quadruple")
 
     __slots__ = ("_category",)
@@ -85,8 +87,8 @@ class WindowConstruction(LayeredConstruction):
         )
         self.Category = Category  # set here for validators
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Category(self):

@@ -610,7 +610,10 @@ class UmiTemplateLibrary:
             UniqueName.existing = set()
             obj: UmiBase
             for obj in group:
-                data = obj.to_dict()
+                try:
+                    data = obj.to_dict()
+                except AttributeError as e:
+                    raise AttributeError(f"{e} for {obj}")
                 data.update({"Name": UniqueName(data.get("Name"))})
                 data_dict.setdefault(group_name, []).append(data)
 

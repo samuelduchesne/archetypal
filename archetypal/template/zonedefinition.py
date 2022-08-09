@@ -674,7 +674,7 @@ class ZoneDefinition(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.InternalMassConstruction:
+        if self.InternalMassConstruction is None:
             internal_mass = InternalMass.generic_internalmass_from_zone(self)
             self.InternalMassConstruction = internal_mass.construction
             self.InternalMassExposedPerFloorArea = (

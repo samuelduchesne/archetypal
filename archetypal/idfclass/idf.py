@@ -2459,6 +2459,16 @@ class IDF(GeomIDF):
         if all(angle != 0 for angle in zone_angles):
             self.rotate(None, (0, 0, 0))
 
+            from geomeppy.recipes import rotate
+
+            # Since we rotated the building and the site, we need to rotate the site
+            # back by angle
+            anchor = Vector3D(*(0, 0, 0))
+            shadingsurfaces = self.getsiteshadingsurfaces()
+            self.translate(-anchor)
+            rotate(shadingsurfaces, next(iter(zone_angles)))
+            self.translate(anchor)
+
         zone_origin = {
             zone.Name.upper(): Vector3D(zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
             for zone in self.idfobjects["ZONE"]
@@ -2468,6 +2478,10 @@ class IDF(GeomIDF):
         daylighting_refpoints = [
             p for p in self.idfobjects["DAYLIGHTING:REFERENCEPOINT"]
         ]
+        attached_shading_surf_names = []
+        for g in self.idd_index["ref2names"]["AttachedShadingSurfNames"]:
+            for item in self.idfobjects[g]:
+                attached_shading_surf_names.append(item)
 
         # Translate surfaces in the direction of their zone's origin vector.
         for subsurf in subsurfaces:
@@ -2483,6 +2497,10 @@ class IDF(GeomIDF):
                 day.YCoordinate_of_Reference_Point,
                 day.ZCoordinate_of_Reference_Point,
             ) = coords[0]
+        for attached_surf in attached_shading_surf_names:
+            parent_surface = attached_surf.get_referenced_object("Base_Surface_Name")
+            zone_name = parent_surface.Zone_Name
+            translate([attached_surf], zone_origin[zone_name.upper()])
 
         # Edit the `GLOBALGEOMETRYRULES` to "World"
         for obj in self.idfobjects["GLOBALGEOMETRYRULES"]:
@@ -2556,11 +2574,12 @@ class IDF(GeomIDF):
             from geomeppy.geom.vectors import Vector3D
 
             anchor = Vector3D(*anchor)
+        # Rotate the building
+        super(IDF, self).rotate(angle, anchor=anchor)
         log(
             f"Geometries rotated by {angle} degrees around "
             f"{anchor or 'building centroid'}"
         )
-        super(IDF, self).rotate(angle, anchor=anchor)
 
         # after building is rotate, change the north axis and zone direction to zero.
         self.idfobjects["BUILDING"][0].North_Axis = 0
@@ -2596,6 +2615,19 @@ class IDF(GeomIDF):
     @rotated.setter
     def rotated(self, value):
         self._rotated = bool(value)
+
+    def getsiteshadingsurfaces(self, surface_type=""):
+        site_shading_types = self.idd_index["ref2names"][
+            "AllShadingSurfNames"
+        ].difference(self.idd_index["ref2names"]["AttachedShadingSurfNames"])
+        surfaces = itertools.chain.from_iterable(
+            [self.idfobjects[key.upper()] for key in site_shading_types]
+        )
+        if surface_type:
+            surfaces = filter(
+                lambda x: x.Surface_Type.lower() == surface_type.lower(), surfaces
+            )
+        return list(surfaces)
 
 
 def _process_csv(file, working_dir, simulname):

@@ -32,8 +32,6 @@ class BuildingTemplate(UmiBase):
     .. image:: ../images/template/buildingtemplate.png
     """
 
-    _CREATED_OBJECTS = []
-
     __slots__ = (
         "_partition_ratio",
         "_lifespan",
@@ -117,7 +115,7 @@ class BuildingTemplate(UmiBase):
         self.Version = Version
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Perimeter(self):

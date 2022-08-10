@@ -7,8 +7,6 @@ import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
 from validator_collection import validators
 
-import archetypal.template.zone_construction_set
-import archetypal.template.zonedefinition
 from archetypal.template.constructions.base_construction import LayeredConstruction
 from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.materials.opaque_material import OpaqueMaterial
@@ -33,7 +31,10 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
-    _CREATED_OBJECTS = []
+    _POSSIBLE_PARENTS = [
+        ("ZoneDefinition", ["InternalMassConstruction"]),
+        ("ZoneConstructionSet", ["Facade", "Slab", "Ground", "Partition", "Roof"]),
+    ]
 
     __slots__ = ("area",)
 
@@ -50,7 +51,7 @@ class OpaqueConstruction(LayeredConstruction):
         self.area = 1
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def r_value(self):
@@ -577,30 +578,3 @@ class OpaqueConstruction(LayeredConstruction):
                 for i, layer in enumerate(self.Layers[1:])
             },
         )
-
-    @property
-    def Parents(self):
-        """ Get the parents of the OpaqueConstruction object"""
-        parents = {}
-        for zd in archetypal.template.zonedefinition.ZoneDefinition._CREATED_OBJECTS:
-            if (
-                zd.InternalMassConstruction == self
-                and zd.InternalMassConstruction.Name == self.Name
-            ):
-                if zd not in parents:
-                    parents[zd] = set()
-                parents[zd].add("InternalMassConstruction")
-        for (
-            zcs
-        ) in (
-            archetypal.template.zone_construction_set.ZoneConstructionSet._CREATED_OBJECTS
-        ):
-            for structure in ["Facade", "Ground", "Slab", "Partition", "Roof"]:
-                if (
-                    getattr(zcs, structure) == self
-                    and getattr(zcs, structure).Name == self.Name
-                ):
-                    if zcs not in parents:
-                        parents[zcs] = set()
-                    parents[zcs].add(structure)
-        return parents

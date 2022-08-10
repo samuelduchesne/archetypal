@@ -24,7 +24,10 @@ from archetypal.template.ventilation import VentilationSetting
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
-from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
+from archetypal.umi_template import (
+    UmiTemplateLibrary,
+    no_duplicates,
+)
 
 
 class TestUmiTemplate:
@@ -85,7 +88,7 @@ class TestUmiTemplate:
         assert len(G) > n_nodes
 
     def test_parent_templates(self):
-        """Test realtime graph structure determination of parent templates"""
+        """ Test that changing an object accurately updates the ParentTemplates list"""
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
 
         lib = UmiTemplateLibrary.open(file)
@@ -96,9 +99,20 @@ class TestUmiTemplate:
             assert bt in bt.Core.ParentTemplates
             bt.Perimeter.Loads = lib.ZoneLoads[0]
             bt.Core.Loads = lib.ZoneLoads[0]
-        
+
         for bt in lib.BuildingTemplates:
+            # Can't use == here since the other Building Templates from opening the library are still in mem
             assert bt in lib.ZoneLoads[0].ParentTemplates
+
+    def test_all_children_for_parent_templates(self):
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+
+        lib = UmiTemplateLibrary.open(file)
+        lib.unique_components(keep_orphaned=False)
+        for group, components in lib:
+            for component in components:
+                for bt in component.ParentTemplates:
+                    assert bt in lib.BuildingTemplates
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and

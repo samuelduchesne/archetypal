@@ -3,7 +3,7 @@ from operator import add
 
 from validator_collection import validators
 
-import archetypal.template.constructions.opaque_construction
+from archetypal.template.constructions.opaque_construction import OpaqueConstruction
 
 
 class InternalMass:
@@ -27,18 +27,15 @@ class InternalMass:
         )
 
     @property
-    def construction(self):
+    def construction(self) -> OpaqueConstruction:
         """Get or set the construction."""
         return self._construction
 
     @construction.setter
     def construction(self, value):
-        assert isinstance(
-            value,
-            archetypal.template.constructions.opaque_construction.OpaqueConstruction,
-        ), (
+        assert isinstance(value, OpaqueConstruction,), (
             f"Input value error for {value}. construction must be of type "
-            f"{archetypal.template.constructions.opaque_construction.OpaqueConstruction}, not {type(value)}."
+            f"{OpaqueConstruction}, not {type(value)}."
         )
         self._construction = value
 
@@ -76,9 +73,7 @@ class InternalMass:
         for int_obj in internal_mass_objs:
             if int_obj.key.upper() == "INTERNALMASS":
                 mass_opaque_constructions.append(
-                    archetypal.template.constructions.opaque_construction.OpaqueConstruction.from_epbunch(
-                        int_obj, Category="Internal Mass"
-                    )
+                    OpaqueConstruction.from_epbunch(int_obj, Category="Internal Mass")
                 )
                 area += float(int_obj.Surface_Area)
 
@@ -99,9 +94,7 @@ class InternalMass:
         Args:
             zone_epbunch (EpBunch): A ZoneDefinition object.
         """
-        construction = (
-            archetypal.template.constructions.opaque_construction.OpaqueConstruction.generic_internalmass()
-        )
+        construction = OpaqueConstruction.generic_internalmass()
         return cls(
             surface_name=f"{zone_epbunch.Name} InternalMass",
             total_area_exposed_to_zone=0,

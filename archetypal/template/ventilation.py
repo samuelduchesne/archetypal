@@ -9,8 +9,7 @@ import pandas as pd
 from sigfig import round
 from validator_collection import checkers, validators
 
-import archetypal.template.schedule as arch_sch
-import archetypal.template.zonedefinition
+from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, timeit, top, weighted_mean
 
@@ -29,7 +28,7 @@ def resolve_temp(temp, idf):
         return temp
     elif isinstance(temp, str):
         epbunch = idf.schedules_dict[temp.upper()]
-        sched = arch_sch.UmiSchedule.from_epbunch(epbunch)
+        sched = UmiSchedule.from_epbunch(epbunch)
         return sched.all_values.mean()
 
 
@@ -64,8 +63,7 @@ class VentilationSetting(UmiBase):
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
 
-    _CREATED_OBJECTS = []
-
+    _POSSIBLE_PARENTS = [("ZoneDefinition", ["Ventilation"])]
     __slots__ = (
         "_infiltration",
         "_is_infiltration_on",
@@ -202,7 +200,7 @@ class VentilationSetting(UmiBase):
         self.volume = volume
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def NatVentSchedule(self):
@@ -216,7 +214,7 @@ class VentilationSetting(UmiBase):
     @NatVentSchedule.setter
     def NatVentSchedule(self, value):
         if value is not None:
-            assert isinstance(value, arch_sch.UmiSchedule), (
+            assert isinstance(value, UmiSchedule), (
                 f"Input error with value {value}. NatVentSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -230,7 +228,7 @@ class VentilationSetting(UmiBase):
     @ScheduledVentilationSchedule.setter
     def ScheduledVentilationSchedule(self, value):
         if value is not None:
-            assert isinstance(value, arch_sch.UmiSchedule), (
+            assert isinstance(value, UmiSchedule), (
                 f"Input error with value {value}. ScheduledVentilationSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -635,10 +633,10 @@ class VentilationSetting(UmiBase):
 
         # create a new object with the combined attributes
         new_obj = self.__class__(
-            NatVentSchedule=arch_sch.UmiSchedule.combine(
+            NatVentSchedule=UmiSchedule.combine(
                 self.NatVentSchedule, other.NatVentSchedule, [self.area, other.area]
             ),
-            ScheduledVentilationSchedule=arch_sch.UmiSchedule.combine(
+            ScheduledVentilationSchedule=UmiSchedule.combine(
                 self.ScheduledVentilationSchedule,
                 other.ScheduledVentilationSchedule,
                 weights=[self.volume, other.volume],
@@ -685,11 +683,11 @@ class VentilationSetting(UmiBase):
     def validate(self):
         """Validate object and fill in missing values."""
         if self.NatVentSchedule is None:
-            self.NatVentSchedule = arch_sch.UmiSchedule.constant_schedule(
+            self.NatVentSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
         if self.ScheduledVentilationSchedule is None:
-            self.ScheduledVentilationSchedule = arch_sch.UmiSchedule.constant_schedule(
+            self.ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
 
@@ -938,17 +936,6 @@ class VentilationSetting(UmiBase):
         return infiltration_epbunch, ventilation_epbunch, natural_epbunch
 
     @property
-    def Parents(self):
-        """ Get the parents of the Ventilation object"""
-        parents = {}
-        for zd in archetypal.template.zonedefinition.ZoneDefinition._CREATED_OBJECTS:
-            if zd.Ventilation == self and zd.Ventilation.Name == self.Name:
-                if zd not in parents:
-                    parents[zd] = set()
-                parents[zd].add("Ventilation")
-        return parents
-
-    @property
     def children(self):
         return self.NatVentSchedule, self.ScheduledVentilationSchedule
 
@@ -990,9 +977,7 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
             quantity = nat_df.loc[index, "Volume Flow Rate/Floor Area {m3/s/m2}"]
             if schedule_name_.upper() in zone.idf.schedules_dict:
                 epbunch = zone.idf.schedules_dict[schedule_name_.upper()]
-                NatVentSchedule = arch_sch.UmiSchedule.from_epbunch(
-                    epbunch, quantity=quantity
-                )
+                NatVentSchedule = UmiSchedule.from_epbunch(epbunch, quantity=quantity)
             else:
                 raise KeyError
         except KeyError:
@@ -1001,14 +986,10 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
             #  in the nat_df. For the mean time, a zone containing such an
             #  object will be turned on with an AlwaysOn schedule.
             IsNatVentOn = True
-            NatVentSchedule = arch_sch.UmiSchedule.constant_schedule(
-                allow_duplicates=True
-            )
+            NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         except Exception:
             IsNatVentOn = False
-            NatVentSchedule = arch_sch.UmiSchedule.constant_schedule(
-                allow_duplicates=True
-            )
+            NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         finally:
             try:
                 NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
@@ -1033,7 +1014,7 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
 
     else:
         IsNatVentOn = False
-        NatVentSchedule = arch_sch.UmiSchedule.constant_schedule(allow_duplicates=True)
+        NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         NatVentMaxRelHumidity = 90
         NatVentMaxOutdoorAirTemp = 30
         NatVentMinOutdoorAirTemp = 0
@@ -1074,21 +1055,21 @@ def do_scheduled_ventilation(index, scd_df, zone, zone_ep):
             IsScheduledVentilationOn = any(scd_df.loc[index, "Name"])
             schedule_name_ = scd_df.loc[index, "Schedule Name"]
             epbunch = zone_ep.theidf.schedules_dict[schedule_name_.upper()]
-            ScheduledVentilationSchedule = arch_sch.UmiSchedule.from_epbunch(epbunch)
+            ScheduledVentilationSchedule = UmiSchedule.from_epbunch(epbunch)
             ScheduledVentilationAch = scd_df.loc[index, "ACH - Air Changes per Hour"]
             ScheduledVentilationSetpoint = resolve_temp(
                 scd_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
                 zone_ep.theidf,
             )
         except Exception:
-            ScheduledVentilationSchedule = arch_sch.UmiSchedule.constant_schedule(
+            ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
             IsScheduledVentilationOn = False
             ScheduledVentilationAch = 0
             ScheduledVentilationSetpoint = 18
     else:
-        ScheduledVentilationSchedule = arch_sch.UmiSchedule.constant_schedule(
+        ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
             value=0, Name="AlwaysOff", allow_duplicates=True
         )
         IsScheduledVentilationOn = False

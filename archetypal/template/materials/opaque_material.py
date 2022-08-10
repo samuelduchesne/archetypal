@@ -16,8 +16,6 @@ class OpaqueMaterial(MaterialBase):
     .. image:: ../images/template/materials-opaque.png
     """
 
-    _CREATED_OBJECTS = []
-
     _ROUGHNESS_TYPES = (
         "VeryRough",
         "Rough",
@@ -124,7 +122,7 @@ class OpaqueMaterial(MaterialBase):
         # TODO: replace when NoMass and AirGap when properly is supported
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Conductivity(self):

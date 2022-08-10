@@ -45,6 +45,28 @@ def _shorten_name(long_name):
 class UmiBase(object):
     """Base class for template objects."""
 
+    _POSSIBLE_PARENTS = []
+
+    _CREATED_OBJECTS = {
+        "GasMaterials": [],
+        "GlazingMaterials": [],
+        "OpaqueMaterials": [],
+        "OpaqueConstructions": [],
+        "WindowConstructions": [],
+        "StructureInformations": [],
+        "DaySchedules": [],
+        "WeekSchedules": [],
+        "YearSchedules": [],
+        "DomesticHotWaterSettings": [],
+        "VentilationSettings": [],
+        "ZoneConditionings": [],
+        "ZoneConstructionSets": [],
+        "ZoneLoads": [],
+        "ZoneDefinitions": [],
+        "WindowSettings": [],
+        "BuildingTemplates": [],
+    }
+
     __slots__ = (
         "_id",
         "_datasource",
@@ -90,6 +112,10 @@ class UmiBase(object):
         self.allow_duplicates = allow_duplicates
         self.unit_number = next(self._ids)
         self.predecessors = None
+
+    @property
+    def CREATED_OBJECTS(self):
+        return UmiBase._CREATED_OBJECTS[self.__class__.__name__ + "s"]
 
     @property
     def Name(self):
@@ -423,10 +449,7 @@ class UmiBase(object):
             obj = next(
                 iter(
                     sorted(
-                        (
-                            x for x in self._CREATED_OBJECTS
-                            if x == self
-                        ),
+                        (x for x in self._CREATED_OBJECTS if x == self),
                         key=lambda x: x.unit_number,
                     )
                 ),
@@ -434,6 +457,36 @@ class UmiBase(object):
             )
 
         return obj
+
+    @property
+    def Parents(self):
+        """ Get the parents of an UmiBase Object"""
+        parents = {}
+        for (umi_class, lookup_children_of) in self._POSSIBLE_PARENTS:
+            possible_parents = UmiBase._CREATED_OBJECTS[umi_class + "s"]
+            for parent in possible_parents:
+                # For each parent, find the possible children which
+                # may equal self
+                keyed_children = []  # stores list of (key, child)
+                if callable(lookup_children_of):
+                    keyed_children = lookup_children_of(parent)
+                elif isinstance(lookup_children_of, list):
+                    keyed_children = [
+                        (attr, getattr(parent, attr))
+                        for attr in lookup_children_of
+                        if getattr(parent, attr, None)
+                    ]
+                else:
+                    raise ValueError(
+                        "The provided parent lookup is not valid.  It must be a list of str or return a list of enumerated children"
+                    )
+                for key, child in keyed_children:
+                    if child.Name == self.Name:
+                        if child == self:
+                            if parent not in parents:
+                                parents[parent] = set()
+                            parents[parent].add(key)
+        return parents
 
     @property
     def ParentTemplates(self):

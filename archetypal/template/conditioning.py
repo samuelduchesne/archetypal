@@ -11,9 +11,8 @@ from sigfig import round
 from sklearn.preprocessing import Binarizer
 from validator_collection import checkers, validators
 
-import archetypal.template.schedule as arch_sch
-import archetypal.template.zonedefinition
 from archetypal.reportdata import ReportData
+from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import float_round, log
 
@@ -90,7 +89,7 @@ class ZoneConditioning(UmiBase):
     .. image:: ../images/template/zoninfo-conditioning.png
     """
 
-    _CREATED_OBJECTS = []
+    _POSSIBLE_PARENTS = [("ZoneDefinition", ["Conditioning"])]
 
     __slots__ = (
         "_cooling_setpoint",
@@ -288,9 +287,6 @@ class ZoneConditioning(UmiBase):
 
         self.area = area
 
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
-
     @property
     def area(self):
         """Get or set the area of the zone associated to this object [m²]."""
@@ -399,7 +395,7 @@ class ZoneConditioning(UmiBase):
     @HeatingSchedule.setter
     def HeatingSchedule(self, value):
         if value is not None:
-            assert isinstance(value, arch_sch.UmiSchedule), (
+            assert isinstance(value, UmiSchedule), (
                 f"Input error with value {value}. HeatingSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -479,7 +475,7 @@ class ZoneConditioning(UmiBase):
     @CoolingSchedule.setter
     def CoolingSchedule(self, value):
         if value is not None:
-            assert isinstance(value, arch_sch.UmiSchedule), (
+            assert isinstance(value, UmiSchedule), (
                 f"Input error with value {value}. CoolingSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -581,7 +577,7 @@ class ZoneConditioning(UmiBase):
     @MechVentSchedule.setter
     def MechVentSchedule(self, value):
         if value is not None:
-            assert isinstance(value, arch_sch.UmiSchedule), (
+            assert isinstance(value, UmiSchedule), (
                 f"Input error with value {value}. MechVentSchedule must "
                 f"be an UmiSchedule, not a {type(value)}"
             )
@@ -937,13 +933,13 @@ class ZoneConditioning(UmiBase):
             )
             return isoa, oa_area, oa_person, mechvent_schedule
 
-    def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone):
+    def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone) -> UmiSchedule:
         """Get mechanical ventilation schedule for zone and OutdoorAir:DesignSpec."""
         if oa_spec.Outdoor_Air_Schedule_Name != "":
             epbunch = zone.idf.schedules_dict[oa_spec.Outdoor_Air_Schedule_Name.upper()]
-            umi_schedule = arch_sch.UmiSchedule.from_epbunch(epbunch)
+            umi_schedule = UmiSchedule.from_epbunch(epbunch)
             log(
-                f"Mechanical Ventilation Schedule set as {arch_sch.UmiSchedule} for "
+                f"Mechanical Ventilation Schedule set as {UmiSchedule} for "
                 f"zone {zone.Name}",
                 lg.DEBUG,
             )
@@ -967,7 +963,7 @@ class ZoneConditioning(UmiBase):
                     f"No Mechanical Ventilation Schedule specified for zone "
                     f"{zone.Name}"
                 )
-                return arch_sch.UmiSchedule.constant_schedule(
+                return UmiSchedule.constant_schedule(
                     value=0, Name="AlwaysOff", allow_duplicates=True
                 )
             else:
@@ -975,7 +971,7 @@ class ZoneConditioning(UmiBase):
                     f"Mechanical Ventilation Schedule specified for zone "
                     f"{zone.Name} as AirSystemOutdoorAirMinimumFlowFraction"
                 )
-                return arch_sch.UmiSchedule.from_values(
+                return UmiSchedule.from_values(
                     Name="AirSystemOutdoorAirMinimumFlowFraction",
                     Values=values,
                     idf=zone.idf,
@@ -1169,7 +1165,7 @@ class ZoneConditioning(UmiBase):
                     h_array = np.array(h_array).round(2)
                     scaler = Binarizer(threshold=np.array(h_array).mean() - 0.1)
                     heating_availability = scaler.fit_transform(h_array).flatten()
-                    heating_sched = arch_sch.UmiSchedule.from_values(
+                    heating_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Heating_Schedule",
                         Values=heating_availability,
                         Type="Fraction",
@@ -1193,7 +1189,7 @@ class ZoneConditioning(UmiBase):
                     c_array = np.array(c_array).round(2)
                     scaler = Binarizer(threshold=c_array.mean() + 0.1)
                     cooling_availability = scaler.fit_transform(c_array).flatten()
-                    cooling_sched = arch_sch.UmiSchedule.from_values(
+                    cooling_sched = UmiSchedule.from_values(
                         Name=zone.Name + "_Cooling_Schedule",
                         Values=1 - cooling_availability,  # take flipped
                         Type="Fraction",
@@ -1464,13 +1460,13 @@ class ZoneConditioning(UmiBase):
             MinFreshAirPerPerson=UmiBase.float_mean(
                 self, other, "MinFreshAirPerPerson", weights
             ),
-            HeatingSchedule=arch_sch.UmiSchedule.combine(
+            HeatingSchedule=UmiSchedule.combine(
                 self.HeatingSchedule, other.HeatingSchedule, weights
             ),
-            CoolingSchedule=arch_sch.UmiSchedule.combine(
+            CoolingSchedule=UmiSchedule.combine(
                 self.CoolingSchedule, other.CoolingSchedule, weights
             ),
-            MechVentSchedule=arch_sch.UmiSchedule.combine(
+            MechVentSchedule=UmiSchedule.combine(
                 self.MechVentSchedule, other.MechVentSchedule, weights
             ),
             area=1 if self.area + other.area == 2 else self.area + other.area,
@@ -1485,11 +1481,11 @@ class ZoneConditioning(UmiBase):
     def validate(self):
         """Validate object and fill in missing values."""
         if self.HeatingSchedule is None:
-            self.HeatingSchedule = arch_sch.UmiSchedule.constant_schedule()
+            self.HeatingSchedule = UmiSchedule.constant_schedule()
         if self.CoolingSchedule is None:
-            self.CoolingSchedule = arch_sch.UmiSchedule.constant_schedule()
+            self.CoolingSchedule = UmiSchedule.constant_schedule()
         if self.MechVentSchedule is None:
-            self.MechVentSchedule = arch_sch.UmiSchedule.constant_schedule()
+            self.MechVentSchedule = UmiSchedule.constant_schedule()
         if self.IsMechVentOn is None:
             self.IsMechVentOn = False
         if self.MinFreshAirPerPerson is None:
@@ -1628,17 +1624,6 @@ class ZoneConditioning(UmiBase):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
-
-    @property
-    def Parents(self):
-        """ Get the parents of the Conditioning object"""
-        parents = {}
-        for zd in archetypal.template.zonedefinition.ZoneDefinition._CREATED_OBJECTS:
-            if zd.Conditioning == self and zd.Conditioning.Name == self.Name:
-                if zd not in parents:
-                    parents[zd] = set()
-                parents[zd].add("Conditioning")
-        return parents
 
     @property
     def children(self):

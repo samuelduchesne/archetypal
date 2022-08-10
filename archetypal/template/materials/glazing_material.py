@@ -18,8 +18,6 @@ class GlazingMaterial(MaterialBase):
 
     """
 
-    _CREATED_OBJECTS = []
-
     __slots__ = (
         "_ir_emissivity_back",
         "_ir_emissivity_front",
@@ -107,7 +105,7 @@ class GlazingMaterial(MaterialBase):
         self.SolarTransmittance = SolarTransmittance
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Conductivity(self):

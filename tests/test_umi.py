@@ -97,7 +97,8 @@ class TestUmiTemplate:
             bt.Perimeter.Loads = lib.ZoneLoads[0]
             bt.Core.Loads = lib.ZoneLoads[0]
         
-        assert {bt for bt in lib.BuildingTemplates} == lib.ZoneLoads[0].ParentTemplates
+        for bt in lib.BuildingTemplates:
+            assert bt in lib.ZoneLoads[0].ParentTemplates
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and

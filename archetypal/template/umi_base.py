@@ -423,7 +423,11 @@ class UmiBase(object):
             obj = next(
                 iter(
                     sorted(
-                        (x for x in self._CREATED_OBJECTS),
+                        (
+                            x for x in self._CREATED_OBJECTS
+                            if x == self
+
+                        ),
                         key=lambda x: x.unit_number,
                     )
                 ),

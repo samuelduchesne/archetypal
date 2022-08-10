@@ -17,6 +17,7 @@ import archetypal.template.load as arch_zl
 import archetypal.template.ventilation as arch_vent
 import archetypal.template.window_setting as arch_ws
 import archetypal.template.zone_construction_set as arch_zcs
+from archetypal.template.constructions.internal_mass import InternalMass # PyUmi imports this from ZoneDefinition...
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, settings
 

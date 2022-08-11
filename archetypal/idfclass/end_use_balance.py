@@ -663,6 +663,7 @@ class EndUseBalance:
                 "air_system_heating": "OA Heating",
                 "air_system_cooling": "OA Cooling",
                 "cooling": "Cooling",
+                "heating": "Heating",
             },
             inplace=True,
         )
@@ -819,7 +820,7 @@ class EndUseBalance:
         load_source = load_source.rename({"Component": "source"}, axis=1)
         load_source["source"] = load_source["source"] + " Gain"
         load_source = load_source.replace(
-            {f"{load_type} Gain": load_type.title() + " System"}
+            {f"{load_type.title()} Gain": load_type.title() + " System"}
         )
 
         load_source_data = load_source.to_dict(orient="records")
@@ -854,14 +855,6 @@ class EndUseBalance:
             .rename("value")
             .reset_index()
         )
-        load_source["target"] = load_type.title() + " Load"
-        load_source = load_source.rename({"Component": "source"}, axis=1)
-        load_source["source"] = load_source["source"] + " Losses"
-        load_source = load_source.replace(
-            {f"{load_type} Losses": load_type.title() + " System"}
-        )
-        load_source_data = load_source.to_dict(orient="records")
-
         load_target = (
             load.unstack("Gain/Loss")
             .replace({0: np.NaN})
@@ -871,8 +864,21 @@ class EndUseBalance:
             .rename("value")
             .reset_index()
         )
+        load_source["target"] = load_type.title() + " Load"
+        load_source = load_source.rename({"Component": "source"}, axis=1)
+        load_source["source"] = load_source["source"] + " Losses"
+        load_source = load_source.replace(
+            {f"{load_type.title()} Losses": load_type.title() + " System"}
+        )
+
+        load_source_data = load_source.to_dict(orient="records")
         load_target["source"] = load_type.title() + " Load"
         load_target = load_target.rename({"Component": "target"}, axis=1)
+        load_target = (
+            load_target.set_index("target")
+            .drop(load_type.title(), errors="ignore")
+            .reset_index()
+        )
         load_target_data = load_target.to_dict(orient="records")
         link_system_to_gains = (
             load_source.set_index("source")

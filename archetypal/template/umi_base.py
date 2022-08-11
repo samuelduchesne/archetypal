@@ -65,6 +65,7 @@ class UmiBase(object):
         "ZoneDefinitions": [],
         "WindowSettings": [],
         "BuildingTemplates": [],
+        "UmiSchedules": [],
     }
 
     __slots__ = (

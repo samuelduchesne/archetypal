@@ -33,7 +33,7 @@ class InternalMass:
 
     @construction.setter
     def construction(self, value):
-        assert isinstance(value, OpaqueConstruction,), (
+        assert isinstance(value, OpaqueConstruction), (
             f"Input value error for {value}. construction must be of type "
             f"{OpaqueConstruction}, not {type(value)}."
         )

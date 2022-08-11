@@ -111,8 +111,8 @@ class TestUmiTemplate:
         lib.unique_components(keep_orphaned=False)
         for group, components in lib:
             for component in components:
-                for bt in lib.BuildingTemplates:
-                    assert bt in component.ParentTemplates
+                parent_bts_from_current_lib = [bt for bt in component.ParentTemplates if bt in lib.BuildingTemplates]
+                assert len(parent_bts_from_current_lib) > 0
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and

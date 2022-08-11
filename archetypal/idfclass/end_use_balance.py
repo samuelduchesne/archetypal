@@ -844,6 +844,7 @@ class EndUseBalance:
         )
 
     def _sankey_cooling(self, load, load_type="cooling"):
+        assert load_type in ["heating", "cooling"]
         load_source = (
             load.unstack("Gain/Loss")
             .replace({0: np.NaN})

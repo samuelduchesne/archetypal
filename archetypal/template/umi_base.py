@@ -51,6 +51,7 @@ class UmiBase(object):
         "GasMaterials": [],
         "GlazingMaterials": [],
         "OpaqueMaterials": [],
+        "NoMassMaterials": [],
         "OpaqueConstructions": [],
         "WindowConstructions": [],
         "StructureInformations": [],

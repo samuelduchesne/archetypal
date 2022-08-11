@@ -14,6 +14,7 @@ class GasMaterial(MaterialBase):
 
     .. image:: ../images/template/materials-gas.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = ("_type", "_conductivity", "_density")
 
@@ -39,8 +40,8 @@ class GasMaterial(MaterialBase):
         self.Conductivity = Conductivity
         self.Density = Density
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Name(self):
@@ -177,7 +178,7 @@ class GasMaterial(MaterialBase):
             Thickness=thickness,
         )
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

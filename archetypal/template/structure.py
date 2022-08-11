@@ -139,6 +139,8 @@ class StructureInformation(ConstructionBase):
     .. image:: ../images/template/constructions-structure.png
     """
 
+    _CREATED_OBJECTS = []
+
     __slots__ = ("_mass_ratios",)
 
     def __init__(self, Name, MassRatios, **kwargs):
@@ -151,8 +153,8 @@ class StructureInformation(ConstructionBase):
         super(StructureInformation, self).__init__(Name, **kwargs)
         self.MassRatios = MassRatios
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def MassRatios(self):
@@ -210,7 +212,7 @@ class StructureInformation(ConstructionBase):
         """Validate object and fill in missing values."""
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

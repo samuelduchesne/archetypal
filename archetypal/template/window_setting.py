@@ -36,6 +36,7 @@ class WindowSetting(UmiBase):
 
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_operable_area",
@@ -131,8 +132,8 @@ class WindowSetting(UmiBase):
 
         self.area = area
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def area(self):
@@ -867,22 +868,22 @@ class WindowSetting(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.AfnWindowAvailability:
+        if self.AfnWindowAvailability is None:
             self.AfnWindowAvailability = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff"
             )
-        if not self.ShadingSystemAvailabilitySchedule:
+        if self.ShadingSystemAvailabilitySchedule is None:
             self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff"
             )
-        if not self.ZoneMixingAvailabilitySchedule:
+        if self.ZoneMixingAvailabilitySchedule is None:
             self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff"
             )
 
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

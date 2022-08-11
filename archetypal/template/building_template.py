@@ -31,6 +31,7 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_partition_ratio",
@@ -114,8 +115,8 @@ class BuildingTemplate(UmiBase):
         self.AuthorEmails = AuthorEmails if AuthorEmails else []
         self.Version = Version
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Perimeter(self):
@@ -366,11 +367,11 @@ class BuildingTemplate(UmiBase):
         # do core and Perim zone reduction
         bt = cls.reduced_model(name, zones, **kwargs)
 
-        if not bt.Core.DomesticHotWater or not bt.Perimeter.DomesticHotWater:
+        if bt.Core.DomesticHotWater is None or bt.Perimeter.DomesticHotWater is None:
             dhw = DomesticHotWaterSetting.whole_building(idf)
-            if not bt.Core.DomesticHotWater:
+            if bt.Core.DomesticHotWater is None:
                 bt.Core.DomesticHotWater = dhw
-            if not bt.Perimeter.DomesticHotWater:
+            if bt.Perimeter.DomesticHotWater is None:
                 bt.Perimeter.DomesticHotWater = dhw
 
         bt.Comments = "\n".join(
@@ -564,7 +565,7 @@ class BuildingTemplate(UmiBase):
         """Replace recursively every objects with the first equivalent object."""
 
         def recursive_replace(umibase):
-            for key, obj in umibase.mapping().items():
+            for key, obj in umibase.mapping(validate=False).items():
                 if isinstance(
                     obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
                 ):
@@ -582,7 +583,7 @@ class BuildingTemplate(UmiBase):
         recursive_replace(self)
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

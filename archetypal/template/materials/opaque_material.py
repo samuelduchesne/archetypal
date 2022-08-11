@@ -7,7 +7,7 @@ from validator_collection import validators
 
 from archetypal.template.materials import GasMaterial
 from archetypal.template.materials.material_base import MaterialBase
-from archetypal.utils import log
+from archetypal.utils import log, signif
 
 
 class OpaqueMaterial(MaterialBase):
@@ -15,6 +15,8 @@ class OpaqueMaterial(MaterialBase):
 
     .. image:: ../images/template/materials-opaque.png
     """
+
+    _CREATED_OBJECTS = []
 
     _ROUGHNESS_TYPES = (
         "VeryRough",
@@ -121,8 +123,8 @@ class OpaqueMaterial(MaterialBase):
         self._key: str = kwargs.get("_key", "")
         # TODO: replace when NoMass and AirGap when properly is supported
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Conductivity(self):
@@ -131,7 +133,8 @@ class OpaqueMaterial(MaterialBase):
 
     @Conductivity.setter
     def Conductivity(self, value):
-        self._conductivity = validators.float(value, minimum=0)
+        value = validators.float(value, minimum=0)
+        self._conductivity = signif(value)
 
     @property
     def Density(self):
@@ -140,7 +143,8 @@ class OpaqueMaterial(MaterialBase):
 
     @Density.setter
     def Density(self, value):
-        self._density = validators.float(value, minimum=0)
+        value = validators.float(value, minimum=0)
+        self._density = signif(value)
 
     @property
     def Roughness(self):
@@ -180,7 +184,8 @@ class OpaqueMaterial(MaterialBase):
 
     @SpecificHeat.setter
     def SpecificHeat(self, value):
-        self._specific_heat = validators.float(value, minimum=100)
+        value = validators.float(value, minimum=100)
+        self._specific_heat = signif(value)
 
     @property
     def ThermalEmittance(self):
@@ -529,7 +534,7 @@ class OpaqueMaterial(MaterialBase):
             setattr(self, "VisibleAbsorptance", 0.7)
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

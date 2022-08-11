@@ -25,6 +25,7 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_internal_mass_exposed_per_floor_area",
@@ -120,8 +121,8 @@ class ZoneDefinition(UmiBase):
         self.multiplier = multiplier
         self.is_core = is_core
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Constructions(self):
@@ -673,7 +674,7 @@ class ZoneDefinition(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.InternalMassConstruction:
+        if self.InternalMassConstruction is None:
             internal_mass = InternalMass.generic_internalmass_from_zone(self)
             self.InternalMassConstruction = internal_mass.construction
             self.InternalMassExposedPerFloorArea = (
@@ -692,7 +693,7 @@ class ZoneDefinition(UmiBase):
 
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:

@@ -17,6 +17,7 @@ from archetypal.utils import log
 
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
+    _CREATED_OBJECTS = []
 
     __slots__ = ("_quantity",)
 
@@ -31,8 +32,8 @@ class UmiSchedule(Schedule, UmiBase):
         super(UmiSchedule, self).__init__(Name, **kwargs)
         self.quantity = quantity
 
-        # Only at the end append self to CREATED_OBJECTS
-        self.CREATED_OBJECTS.append(self)
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def quantity(self):
@@ -246,7 +247,7 @@ class UmiSchedule(Schedule, UmiBase):
         """Validate object and fill in missing values."""
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -619,7 +620,7 @@ class DaySchedule(UmiSchedule):
 
         return data_dict
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -798,7 +799,7 @@ class WeekSchedule(UmiSchedule):
 
         return data_dict
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -1030,7 +1031,7 @@ class YearSchedule(UmiSchedule):
 
         return idf.newidfobject(key="Schedule:Year".upper(), **new_dict)
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -1067,7 +1068,7 @@ class YearSchedule(UmiSchedule):
                     next(
                         (
                             x
-                            for x in self.CREATED_OBJECTS
+                            for x in self._CREATED_OBJECTS
                             if x.Name == week_day_schedule_name
                             and type(x).__name__ == "WeekSchedule"
                         )

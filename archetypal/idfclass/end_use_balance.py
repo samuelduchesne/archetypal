@@ -447,8 +447,9 @@ class EndUseBalance:
     def subtract_solar_from_window_net(cls, window_flow, solar_gain, level="Key_Name"):
         columns = window_flow.columns
         return EnergyDataFrame(
-            window_flow.sum(level=level, axis=1).values
-            - solar_gain.sum(level=level, axis=1).values,
+            (window_flow.sum(level=level, axis=1) - solar_gain.sum(level=level, axis=1))
+            .loc[:, list(columns.get_level_values(level))]
+            .values,
             columns=columns,
             index=window_flow.index,
         )

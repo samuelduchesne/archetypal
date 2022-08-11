@@ -480,7 +480,7 @@ class UmiBase(object):
                         "The provided parent lookup is not valid.  It must be a list of str or return a list of enumerated children"
                     )
                 for key, child in keyed_children:
-                    if child.Name == self.Name:
+                    if child.id == self.id:
                         if child == self:
                             if parent not in parents:
                                 parents[parent] = set()

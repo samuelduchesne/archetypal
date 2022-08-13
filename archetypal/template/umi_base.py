@@ -438,7 +438,37 @@ class UmiBase(object):
             )
 
         return obj
+
+    @property
+    def Parents(self): 
+        """ Get the parents of an UmiBase Object"""
+        parents = set()
+        for component in self._parents:
+            """Don't add self to parents!"""
+            if component != self and component.id != self.id:
+                parents.add(component)
+        return parents
+
+    @property
+    def ParentTemplates(self):
+        """Get the parent templates of an UmiBase object"""
+        templates = set()
+        for parent in self.Parents:
+             # Recursive call terminates at Parent Template level, or if self.Parents is empty
+            templates = templates.union(parent.ParentTemplates)
+        return templates
     
+    def replace_me_with(self, other):
+        # Copy the edge metadata since the edge dict will change while iterating
+        edges = [(parent, _self, key) for parent, _self, key in self._parents.edges]
+
+        # Iterate over the edges and replace each key
+        for (parent, _, key) in edges:
+            # fire the attr setter
+            parent[key] = other
+
+
+
     def link(self, parent, key):
         """Link this object as child to a parent
         Args:
@@ -602,41 +632,3 @@ def umibase_property(type_of_property):
     # def setter(self, type_of_property):
     #     self.type_of_property = type_of_property
     #     return self._setter
-
-# def umibase_property(type_of_property):
-#     def wrapper(getter_func):
-#         property_name = getter_func.__name__
-
-#         @property
-#         def Property(self):
-#             return getter_func(self)
-
-#         def validator(setter_func):
-#             def validate(self, value):
-#                 if (value is not None):
-#                     assert isinstance(value, type_of_property), (
-#                         f"Input value error. {property_name} must be of "
-#                         f"type {type_of_property}, not {type(value)}."
-#                     )
-#                 setter_func(self, value)
-#             return validate
-        
-#         def linker(setter_func):
-#             def link(self, value):
-#                 print("Attempting to link")
-#                 setter_func(self, value)
-#             return link
-        
-#         def handler(setter_func):
-#             return validator(linker(setter_func))
-        
-#         def setter(setter_func):
-#             return Property.setter(handler(setter_func))
-
-#         setattr(Property, "unhandled_setter", Property.setter)
-#         setattr(Property, "type_checked", validator)
-#         setattr(Property, "linker", linker)
-#         setattr(Property, "handled", handler)
-#         setattr(Property, "setter", setter)
-#         return Property
-#     return wrapper

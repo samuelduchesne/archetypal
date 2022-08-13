@@ -653,5 +653,12 @@ class BuildingTemplate(UmiBase):
             )
 
     @property
+    def ParentTemplates(self):
+        """Bails out of Parent Templates recursive call from UmiBase
+        And returns array of self for concatenation
+        """
+        return {self}
+
+    @property
     def children(self):
         return self.Core, self.Perimeter, self.Structure, self.Windows

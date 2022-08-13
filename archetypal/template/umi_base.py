@@ -460,22 +460,25 @@ class UmiBase(object):
     
     def replace_me_with(self, other):
         # Copy the edge metadata since the edge dict will change while iterating
-        edges = [(parent, _self, key) for parent, _self, key in self._parents.edges]
+        edges = [(parent, _self, key, data) for parent, _self, key, data in self._parents.edges(data=True, keys=True)]
 
         # Iterate over the edges and replace each key
-        for (parent, _, key) in edges:
+        for (parent, _, key, data) in edges:
             # fire the attr setter
-            parent[key] = other
+            if data["meta"] is not None:
+                getattr(parent, data["meta"])[key] = other
+            else:
+                parent[key] = other
 
 
 
-    def link(self, parent, key):
+    def link(self, parent, key, meta=None):
         """Link this object as child to a parent
         Args:
             parent (UmiBase): the parent to link
             key (str): the property which this child was used for in the parent and which should be unlinked.
         """
-        self._parents.add_edge(parent, self, key)
+        self._parents.add_edge(parent, self, key, meta=meta)
     
     def unlink(self, parent, key):
         """Unlink this object as a child from a parent
@@ -598,8 +601,6 @@ def umibase_property(type_of_property):
 
     Args: 
         type_of_property (class inherits UmiBase): which class of UmiBase object the property will store
-     
-
     """
     class UmiBaseProperty(property):
         def __init__(self, getter_func, *args, **kwargs):
@@ -632,3 +633,70 @@ def umibase_property(type_of_property):
     # def setter(self, type_of_property):
     #     self.type_of_property = type_of_property
     #     return self._setter
+
+class UmiBaseHelper:
+    """Base for Helper classes so that the UmiBase object can be 
+       found and operated on via the helper, e.g. for YearScheduleParts
+    """
+    __slots__ = (
+        "_umi_base_property"
+    )
+    def __init__(self, umi_base_property):
+        assert isinstance(umi_base_property, str), "'umi_base_property' must be a string"
+        self._umi_base_property = umi_base_property
+
+    def __getattr__(self, attr):
+        umi_base = getattr(self, self._umi_base_property)
+        return getattr(umi_base, attr)
+
+class UmiBaseList:
+    """This class is a hook for lists so that UmiBase fields which store lists 
+       can link and unlink list elements from a parent attr
+    """
+
+    def __init__(self, parent, attr, objects=[]):
+        assert isinstance(objects, list), "UmiBaseList must be initialized with a list"
+        assert isinstance(parent, UmiBase), "UmiBaseList's parent must be initialized with an UmiBase object"
+        assert isinstance(attr, str), "UmiBaseList's attr must be a str"
+        assert attr in dir(parent), f"UmiBaseLest's attr '{attr}' is not a valid attr of parent {parent}"
+        self._attr = attr
+        self._parent = parent
+        self.link_list(objects)
+
+    def __getitem__(self, index):
+        return self._objects[index]
+
+    # TODO: needs work if there are multiple list attrs in a single parent
+    def __setitem__(self, index, value):
+        should_insert_into_helper_obj = isinstance(self[index], UmiBaseHelper) and isinstance(value, UmiBase)
+        if self[index]:
+            self[index].unlink(self._parent, index)
+            if should_insert_into_helper_obj:
+                setattr(self[index], self[index]._umi_base_property, value)
+        if not should_insert_into_helper_obj or not self[index]:
+            self._objects[index] = value
+        value.link(self._parent, index, meta=self._attr)
+
+    def unlink_list(self):
+        for index, obj in enumerate(self._objects):
+            obj.unlink(self._parent, index)
+        self._objects = []
+
+    def link_list(self, objects):
+        self._objects = [None for obj in objects]
+        for i, obj in enumerate(objects):
+            self[i] = obj # fire the setter
+
+    def relink_list(self, objects):
+        if len(self._objects) > 0:
+            self.unlink_list()
+
+        new_list = objects._objects if isinstance(objects, UmiBaseList) else objects
+        self.link_list(new_list)
+
+    def __len__(self):
+        return len(self._objects)
+
+    def __getattr__(self, attr):
+        """ Provid access to underlying list methods"""
+        return getattr(self._objects, attr)

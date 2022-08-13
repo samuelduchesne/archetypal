@@ -527,3 +527,74 @@ class UniqueName(str):
             new_name = f"{name}_{str(new_count)}"
             cls.existing[name] = new_count
             return new_name
+
+def umibase_property(type_of_property):
+    class UmiBaseProperty(property):
+        def __init__(self, getter_func, *args, **kwargs):
+            super().__init__(getter_func, *args, **kwargs)
+            self.type_of_property = type_of_property
+            self.attr_name = getter_func.__name__
+
+        def __set__(self, obj, value):
+            self.type_check(value)
+            self.relink(obj, value)
+            super().__set__(obj, value)
+        
+        def type_check(self, value):
+            if value is not None:
+                assert isinstance(value, self.type_of_property), (
+                    f"Input value error. {self.attr_name} must be of "
+                    f"type {self.type_of_property}, not {type(value)}."
+                )
+        
+        def relink(self, obj, value):
+            pass
+            # obj.relink(value, self.attr_name)
+    return UmiBaseProperty
+
+    # def _setter(self, fset):
+    #     obj = super().setter(fset)
+    #     obj.type_of_property = self.type_of_property 
+    #     return obj
+
+    # def setter(self, type_of_property):
+    #     self.type_of_property = type_of_property
+    #     return self._setter
+
+# def umibase_property(type_of_property):
+#     def wrapper(getter_func):
+#         property_name = getter_func.__name__
+
+#         @property
+#         def Property(self):
+#             return getter_func(self)
+
+#         def validator(setter_func):
+#             def validate(self, value):
+#                 if (value is not None):
+#                     assert isinstance(value, type_of_property), (
+#                         f"Input value error. {property_name} must be of "
+#                         f"type {type_of_property}, not {type(value)}."
+#                     )
+#                 setter_func(self, value)
+#             return validate
+        
+#         def linker(setter_func):
+#             def link(self, value):
+#                 print("Attempting to link")
+#                 setter_func(self, value)
+#             return link
+        
+#         def handler(setter_func):
+#             return validator(linker(setter_func))
+        
+#         def setter(setter_func):
+#             return Property.setter(handler(setter_func))
+
+#         setattr(Property, "unhandled_setter", Property.setter)
+#         setattr(Property, "type_checked", validator)
+#         setattr(Property, "linker", linker)
+#         setattr(Property, "handled", handler)
+#         setattr(Property, "setter", setter)
+#         return Property
+#     return wrapper

@@ -13,7 +13,7 @@ from validator_collection import checkers, validators
 
 from archetypal.reportdata import ReportData
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.utils import float_round, log
 
 
@@ -389,18 +389,13 @@ class ZoneConditioning(UmiBase):
         )
         self._is_heating_on = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def HeatingSchedule(self):
         """Get or set the heating availability schedule."""
         return self._heating_schedule
 
     @HeatingSchedule.setter
     def HeatingSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. HeatingSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._heating_schedule = value
 
     @property
@@ -469,18 +464,13 @@ class ZoneConditioning(UmiBase):
         )
         self._is_cooling_on = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def CoolingSchedule(self):
         """Get or set the cooling availability schedule."""
         return self._cooling_schedule
 
     @CoolingSchedule.setter
     def CoolingSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. CoolingSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._cooling_schedule = value
 
     @property
@@ -571,18 +561,13 @@ class ZoneConditioning(UmiBase):
         elif isinstance(value, EconomizerTypes):
             self._economizer_type = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def MechVentSchedule(self):
         """Get or set the outdoor air requirements over time."""
         return self._mech_vent_schedule
 
     @MechVentSchedule.setter
     def MechVentSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. MechVentSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._mech_vent_schedule = value
 
     @property

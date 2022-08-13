@@ -10,7 +10,7 @@ from validator_collection import validators
 
 from archetypal import settings
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.utils import log, reduce, timeit
 
 
@@ -87,18 +87,13 @@ class DomesticHotWaterSetting(UmiBase):
         )
         self._is_on = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def WaterSchedule(self):
         """Get or set the schedule which modulates the FlowRatePerFloorArea."""
         return self._water_schedule
 
     @WaterSchedule.setter
     def WaterSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. WaterSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._water_schedule = value
 
     @property

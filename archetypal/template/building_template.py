@@ -20,7 +20,7 @@ from archetypal.template.dhw import DomesticHotWaterSetting
 from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.schedule import YearSchedulePart
 from archetypal.template.structure import MassRatio, StructureInformation
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.utils import log, reduce
@@ -118,52 +118,40 @@ class BuildingTemplate(UmiBase):
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
 
-    @property
+    @umibase_property(type_of_property=ZoneDefinition)
     def Perimeter(self):
         """Get or set the perimeter ZoneDefinition."""
         return self._perimeter
 
     @Perimeter.setter
     def Perimeter(self, value):
-        assert isinstance(
-            value, ZoneDefinition
-        ), f"Expected a ZoneDefinition, not {type(value)}"
         self._perimeter = value
 
-    @property
+    @umibase_property(type_of_property=ZoneDefinition)
     def Core(self):
         """Get or set the core ZoneDefinition."""
         return self._core
 
     @Core.setter
     def Core(self, value):
-        assert isinstance(
-            value, ZoneDefinition
-        ), f"Expected a ZoneDefinition, not {type(value)}"
         self._core = value
 
-    @property
+    @umibase_property(type_of_property=StructureInformation)
     def Structure(self):
         """Get or set the StructureInformation."""
         return self._structure_definition
 
     @Structure.setter
     def Structure(self, value):
-        assert isinstance(
-            value, StructureInformation
-        ), f"Expected a StructureInformation, not {type(value)}"
         self._structure_definition = value
 
-    @property
+    @umibase_property(type_of_property=WindowSetting)
     def Windows(self):
         """Get or set the WindowSetting."""
         return self._window_setting
 
     @Windows.setter
     def Windows(self, value):
-        assert isinstance(
-            value, WindowSetting
-        ), f"Expected a WindowSetting, not {type(value)}"
         self._window_setting = value
 
     @property

@@ -11,7 +11,7 @@ import pandas as pd
 from validator_collection import validators
 
 from archetypal.schedule import Schedule, _ScheduleParser, get_year_for_first_weekday
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, UmiBaseHelper, UmiBaseList
 from archetypal.utils import log
 
 
@@ -339,7 +339,7 @@ class UmiSchedule(Schedule, UmiBase):
         )
 
 
-class YearSchedulePart:
+class YearSchedulePart(UmiBaseHelper, object):
     """Helper Class for YearSchedules defined with FromDay FromMonth ToDay ToMonth."""
 
     __slots__ = ("_from_day", "_from_month", "_to_day", "_to_month", "_schedule")
@@ -368,6 +368,7 @@ class YearSchedulePart:
                 object.
             kwargs (dict): Other Keyword arguments.
         """
+        super(YearSchedulePart, self).__init__(umi_base_property="Schedule")
         self.FromDay = FromDay
         self.FromMonth = FromMonth
         self.ToDay = ToDay
@@ -729,6 +730,7 @@ class WeekSchedule(UmiSchedule):
             **kwargs:
         """
         super(WeekSchedule, self).__init__(Name, Category=Category, **kwargs)
+        self._days = UmiBaseList(self, "Days")
         self.Days = Days
 
     @property
@@ -742,7 +744,7 @@ class WeekSchedule(UmiSchedule):
             assert all(
                 isinstance(x, DaySchedule) for x in value
             ), f"Input value error '{value}'. Expected list of DaySchedule."
-        self._days = value
+        self.Days.relink_list(value)
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
@@ -922,14 +924,23 @@ class YearSchedule(UmiSchedule):
             Parts (list of YearSchedulePart): The YearScheduleParts.
             **kwargs:
         """
+        super(YearSchedule, self).__init__(
+            Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
+        )
         self.epbunch = kwargs.get("epbunch", None)
+        self._parts = UmiBaseList(self, "Parts")
         if Parts is None:
             self.Parts = self._get_parts(self.epbunch)
         else:
             self.Parts = Parts
-        super(YearSchedule, self).__init__(
-            Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
-        )
+
+    @property
+    def Parts(self):
+        return self._parts
+
+    @Parts.setter
+    def Parts(self, Parts):
+        self.Parts.relink_list(Parts)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

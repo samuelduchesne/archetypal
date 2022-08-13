@@ -665,15 +665,18 @@ class UmiTemplateLibrary:
                 cleared from self.
             keep_orphaned (bool): if True, orphaned objects are kept.
         """
+        cache = {}
         if keep_orphaned:
-            G = self.to_graph(include_orphans=True)
-            connected_to_building = set()
-            for bldg in self.BuildingTemplates:
-                for obj in nx.dfs_preorder_nodes(G, bldg):
-                    connected_to_building.add(obj)
-            orphans = [
-                obj for obj in self.object_list if obj not in connected_to_building
-            ]
+            orphans = []
+        for group, components in self:
+            if group == "BuildingTemplates":
+                continue
+            cache[group] = []
+            for component in components:
+                cache[group].append(component)
+                if keep_orphaned == True:
+                    if len(component.ParentTemplates) == 0:
+                        orphans.append(component)
         self._clear_components_list(exceptions)  # First clear components
 
         # Inclusion is a set of object classes that will be unique.
@@ -688,16 +691,13 @@ class UmiTemplateLibrary:
                     f"{', '.join(set(self._LIB_GROUPS))}"
                 )
             inclusion = set(self._LIB_GROUPS)
-        for key, group in self:
+        for group, components in cache.items():
             # for each group
-            for component in group:
+            for component in components:
                 # travers each object using generator
-                for parent, key, obj in parent_key_child_traversal(component):
-                    if obj.__class__.__name__ + "s" in inclusion:
-                        if key:
-                            setattr(
-                                parent, key, obj.get_unique()
-                            )  # set unique object on key
+                if component.__class__.__name__+"s" in inclusion:
+                    equivalent_component = component.get_unique()
+                    component.replace_me_with(equivalent_component)
 
         self.update_components_list(exceptions=exceptions)  # Update the components list
         if keep_orphaned:
@@ -711,11 +711,7 @@ class UmiTemplateLibrary:
             this (UmiBase): The reference to replace with `that`.
             that (UmiBase): The object to replace each references with.
         """
-        for bldg in self.BuildingTemplates:
-            for parent, key, obj in parent_key_child_traversal(bldg):
-                if obj is this:
-                    setattr(parent, key, that)
-
+        this.replace_me_with_that()
         self.update_components_list()
 
     def update_components_list(self, exceptions=None):
@@ -725,7 +721,7 @@ class UmiTemplateLibrary:
 
         for key, group in self:
             for component in group:
-                for parent, key, child in parent_key_child_traversal(component):
+                for parent, child in parent_child_traversal(component):
                     if isinstance(child, UmiSchedule) and not isinstance(
                         child, (DaySchedule, WeekSchedule, YearSchedule)
                     ):
@@ -754,23 +750,17 @@ class UmiTemplateLibrary:
         """
         import networkx as nx
 
-        G = nx.DiGraph()
-
-        for bldg in self.BuildingTemplates:
-            for parent, child in parent_child_traversal(bldg):
-                if parent:
-                    G.add_edge(parent, child)
-
-        if include_orphans:
-            orphans = [
-                obj for obj in self.object_list if obj.id not in (n.id for n in G)
-            ]
-            for orphan in orphans:
-                G.add_node(orphan)
-                for parent, child in parent_child_traversal(orphan):
-                    if parent:
-                        G.add_edge(parent, child)
-
+        non_orphaned_parent_graphs = []
+        orphaned_parent_graphs = []
+        for group, components in self:
+            for component in components:
+                if len(component.ParentTemplates) > 0:
+                    non_orphaned_parent_graphs.append(component._parents)
+                else:
+                    if include_orphans:
+                        orphaned_parent_graphs.append(component._parents)
+        G = nx.compose_all(orphaned_parent_graphs+non_orphaned_parent_graphs)
+        
         return G
 
 

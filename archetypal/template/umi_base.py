@@ -2,7 +2,7 @@
 
 import itertools
 import math
-import re
+import networkx as nx
 from collections.abc import Hashable, MutableSet
 
 import numpy as np
@@ -54,6 +54,7 @@ class UmiBase(object):
         "_comments",
         "_allow_duplicates",
         "_unit_number",
+        "_parents",
     )
     _ids = itertools.count(0)  # unique id for each class instance
 
@@ -90,6 +91,7 @@ class UmiBase(object):
         self.allow_duplicates = allow_duplicates
         self.unit_number = next(self._ids)
         self.predecessors = None
+        self._parents = nx.MultiDiGraph()
 
     @property
     def Name(self):
@@ -436,6 +438,37 @@ class UmiBase(object):
             )
 
         return obj
+    
+    def link(self, parent, key):
+        """Link this object as child to a parent
+        Args:
+            parent (UmiBase): the parent to link
+            key (str): the property which this child was used for in the parent and which should be unlinked.
+        """
+        self._parents.add_edge(parent, self, key)
+    
+    def unlink(self, parent, key):
+        """Unlink this object as a child from a parent
+        Args:
+            parent (UmiBase): the parent to unlink
+            key (str): the property which the child was used for in the parent and which should be unlinked.
+        """
+        assert self._parents.has_edge(parent, self, key), f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since the link does not exist"
+        self._parents.remove_edge(parent, self, key)
+        if (len(self._parents[parent]) == 0):
+            self._parents.remove_node(parent)
+
+    def relink(self, child, key):
+        """ Parents call this to link to a new child and unlink the old child for an attr
+        Args:
+            child (UmiBase): The new child
+            key (str): The cache value to store in th link, which should match a Property getter
+        """
+        current_child = getattr(self, key, None)
+        if current_child:
+            getattr(self, key).unlink(self, key)
+        if child is not None:
+            child.link(self, key)
 
 
 class UserSet(Hashable, MutableSet):
@@ -529,6 +562,15 @@ class UniqueName(str):
             return new_name
 
 def umibase_property(type_of_property):
+    """Create a new property decorator which will automatically
+       configure the property to handle type-checking and parent-graph relinking
+       Needs to be abstracted into a single class rather than a class generator
+
+    Args: 
+        type_of_property (class inherits UmiBase): which class of UmiBase object the property will store
+     
+
+    """
     class UmiBaseProperty(property):
         def __init__(self, getter_func, *args, **kwargs):
             super().__init__(getter_func, *args, **kwargs)
@@ -548,8 +590,8 @@ def umibase_property(type_of_property):
                 )
         
         def relink(self, obj, value):
-            pass
-            # obj.relink(value, self.attr_name)
+            obj.relink(value, self.attr_name)
+
     return UmiBaseProperty
 
     # def _setter(self, fset):

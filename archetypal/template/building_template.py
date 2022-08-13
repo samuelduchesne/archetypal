@@ -323,9 +323,15 @@ class BuildingTemplate(UmiBase):
         try:
             window = window_settings[window_data["$ref"]]
         except KeyError:
-            window = WindowSetting.from_dict(
-                window_data, schedules, window_constructions
-            )
+            try:
+                for obj in WindowSetting._CREATED_OBJECTS:
+                    if obj.id == window_data["$id"]:
+                        window = window_settings[window_data["$id"]]
+                        break
+            except KeyError:
+                window = WindowSetting.from_dict(
+                    window_data, schedules, window_constructions
+                )
 
         return cls(
             Core=core,

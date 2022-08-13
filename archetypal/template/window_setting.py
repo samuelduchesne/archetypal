@@ -13,8 +13,8 @@ from archetypal.template.constructions.window_construction import (
     WindowConstruction,
     WindowType,
 )
-from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.schedule import UmiSchedule, YearSchedule
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.utils import log, timeit
 
 
@@ -171,18 +171,13 @@ class WindowSetting(UmiBase):
     def AfnTempSetpoint(self, value):
         self._afn_temp_setpoint = validators.float(value, minimum=-100, maximum=100)
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def AfnWindowAvailability(self):
         """Get or set the air flow network window availability schedule."""
         return self._afn_window_availability
 
     @AfnWindowAvailability.setter
     def AfnWindowAvailability(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. AfnWindowAvailability must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._afn_window_availability = value
 
     @property
@@ -227,18 +222,13 @@ class WindowSetting(UmiBase):
             value, minimum=0, maximum=1
         )
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def ShadingSystemAvailabilitySchedule(self):
         """Get or set the shading system availability schedule."""
         return self._shading_system_availability_schedule
 
     @ShadingSystemAvailabilitySchedule.setter
     def ShadingSystemAvailabilitySchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. ZoneMixingAvailabilitySchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._shading_system_availability_schedule = value
 
     @property
@@ -254,18 +244,13 @@ class WindowSetting(UmiBase):
         )
         self._is_shading_system_on = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def ZoneMixingAvailabilitySchedule(self):
         """Get or set the zone mixing availability schedule."""
         return self._zone_mixing_availability_schedule
 
     @ZoneMixingAvailabilitySchedule.setter
     def ZoneMixingAvailabilitySchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. ZoneMixingAvailabilitySchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._zone_mixing_availability_schedule = value
 
     @property
@@ -277,18 +262,13 @@ class WindowSetting(UmiBase):
     def ZoneMixingDeltaTemperature(self, value):
         self._zone_mixing_delta_temperature = validators.float(value, minimum=0)
 
-    @property
+    @umibase_property(type_of_property=WindowConstruction)
     def Construction(self):
         """Get or set the window construction."""
         return self._construction
 
     @Construction.setter
     def Construction(self, value):
-        if value is not None:
-            assert isinstance(value, WindowConstruction), (
-                f"Input error with value {value}. Construction must "
-                f"be an WindowConstruction, not a {type(value)}"
-            )
         self._construction = value
 
     @property

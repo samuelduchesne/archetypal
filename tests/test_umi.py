@@ -111,6 +111,22 @@ class TestUmiTemplate:
             for component in components:
                 parent_bts_from_current_lib = [bt for bt in component.ParentTemplates if bt in lib.BuildingTemplates]
                 assert len(parent_bts_from_current_lib) > 0
+    
+    def test_replace_component(self):
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+
+        lib = UmiTemplateLibrary.open(file)
+        for group, components in lib:
+            if group != "BuildingTemplates":
+                original_component = components[0]
+                for component in components:
+                    if hash(component) != hash(original_component):
+                        lib.replace_component(component, original_component)
+        lib.unique_components(keep_orphaned=False)
+        for group, components in lib:
+            if group != "BuildingTemplates":
+                assert len(components) == 1
+
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and

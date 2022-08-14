@@ -443,8 +443,10 @@ class UmiBase(object):
     def Parents(self): 
         """ Get the parents of an UmiBase Object"""
         parents = set()
-        for component in self._parents.predecessors(self):
-            parents.add(component)
+        for component in self._parents:
+            """Don't add self to parents!"""
+            if component != self and component.id != self.id:
+                parents.add(component)
         return parents
 
     @property

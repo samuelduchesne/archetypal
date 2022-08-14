@@ -64,11 +64,11 @@ class TestUmiTemplate:
 
     def test_keep_orphaned(self, lib):
         original_gas_length = len(lib.GasMaterials)
-        lib.unique_components(keep_orphaned=True)
+        lib.unique_components(keep_orphaned=True, graph_scope="lib")
         assert original_gas_length == len(lib.GasMaterials)
 
     def test_exclude_orphaned(self, lib):
-        lib.unique_components(keep_orphaned=False)
+        lib.unique_components()
         assert len(lib.GasMaterials) == 1 and lib.GasMaterials[0].Type == "AIR"
 
     def test_unique_components(self, lib):
@@ -124,7 +124,7 @@ class TestUmiTemplate:
             assert bt in lib.ZoneLoads[0].ParentTemplates
 
     def test_all_children_for_parent_templates(self, lib):
-        lib.unique_components(keep_orphaned=False)
+        lib.unique_components()
         for group, components in lib:
             for component in components:
                 parent_bts_from_current_lib = [bt for bt in component.ParentTemplates if bt in lib.BuildingTemplates]
@@ -138,7 +138,7 @@ class TestUmiTemplate:
                 for component in components:
                     if hash(component) != hash(original_component):
                         lib.replace_component(component, original_component)
-        lib.unique_components(keep_orphaned=False)
+        lib.unique_components()
         for group, components in lib:
             if group != "BuildingTemplates":
                 assert len(components) == 1

@@ -4,6 +4,7 @@ import json
 import logging as lg
 from collections import OrderedDict
 from concurrent.futures.thread import ThreadPoolExecutor
+from multiprocessing.sharedctypes import Value
 from typing import List
 
 import networkx as nx
@@ -162,7 +163,7 @@ class UmiTemplateLibrary:
             attrs[group] = value + other.__dict__[group]
 
         newlib = self.__class__(**attrs, name=self.name)
-        newlib.unique_components("GasMaterials", keep_orphaned=True)
+        newlib.unique_components("GasMaterials", keep_orphaned=True, graph_scope="global")
         return newlib
 
     def _clear_components_list(self, except_groups=None):
@@ -280,7 +281,7 @@ class UmiTemplateLibrary:
 
         # Get unique instances
         umi_template.unique_components(
-            *(unique_components or []), exceptions=exceptions
+            *(unique_components or []), exceptions=exceptions, graph_scope="global"
         )
 
         # Update attributes of instance
@@ -645,7 +646,7 @@ class UmiTemplateLibrary:
         return data_dict
 
     def unique_components(
-        self, *args: str, exceptions: List[str] = None, keep_orphaned=False
+        self, *args: str, exceptions: List[str] = None, keep_orphaned=False, graph_scope="global"
     ):
         """Keep only unique components.
 
@@ -666,7 +667,15 @@ class UmiTemplateLibrary:
             keep_orphaned (bool): if True, orphaned objects are kept.
         """
         # TODO: consider scoping of replace_me_with in unique_components
-        G = self.to_graph("orphans") if keep_orphaned else self.to_graph("in_templates")
+        if graph_scope == "global":
+            if keep_orphaned == True:
+                raise ValueError("'keep_orphaned' cannot be 'True' if 'graph_scope' is 'global'")
+            G = self.to_graph("orphans") if keep_orphaned else self.to_graph("in_templates")
+        elif graph_scope == "lib":
+            G = self.to_graph("orphans") if keep_orphaned else self.to_graph("in_templates")
+        else:
+            raise ValueError("'graph_scope' argument must be one of 'global', 'lib'")
+
         self._clear_components_list(exceptions)  # First clear components
 
         # Inclusion is a set of object classes that will be unique.

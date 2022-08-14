@@ -676,6 +676,18 @@ class UmiBaseList:
         if not should_insert_into_helper_obj or not self[index]:
             self._objects[index] = value
         value.link(self._parent, index, meta=self._attr)
+    
+    def __eq__(self, other):
+        """Check if two UmiBaseLists are equal by iterating through the arrays"""
+        # TODO: make sure this has no other knock on effects
+        # By allowing two lists which are not the same obj in memory to be equal
+        if not isinstance(other, UmiBaseList):
+            return NotImplemented
+        else:
+            if len(self) > len(other):
+                return False
+            else:
+                return all([a == b for a, b in zip(self, other)])
 
     def unlink_list(self):
         for index, obj in enumerate(self._objects):
@@ -700,3 +712,6 @@ class UmiBaseList:
     def __getattr__(self, attr):
         """ Provid access to underlying list methods"""
         return getattr(self._objects, attr)
+
+    # TODO: implement aliases for underlying list methods which mutate the list to handle 
+    # relinking

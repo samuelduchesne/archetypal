@@ -5,7 +5,6 @@ import uuid
 
 import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
-from ..umi_base import UmiBaseList
 from validator_collection import validators
 
 from archetypal.template.constructions.base_construction import LayeredConstruction

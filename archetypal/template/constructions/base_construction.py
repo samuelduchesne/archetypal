@@ -327,11 +327,19 @@ class LayeredConstruction(ConstructionBase):
         """Create a copy of self."""
         return self.__class__(Name=self.Name, Layers=self.Layers)
 
+    def __hash__(self):
+        """Return the hash value of self."""
+        return hash(self.id)
+
     def __eq__(self, other):
         """Assert self is equivalent to other."""
-        return isinstance(other, LayeredConstruction) and all(
-            [self.Layers == other.Layers]
-        )
+        """Assert self is equivalent to other."""
+        if not isinstance(other, LayeredConstruction):
+            return NotImplemented
+        else:
+            return all(
+                [self.Layers == other.Layers]
+            )
 
     @property
     def children(self):

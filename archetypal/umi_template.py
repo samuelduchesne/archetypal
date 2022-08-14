@@ -697,13 +697,6 @@ class UmiTemplateLibrary:
             for component in components:
                 if component.__class__.__name__+"s" in inclusion:
                     equivalent_component = component.get_unique()
-                    if isinstance(component, GasMaterial):
-                        print(component)
-                        print(component.Parents)
-                        print(component.ParentTemplates)
-                        print(equivalent_component)
-                        print(equivalent_component.Parents)
-                        print(equivalent_component.ParentTemplates)
                     component.replace_me_with(equivalent_component)
 
         self.update_components_list(exceptions=exceptions)  # Update the components list

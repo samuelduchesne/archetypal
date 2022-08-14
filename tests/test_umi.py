@@ -35,6 +35,13 @@ class TestUmiTemplate:
         """Yield two identical libraries. Scope of this fixture is `function`."""
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
         yield UmiTemplateLibrary.open(file), UmiTemplateLibrary.open(file)
+    
+    @pytest.fixture(scope="function")
+    def lib(self):
+        """Yield a template lib. Scope of this fixture is `function`."""
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        yield UmiTemplateLibrary.open(file)
+
 
     def test_add(self, two_identical_libraries):
         """Test combining two template library objects together."""
@@ -72,24 +79,19 @@ class TestUmiTemplate:
             # missing S.
             c.unique_components("OpaqueMaterial")
 
-    def test_graph(self):
+    def test_graph(self, lib):
         """Test initialization of networkx DiGraph"""
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-
-        a = UmiTemplateLibrary.open(file)
-        G = a.to_graph()
+        G = lib.to_graph()
         n_nodes = len(G)
 
         # Test option to include orphaned objects.
-        G = a.to_graph(include_orphans=True)
+        G = lib.to_graph(include_orphans=True)
         assert len(G) > n_nodes
-        assert G.has_edge(a.BuildingTemplates[0], a.BuildingTemplates[0].Perimeter, "Perimeter")
+        assert G.has_edge(lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter")
     
-    def test_parent_templates(self):
+    def test_parent_templates(self, lib):
         """ Test that changing an object accurately updates the ParentTemplates list"""
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
 
-        lib = UmiTemplateLibrary.open(file)
         for bt in lib.BuildingTemplates:
             assert bt in bt.Perimeter.ParentTemplates
             assert bt in bt.Perimeter.Loads.ParentTemplates
@@ -102,20 +104,15 @@ class TestUmiTemplate:
             # Can't use == here since the other Building Templates from opening the library are still in mem
             assert bt in lib.ZoneLoads[0].ParentTemplates
 
-    def test_all_children_for_parent_templates(self):
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-
-        lib = UmiTemplateLibrary.open(file)
+    def test_all_children_for_parent_templates(self, lib):
         lib.unique_components(keep_orphaned=False)
         for group, components in lib:
             for component in components:
                 parent_bts_from_current_lib = [bt for bt in component.ParentTemplates if bt in lib.BuildingTemplates]
                 assert len(parent_bts_from_current_lib) > 0
     
-    def test_replace_component(self):
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+    def test_replace_component(self, lib):
 
-        lib = UmiTemplateLibrary.open(file)
         for group, components in lib:
             if group != "BuildingTemplates":
                 original_component = components[0]

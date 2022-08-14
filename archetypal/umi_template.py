@@ -665,6 +665,7 @@ class UmiTemplateLibrary:
                 cleared from self.
             keep_orphaned (bool): if True, orphaned objects are kept.
         """
+        # TODO: consider scoping of replace_me_with in unique_components
         cache = {}
         if keep_orphaned:
             orphans = []
@@ -694,9 +695,15 @@ class UmiTemplateLibrary:
         for group, components in cache.items():
             # for each group
             for component in components:
-                # travers each object using generator
                 if component.__class__.__name__+"s" in inclusion:
                     equivalent_component = component.get_unique()
+                    if isinstance(component, GasMaterial):
+                        print(component)
+                        print(component.Parents)
+                        print(component.ParentTemplates)
+                        print(equivalent_component)
+                        print(equivalent_component.Parents)
+                        print(equivalent_component.ParentTemplates)
                     component.replace_me_with(equivalent_component)
 
         self.update_components_list(exceptions=exceptions)  # Update the components list
@@ -711,7 +718,7 @@ class UmiTemplateLibrary:
             this (UmiBase): The reference to replace with `that`.
             that (UmiBase): The object to replace each references with.
         """
-        this.replace_me_with_that()
+        this.replace_me_with_that(that)
         self.update_components_list()
 
     def update_components_list(self, exceptions=None):

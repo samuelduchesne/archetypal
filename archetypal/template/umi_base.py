@@ -486,10 +486,13 @@ class UmiBase(object):
             parent (UmiBase): the parent to unlink
             key (str): the property which the child was used for in the parent and which should be unlinked.
         """
-        assert self._parents.has_edge(parent, self, key), f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since the link does not exist"
-        self._parents.remove_edge(parent, self, key)
-        if (len(self._parents[parent]) == 0):
-            self._parents.remove_node(parent)
+        # assert self._parents.has_edge(parent, self, key), f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since the link does not exist"
+        if self._parents.has_node(parent):
+            if self._parents.has_edge(parent, self, key):
+                self._parents.remove_edge(parent, self, key)
+            
+            if (len(self._parents[parent]) == 0):
+                self._parents.remove_node(parent)
 
     def relink(self, child, key):
         """ Parents call this to link to a new child and unlink the old child for an attr

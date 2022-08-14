@@ -678,7 +678,7 @@ class UmiTemplateLibrary:
             for component in components:
                 cache[group].append(component)
                 if keep_orphaned == True:
-                    if len(component.ParentTemplates) == 0:
+                    if len(component.ParentTemplates) == 0: # TODO: This line may be too heavy
                         orphans.append(component)
         self._clear_components_list(exceptions)  # First clear components
 
@@ -713,7 +713,7 @@ class UmiTemplateLibrary:
             this (UmiBase): The reference to replace with `that`.
             that (UmiBase): The object to replace each references with.
         """
-        this.replace_me_with_that(that)
+        this.replace_me_with(that)
         self.update_components_list()
 
     def update_components_list(self, exceptions=None):
@@ -847,7 +847,7 @@ def parent_child_traversal(parent: UmiBase):
     :attr:`UmiBase.children` attribute and had a better performance than
     :func:`parent_key_child_traversal`.
     """
-    for child in parent.children:
+    for child in getattr(parent, "children", ()):
         yield parent, child
         yield from parent_child_traversal(child)
 

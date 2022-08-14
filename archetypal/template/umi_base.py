@@ -466,7 +466,11 @@ class UmiBase(object):
         for (parent, _, key, data) in edges:
             # fire the attr setter
             if data["meta"] is not None:
-                getattr(parent, data["meta"]["attr"])[data["meta"]["index"]] = other
+                meta = data["meta"]
+                attr = meta["attr"]
+                index = meta["index"]
+                umibase_list = getattr(parent, attr) # get the base list
+                umibase_list[index] = other # fire the setter
             else:
                 parent[key] = other
 
@@ -490,7 +494,7 @@ class UmiBase(object):
         if self._parents.has_node(parent):
             # Fails silently if edge does not exist
             self._parents.remove_edges_from([(parent, self, key)])
-            
+
             if len(self._parents[parent]) == 0:
                 self._parents.remove_node(parent)
 
@@ -689,7 +693,7 @@ class UmiBaseList:
                 setattr(self[index], self[index]._umi_base_property, value)
         if not should_insert_into_helper_obj or not self[index]:
             self._objects[index] = value
-        value.link(self._parent, self.format_graph_key(self), meta=self.format_edge_meta(index))
+        value.link(self._parent, self.format_graph_key(index), meta=self.format_edge_meta(index))
     
     def __eq__(self, other):
         """Check if two UmiBaseLists are equal by iterating through the arrays"""
@@ -705,7 +709,7 @@ class UmiBaseList:
 
     def unlink_list(self):
         for index, obj in enumerate(self._objects):
-            obj.unlink(self._parent, self.format_graph_key(self))
+            obj.unlink(self._parent, self.format_graph_key(index))
         self._objects = []
 
     def link_list(self, objects):

@@ -191,13 +191,16 @@ class VentilationSetting(UmiBase):
         self.NatVentZoneTempSetpoint = NatVentZoneTempSetpoint
         self.ScheduledVentilationAch = ScheduledVentilationAch
         self.ScheduledVentilationSetpoint = ScheduledVentilationSetpoint
+        # prevent validation error
+        self._scheduled_ventilation_schedule = ScheduledVentilationSchedule
+        self.IsScheduledVentilationOn = IsScheduledVentilationOn 
+        self._scheduled_ventilation_schedule = None
         self.VentilationType = VentilationType
         self.Afn = Afn
         self.area = area
         self.volume = volume
         # Set UmiBase Properties after standard properties
         self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
-        self.IsScheduledVentilationOn = IsScheduledVentilationOn #TODO: This can potentially cause a bug if VentilationSetting ever becomes grandparent of non-listed UmiBasePorperties
         self.NatVentSchedule = NatVentSchedule
 
         # Only at the end append self to _CREATED_OBJECTS

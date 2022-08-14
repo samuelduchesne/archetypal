@@ -113,9 +113,6 @@ class WindowSetting(UmiBase):
         """
         super(WindowSetting, self).__init__(Name, **kwargs)
 
-        self.ShadingSystemAvailabilitySchedule = ShadingSystemAvailabilitySchedule
-        self.Construction = Construction
-        self.AfnWindowAvailability = AfnWindowAvailability
         self.AfnDischargeC = AfnDischargeC
         self.AfnTempSetpoint = AfnTempSetpoint
         self.IsShadingSystemOn = IsShadingSystemOn
@@ -128,7 +125,11 @@ class WindowSetting(UmiBase):
         self.Type = Type
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
+        # Set UmiBas Properties after standard properties
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
+        self.ShadingSystemAvailabilitySchedule = ShadingSystemAvailabilitySchedule
+        self.AfnWindowAvailability = AfnWindowAvailability
+        self.Construction = Construction
 
         self.area = area
 

@@ -68,18 +68,19 @@ class ZoneConstructionSet(UmiBase):
             **kwargs:
         """
         super(ZoneConstructionSet, self).__init__(Name, **kwargs)
-        self.Slab = Slab
         self.IsSlabAdiabatic = IsSlabAdiabatic
-        self.Roof = Roof
         self.IsRoofAdiabatic = IsRoofAdiabatic
-        self.Partition = Partition
         self.IsPartitionAdiabatic = IsPartitionAdiabatic
-        self.Ground = Ground
         self.IsGroundAdiabatic = IsGroundAdiabatic
-        self.Facade = Facade
         self.IsFacadeAdiabatic = IsFacadeAdiabatic
         self.area = area
         self.volume = volume
+        # Set UmiBase Properties after standard properties
+        self.Slab = Slab
+        self.Roof = Roof
+        self.Partition = Partition
+        self.Ground = Ground
+        self.Facade = Facade
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)

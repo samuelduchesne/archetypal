@@ -102,10 +102,6 @@ class BuildingTemplate(UmiBase):
         super(BuildingTemplate, self).__init__(Name, **kwargs)
         self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
-        self.Core = Core
-        self.Perimeter = Perimeter
-        self.Structure = Structure
-        self.Windows = Windows
         self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
         self._year_from = YearFrom  # set privately to allow validation
         self.YearTo = YearTo
@@ -114,6 +110,11 @@ class BuildingTemplate(UmiBase):
         self.Authors = Authors if Authors else []
         self.AuthorEmails = AuthorEmails if AuthorEmails else []
         self.Version = Version
+        # Set UmiBase Properties after standard properties
+        self.Core = Core
+        self.Perimeter = Perimeter
+        self.Structure = Structure
+        self.Windows = Windows
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)

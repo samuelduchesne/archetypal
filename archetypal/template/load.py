@@ -119,11 +119,8 @@ class ZoneLoad(UmiBase):
         super(ZoneLoad, self).__init__(Name, **kwargs)
 
         self.EquipmentPowerDensity = EquipmentPowerDensity
-        self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
         self.LightingPowerDensity = LightingPowerDensity
-        self.LightsAvailabilitySchedule = LightsAvailabilitySchedule
         self.PeopleDensity = PeopleDensity
-        self.OccupancySchedule = OccupancySchedule
         self.IsEquipmentOn = IsEquipmentOn
         self.IsLightingOn = IsLightingOn
         self.IsPeopleOn = IsPeopleOn
@@ -131,6 +128,10 @@ class ZoneLoad(UmiBase):
         self.IlluminanceTarget = IlluminanceTarget
         self.area = area
         self.volume = volume
+        # Set UmiBase Properties after standard properties
+        self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
+        self.LightsAvailabilitySchedule = LightsAvailabilitySchedule
+        self.OccupancySchedule = OccupancySchedule
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)

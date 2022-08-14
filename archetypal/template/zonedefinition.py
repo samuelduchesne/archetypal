@@ -98,17 +98,10 @@ class ZoneDefinition(UmiBase):
         """
         super(ZoneDefinition, self).__init__(Name, **kwargs)
 
-        self.Ventilation = Ventilation
-        self.Loads = Loads
-        self.Conditioning = Conditioning
-        self.Constructions = Constructions
         self.DaylightMeshResolution = DaylightMeshResolution
         self.DaylightWorkplaneHeight = DaylightWorkplaneHeight
-        self.DomesticHotWater = DomesticHotWater
-        self.InternalMassConstruction = InternalMassConstruction
         self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
 
-        self.Windows = Windows  # This is not used in to_dict()
 
         if zone_surfaces is None:
             zone_surfaces = []
@@ -120,6 +113,14 @@ class ZoneDefinition(UmiBase):
         self.is_part_of_total_floor_area = is_part_of_total_floor_area
         self.multiplier = multiplier
         self.is_core = is_core
+        # Set UmiBase Properties after standard properties
+        self.Ventilation = Ventilation
+        self.Windows = Windows  # This is not used in to_dict()
+        self.Loads = Loads
+        self.Conditioning = Conditioning
+        self.Constructions = Constructions
+        self.DomesticHotWater = DomesticHotWater
+        self.InternalMassConstruction = InternalMassConstruction
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)

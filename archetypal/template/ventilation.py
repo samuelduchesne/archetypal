@@ -183,7 +183,6 @@ class VentilationSetting(UmiBase):
         self.Infiltration = Infiltration
         self.IsInfiltrationOn = IsInfiltrationOn
         self.IsNatVentOn = IsNatVentOn
-        self.NatVentSchedule = NatVentSchedule
         self.IsWindOn = IsWindOn
         self.IsBuoyancyOn = IsBuoyancyOn
         self.NatVentMaxOutdoorAirTemp = NatVentMaxOutdoorAirTemp
@@ -192,12 +191,14 @@ class VentilationSetting(UmiBase):
         self.NatVentZoneTempSetpoint = NatVentZoneTempSetpoint
         self.ScheduledVentilationAch = ScheduledVentilationAch
         self.ScheduledVentilationSetpoint = ScheduledVentilationSetpoint
-        self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
         self.IsScheduledVentilationOn = IsScheduledVentilationOn
         self.VentilationType = VentilationType
         self.Afn = Afn
         self.area = area
         self.volume = volume
+        # Set UmiBase Properties after standard properties
+        self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
+        self.NatVentSchedule = NatVentSchedule
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)

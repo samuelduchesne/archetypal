@@ -666,6 +666,8 @@ class UmiTemplateLibrary:
             keep_orphaned (bool): if True, orphaned objects are kept.
         """
         # TODO: consider scoping of replace_me_with in unique_components
+        # TODO: This is not right, since the objects will not necessarily be in the cache, e.g. 
+        # if you create an UmiBase object after the lib has been loaded and then assign it to a component in the lib
         cache = {}
         if keep_orphaned:
             orphans = []
@@ -750,16 +752,21 @@ class UmiTemplateLibrary:
         """
         import networkx as nx
 
+        # TODO: consider scoping to all objects to allow significantly better performance
+        # TODO: Consider using update_component_list first and then iterating over self
+        # rather than doing a traversal over parents
         non_orphaned_parent_graphs = []
         orphaned_parent_graphs = []
-        for group, components in self:
-            for component in components:
-                if len(component.ParentTemplates) > 0:
-                    non_orphaned_parent_graphs.append(component._parents)
-                else:
-                    if include_orphans:
-                        orphaned_parent_graphs.append(component._parents)
-        G = nx.compose_all(orphaned_parent_graphs+non_orphaned_parent_graphs)
+
+        for bldg in self.BuildingTemplates:
+            for parent, child in parent_child_traversal(bldg):
+                non_orphaned_parent_graphs.append(child._parents)
+        G = nx.compose_all(non_orphaned_parent_graphs)
+        if include_orphans:
+            for obj in self.object_list:
+                if obj.id not in (n.id for n in G):
+                    orphaned_parent_graphs.append(obj._parents)
+            G = nx.compose_all([G]+orphaned_parent_graphs)
         
         return G
 

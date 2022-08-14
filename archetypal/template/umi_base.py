@@ -705,7 +705,7 @@ class UmiBaseList:
 
     def unlink_list(self):
         for index, obj in enumerate(self._objects):
-            obj.unlink(self._parent, self.format_graph_key(self), meta=self.format_edge_meta(index))
+            obj.unlink(self._parent, self.format_graph_key(self))
         self._objects = []
 
     def link_list(self, objects):

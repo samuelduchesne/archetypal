@@ -486,10 +486,10 @@ class UmiBase(object):
             key (str): the property which the child was used for in the parent and which should be unlinked.
         """
         if self._parents.has_node(parent):
-            if self._parents.has_edge(parent, self, key):
-                self._parents.remove_edge(parent, self, key)
+            # Fails silently if edge does not exist
+            self._parents.remove_edges_from([(parent, self, key)])
             
-            if (len(self._parents[parent]) == 0):
+            if len(self._parents[parent]) == 0:
                 self._parents.remove_node(parent)
 
     def relink(self, child, key):

@@ -6,6 +6,7 @@ import numpy as np
 from sigfig import round
 from validator_collection import validators
 
+from archetypal.template.umi_base import UmiBase
 from .material_base import MaterialBase
 
 
@@ -42,6 +43,7 @@ class GasMaterial(MaterialBase):
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def Name(self):

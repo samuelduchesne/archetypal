@@ -666,20 +666,7 @@ class UmiTemplateLibrary:
             keep_orphaned (bool): if True, orphaned objects are kept.
         """
         # TODO: consider scoping of replace_me_with in unique_components
-        # TODO: This is not right, since the objects will not necessarily be in the cache, e.g. 
-        # if you create an UmiBase object after the lib has been loaded and then assign it to a component in the lib
-        cache = {}
-        if keep_orphaned:
-            orphans = []
-        for group, components in self:
-            if group == "BuildingTemplates":
-                continue
-            cache[group] = []
-            for component in components:
-                cache[group].append(component)
-                if keep_orphaned == True:
-                    if len(component.ParentTemplates) == 0: # TODO: This line may be too heavy
-                        orphans.append(component)
+        G = self.to_graph("orphans") if keep_orphaned else self.to_graph("in_templates")
         self._clear_components_list(exceptions)  # First clear components
 
         # Inclusion is a set of object classes that will be unique.
@@ -694,17 +681,13 @@ class UmiTemplateLibrary:
                     f"{', '.join(set(self._LIB_GROUPS))}"
                 )
             inclusion = set(self._LIB_GROUPS)
-        for group, components in cache.items():
-            # for each group
-            for component in components:
-                if component.__class__.__name__+"s" in inclusion:
-                    equivalent_component = component.get_unique()
-                    component.replace_me_with(equivalent_component)
+        for component in G:
+            if component.__class__.__name__+"s" in inclusion and not isinstance(component, BuildingTemplate):
+                equivalent_component = component.get_unique()
+                component.replace_me_with(equivalent_component)
+                if not equivalent_component in self[equivalent_component.__class__.__name__ + "s"]:
+                    self[equivalent_component.__class__.__name__ + "s"].append(equivalent_component)
 
-        self.update_components_list(exceptions=exceptions)  # Update the components list
-        if keep_orphaned:
-            for obj in orphans:
-                self[obj.__class__.__name__ + "s"].append(obj)
 
     def replace_component(self, this, that) -> None:
         """Replace all instances of `this` with `that`.
@@ -720,55 +703,61 @@ class UmiTemplateLibrary:
         """Update the component groups with connected components."""
         # clear components list except BuildingTemplate
         self._clear_components_list(exceptions)
+        G = self.to_graph(include="in_templates")
+        for child in G:
+            if child.__class__.__name__ != "BuildingTemplate":
+                if isinstance(child, UmiSchedule) and not isinstance(
+                    child, (DaySchedule, WeekSchedule, YearSchedule)
+                ):
+                    y, ws, ds = child.to_year_week_day()
+                    if not any(o.id == y.id for o in self.YearSchedules):
+                        self.YearSchedules.append(y)
+                    for w in ws:
+                        if not any(o.id == w.id for o in self.WeekSchedules):
+                            self.WeekSchedules.append(w)
+                    for d in ds:
+                        if not any(o.id == d.id for o in self.DaySchedules):
+                            self.DaySchedules.append(d)
+                    # finally, replace it with y
+                    child.replace_me_with(y)
+                elif isinstance(child, UmiBase):
+                    obj_list = self.__dict__[child.__class__.__name__ + "s"]
+                    if not any(o.id == child.id for o in obj_list):
+                        # Important to compare on UmiBase.id and not on identity.
+                        obj_list.append(child)
+        return G
 
-        for key, group in self:
-            for component in group:
-                for parent, child in parent_child_traversal(component):
-                    if isinstance(child, UmiSchedule) and not isinstance(
-                        child, (DaySchedule, WeekSchedule, YearSchedule)
-                    ):
-                        y, ws, ds = child.to_year_week_day()
-                        if not any(o.id == y.id for o in self.YearSchedules):
-                            self.YearSchedules.append(y)
-                        for w in ws:
-                            if not any(o.id == w.id for o in self.WeekSchedules):
-                                self.WeekSchedules.append(w)
-                        for d in ds:
-                            if not any(o.id == d.id for o in self.DaySchedules):
-                                self.DaySchedules.append(d)
-                        # finally, replace it with y
-                        setattr(parent, key, y)
-                    elif isinstance(child, UmiBase):
-                        obj_list = self.__dict__[child.__class__.__name__ + "s"]
-                        if not any(o.id == child.id for o in obj_list):
-                            # Important to compare on UmiBase.id and not on identity.
-                            obj_list.append(child)
-
-    def to_graph(self, include_orphans=False):
-        """Create a :class:`networkx.DiGraph` of self.
+    def to_graph(self, include=None):
+        """Create a :class:`networkx.MultiDiGraph` of self.
 
         This networkx.DiGraph object is then useful for graph-theory operations on
         the hierarchy of the UmiTemplateLibrary.
         """
         import networkx as nx
 
-        # TODO: consider scoping to all objects to allow significantly better performance
-        # TODO: Consider using update_component_list first and then iterating over self
-        # rather than doing a traversal over parents
-        non_orphaned_parent_graphs = []
-        orphaned_parent_graphs = []
 
-        for bldg in self.BuildingTemplates:
-            for parent, child in parent_child_traversal(bldg):
-                non_orphaned_parent_graphs.append(child._parents)
-        G = nx.compose_all(non_orphaned_parent_graphs)
-        if include_orphans:
-            for obj in self.object_list:
-                if obj.id not in (n.id for n in G):
-                    orphaned_parent_graphs.append(obj._parents)
-            G = nx.compose_all([G]+orphaned_parent_graphs)
-        
-        return G
+        if include == "all":
+            # Most performant, but will include data from other libs if they are present
+            # Use this if only working on a single lib
+            return UmiBase._GRAPH
+        elif include == "orphans":
+            G = UmiBase._GRAPH.copy()
+
+            node_ids = [ n.id for n in self.object_list ]
+            nodes_to_remove = [ node for node in G if node.id not in node_ids and not any ([ nx.has_path(G, bt, node )  for bt in self.BuildingTemplates])]
+            G.remove_nodes_from(nodes_to_remove)
+            return G
+        elif include == 'in_templates':
+            G = UmiBase._GRAPH.copy()
+            nodes_to_remove = [
+                node
+                for node in G
+                if all([not nx.has_path(G, bt, node) for bt in self.BuildingTemplates])
+            ]
+            G.remove_nodes_from(nodes_to_remove)
+            return G
+        else:
+            raise ValueError(f"'{include}' is not a valid graph filter; options are 'all', 'orphans', or 'in_templates'")
 
 
 def no_duplicates(file, attribute="Name"):

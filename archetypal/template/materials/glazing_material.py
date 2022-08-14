@@ -107,6 +107,7 @@ class GlazingMaterial(MaterialBase):
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def Conductivity(self):

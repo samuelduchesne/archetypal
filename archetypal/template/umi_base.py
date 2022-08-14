@@ -45,6 +45,7 @@ def _shorten_name(long_name):
 class UmiBase(object):
     """Base class for template objects."""
 
+    _GRAPH = nx.MultiDiGraph()
     __slots__ = (
         "_id",
         "_datasource",
@@ -452,6 +453,8 @@ class UmiBase(object):
     @property
     def ParentTemplates(self):
         """Get the parent templates of an UmiBase object"""
+        # TODO: This should use networkx UmiBase._GRAPH.has_path, 
+        # but it requires importing BuildingTemplate._CREATED_OBJECTS
         templates = set()
         for parent in self.Parents:
              # Recursive call terminates at Parent Template level, or if self.Parents is empty
@@ -484,6 +487,7 @@ class UmiBase(object):
             meta (dict or NoneType): if self is an UmiBaseList element, stores meta stores {"attr": <attr>, "index": <index>}
         """
         self._parents.add_edge(parent, self, key, meta=meta)
+        UmiBase._GRAPH.add_edge(parent, self, key, meta=meta)
     
     def unlink(self, parent, key):
         """Unlink this object as a child from a parent
@@ -494,9 +498,11 @@ class UmiBase(object):
         if self._parents.has_node(parent):
             # Fails silently if edge does not exist
             self._parents.remove_edges_from([(parent, self, key)])
+            UmiBase._GRAPH.remove_edges_from([(parent, self, key)])
 
             if len(self._parents[parent]) == 0:
                 self._parents.remove_node(parent)
+            
 
     def relink(self, child, key):
         """ Parents call this to link to a new child and unlink the old child for an attr

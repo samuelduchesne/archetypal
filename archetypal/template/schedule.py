@@ -375,6 +375,7 @@ class YearSchedulePart(UmiBaseHelper, object):
         self.ToMonth = ToMonth
         # Set UmiBase Properties after standard properties
         self.Schedule = Schedule
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def FromDay(self):
@@ -519,6 +520,7 @@ class DaySchedule(UmiSchedule):
         super(DaySchedule, self).__init__(
             Category=Category, Name=Name, Values=Values, **kwargs
         )
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def all_values(self) -> np.ndarray:
@@ -733,6 +735,7 @@ class WeekSchedule(UmiSchedule):
         super(WeekSchedule, self).__init__(Name, Category=Category, **kwargs)
         self._days = UmiBaseList(self, "Days")
         self.Days = Days
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def Days(self):

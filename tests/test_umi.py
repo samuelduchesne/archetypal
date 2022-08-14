@@ -39,7 +39,7 @@ class TestUmiTemplate:
     @pytest.fixture(scope="function")
     def lib(self):
         """Yield a template lib. Scope of this fixture is `function`."""
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         yield UmiTemplateLibrary.open(file)
 
 
@@ -62,7 +62,27 @@ class TestUmiTemplate:
         c.unique_components()
         assert len(c.OpaqueMaterials) == nb_materials_before / 2
 
-    def test_unique_components(self, two_identical_libraries):
+    def test_keep_orphaned(self, lib):
+        original_gas_length = len(lib.GasMaterials)
+        lib.unique_components(keep_orphaned=True)
+        assert original_gas_length == len(lib.GasMaterials)
+
+    def test_exclude_orphaned(self, lib):
+        lib.unique_components(keep_orphaned=False)
+        assert len(lib.GasMaterials) == 1 and lib.GasMaterials[0].Type == "AIR"
+
+    def test_unique_components(self, lib):
+        """Test options on UmiTemplateLibrary.unique_components"""
+        new_zone_load = lib.ZoneDefinitions[0].Loads.duplicate()
+        for i, zone in enumerate(lib.ZoneDefinitions):
+            if (i != 0):
+                zone.Loads = new_zone_load
+        lib.unique_components()
+        print(lib.ZoneLoads)
+        assert lib.ZoneDefinitions[0].Loads == new_zone_load
+        assert len(lib.ZoneLoads) == 1
+
+    def test_unique_components_with_addition(self, two_identical_libraries):
         """Test options on UmiTemplateLibrary.unique_components"""
         a, b = two_identical_libraries
         c = a + b
@@ -81,13 +101,12 @@ class TestUmiTemplate:
 
     def test_graph(self, lib):
         """Test initialization of networkx DiGraph"""
-        G = lib.to_graph()
-        n_nodes = len(G)
+        G_in_templates = lib.to_graph(include="in_templates")
 
         # Test option to include orphaned objects.
-        G = lib.to_graph(include_orphans=True)
-        assert len(G) > n_nodes
-        assert G.has_edge(lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter")
+        G_orphans = lib.to_graph(include="orphans")
+        assert len(G_orphans) > len(G_in_templates)
+        assert G_orphans.has_edge(lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter")
     
     def test_parent_templates(self, lib):
         """ Test that changing an object accurately updates the ParentTemplates list"""

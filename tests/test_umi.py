@@ -83,6 +83,34 @@ class TestUmiTemplate:
         # Test option to include orphaned objects.
         G = a.to_graph(include_orphans=True)
         assert len(G) > n_nodes
+        assert G.has_edge(a.BuildingTemplates[0], a.BuildingTemplates[0].Perimeter, "Perimeter")
+    
+    def test_parent_templates(self):
+        """ Test that changing an object accurately updates the ParentTemplates list"""
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+
+        lib = UmiTemplateLibrary.open(file)
+        for bt in lib.BuildingTemplates:
+            assert bt in bt.Perimeter.ParentTemplates
+            assert bt in bt.Perimeter.Loads.ParentTemplates
+            assert bt in bt.Core.Loads.ParentTemplates
+            assert bt in bt.Core.ParentTemplates
+            bt.Perimeter.Loads = lib.ZoneLoads[0]
+            bt.Core.Loads = lib.ZoneLoads[0]
+
+        for bt in lib.BuildingTemplates:
+            # Can't use == here since the other Building Templates from opening the library are still in mem
+            assert bt in lib.ZoneLoads[0].ParentTemplates
+
+    def test_all_children_for_parent_templates(self):
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+
+        lib = UmiTemplateLibrary.open(file)
+        lib.unique_components(keep_orphaned=False)
+        for group, components in lib:
+            for component in components:
+                parent_bts_from_current_lib = [bt for bt in component.ParentTemplates if bt in lib.BuildingTemplates]
+                assert len(parent_bts_from_current_lib) > 0
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and

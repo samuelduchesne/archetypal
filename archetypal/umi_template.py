@@ -48,6 +48,8 @@ class UmiTemplateLibrary:
     - See :meth:`from_idf_files` to create a library by converting existing IDF models.
     """
 
+    _CREATED_LIBS = []
+
     _LIB_GROUPS = [
         "GasMaterials",
         "GlazingMaterials",
@@ -142,6 +144,7 @@ class UmiTemplateLibrary:
         self.BuildingTemplates = BuildingTemplates or []
         self.GasMaterials = GasMaterials or []
         self.GlazingMaterials = GlazingMaterials or []
+        UmiTemplateLibrary._CREATED_LIBS.append(self)
 
     def __iter__(self):
         """Iterate over component groups. Yields tuple of (group, value)."""
@@ -163,7 +166,7 @@ class UmiTemplateLibrary:
             attrs[group] = value + other.__dict__[group]
 
         newlib = self.__class__(**attrs, name=self.name)
-        newlib.unique_components("GasMaterials", keep_orphaned=True, graph_scope="global")
+        newlib.unique_components("GasMaterials", keep_orphaned=True)
         return newlib
 
     def _clear_components_list(self, except_groups=None):
@@ -281,7 +284,7 @@ class UmiTemplateLibrary:
 
         # Get unique instances
         umi_template.unique_components(
-            *(unique_components or []), exceptions=exceptions, graph_scope="global"
+            *(unique_components or []), exceptions=exceptions
         )
 
         # Update attributes of instance
@@ -646,6 +649,66 @@ class UmiTemplateLibrary:
         return data_dict
 
     def unique_components(
+        self, *args: str, exceptions: List[str] = None, keep_orphaned=False
+    ):
+        """Keep only unique components.
+
+        Starts by clearing all objects in self except self.BuildingTemplates.
+        Then, recursively traverses the children of each BuildingTemplate, finding a
+        unique object for "equivalent" components.
+
+        Calls :func:`~archetypal.template.umi_base.UmiBase.get_unique` for each
+        object in the graph.
+
+        Args:
+            *args (str): UmiBase class names that should be replaced with a
+                unique equivalent. For example, if only "OpaqueMaterials" should be
+                unique, then use self.unique_components("OpaqueMaterials"). If none
+                are provided, all umi components be unique.
+            exceptions (List[str]): A list of UmiBase class names that will not be
+                cleared from self.
+            keep_orphaned (bool): if True, orphaned objects are kept.
+        """
+        if keep_orphaned:
+            G = self.to_graph(include="orphans")
+            connected_to_building = set()
+            for bldg in self.BuildingTemplates:
+                for obj in nx.dfs_preorder_nodes(G, bldg):
+                    connected_to_building.add(obj)
+            orphans = [
+                obj for obj in self.object_list if obj not in connected_to_building
+            ]
+        self._clear_components_list(exceptions)  # First clear components
+
+        # Inclusion is a set of object classes that will be unique.
+        inclusion = set(args or [])
+        if not inclusion.isdisjoint(set(self._LIB_GROUPS)):
+            inclusion = set(self._LIB_GROUPS).intersection(inclusion)
+        else:
+            if inclusion:
+                assert inclusion.intersection(set(self._LIB_GROUPS)), (
+                    f"{', '.join(inclusion.difference(set(self._LIB_GROUPS)))} not a "
+                    f"valid class name. Valid values are: "
+                    f"{', '.join(set(self._LIB_GROUPS))}"
+                )
+            inclusion = set(self._LIB_GROUPS)
+        for key, group in self:
+            # for each group
+            for component in group:
+                # travers each object using generator
+                for parent, key, obj in parent_key_child_traversal(component):
+                    if obj.__class__.__name__ + "s" in inclusion:
+                        if key:
+                            setattr(
+                                parent, key, obj.get_unique()
+                            )  # set unique object on key
+
+        self.update_components_list(exceptions=exceptions)  # Update the components list
+        if keep_orphaned:
+            for obj in orphans:
+                self[obj.__class__.__name__ + "s"].append(obj)
+
+    def graph_based_unique_components(
         self, *args: str, exceptions: List[str] = None, keep_orphaned=False, graph_scope="global"
     ):
         """Keep only unique components.
@@ -707,12 +770,40 @@ class UmiTemplateLibrary:
         """
         this.replace_me_with(that)
         self.update_components_list()
-
+    
     def update_components_list(self, exceptions=None):
         """Update the component groups with connected components."""
         # clear components list except BuildingTemplate
         self._clear_components_list(exceptions)
-        G = self.to_graph(include="in_templates")
+
+        for key, group in self:
+            for component in group:
+                for parent, key, child in parent_key_child_traversal(component):
+                    if isinstance(child, UmiSchedule) and not isinstance(
+                        child, (DaySchedule, WeekSchedule, YearSchedule)
+                    ):
+                        y, ws, ds = child.to_year_week_day()
+                        if not any(o.id == y.id for o in self.YearSchedules):
+                            self.YearSchedules.append(y)
+                        for w in ws:
+                            if not any(o.id == w.id for o in self.WeekSchedules):
+                                self.WeekSchedules.append(w)
+                        for d in ds:
+                            if not any(o.id == d.id for o in self.DaySchedules):
+                                self.DaySchedules.append(d)
+                        # finally, replace it with y
+                        setattr(parent, key, y)
+                    elif isinstance(child, UmiBase):
+                        obj_list = self.__dict__[child.__class__.__name__ + "s"]
+                        if not any(o.id == child.id for o in obj_list):
+                            # Important to compare on UmiBase.id and not on identity.
+                            obj_list.append(child)
+
+    def graph_based_update_components_list(self, exceptions=None, use_all=True):
+        """Update the component groups with connected components."""
+        # clear components list except BuildingTemplate
+        self._clear_components_list(exceptions)
+        G = self.to_graph(include="in_templates" if not use_all else "all")
         for child in G:
             if child.__class__.__name__ != "BuildingTemplate":
                 if isinstance(child, UmiSchedule) and not isinstance(
@@ -745,17 +836,19 @@ class UmiTemplateLibrary:
         import networkx as nx
 
 
+        G = UmiBase._GRAPH.copy()
         if include == "all":
             # Most performant, but will include data from other libs if they are present
             # Use this if only working on a single lib
-            return UmiBase._GRAPH
-        elif include == "orphans":
-            G = UmiBase._GRAPH.copy()
-
-            node_ids = [ n.id for n in self.object_list ]
-            nodes_to_remove = [ node for node in G if node.id not in node_ids and not any ([ nx.has_path(G, bt, node )  for bt in self.BuildingTemplates])]
-            G.remove_nodes_from(nodes_to_remove)
             return G
+        elif include == "orphans":
+            if len(UmiTemplateLibrary._CREATED_LIBS) == 1:
+                return G
+            else:
+                node_ids = [ n.id for n in self.object_list ]
+                nodes_to_remove = [ node for node in G if node.id not in node_ids and not any ([ nx.has_path(G, bt, node )  for bt in self.BuildingTemplates])]
+                G.remove_nodes_from(nodes_to_remove)
+                return G
         elif include == 'in_templates':
             G = UmiBase._GRAPH.copy()
             nodes_to_remove = [
@@ -767,6 +860,34 @@ class UmiTemplateLibrary:
             return G
         else:
             raise ValueError(f"'{include}' is not a valid graph filter; options are 'all', 'orphans', or 'in_templates'")
+
+    @classmethod
+    def clear_created_objects_lists(cls):
+        classes = [
+            BuildingTemplate,
+            UmiSchedule,
+            DaySchedule,
+            WeekSchedule,
+            YearSchedule,
+            OpaqueMaterial,
+            GasMaterial,
+            GlazingMaterial,
+            OpaqueConstruction,
+            WindowConstruction,
+            ZoneDefinition,
+            ZoneConstructionSet,
+            ZoneConditioning,
+            WindowSetting,
+            DomesticHotWaterSetting,
+            ZoneLoad,
+            StructureInformation,
+            VentilationSetting,
+        ]
+        for umi_class in classes:
+            umi_class._CREATED_OBJECTS = []
+        cls._CREATED_LIBS = []
+        
+        UmiBase.clear_graph()
 
 
 def no_duplicates(file, attribute="Name"):
@@ -811,6 +932,8 @@ def no_duplicates(file, attribute="Name"):
         raise Exception(f"Duplicate {attribute} found: {dups}")
     else:
         return True
+    
+        
 
 
 DEEP_OBJECTS = (UmiBase, MaterialLayer, GasLayer, YearSchedulePart, MassRatio, list)

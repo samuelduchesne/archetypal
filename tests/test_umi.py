@@ -41,6 +41,7 @@ class TestUmiTemplate:
         """Yield a template lib. Scope of this fixture is `function`."""
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         yield UmiTemplateLibrary.open(file)
+        UmiTemplateLibrary.clear_created_objects_lists()
 
 
     def test_add(self, two_identical_libraries):
@@ -64,7 +65,7 @@ class TestUmiTemplate:
 
     def test_keep_orphaned(self, lib):
         original_gas_length = len(lib.GasMaterials)
-        lib.unique_components(keep_orphaned=True, graph_scope="lib")
+        lib.unique_components(keep_orphaned=True)
         assert original_gas_length == len(lib.GasMaterials)
 
     def test_exclude_orphaned(self, lib):
@@ -107,6 +108,8 @@ class TestUmiTemplate:
         G_orphans = lib.to_graph(include="orphans")
         assert len(G_orphans) > len(G_in_templates)
         assert G_orphans.has_edge(lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter")
+        assert lib.GasMaterials[1] in G_orphans
+        assert lib.GasMaterials[1] not in G_in_templates
     
     def test_parent_templates(self, lib):
         """ Test that changing an object accurately updates the ParentTemplates list"""
@@ -132,9 +135,11 @@ class TestUmiTemplate:
     
     def test_replace_component(self, lib):
 
+        original_components = {}
         for group, components in lib:
             if group != "BuildingTemplates":
                 original_component = components[0]
+                original_components[group] = original_component
                 for component in components:
                     if hash(component) != hash(original_component):
                         lib.replace_component(component, original_component)
@@ -142,6 +147,7 @@ class TestUmiTemplate:
         for group, components in lib:
             if group != "BuildingTemplates":
                 assert len(components) == 1
+                assert components[0] == original_components[group]
 
 
     def test_template_to_template(self):

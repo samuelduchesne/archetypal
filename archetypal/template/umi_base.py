@@ -515,6 +515,11 @@ class UmiBase(object):
             getattr(self, key).unlink(self, key)
         if child is not None:
             child.link(self, key)
+    
+    @classmethod
+    def clear_graph(cls):
+        UmiBase._GRAPH = nx.MultiDiGraph()
+
 
 
 class UserSet(Hashable, MutableSet):

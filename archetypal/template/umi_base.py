@@ -466,7 +466,7 @@ class UmiBase(object):
         for (parent, _, key, data) in edges:
             # fire the attr setter
             if data["meta"] is not None:
-                getattr(parent, data["meta"])[key] = other
+                getattr(parent, data["meta"]["attr"])[data["meta"]["index"]] = other
             else:
                 parent[key] = other
 
@@ -476,7 +476,8 @@ class UmiBase(object):
         """Link this object as child to a parent
         Args:
             parent (UmiBase): the parent to link
-            key (str): the property which this child was used for in the parent and which should be unlinked.
+            key (str): the property which this child was used for in the parent and which should be unlinked, or <attr>_<index> if a list element
+            meta (dict or NoneType): if self is an UmiBaseList element, stores meta stores {"attr": <attr>, "index": <index>}
         """
         self._parents.add_edge(parent, self, key, meta=meta)
     
@@ -486,7 +487,6 @@ class UmiBase(object):
             parent (UmiBase): the parent to unlink
             key (str): the property which the child was used for in the parent and which should be unlinked.
         """
-        # assert self._parents.has_edge(parent, self, key), f"Can't unlink {self.Name} (child) from {parent.Name} (parent) since the link does not exist"
         if self._parents.has_node(parent):
             if self._parents.has_edge(parent, self, key):
                 self._parents.remove_edge(parent, self, key)
@@ -610,6 +610,12 @@ def umibase_property(type_of_property):
             super().__init__(getter_func, *args, **kwargs)
             self.type_of_property = type_of_property
             self.attr_name = getter_func.__name__
+        
+        def __get__(self, obj, owner):
+            try:
+                return super().__get__(obj, owner)
+            except AttributeError:
+                return None
 
         def __set__(self, obj, value):
             self.type_check(value)
@@ -669,16 +675,21 @@ class UmiBaseList:
     def __getitem__(self, index):
         return self._objects[index]
 
-    # TODO: needs work if there are multiple list attrs in a single parent
+    def format_graph_key(self, index):
+        return f"{self._attr}_{index}"
+    
+    def format_edge_meta(self, index):
+        return {"attr": self._attr, "index": index}
+
     def __setitem__(self, index, value):
         should_insert_into_helper_obj = isinstance(self[index], UmiBaseHelper) and isinstance(value, UmiBase)
         if self[index]:
-            self[index].unlink(self._parent, index)
+            self[index].unlink(self._parent, self.format_graph_key(index))
             if should_insert_into_helper_obj:
                 setattr(self[index], self[index]._umi_base_property, value)
         if not should_insert_into_helper_obj or not self[index]:
             self._objects[index] = value
-        value.link(self._parent, index, meta=self._attr)
+        value.link(self._parent, self.format_graph_key(self), meta=self.format_edge_meta(index))
     
     def __eq__(self, other):
         """Check if two UmiBaseLists are equal by iterating through the arrays"""
@@ -694,7 +705,7 @@ class UmiBaseList:
 
     def unlink_list(self):
         for index, obj in enumerate(self._objects):
-            obj.unlink(self._parent, index)
+            obj.unlink(self._parent, self.format_graph_key(self), meta=self.format_edge_meta(index))
         self._objects = []
 
     def link_list(self, objects):

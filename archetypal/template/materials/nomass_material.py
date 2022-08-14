@@ -6,6 +6,7 @@ import numpy as np
 from sigfig import round
 from validator_collection import validators
 
+from archetypal.template.umi_base import UmiBase
 from archetypal.template import GasMaterial
 from archetypal.template.materials.material_base import MaterialBase
 from archetypal.utils import log
@@ -13,8 +14,6 @@ from archetypal.utils import log
 
 class NoMassMaterial(MaterialBase):
     """Use this component to create a custom no mass material."""
-
-    _CREATED_OBJECTS = []
 
     _ROUGHNESS_TYPES = (
         "VeryRough",
@@ -81,6 +80,7 @@ class NoMassMaterial(MaterialBase):
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def r_value(self):
@@ -153,7 +153,7 @@ class NoMassMaterial(MaterialBase):
     def MoistureDiffusionResistance(self, value):
         self._moisture_diffusion_resistance = validators.float(value, minimum=0)
 
-    def combine(self, other, weights=None, allow_duplicates=False):
+    def combine(self, other, weights=None, allow_duplicates=False, **kwargs):
         """Combine two OpaqueMaterial objects.
 
         Args:
@@ -208,6 +208,7 @@ class NoMassMaterial(MaterialBase):
             MoistureDiffusionResistance=self.float_mean(
                 other, "MoistureDiffusionResistance", weights
             ),
+            **kwargs,
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj

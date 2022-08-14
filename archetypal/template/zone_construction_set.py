@@ -12,7 +12,6 @@ from archetypal.utils import log, reduce, timeit
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_facade",
@@ -440,7 +439,7 @@ class ZoneConstructionSet(UmiBase):
                     iter(
                         filter(
                             lambda x: getattr(x, attr, None) is not None,
-                            ZoneConstructionSet._CREATED_OBJECTS,
+                            UmiBase.all_objects_of_type(ZoneConstructionSet),
                         )
                     ),
                     None,

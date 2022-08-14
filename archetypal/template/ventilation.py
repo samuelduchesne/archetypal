@@ -62,7 +62,6 @@ class VentilationSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_infiltration",
@@ -193,7 +192,7 @@ class VentilationSetting(UmiBase):
         self.ScheduledVentilationSetpoint = ScheduledVentilationSetpoint
         # prevent validation error
         self._scheduled_ventilation_schedule = ScheduledVentilationSchedule
-        self.IsScheduledVentilationOn = IsScheduledVentilationOn 
+        self.IsScheduledVentilationOn = IsScheduledVentilationOn
         self._scheduled_ventilation_schedule = None
         self.VentilationType = VentilationType
         self.Afn = Afn

@@ -17,7 +17,6 @@ class GlazingMaterial(MaterialBase):
     .. image:: ../images/template/materials-glazing.png
 
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_ir_emissivity_back",
@@ -107,6 +106,7 @@ class GlazingMaterial(MaterialBase):
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def Conductivity(self):
@@ -227,7 +227,7 @@ class GlazingMaterial(MaterialBase):
     def SolarTransmittance(self, value):
         self._solar_transmittance = validators.float(value, False, 0.0, 1.0)
 
-    def combine(self, other, weights=None, allow_duplicates=False):
+    def combine(self, other, weights=None, allow_duplicates=False, **kwargs):
         """Combine two GlazingMaterial objects together.
 
         Args:
@@ -279,7 +279,7 @@ class GlazingMaterial(MaterialBase):
         [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
         # keywords.
         # create a new object from combined attributes
-        new_obj = self.__class__(**meta, **new_attr)
+        new_obj = self.__class__(**meta, **new_attr, **kwargs)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 

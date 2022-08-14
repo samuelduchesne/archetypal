@@ -31,7 +31,6 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_partition_ratio",
@@ -321,14 +320,28 @@ class BuildingTemplate(UmiBase):
         perim = zone_definitions[data.pop("Perimeter")["$ref"]]
         structure = structure_definitions[data.pop("Structure")["$ref"]]
         window_data = data.pop("Windows")
+
         try:
-            window = window_settings[window_data["$ref"]]
+            window_ref = window_data["$ref"]
+            window = window_settings[window_ref]
         except KeyError:
             try:
-                for obj in WindowSetting._CREATED_OBJECTS:
+                for obj in UmiBase.all_objects_of_type(WindowSetting):
                     if obj.id == window_data["$id"]:
-                        window = window_settings[window_data["$id"]]
-                        break
+                        try:
+                            window = window_settings[window_data["$id"]]
+                            break
+                        except KeyError:
+                            window = next(
+                                iter(
+                                    [
+                                        _window
+                                        for _window in window_settings.values()
+                                        if _window.id == window_data["$id"]
+                                    ]
+                                )
+                            )
+                            break
             except KeyError:
                 window = WindowSetting.from_dict(
                     window_data, schedules, window_constructions
@@ -618,7 +631,7 @@ class BuildingTemplate(UmiBase):
             iter(
                 [
                     value
-                    for value in BuildingTemplate.CREATED_OBJECTS
+                    for value in UmiBase.all_objects_of_type(BuildingTemplate)
                     if value.id == ref["$ref"]
                 ]
             ),
@@ -652,13 +665,6 @@ class BuildingTemplate(UmiBase):
                     self.Version == other.Version,
                 ]
             )
-
-    @property
-    def ParentTemplates(self):
-        """Bails out of Parent Templates recursive call from UmiBase
-        And returns array of self for concatenation
-        """
-        return {self}
 
     @property
     def children(self):

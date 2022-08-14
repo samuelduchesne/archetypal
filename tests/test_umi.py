@@ -31,21 +31,49 @@ class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
 
     @pytest.fixture(scope="function")
-    def two_identical_libraries(self):
+    def two_identical_libraries_nodup(self):
         """Yield two identical libraries. Scope of this fixture is `function`."""
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
-        yield UmiTemplateLibrary.open(file), UmiTemplateLibrary.open(file)
-    
+        a = UmiTemplateLibrary.open(file, preserve_ids=True) 
+        b = UmiTemplateLibrary.open(file, preserve_ids=False)
+        yield a, b
+        UmiTemplateLibrary._clear_class_memory()
+
+    @pytest.fixture(scope="function")
+    def two_identical_libraries_dup(self):
+        """Yield two identical libraries. Scope of this fixture is `function`."""
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        a = UmiTemplateLibrary.open(file, preserve_ids=True) 
+        b = UmiTemplateLibrary.open(file, preserve_ids=False)
+        yield a, b
+        UmiTemplateLibrary._clear_class_memory()
+
     @pytest.fixture(scope="function")
     def lib(self):
         """Yield a template lib. Scope of this fixture is `function`."""
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
-        yield UmiTemplateLibrary.open(file)
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        yield UmiTemplateLibrary.open(file, preserve_ids=True)
+        UmiTemplateLibrary._clear_class_memory()
 
+    def test_change_ids(
+        self, two_identical_libraries_nodup, two_identical_libraries_dup
+    ):
+        a, b = two_identical_libraries_nodup
+        for group in UmiTemplateLibrary._LIB_GROUPS:
+            for this, that in zip(a[group], b[group]):
+                assert this == that
+                assert len(this.Parents) == len(that.Parents)
+                assert this.id != that.id
+        a, b = two_identical_libraries_dup
+        for group in UmiTemplateLibrary._LIB_GROUPS:
+            for this, that in zip(a[group], b[group]):
+                assert this == that
+                assert len(this.Parents) == len(that.Parents)
+                assert this.id != that.id
 
-    def test_add(self, two_identical_libraries):
+    def test_add(self, two_identical_libraries_nodup):
         """Test combining two template library objects together."""
-        a, b = two_identical_libraries
+        a, b = two_identical_libraries_nodup
 
         # add them together into `c`
         c = a + b
@@ -62,9 +90,29 @@ class TestUmiTemplate:
         c.unique_components()
         assert len(c.OpaqueMaterials) == nb_materials_before / 2
 
-    def test_unique_components(self, two_identical_libraries):
+    def test_keep_orphaned(self, lib):
+        original_gas_length = len(lib.GasMaterials)
+        lib.unique_components(keep_orphaned=True)
+        assert original_gas_length == len(lib.GasMaterials)
+
+    def test_exclude_orphaned(self, lib):
+        lib.unique_components(keep_orphaned=False)
+        assert len(lib.GasMaterials) == 1 and lib.GasMaterials[0].Type == "AIR"
+
+    def test_unique_components(self, lib):
         """Test options on UmiTemplateLibrary.unique_components"""
-        a, b = two_identical_libraries
+        new_zone_load = lib.ZoneDefinitions[0].Loads.duplicate()
+        for i, zone in enumerate(lib.ZoneDefinitions):
+            if i != 0:
+                # Replace all but the original
+                zone.Loads = new_zone_load
+        lib.unique_components()
+        assert lib.ZoneDefinitions[0].Loads == new_zone_load
+        assert len(lib.ZoneLoads) == 1
+
+    def test_unique_components_with_addition(self, two_identical_libraries_nodup):
+        """Test options on UmiTemplateLibrary.unique_components"""
+        a, b = two_identical_libraries_nodup
         c = a + b
 
         # Only make the `OpaqueMaterial` objects unique.
@@ -83,12 +131,40 @@ class TestUmiTemplate:
         """Test initialization of networkx DiGraph"""
         G = lib.to_graph()
         n_nodes = len(G)
+        assert lib.GasMaterials[1] not in G
+        assert G.has_edge(
+            lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter"
+        )
 
         # Test option to include orphaned objects.
         G = lib.to_graph(include_orphans=True)
         assert len(G) > n_nodes
-        assert G.has_edge(lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter")
-    
+        assert lib.GasMaterials[1] in G
+        assert G.has_edge(
+            lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter"
+        )
+
+    def test_graph_with_multiple_libs(self, two_identical_libraries_dup):
+        """ Test creating graphs when multiple libs exist in memory"""
+        a, b = two_identical_libraries_dup
+        Ga = a.to_graph()
+        Gb = b.to_graph()
+        assert len(Ga) == len(Gb)
+        assert a.GasMaterials[0] not in Gb
+        assert b.GasMaterials[0] not in Ga
+        assert a.GasMaterials[0] in Ga
+        assert b.GasMaterials[0] in Gb
+        Ga_orphans = a.to_graph(include_orphans=True)
+        Gb_orphans = b.to_graph(include_orphans=True)
+        assert len(Ga_orphans) == len(Gb_orphans)
+        assert len(Ga_orphans) > len(Ga)
+        assert a.GasMaterials[0] not in Gb
+        assert b.GasMaterials[0] not in Ga
+        assert a.GasMaterials[0] in Ga
+        assert b.GasMaterials[0] in Gb
+        assert a.GasMaterials[1] not in Ga
+        assert b.GasMaterials[1] not in Gb
+
     def test_parent_templates(self, lib):
         """ Test that changing an object accurately updates the ParentTemplates list"""
 
@@ -108,9 +184,16 @@ class TestUmiTemplate:
         lib.unique_components(keep_orphaned=False)
         for group, components in lib:
             for component in components:
-                parent_bts_from_current_lib = [bt for bt in component.ParentTemplates if bt in lib.BuildingTemplates]
-                assert len(parent_bts_from_current_lib) > 0
-    
+                if group == "BuildingTemplates":
+                    assert len(component.ParentTemplates) == 0
+                else:
+                    parent_bts_from_current_lib = [
+                        bt
+                        for bt in component.ParentTemplates
+                        if bt in lib.BuildingTemplates
+                    ]
+                    assert len(parent_bts_from_current_lib) > 0
+
     def test_replace_component(self, lib):
 
         for group, components in lib:
@@ -123,7 +206,6 @@ class TestUmiTemplate:
         for group, components in lib:
             if group != "BuildingTemplates":
                 assert len(components) == 1
-
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and

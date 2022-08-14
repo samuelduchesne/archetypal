@@ -17,7 +17,6 @@ from archetypal.utils import log
 
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
-    _CREATED_OBJECTS = []
 
     __slots__ = ("_quantity",)
 
@@ -88,7 +87,7 @@ class UmiSchedule(Schedule, UmiBase):
             Name=Name, Values=Values, Type=Type, **kwargs
         )
 
-    def combine(self, other, weights=None, quantity=None):
+    def combine(self, other, weights=None, quantity=None, **kwargs):
         """Combine two UmiSchedule objects together.
 
         Args:
@@ -207,7 +206,7 @@ class UmiSchedule(Schedule, UmiBase):
             [self.quantity or float("nan"), other.quantity or float("nan")]
         )
         new_obj = UmiSchedule.from_values(
-            Values=new_values, Type="Fraction", quantity=quantity, **meta
+            Values=new_values, Type="Fraction", quantity=quantity, **meta, **kwargs
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.weights = sum(weights)
@@ -275,7 +274,7 @@ class UmiSchedule(Schedule, UmiBase):
             iter(
                 [
                     value
-                    for value in UmiSchedule.CREATED_OBJECTS
+                    for value in UmiBase.all_objects_of_type(UmiSchedule)
                     if value.id == ref["$ref"]
                 ]
             ),
@@ -375,6 +374,7 @@ class YearSchedulePart(UmiBaseHelper, object):
         self.ToMonth = ToMonth
         # Set UmiBase Properties after standard properties
         self.Schedule = Schedule
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def FromDay(self):
@@ -519,6 +519,7 @@ class DaySchedule(UmiSchedule):
         super(DaySchedule, self).__init__(
             Category=Category, Name=Name, Values=Values, **kwargs
         )
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def all_values(self) -> np.ndarray:
@@ -733,6 +734,7 @@ class WeekSchedule(UmiSchedule):
         super(WeekSchedule, self).__init__(Name, Category=Category, **kwargs)
         self._days = UmiBaseList(self, "Days")
         self.Days = Days
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def Days(self):

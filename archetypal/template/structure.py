@@ -142,8 +142,6 @@ class StructureInformation(ConstructionBase):
     .. image:: ../images/template/constructions-structure.png
     """
 
-    _CREATED_OBJECTS = []
-
     __slots__ = ("_mass_ratios",)
 
     def __init__(self, Name, MassRatios, **kwargs):
@@ -167,7 +165,9 @@ class StructureInformation(ConstructionBase):
 
     @MassRatios.setter
     def MassRatios(self, value):
-        assert isinstance(value, (list, UmiBaseList)), "mass_ratio must be of a list of MassRatio"
+        assert isinstance(
+            value, (list, UmiBaseList)
+        ), "mass_ratio must be of a list of MassRatio"
         self.MassRatios.relink_list(value)
 
     @classmethod

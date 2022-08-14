@@ -19,7 +19,6 @@ class DomesticHotWaterSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-dhw.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_flow_rate_per_floor_area",
@@ -404,6 +403,7 @@ class DomesticHotWaterSetting(UmiBase):
             ),
             area=self.area + other.area,
             **meta,
+            **kwargs,
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj

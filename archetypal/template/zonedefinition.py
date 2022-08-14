@@ -25,7 +25,6 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_internal_mass_exposed_per_floor_area",
@@ -101,7 +100,6 @@ class ZoneDefinition(UmiBase):
         self.DaylightMeshResolution = DaylightMeshResolution
         self.DaylightWorkplaneHeight = DaylightWorkplaneHeight
         self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
-
 
         if zone_surfaces is None:
             zone_surfaces = []
@@ -542,7 +540,7 @@ class ZoneDefinition(UmiBase):
         )
         return zone
 
-    def combine(self, other, weights=None, allow_duplicates=False):
+    def combine(self, other, weights=None, allow_duplicates=False, **kwargs):
         """Combine two ZoneDefinition objects together.
 
         Args:
@@ -624,6 +622,7 @@ class ZoneDefinition(UmiBase):
                 other, "InternalMassExposedPerFloorArea", weights
             ),
             Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
+            **kwargs,
         )
         new_obj = ZoneDefinition(**meta, **new_attr)
 

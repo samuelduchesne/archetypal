@@ -36,7 +36,6 @@ class WindowSetting(UmiBase):
 
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_operable_area",
@@ -676,7 +675,7 @@ class WindowSetting(UmiBase):
             # no window found, probably a core zone, return None.
             return None
 
-    def combine(self, other, weights=None, allow_duplicates=False):
+    def combine(self, other, weights=None, allow_duplicates=False, **kwargs):
         """Append other to self. Return self + other as a new object.
 
         Args:
@@ -747,6 +746,7 @@ class WindowSetting(UmiBase):
                 weights,
             ),
             Type=max(self.Type, other.Type),
+            **kwargs,
         )
         new_obj = WindowSetting(**meta, **new_attr)
         new_obj.predecessors.update(self.predecessors + other.predecessors)

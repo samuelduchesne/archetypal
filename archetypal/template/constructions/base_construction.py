@@ -333,13 +333,10 @@ class LayeredConstruction(ConstructionBase):
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
-        """Assert self is equivalent to other."""
         if not isinstance(other, LayeredConstruction):
             return NotImplemented
         else:
-            return all(
-                [self.Layers == other.Layers]
-            )
+            return all([self.Layers == other.Layers])
 
     @property
     def children(self):

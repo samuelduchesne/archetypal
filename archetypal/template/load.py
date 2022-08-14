@@ -42,7 +42,6 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_dimming_type",
@@ -496,7 +495,7 @@ class ZoneLoad(UmiBase):
         )
         return z_load
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, **kwargs):
         """Combine two ZoneLoad objects together. Returns a new object.
 
         Args:
@@ -574,6 +573,7 @@ class ZoneLoad(UmiBase):
             IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),
             IsPeopleOn=any([self.IsPeopleOn, other.IsPeopleOn]),
             PeopleDensity=self.float_mean(other, "PeopleDensity", weights),
+            **kwargs,
         )
 
         new_obj = self.__class__(

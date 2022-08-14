@@ -88,7 +88,6 @@ class ZoneConditioning(UmiBase):
 
     .. image:: ../images/template/zoninfo-conditioning.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_cooling_setpoint",
@@ -1377,7 +1376,7 @@ class ZoneConditioning(UmiBase):
 
         return cop
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, **kwargs):
         """Combine two ZoneConditioning objects together.
 
         Args:
@@ -1462,7 +1461,7 @@ class ZoneConditioning(UmiBase):
         )
         # create a new object with the previous attributes
         new_obj = self.__class__(
-            **meta, **new_attr, allow_duplicates=self.allow_duplicates
+            **meta, **new_attr, allow_duplicates=self.allow_duplicates, **kwargs
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj

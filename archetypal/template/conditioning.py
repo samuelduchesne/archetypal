@@ -259,9 +259,6 @@ class ZoneConditioning(UmiBase):
                 :class:`archetypal.template.UmiBase`
         """
         super(ZoneConditioning, self).__init__(Name, **kwargs)
-        self.MechVentSchedule = MechVentSchedule
-        self.HeatingSchedule = HeatingSchedule
-        self.CoolingSchedule = CoolingSchedule
         self.CoolingCoeffOfPerf = CoolingCoeffOfPerf
         self.CoolingLimitType = CoolingLimitType
         self.CoolingFuelType = CoolingFuelType
@@ -285,6 +282,11 @@ class ZoneConditioning(UmiBase):
         self.MinFreshAirPerPerson = MinFreshAirPerPerson
 
         self.area = area
+
+        # set UmiBase Properties after standard properties
+        self.MechVentSchedule = MechVentSchedule
+        self.HeatingSchedule = HeatingSchedule
+        self.CoolingSchedule = CoolingSchedule
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)

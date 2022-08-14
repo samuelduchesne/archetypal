@@ -24,8 +24,9 @@ class MassRatio(UmiBaseHelper, object):
         """
         super(MassRatio, self).__init__(umi_base_property="Material")
         self.HighLoadRatio = HighLoadRatio
-        self.Material = Material
         self.NormalRatio = NormalRatio
+        # Set UmiBase Properties after standard properties
+        self.Material = Material
 
     @property
     def HighLoadRatio(self):

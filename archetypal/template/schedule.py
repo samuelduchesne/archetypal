@@ -373,6 +373,7 @@ class YearSchedulePart(UmiBaseHelper, object):
         self.FromMonth = FromMonth
         self.ToDay = ToDay
         self.ToMonth = ToMonth
+        # Set UmiBase Properties after standard properties
         self.Schedule = Schedule
 
     @property

@@ -59,8 +59,9 @@ class DomesticHotWaterSetting(UmiBase):
         self.IsOn = IsOn
         self.WaterSupplyTemperature = WaterSupplyTemperature
         self.WaterTemperatureInlet = WaterTemperatureInlet
-        self.WaterSchedule = WaterSchedule
         self.area = area
+        # Set UmiBase Properties after standard properties
+        self.WaterSchedule = WaterSchedule
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)

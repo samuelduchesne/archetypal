@@ -30,6 +30,11 @@ from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
 class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
 
+    @pytest.fixture(autouse=True)
+    def cleanup(self):
+        yield
+        UmiTemplateLibrary._clear_class_memory()
+
     @pytest.fixture(scope="function")
     def two_identical_libraries_nodup(self):
         """Yield two identical libraries. Scope of this fixture is `function`."""
@@ -37,7 +42,6 @@ class TestUmiTemplate:
         a = UmiTemplateLibrary.open(file, preserve_ids=True) 
         b = UmiTemplateLibrary.open(file, preserve_ids=False)
         yield a, b
-        UmiTemplateLibrary._clear_class_memory()
 
     @pytest.fixture(scope="function")
     def two_identical_libraries_dup(self):
@@ -46,14 +50,18 @@ class TestUmiTemplate:
         a = UmiTemplateLibrary.open(file, preserve_ids=True) 
         b = UmiTemplateLibrary.open(file, preserve_ids=False)
         yield a, b
-        UmiTemplateLibrary._clear_class_memory()
+
+    @pytest.fixture(scope="function")
+    def lib_nodup(self):
+        """Yield a template lib. Scope of this fixture is `function`."""
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        yield UmiTemplateLibrary.open(file, preserve_ids=True)
 
     @pytest.fixture(scope="function")
     def lib(self):
         """Yield a template lib. Scope of this fixture is `function`."""
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
         yield UmiTemplateLibrary.open(file, preserve_ids=True)
-        UmiTemplateLibrary._clear_class_memory()
 
     def test_change_ids(
         self, two_identical_libraries_nodup, two_identical_libraries_dup
@@ -207,13 +215,13 @@ class TestUmiTemplate:
             if group != "BuildingTemplates":
                 assert len(components) == 1
 
-    def test_template_to_template(self):
+    def test_template_to_template(self, lib_nodup):
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""
 
         file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
 
-        a = UmiTemplateLibrary.open(file).to_dict()
+        a = lib_nodup.to_dict()
         b = TestUmiTemplate.read_json(file)
 
         for key in b:

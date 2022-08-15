@@ -321,31 +321,39 @@ class BuildingTemplate(UmiBase):
         structure = structure_definitions[data.pop("Structure")["$ref"]]
         window_data = data.pop("Windows")
 
+        window = None
         try:
             window_ref = window_data["$ref"]
             window = window_settings[window_ref]
         except KeyError:
             try:
-                for obj in UmiBase.all_objects_of_type(WindowSetting):
-                    if obj.id == window_data["$id"]:
-                        try:
-                            window = window_settings[window_data["$id"]]
-                            break
-                        except KeyError:
-                            window = next(
-                                iter(
-                                    [
-                                        _window
-                                        for _window in window_settings.values()
-                                        if _window.id == window_data["$id"]
-                                    ]
-                                )
-                            )
-                            break
+                window = window_settings[window_data["$id"]]
             except KeyError:
-                window = WindowSetting.from_dict(
-                    window_data, schedules, window_constructions
-                )
+                # If the window id changed because of preserve_ids, look for
+                # the matching window in window_settings
+                try:
+                    window = next(
+                        iter(
+                            [
+                                _window
+                                for _window in window_settings.values()
+                                if _window.id == window_data["$id"]
+                            ]
+                        )
+                    )
+                except StopIteration:
+                    # then look in all objects
+                    for obj in UmiBase.all_objects_of_type(WindowSetting):
+                        if obj.id == window_data["$id"]:
+                            obj_data = obj.to_dict()
+                            if obj_data == window_data:
+                                window = obj
+                                break
+                    # Create the window if it does not yet exist
+                    if window is None:
+                        window = WindowSetting.from_dict(
+                            window_data, schedules, window_constructions
+                        )
 
         return cls(
             Core=core,

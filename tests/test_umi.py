@@ -1,7 +1,9 @@
 import collections
 import json
 import os
+import time
 
+import numpy as np
 import pytest
 from path import Path
 
@@ -25,7 +27,7 @@ from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
-from archetypal.utils import timeit
+from archetypal.utils import timeit, log
 
 
 class TestUmiTemplate:
@@ -250,21 +252,43 @@ class TestUmiTemplate:
             if group != "BuildingTemplates":
                 assert len(components) == 1
     
+    @pytest.fixture(scope="class")
+    def benchmark_results(cls):
+        results = {"replace_component": {}, "unique_components": {}}
+        yield results
+
     # @pytest.mark.skip(reason="skip benchmarks by default")
     @pytest.mark.parametrize("execution_count", range(10))
-    def test_benchmark_replace_component(self, execution_count):
+    @pytest.mark.parametrize("additional_building_templates_count", [0, 10, 50])
+    def test_benchmark_replace_component(self, execution_count, additional_building_templates_count, benchmark_results):
         lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
+        # extend the list of building templates with an arbitrary building template, even if its a dupe
+        for i in range(additional_building_templates_count):
+            lib.BuildingTemplates.append(lib.BuildingTemplates[-1])
+        # Set all first layers to the first opaque material
         for construction in lib.OpaqueConstructions:
             construction.Layers[0] = lib.OpaqueMaterials[0]
         @timeit
         def run():
+            # Replace the first opaque material with the second opaque material
             lib.replace_component(lib.OpaqueMaterials[0], lib.OpaqueMaterials[1])
+        
+        start = time.time()
         run()
+        end = time.time()
+        try:
+            benchmark_results["replace_component"][additional_building_templates_count].append(end-start)
+        except KeyError:
+            benchmark_results["replace_component"][additional_building_templates_count] = []
+            benchmark_results["replace_component"][additional_building_templates_count].append(end-start)
+        for count, array in benchmark_results["replace_component"].items():
+            log(f"Average component replacement time for {count} extra templates: { np.average(array) } (stddev: {np.std(array)})")
+
 
     # @pytest.mark.skip(reason="skip benchmarks by default")
     @pytest.mark.parametrize("execution_count", range(10))
     @pytest.mark.parametrize("phantom_objects_count", [0, 10, 100, 200])
-    def test_benchmark_unique_components(self, execution_count, phantom_objects_count):
+    def test_benchmark_unique_components(self, execution_count, phantom_objects_count, benchmark_results):
         lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
         # Add a bunch of phantom stuff to the library, e.g. objects in other templates
         for i in range(phantom_objects_count):
@@ -282,7 +306,16 @@ class TestUmiTemplate:
         @timeit
         def run():
             lib.unique_components()
+        start = time.time()
         run()
+        end = time.time()
+        try:
+            benchmark_results["unique_components"][phantom_objects_count].append(end-start)
+        except KeyError:
+            benchmark_results["unique_components"][phantom_objects_count] = []
+            benchmark_results["unique_components"][phantom_objects_count].append(end-start)
+        for count, array in benchmark_results["unique_components"].items():
+            log(f"Average component replacement time for {count} extra components: { np.average(array) } (stddev: {np.std(array)})")
         assert len(lib.ZoneLoads) == 1
         assert len(lib.DomesticHotWaterSettings) == 1
         assert len(lib.ZoneConditionings) == 1

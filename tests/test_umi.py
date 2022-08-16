@@ -25,10 +25,48 @@ from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
+from archetypal.utils import timeit
 
 
 class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
+    @pytest.fixture(scope="function", autouse=True)
+    def cleanup(self):
+        BuildingTemplate._CREATED_OBJECTS = []
+        ZoneConditioning._CREATED_OBJECTS = []
+        OpaqueConstruction._CREATED_OBJECTS = []
+        WindowConstruction._CREATED_OBJECTS = []
+        DomesticHotWaterSetting._CREATED_OBJECTS = []
+        ZoneLoad._CREATED_OBJECTS = []
+        GasMaterial._CREATED_OBJECTS = []
+        GlazingMaterial._CREATED_OBJECTS = []
+        OpaqueMaterial._CREATED_OBJECTS = []
+        YearSchedule._CREATED_OBJECTS = []
+        WeekSchedule._CREATED_OBJECTS = []
+        DaySchedule._CREATED_OBJECTS = []
+        StructureInformation._CREATED_OBJECTS = []
+        VentilationSetting._CREATED_OBJECTS = []
+        WindowSetting._CREATED_OBJECTS = []
+        ZoneConstructionSet._CREATED_OBJECTS = []
+        ZoneDefinition._CREATED_OBJECTS = []
+        yield
+        BuildingTemplate._CREATED_OBJECTS = []
+        ZoneConditioning._CREATED_OBJECTS = []
+        OpaqueConstruction._CREATED_OBJECTS = []
+        WindowConstruction._CREATED_OBJECTS = []
+        DomesticHotWaterSetting._CREATED_OBJECTS = []
+        ZoneLoad._CREATED_OBJECTS = []
+        GasMaterial._CREATED_OBJECTS = []
+        GlazingMaterial._CREATED_OBJECTS = []
+        OpaqueMaterial._CREATED_OBJECTS = []
+        YearSchedule._CREATED_OBJECTS = []
+        WeekSchedule._CREATED_OBJECTS = []
+        DaySchedule._CREATED_OBJECTS = []
+        StructureInformation._CREATED_OBJECTS = []
+        VentilationSetting._CREATED_OBJECTS = []
+        WindowSetting._CREATED_OBJECTS = []
+        ZoneConstructionSet._CREATED_OBJECTS = []
+        ZoneDefinition._CREATED_OBJECTS = []
 
     @pytest.fixture(scope="function")
     def two_identical_libraries(self):
@@ -83,6 +121,45 @@ class TestUmiTemplate:
         # Test option to include orphaned objects.
         G = a.to_graph(include_orphans=True)
         assert len(G) > n_nodes
+
+    # @pytest.mark.skip(reason="skip benchmarks by default")
+    @pytest.mark.parametrize("execution_count", range(10))
+    def test_benchmark_replace_component(self, execution_count):
+        lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
+        for construction in lib.OpaqueConstructions:
+            construction.Layers[0] = lib.OpaqueMaterials[0]
+        @timeit
+        def run():
+            lib.replace_component(lib.OpaqueMaterials[0], lib.OpaqueMaterials[1])
+        run()
+
+    # @pytest.mark.skip(reason="skip benchmarks by default")
+    @pytest.mark.parametrize("execution_count", range(10))
+    @pytest.mark.parametrize("phantom_objects_count", [0, 10, 100, 200])
+    def test_benchmark_unique_components(self, execution_count, phantom_objects_count):
+        lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
+        # Add a bunch of phantom stuff to the library, e.g. objects in other templates
+        for i in range(phantom_objects_count):
+            lib.ZoneLoads[1].duplicate()
+            lib.DomesticHotWaterSettings[1].duplicate()
+            lib.ZoneConditionings[1].duplicate()
+            lib.VentilationSettings[1].duplicate()
+            lib.ZoneConstructionSets[1].duplicate()
+        for obj in lib.ZoneDefinitions:
+            obj.Loads = lib.ZoneLoads[0].duplicate()
+            obj.DomesticHotWater = lib.DomesticHotWaterSettings[0].duplicate()
+            obj.Conditioning = lib.ZoneConditionings[0].duplicate()
+            obj.Ventilation = lib.VentilationSettings[0].duplicate()
+            obj.Constructions = lib.ZoneConstructionSets[0].duplicate()
+        @timeit
+        def run():
+            lib.unique_components()
+        run()
+        assert len(lib.ZoneLoads) == 1
+        assert len(lib.DomesticHotWaterSettings) == 1
+        assert len(lib.ZoneConditionings) == 1
+        assert len(lib.VentilationSettings) == 1
+        assert len(lib.ZoneConstructionSets) == 1
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and

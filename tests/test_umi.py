@@ -257,7 +257,10 @@ class TestUmiTemplate:
         results = {"replace_component": {}, "unique_components": {}}
         yield results
 
-    # @pytest.mark.skip(reason="skip benchmarks by default")
+    @pytest.mark.skipif(
+        os.environ.get("CI", "False").lower() == "true",
+        reason="not necessary to test this on CI",
+    )
     @pytest.mark.parametrize("execution_count", range(10))
     @pytest.mark.parametrize("additional_building_templates_count", [0, 10, 50])
     def test_benchmark_replace_component(self, execution_count, additional_building_templates_count, benchmark_results):
@@ -285,7 +288,10 @@ class TestUmiTemplate:
             log(f"Average component replacement time for {count} extra templates: { np.average(array) } (stddev: {np.std(array)})")
 
 
-    # @pytest.mark.skip(reason="skip benchmarks by default")
+    @pytest.mark.skipif(
+        os.environ.get("CI", "False").lower() == "true",
+        reason="not necessary to test this on CI",
+    )
     @pytest.mark.parametrize("execution_count", range(10))
     @pytest.mark.parametrize("phantom_objects_count", [0, 10, 100, 200])
     def test_benchmark_unique_components(self, execution_count, phantom_objects_count, benchmark_results):

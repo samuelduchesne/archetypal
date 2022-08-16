@@ -25,6 +25,7 @@ from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
+from archetypal.utils import timeit
 
 
 class TestUmiTemplate:
@@ -248,6 +249,27 @@ class TestUmiTemplate:
         for group, components in lib:
             if group != "BuildingTemplates":
                 assert len(components) == 1
+    
+    @pytest.mark.skip(reason="skip benchmarks by default")
+    @pytest.mark.parametrize("execution_count", range(10))
+    def test_benchmark_replace_component(self, lib, execution_count):
+        for construction in lib.OpaqueConstructions:
+            construction.Layers[0] = lib.OpaqueMaterials[0]
+        for construction in lib.WindowConstructions:
+            construction.Layers[0] = lib.GlazingMaterials[0]
+        @timeit
+        def run():
+            lib.replace_component(lib.OpaqueMaterials[0], lib.OpaqueMaterials[1])
+            lib.replace_component(lib.GlazingMaterials[0], lib.GlazingMaterials[1])
+        run()
+
+    @pytest.mark.skip(reason="skip benchmarks by default")
+    @pytest.mark.parametrize("execution_count", range(10))
+    def test_benchmark_unique_components(self, lib, execution_count):
+        @timeit
+        def run():
+            lib.unique_components()
+        run()
 
     def test_template_to_template(self, lib_nodup):
         """load the json into UmiTemplateLibrary object, then convert back to json and

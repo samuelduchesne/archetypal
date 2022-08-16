@@ -263,28 +263,31 @@ class TestUmiTemplate:
 
     # @pytest.mark.skip(reason="skip benchmarks by default")
     @pytest.mark.parametrize("execution_count", range(10))
-    def test_benchmark_unique_components(self, execution_count):
+    @pytest.mark.parametrize("phantom_objects_count", [0, 10, 100, 200])
+    def test_benchmark_unique_components(self, execution_count, phantom_objects_count):
         lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
-        # Add a bunch of stuff to the library
-        for i in range(100):
+        # Add a bunch of phantom stuff to the library, e.g. objects in other templates
+        for i in range(phantom_objects_count):
             lib.ZoneLoads[1].duplicate()
             lib.DomesticHotWaterSettings[1].duplicate()
             lib.ZoneConditionings[1].duplicate()
             lib.VentilationSettings[1].duplicate()
-            lib.WindowSettings[1].duplicate()
             lib.ZoneConstructionSets[1].duplicate()
-
         for obj in lib.ZoneDefinitions:
             obj.Loads = lib.ZoneLoads[0].duplicate()
             obj.DomesticHotWater = lib.DomesticHotWaterSettings[0].duplicate()
             obj.Conditioning = lib.ZoneConditionings[0].duplicate()
             obj.Ventilation = lib.VentilationSettings[0].duplicate()
-            obj.Windows = lib.WindowSettings[0].duplicate()
             obj.Constructions = lib.ZoneConstructionSets[0].duplicate()
         @timeit
         def run():
             lib.unique_components()
         run()
+        assert len(lib.ZoneLoads) == 1
+        assert len(lib.DomesticHotWaterSettings) == 1
+        assert len(lib.ZoneConditionings) == 1
+        assert len(lib.VentilationSettings) == 1
+        assert len(lib.ZoneConstructionSets) == 1
 
     def test_template_to_template(self, lib_nodup):
         """load the json into UmiTemplateLibrary object, then convert back to json and

@@ -27,7 +27,7 @@ debug = False
 
 # write log to file and/or to console
 log_file = False
-log_console = True
+log_console = False
 log_notebook = False
 log_level = lg.INFO
 log_name = "archetypal"

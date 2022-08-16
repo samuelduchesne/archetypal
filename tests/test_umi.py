@@ -250,7 +250,7 @@ class TestUmiTemplate:
             if group != "BuildingTemplates":
                 assert len(components) == 1
     
-    @pytest.mark.skip(reason="skip benchmarks by default")
+    # @pytest.mark.skip(reason="skip benchmarks by default")
     @pytest.mark.parametrize("execution_count", range(10))
     def test_benchmark_replace_component(self, execution_count):
         lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
@@ -261,10 +261,19 @@ class TestUmiTemplate:
             lib.replace_component(lib.OpaqueMaterials[0], lib.OpaqueMaterials[1])
         run()
 
-    @pytest.mark.skip(reason="skip benchmarks by default")
+    # @pytest.mark.skip(reason="skip benchmarks by default")
     @pytest.mark.parametrize("execution_count", range(10))
     def test_benchmark_unique_components(self, execution_count):
         lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
+        # Add a bunch of stuff to the library
+        for i in range(100):
+            lib.ZoneLoads[1].duplicate()
+            lib.DomesticHotWaterSettings[1].duplicate()
+            lib.ZoneConditionings[1].duplicate()
+            lib.VentilationSettings[1].duplicate()
+            lib.WindowSettings[1].duplicate()
+            lib.ZoneConstructionSets[1].duplicate()
+
         for obj in lib.ZoneDefinitions:
             obj.Loads = lib.ZoneLoads[0].duplicate()
             obj.DomesticHotWater = lib.DomesticHotWaterSettings[0].duplicate()

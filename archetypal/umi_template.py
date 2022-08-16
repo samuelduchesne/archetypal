@@ -793,8 +793,7 @@ class UmiTemplateLibrary:
                     for component in components:
                         if component.__class__.__name__ + "s" in inclusion:
                             equivalent_component = component.get_unique()
-                            if equivalent_component.id != component.id:
-                                component.replace_me_with(equivalent_component)
+                            component.replace_me_with(equivalent_component) # will skip replacement if ids are equal
         replacement()
         self.update_components_list()
 

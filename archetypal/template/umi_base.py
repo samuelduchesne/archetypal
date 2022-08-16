@@ -460,8 +460,10 @@ class UmiBase(object):
                 templates = templates.union(parent.ParentTemplates)
         return templates
 
-    def replace_me_with(self, other):
+    def replace_me_with(self, other, force=False):
         # Copy the edge metadata since the edge dict will change while iterating
+        if self.id == other.id and not force:
+            return
         edges = [
             (parent, _self, key, data)
             for parent, _self, key, data in self._parents.edges(data=True, keys=True)

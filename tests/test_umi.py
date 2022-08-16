@@ -252,20 +252,26 @@ class TestUmiTemplate:
     
     @pytest.mark.skip(reason="skip benchmarks by default")
     @pytest.mark.parametrize("execution_count", range(10))
-    def test_benchmark_replace_component(self, lib, execution_count):
+    def test_benchmark_replace_component(self, execution_count):
+        lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
         for construction in lib.OpaqueConstructions:
             construction.Layers[0] = lib.OpaqueMaterials[0]
-        for construction in lib.WindowConstructions:
-            construction.Layers[0] = lib.GlazingMaterials[0]
         @timeit
         def run():
             lib.replace_component(lib.OpaqueMaterials[0], lib.OpaqueMaterials[1])
-            lib.replace_component(lib.GlazingMaterials[0], lib.GlazingMaterials[1])
         run()
 
     @pytest.mark.skip(reason="skip benchmarks by default")
     @pytest.mark.parametrize("execution_count", range(10))
-    def test_benchmark_unique_components(self, lib, execution_count):
+    def test_benchmark_unique_components(self, execution_count):
+        lib = UmiTemplateLibrary.open("tests/input_data/umi_samples/BostonTemplateLibrary_2.json")
+        for obj in lib.ZoneDefinitions:
+            obj.Loads = lib.ZoneLoads[0].duplicate()
+            obj.DomesticHotWater = lib.DomesticHotWaterSettings[0].duplicate()
+            obj.Conditioning = lib.ZoneConditionings[0].duplicate()
+            obj.Ventilation = lib.VentilationSettings[0].duplicate()
+            obj.Windows = lib.WindowSettings[0].duplicate()
+            obj.Constructions = lib.ZoneConstructionSets[0].duplicate()
         @timeit
         def run():
             lib.unique_components()

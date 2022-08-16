@@ -32,6 +32,7 @@ class TestUmiTemplate:
 
     @pytest.fixture(autouse=True)
     def cleanup(self):
+        UmiTemplateLibrary._clear_class_memory()
         yield
         UmiTemplateLibrary._clear_class_memory()
 

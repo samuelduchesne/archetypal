@@ -762,13 +762,17 @@ class UmiTemplateLibrary:
         """
         G = self.to_graph(fast_return=True)
         if keep_orphaned:
-            connected_to_building = []
-            for bldg in self.BuildingTemplates:
-                for obj in nx.dfs_preorder_nodes(G, bldg):
-                    connected_to_building.append(obj)
-            orphans = [
-                obj for obj in self.object_list if obj not in connected_to_building
-            ]
+            @timeit
+            def get_orphans():
+                connected_to_building = []
+                for bldg in self.BuildingTemplates:
+                    for obj in nx.dfs_preorder_nodes(G, bldg):
+                        connected_to_building.append(obj)
+                orphans = [
+                    obj for obj in self.object_list if obj not in connected_to_building
+                ]
+                return orphans
+            orphans = get_orphans()
         self._clear_components_list(exceptions)  # First clear components
 
         # Inclusion is a set of object classes that will be unique.
@@ -784,13 +788,18 @@ class UmiTemplateLibrary:
                 )
             inclusion = set(self._LIB_GROUPS)
 
-        for bt in self.BuildingTemplates:
-            for component in nx.dfs_preorder_nodes(G, bt):
-                if component.__class__.__name__ + "s" in inclusion:
-                    equivalent_component = component.get_unique()
-                    component.replace_me_with(equivalent_component)
-
         self.update_components_list()
+        @timeit
+        def replacement():
+            for group, components in self:
+                if group != "BuildingTemplates":
+                    for component in components:
+                        if component.__class__.__name__ + "s" in inclusion:
+                            equivalent_component = component.get_unique()
+                            component.replace_me_with(equivalent_component)
+        replacement()
+        self.update_components_list()
+
 
         if keep_orphaned:
             for obj in orphans:

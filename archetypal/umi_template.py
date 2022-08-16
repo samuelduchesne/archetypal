@@ -37,7 +37,7 @@ from archetypal.template.ventilation import VentilationSetting
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
-from archetypal.utils import CustomJSONEncoder, log, parallel_process
+from archetypal.utils import CustomJSONEncoder, log, parallel_process, timeit
 
 
 class UmiTemplateLibrary:
@@ -158,6 +158,7 @@ class UmiTemplateLibrary:
     def __getitem__(self, item):
         return self.__dict__[item]
 
+    @timeit
     def __add__(self, other: "UmiTemplateLibrary"):
         """Combined"""
         # for key, group in other:
@@ -737,6 +738,7 @@ class UmiTemplateLibrary:
 
         return data_dict
 
+    @timeit
     def unique_components(
         self, *args: str, exceptions: List[str] = None, keep_orphaned=False
     ):
@@ -794,6 +796,7 @@ class UmiTemplateLibrary:
             for obj in orphans:
                 self[obj.__class__.__name__ + "s"].append(obj)
 
+    @timeit
     def replace_component(self, this, that) -> None:
         """Replace all instances of `this` with `that`.
 
@@ -804,6 +807,7 @@ class UmiTemplateLibrary:
         this.replace_me_with(that)
         self.update_components_list()
 
+    @timeit
     def update_components_list(self, exceptions=None):
         """Update the component groups with connected components."""
         # clear components list except BuildingTemplate
@@ -832,6 +836,7 @@ class UmiTemplateLibrary:
                     ]:
                         self[component.__class__.__name__ + "s"].append(component)
 
+    @timeit
     def to_graph(self, include_orphans=False, fast_return=False):
         """Create a :class:`networkx.MultiDiGraph` of self.
 

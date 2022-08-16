@@ -135,43 +135,76 @@ class TestUmiTemplate:
             # missing S.
             c.unique_components("OpaqueMaterial")
 
+    @staticmethod
+    def check_graph_for_inclusion(library, g, include_orphans):
+        for obj in library.object_list:
+            if len(obj.ParentTemplates) > 0 or isinstance(obj, BuildingTemplate):
+                assert obj in g
+            else:
+                if not include_orphans:
+                    assert obj not in g
+                else:
+                    assert obj in g
+
     def test_graph(self, lib):
         """Test initialization of networkx DiGraph"""
         G = lib.to_graph()
-        n_nodes = len(G)
-        assert lib.GasMaterials[1] not in G
+        assert len(G) < len(lib.object_list)
+        TestUmiTemplate.check_graph_for_inclusion(lib, G, include_orphans=False)
         assert G.has_edge(
             lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter"
         )
 
         # Test option to include orphaned objects.
-        G = lib.to_graph(include_orphans=True)
-        assert len(G) > n_nodes
-        assert lib.GasMaterials[1] in G
-        assert G.has_edge(
+        G_orphans = lib.to_graph(include_orphans=True)
+        assert len(G_orphans) > len(G)
+        assert len(G_orphans) == len(lib.object_list)
+        TestUmiTemplate.check_graph_for_inclusion(lib, G_orphans, include_orphans=True)
+        assert G_orphans.has_edge(
             lib.BuildingTemplates[0], lib.BuildingTemplates[0].Perimeter, "Perimeter"
         )
 
     def test_graph_with_multiple_libs(self, two_identical_libraries_dup):
         """ Test creating graphs when multiple libs exist in memory"""
         a, b = two_identical_libraries_dup
+        def test_for_no_crossover(ga, gb):
+            for node in ga:
+                assert node not in gb
+            for node in gb:
+                assert node not in ga
+        
+        def test_for_no_external(lib, g):
+            for node in g:
+                if node not in lib.object_list:
+                    print(node.__class__.__name__)
+                assert node in lib.object_list
+
+
         Ga = a.to_graph()
         Gb = b.to_graph()
         assert len(Ga) == len(Gb)
-        assert a.GasMaterials[0] not in Gb
-        assert b.GasMaterials[0] not in Ga
-        assert a.GasMaterials[0] in Ga
-        assert b.GasMaterials[0] in Gb
+        assert len(Ga) < len(a.object_list)
+
+        test_for_no_crossover(Ga, Gb)
+        test_for_no_external(a, Ga)
+        test_for_no_external(b, Gb)
+        TestUmiTemplate.check_graph_for_inclusion(a, Ga, include_orphans=False)
+        TestUmiTemplate.check_graph_for_inclusion(b, Gb, include_orphans=False)
+
+
+        # Test orphans
         Ga_orphans = a.to_graph(include_orphans=True)
         Gb_orphans = b.to_graph(include_orphans=True)
         assert len(Ga_orphans) == len(Gb_orphans)
+        assert len(Ga_orphans) == len(a.object_list)
         assert len(Ga_orphans) > len(Ga)
-        assert a.GasMaterials[0] not in Gb
-        assert b.GasMaterials[0] not in Ga
-        assert a.GasMaterials[0] in Ga
-        assert b.GasMaterials[0] in Gb
-        assert a.GasMaterials[1] not in Ga
-        assert b.GasMaterials[1] not in Gb
+
+        test_for_no_crossover(Ga_orphans, Gb_orphans)
+        test_for_no_external(a, Ga_orphans)
+        test_for_no_external(b, Gb_orphans)
+        TestUmiTemplate.check_graph_for_inclusion(a, Ga_orphans, include_orphans=True)
+        TestUmiTemplate.check_graph_for_inclusion(b, Gb_orphans, include_orphans=True)
+
 
     def test_parent_templates(self, lib):
         """ Test that changing an object accurately updates the ParentTemplates list"""

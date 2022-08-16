@@ -838,6 +838,8 @@ class UmiTemplateLibrary:
         This networkx.DiGraph object is then useful for graph-theory operations on
         the hierarchy of the UmiTemplateLibrary.
 
+        Todo: Test performance of nx.dfs_preorder_nodes vs nx.has_path for building graphs
+
         Args:
             include_orphans (bool): If `True`, components which do not have a path to a Building Template will be included.
             fast_return: If `True` a copy of the entire Graph is returned, which is much more performant than filtering out orphans
@@ -856,9 +858,11 @@ class UmiTemplateLibrary:
             else:
                 nodes_to_remove = []
                 for node in G:
+                    if node in self.BuildingTemplates:
+                        continue # all building templates always included
                     remove_node = True
                     for bt in self.BuildingTemplates:
-                        if node in nx.dfs_preorder_nodes(G, bt):
+                        if nx.has_path(G, bt, node):
                             remove_node = False
                             break
                     if remove_node:
@@ -866,16 +870,18 @@ class UmiTemplateLibrary:
                 G.remove_nodes_from(nodes_to_remove)
                 return G
         else:
-            # TODO: figure out why `not nx.has_path(G, bt, node)` was KeyErroring when comparing node is a bt from other lib
             nodes_to_remove = []
             for node in G:
                 if node.id not in [n.id for n in self.object_list]:
                     nodes_to_remove.append(node)
-                    continue
+                    continue # nodes outside of lib always removed
                 if not include_orphans:
+                    if node in self.BuildingTemplates:
+                        continue # building templates always included
                     remove_node = True
                     for bt in self.BuildingTemplates:
-                        if node in nx.dfs_preorder_nodes(G, bt):
+                        # if node in nx.dfs_preorder_nodes(G, bt): # why are
+                        if nx.has_path(G, bt, node):
                             remove_node = False
                             break
                     if remove_node:

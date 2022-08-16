@@ -374,7 +374,6 @@ class YearSchedulePart(UmiBaseHelper, object):
         self.ToMonth = ToMonth
         # Set UmiBase Properties after standard properties
         self.Schedule = Schedule
-        UmiBase._GRAPH.add_node(self)
 
     @property
     def FromDay(self):
@@ -936,6 +935,7 @@ class YearSchedule(UmiSchedule):
             self.Parts = self._get_parts(self.epbunch)
         else:
             self.Parts = Parts
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def Parts(self):

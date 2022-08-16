@@ -762,7 +762,6 @@ class UmiTemplateLibrary:
         """
         G = self.to_graph(fast_return=True)
         if keep_orphaned:
-            @timeit
             def get_orphans():
                 connected_to_building = []
                 for bldg in self.BuildingTemplates:
@@ -789,7 +788,7 @@ class UmiTemplateLibrary:
             inclusion = set(self._LIB_GROUPS)
 
         self.update_components_list()
-        @timeit
+
         def replacement():
             for group, components in self:
                 if group != "BuildingTemplates":
@@ -806,7 +805,6 @@ class UmiTemplateLibrary:
             for obj in orphans:
                 self[obj.__class__.__name__ + "s"].append(obj)
 
-    @timeit
     def replace_component(self, this, that) -> None:
         """Replace all instances of `this` with `that`.
 

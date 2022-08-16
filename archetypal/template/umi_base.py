@@ -8,7 +8,7 @@ from collections.abc import Hashable, MutableSet
 import numpy as np
 from validator_collection import validators
 
-from archetypal.utils import lcm, timeit
+from archetypal.utils import lcm
 
 
 def _resolve_combined_names(predecessors):
@@ -407,21 +407,17 @@ class UmiBase(object):
             DataSource=self.DataSource,
         )
 
-    @timeit
     def get_unique(self):
         """Return first object matching equality in the list of instantiated objects."""
         if self.allow_duplicates:
             # We want to return the first similar object (equality) that has this name.
             obj = next(
                 iter(
-                    sorted(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                            if x == self and x.Name == self.Name
-                        ),
-                        key=lambda x: x.unit_number,
-                    )
+                    (
+                        x
+                        for x in self._CREATED_OBJECTS
+                        if x == self and x.Name == self.Name
+                    ),
                 ),
                 self,
             )
@@ -430,10 +426,7 @@ class UmiBase(object):
             # name.
             obj = next(
                 iter(
-                    sorted(
-                        (x for x in self._CREATED_OBJECTS if x == self),
-                        key=lambda x: x.unit_number,
-                    )
+                    (x for x in self._CREATED_OBJECTS if x == self),
                 ),
                 self,
             )
@@ -467,7 +460,6 @@ class UmiBase(object):
                 templates = templates.union(parent.ParentTemplates)
         return templates
 
-    @timeit
     def replace_me_with(self, other):
         # Copy the edge metadata since the edge dict will change while iterating
         edges = [

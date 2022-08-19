@@ -2470,7 +2470,9 @@ class IDF(GeomIDF):
             self.translate(anchor)
 
         zone_origin = {
-            zone.Name.upper(): Vector3D(zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
+            zone.Name.upper(): Vector3D(
+                zone.X_Origin or 0, zone.Y_Origin or 0, zone.Z_Origin or 0
+            )
             for zone in self.idfobjects["ZONE"]
         }
         surfaces = {s.Name.upper(): s for s in self.getsurfaces()}

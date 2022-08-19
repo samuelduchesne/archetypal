@@ -2568,6 +2568,7 @@ class IDF(GeomIDF):
                 len(zone_angles) == 1
             ), "Not all zone have the same Direction_of_Relative_North"
             zone_angle, *_ = zone_angles
+            zone_angle = zone_angle or 0
             log(f"Zone(s) North Axis = {zone_angle}", level=lg.DEBUG)
             angle = -(bldg_angle + zone_angle)
         if isinstance(anchor, tuple):

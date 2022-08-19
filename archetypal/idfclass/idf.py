@@ -2452,7 +2452,7 @@ class IDF(GeomIDF):
             log("Model already set as World coordinates", level=lg.WARNING)
             return
         zone_angles = set(
-            z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]
+            z.Direction_of_Relative_North or 0 for z in self.idfobjects["ZONE"]
         )
         # If Zones have Direction_of_Relative_North != 0, model needs to be rotated
         # before translation.

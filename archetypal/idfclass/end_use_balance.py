@@ -447,8 +447,9 @@ class EndUseBalance:
     def subtract_solar_from_window_net(cls, window_flow, solar_gain, level="Key_Name"):
         columns = window_flow.columns
         return EnergyDataFrame(
-            window_flow.sum(level=level, axis=1).values
-            - solar_gain.sum(level=level, axis=1).values,
+            (window_flow.sum(level=level, axis=1) - solar_gain.sum(level=level, axis=1))
+            .loc[:, list(columns.get_level_values(level))]
+            .values,
             columns=columns,
             index=window_flow.index,
         )
@@ -662,6 +663,7 @@ class EndUseBalance:
                 "air_system_heating": "OA Heating",
                 "air_system_cooling": "OA Cooling",
                 "cooling": "Cooling",
+                "heating": "Heating",
             },
             inplace=True,
         )
@@ -818,7 +820,7 @@ class EndUseBalance:
         load_source = load_source.rename({"Component": "source"}, axis=1)
         load_source["source"] = load_source["source"] + " Gain"
         load_source = load_source.replace(
-            {f"{load_type} Gain": load_type.title() + " System"}
+            {f"{load_type.title()} Gain": load_type.title() + " System"}
         )
 
         load_source_data = load_source.to_dict(orient="records")
@@ -843,6 +845,7 @@ class EndUseBalance:
         )
 
     def _sankey_cooling(self, load, load_type="cooling"):
+        assert load_type in ["heating", "cooling"]
         load_source = (
             load.unstack("Gain/Loss")
             .replace({0: np.NaN})
@@ -852,14 +855,6 @@ class EndUseBalance:
             .rename("value")
             .reset_index()
         )
-        load_source["target"] = load_type.title() + " Load"
-        load_source = load_source.rename({"Component": "source"}, axis=1)
-        load_source["source"] = load_source["source"] + " Losses"
-        load_source = load_source.replace(
-            {f"{load_type} Losses": load_type.title() + " System"}
-        )
-        load_source_data = load_source.to_dict(orient="records")
-
         load_target = (
             load.unstack("Gain/Loss")
             .replace({0: np.NaN})
@@ -869,8 +864,21 @@ class EndUseBalance:
             .rename("value")
             .reset_index()
         )
+        load_source["target"] = load_type.title() + " Load"
+        load_source = load_source.rename({"Component": "source"}, axis=1)
+        load_source["source"] = load_source["source"] + " Losses"
+        load_source = load_source.replace(
+            {f"{load_type.title()} Losses": load_type.title() + " System"}
+        )
+
+        load_source_data = load_source.to_dict(orient="records")
         load_target["source"] = load_type.title() + " Load"
         load_target = load_target.rename({"Component": "target"}, axis=1)
+        load_target = (
+            load_target.set_index("target")
+            .drop(load_type.title(), errors="ignore")
+            .reset_index()
+        )
         load_target_data = load_target.to_dict(orient="records")
         link_system_to_gains = (
             load_source.set_index("source")

@@ -2452,7 +2452,7 @@ class IDF(GeomIDF):
             log("Model already set as World coordinates", level=lg.WARNING)
             return
         zone_angles = set(
-            z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]
+            z.Direction_of_Relative_North or 0 for z in self.idfobjects["ZONE"]
         )
         # If Zones have Direction_of_Relative_North != 0, model needs to be rotated
         # before translation.
@@ -2470,7 +2470,9 @@ class IDF(GeomIDF):
             self.translate(anchor)
 
         zone_origin = {
-            zone.Name.upper(): Vector3D(zone.X_Origin, zone.Y_Origin, zone.Z_Origin)
+            zone.Name.upper(): Vector3D(
+                zone.X_Origin or 0, zone.Y_Origin or 0, zone.Z_Origin or 0
+            )
             for zone in self.idfobjects["ZONE"]
         }
         surfaces = {s.Name.upper(): s for s in self.getsurfaces()}
@@ -2568,6 +2570,7 @@ class IDF(GeomIDF):
                 len(zone_angles) == 1
             ), "Not all zone have the same Direction_of_Relative_North"
             zone_angle, *_ = zone_angles
+            zone_angle = zone_angle or 0
             log(f"Zone(s) North Axis = {zone_angle}", level=lg.DEBUG)
             angle = -(bldg_angle + zone_angle)
         if isinstance(anchor, tuple):

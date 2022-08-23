@@ -73,6 +73,144 @@ class SimpleIdealLoadsSystem(HVACTemplate):
         )
 
 
+class PackagedVAVWithDXCooling(HVACTemplate):
+    """For packaged variable air volume systems using direct-expansion cooling.
+
+    - HVACTemplate:Thermostat
+    - HVACTemplate:Zone:VAV or
+    - HVACTemplate:Zone:VAV:FanPowered or
+    - HVACTemplate:Zone:VAV:HeatAndCool
+    - HVACTemplate:System:PackagedVAV
+    """
+
+    REQUIRED = ["HVACTemplate:Thermostat", "HVACTemplate:System:PackagedVAV"]
+    OPTIONAL = []
+
+    def create_from(self, zone, zoneDefinition):
+        """Create.
+
+        Args:
+            zone (EpBunch): The zone EpBunch object.
+            zoneDefinition (ZoneDefinition): The archetypal template ZoneDefinition
+                object.
+        """
+        idf = zone.theidf
+
+        # For autosizing of AirLoopHVAC PACKAGEDVAV, a system sizing run must be done.
+        # The "SimulationControl" object must have the field "Do System Sizing
+        # Calculation" set to Yes.
+        for sim_control in idf.idfobjects["SimulationControl".upper()]:
+            sim_control.Do_System_Sizing_Calculation = "Yes"
+
+
+        stat = idf.newidfobject(
+            "HVACTEMPLATE:THERMOSTAT",
+            Name=f"Zone {zone.Name} Thermostat",
+            Constant_Heating_Setpoint=zoneDefinition.Conditioning.HeatingSetpoint,
+            Constant_Cooling_Setpoint=zoneDefinition.Conditioning.CoolingSetpoint,
+        )
+
+        zone_vav = idf.newidfobject(
+            key="HVACTEMPLATE:ZONE:VAV",
+            Zone_Name=zone.Name,
+            Template_VAV_System_Name="PackagedVAV",
+            Template_Thermostat_Name=stat.Name,
+            Supply_Air_Maximum_Flow_Rate="autosize",
+            Zone_Heating_Sizing_Factor="",
+            Zone_Cooling_Sizing_Factor="",
+            Zone_Minimum_Air_Flow_Input_Method="Constant",
+            Constant_Minimum_Air_Flow_Fraction="0.2",
+            Fixed_Minimum_Air_Flow_Rate="",
+            Minimum_Air_Flow_Fraction_Schedule_Name="",
+            Outdoor_Air_Method="Flow/Person",
+            Outdoor_Air_Flow_Rate_per_Person=zoneDefinition.Conditioning.MinFreshAirPerPerson,
+            Outdoor_Air_Flow_Rate_per_Zone_Floor_Area=zoneDefinition.Conditioning.MinFreshAirPerArea,
+            Outdoor_Air_Flow_Rate_per_Zone=0.0,
+            Reheat_Coil_Type="None",
+            Reheat_Coil_Availability_Schedule_Name="",
+            Damper_Heating_Action="Reverse",
+            Maximum_Flow_per_Zone_Floor_Area_During_Reheat="",
+            Maximum_Flow_Fraction_During_Reheat="",
+            Maximum_Reheat_Air_Temperature="",
+            Design_Specification_Outdoor_Air_Object_Name_for_Control="",
+            Supply_Plenum_Name="",
+            Return_Plenum_Name="",
+            Baseboard_Heating_Type="None",
+            Baseboard_Heating_Availability_Schedule_Name="",
+            Baseboard_Heating_Capacity="autosize",
+            Zone_Cooling_Design_Supply_Air_Temperature_Input_Method="SystemSupplyAirTemperature",
+            Zone_Cooling_Design_Supply_Air_Temperature=12.8,
+            Zone_Cooling_Design_Supply_Air_Temperature_Difference=11.11,
+            Zone_Heating_Design_Supply_Air_Temperature_Input_Method="SupplyAirTemperature",
+            Zone_Heating_Design_Supply_Air_Temperature=50.0,
+            Zone_Heating_Design_Supply_Air_Temperature_Difference=30.0,
+        )
+
+        if len(idf.idfobjects["HVACTEMPLATE:SYSTEM:PACKAGEDVAV"]) == 0:
+            idf.newidfobject(
+                key="HVACTEMPLATE:SYSTEM:PACKAGEDVAV",
+                Name=f"PackagedVAV",
+                System_Availability_Schedule_Name="",
+                Supply_Fan_Maximum_Flow_Rate="autosize",
+                Supply_Fan_Minimum_Flow_Rate="autosize",
+                Supply_Fan_Placement="DrawThrough",
+                Supply_Fan_Total_Efficiency="0.7",
+                Supply_Fan_Delta_Pressure="1000",
+                Supply_Fan_Motor_Efficiency="0.9",
+                Supply_Fan_Motor_in_Air_Stream_Fraction="1.0",
+                Cooling_Coil_Type="TwoSpeedDX",
+                Cooling_Coil_Availability_Schedule_Name="",
+                Cooling_Coil_Setpoint_Schedule_Name="",
+                Cooling_Coil_Design_Setpoint="12.8",
+                Cooling_Coil_Gross_Rated_Total_Capacity="autosize",
+                Cooling_Coil_Gross_Rated_Sensible_Heat_Ratio="autosize",
+                Cooling_Coil_Gross_Rated_COP="3.0",
+                Heating_Coil_Type="None",
+                Heating_Coil_Availability_Schedule_Name="",
+                Heating_Coil_Setpoint_Schedule_Name="",
+                Heating_Coil_Design_Setpoint="10.0",
+                Heating_Coil_Capacity="autosize",
+                Gas_Heating_Coil_Efficiency="0.8",
+                Gas_Heating_Coil_Parasitic_Electric_Load="0.0",
+                Maximum_Outdoor_Air_Flow_Rate="autosize",
+                Minimum_Outdoor_Air_Flow_Rate="autosize",
+                Minimum_Outdoor_Air_Control_Type="ProportionalMinimum",
+                Minimum_Outdoor_Air_Schedule_Name="",
+                Economizer_Type="NoEconomizer",
+                Economizer_Lockout="NoLockout",
+                Economizer_Maximum_Limit_DryBulb_Temperature="",
+                Economizer_Maximum_Limit_Enthalpy="",
+                Economizer_Maximum_Limit_Dewpoint_Temperature="",
+                Economizer_Minimum_Limit_DryBulb_Temperature="",
+                Supply_Plenum_Name="",
+                Return_Plenum_Name="",
+                Supply_Fan_PartLoad_Power_Coefficients="InletVaneDampers",
+                Night_Cycle_Control="StayOff",
+                Night_Cycle_Control_Zone_Name="",
+                Heat_Recovery_Type="None",
+                Sensible_Heat_Recovery_Effectiveness="0.70",
+                Latent_Heat_Recovery_Effectiveness="0.65",
+                Cooling_Coil_Setpoint_Reset_Type="None",
+                Heating_Coil_Setpoint_Reset_Type="None",
+                Dehumidification_Control_Type="None",
+                Dehumidification_Control_Zone_Name="",
+                Dehumidification_Setpoint=60.0,
+                Humidifier_Type="None",
+                Humidifier_Availability_Schedule_Name="",
+                Humidifier_Rated_Capacity=1e-06,
+                Humidifier_Rated_Electric_Power="autosize",
+                Humidifier_Control_Zone_Name="",
+                Humidifier_Setpoint=30.0,
+                Sizing_Option="NonCoincident",
+                Return_Fan="No",
+                Return_Fan_Total_Efficiency="0.7",
+                Return_Fan_Delta_Pressure="500",
+                Return_Fan_Motor_Efficiency="0.9",
+                Return_Fan_Motor_in_Air_Stream_Fraction="1.0",
+                Return_Fan_PartLoad_Power_Coefficients="InletVaneDampers",
+            )
+
+
 class PTHP(HVACTemplate):
     """For packaged terminal air-to-air heat pump (PTHP) systems."""
 
@@ -237,4 +375,5 @@ HVACTemplates = {
     ),
     "SimpleIdealLoadsSystem": SimpleIdealLoadsSystem(),
     "PTHP": PTHP(),
+    "PackagedVAVWithDXCooling": PackagedVAVWithDXCooling(),
 }

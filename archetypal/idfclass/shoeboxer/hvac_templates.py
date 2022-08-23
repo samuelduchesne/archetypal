@@ -73,6 +73,242 @@ class SimpleIdealLoadsSystem(HVACTemplate):
         )
 
 
+class VAVWithDistrictHeatingCooling(HVACTemplate):
+    """For packaged variable air volume systems using direct-expansion cooling.
+
+    - HVACTemplate:Thermostat
+    - HVACTemplate:Zone:VAV or
+    - HVACTemplate:Zone:VAV:FanPowered or
+    - HVACTemplate:Zone:VAV:HeatAndCool
+    - HVACTemplate:System:VAV
+    - HVACTemplate:Plant:ChilledWaterLoop
+    - HVACTemplate:Plant:HotWaterLoop
+    - HVACTemplate:Plant:Chiller
+    - HVACTemplate:Plant:Boiler
+    """
+
+    REQUIRED = ["HVACTemplate:Thermostat", "HVACTemplate:System:PackagedVAV"]
+    OPTIONAL = []
+
+    def create_from(self, zone, zoneDefinition):
+        """Create.
+
+        Args:
+            zone (EpBunch): The zone EpBunch object.
+            zoneDefinition (ZoneDefinition): The archetypal template ZoneDefinition
+                object.
+        """
+        idf = zone.theidf
+
+        # For autosizing of AirLoopHVAC PACKAGEDVAV, a system sizing run must be done.
+        # The "SimulationControl" object must have the field "Do System Sizing
+        # Calculation" set to Yes.
+        for sim_control in idf.idfobjects["SimulationControl".upper()]:
+            sim_control.Do_System_Sizing_Calculation = "Yes"
+
+        stat = idf.newidfobject(
+            "HVACTEMPLATE:THERMOSTAT",
+            Name=f"Zone {zone.Name} Thermostat",
+            Constant_Heating_Setpoint=zoneDefinition.Conditioning.HeatingSetpoint,
+            Constant_Cooling_Setpoint=zoneDefinition.Conditioning.CoolingSetpoint,
+        )
+
+        zone_vav = idf.newidfobject(
+            key="HVACTEMPLATE:ZONE:VAV",
+            Zone_Name=zone.Name,
+            Template_VAV_System_Name="System:VAV",
+            Template_Thermostat_Name=stat.Name,
+            Supply_Air_Maximum_Flow_Rate="autosize",
+            Zone_Heating_Sizing_Factor="",
+            Zone_Cooling_Sizing_Factor="",
+            Zone_Minimum_Air_Flow_Input_Method="Constant",
+            Constant_Minimum_Air_Flow_Fraction="0.2",
+            Fixed_Minimum_Air_Flow_Rate="",
+            Minimum_Air_Flow_Fraction_Schedule_Name="",
+            Outdoor_Air_Method="Flow/Person",
+            Outdoor_Air_Flow_Rate_per_Person=zoneDefinition.Conditioning.MinFreshAirPerPerson,
+            Outdoor_Air_Flow_Rate_per_Zone_Floor_Area=zoneDefinition.Conditioning.MinFreshAirPerArea,
+            Outdoor_Air_Flow_Rate_per_Zone=0.0,
+            Reheat_Coil_Type="None",
+            Reheat_Coil_Availability_Schedule_Name="",
+            Damper_Heating_Action="Reverse",
+            Maximum_Flow_per_Zone_Floor_Area_During_Reheat="",
+            Maximum_Flow_Fraction_During_Reheat="",
+            Maximum_Reheat_Air_Temperature="",
+            Design_Specification_Outdoor_Air_Object_Name_for_Control="",
+            Supply_Plenum_Name="",
+            Return_Plenum_Name="",
+            Baseboard_Heating_Type="None",
+            Baseboard_Heating_Availability_Schedule_Name="",
+            Baseboard_Heating_Capacity="autosize",
+            Zone_Cooling_Design_Supply_Air_Temperature_Input_Method="SystemSupplyAirTemperature",
+            Zone_Cooling_Design_Supply_Air_Temperature=12.8,
+            Zone_Cooling_Design_Supply_Air_Temperature_Difference=11.11,
+            Zone_Heating_Design_Supply_Air_Temperature_Input_Method="SupplyAirTemperature",
+            Zone_Heating_Design_Supply_Air_Temperature=50.0,
+            Zone_Heating_Design_Supply_Air_Temperature_Difference=30.0,
+        )
+
+        if len(idf.idfobjects["HVACTEMPLATE:SYSTEM:VAV"]) == 0:
+            idf.newidfobject(
+                key="HVACTEMPLATE:SYSTEM:VAV",
+                Name="System:VAV",
+                System_Availability_Schedule_Name="",
+                Supply_Fan_Maximum_Flow_Rate="autosize",
+                Supply_Fan_Minimum_Flow_Rate="autosize",
+                Supply_Fan_Total_Efficiency="0.7",
+                Supply_Fan_Delta_Pressure="1000",
+                Supply_Fan_Motor_Efficiency="0.9",
+                Supply_Fan_Motor_in_Air_Stream_Fraction="1.0",
+                Cooling_Coil_Type="ChilledWater",
+                Cooling_Coil_Availability_Schedule_Name="",
+                Cooling_Coil_Setpoint_Schedule_Name="",
+                Cooling_Coil_Design_Setpoint="12.8",
+                Heating_Coil_Type="HotWater",
+                Heating_Coil_Availability_Schedule_Name="",
+                Heating_Coil_Setpoint_Schedule_Name="",
+                Heating_Coil_Design_Setpoint="10.0",
+                Gas_Heating_Coil_Efficiency="0.8",
+                Gas_Heating_Coil_Parasitic_Electric_Load="0.0",
+                Preheat_Coil_Type="None",
+                Preheat_Coil_Availability_Schedule_Name="",
+                Preheat_Coil_Setpoint_Schedule_Name="",
+                Preheat_Coil_Design_Setpoint="7.2",
+                Gas_Preheat_Coil_Efficiency="0.8",
+                Gas_Preheat_Coil_Parasitic_Electric_Load="0.0",
+                Maximum_Outdoor_Air_Flow_Rate="autosize",
+                Minimum_Outdoor_Air_Flow_Rate="autosize",
+                Minimum_Outdoor_Air_Control_Type="ProportionalMinimum",
+                Minimum_Outdoor_Air_Schedule_Name="",
+                Economizer_Type="NoEconomizer",
+                Economizer_Lockout="NoLockout",
+                Economizer_Upper_Temperature_Limit="",
+                Economizer_Lower_Temperature_Limit="",
+                Economizer_Upper_Enthalpy_Limit="",
+                Economizer_Maximum_Limit_Dewpoint_Temperature="",
+                Supply_Plenum_Name="",
+                Return_Plenum_Name="",
+                Supply_Fan_Placement="DrawThrough",
+                Supply_Fan_PartLoad_Power_Coefficients="InletVaneDampers",
+                Night_Cycle_Control="StayOff",
+                Night_Cycle_Control_Zone_Name="",
+                Heat_Recovery_Type="None",
+                Sensible_Heat_Recovery_Effectiveness="0.70",
+                Latent_Heat_Recovery_Effectiveness="0.65",
+                Cooling_Coil_Setpoint_Reset_Type="None",
+                Heating_Coil_Setpoint_Reset_Type="None",
+                Dehumidification_Control_Type="None",
+                Dehumidification_Control_Zone_Name="",
+                Dehumidification_Setpoint=60.0,
+                Humidifier_Type="None",
+                Humidifier_Availability_Schedule_Name="",
+                Humidifier_Rated_Capacity=1e-06,
+                Humidifier_Rated_Electric_Power="autosize",
+                Humidifier_Control_Zone_Name="",
+                Humidifier_Setpoint=30.0,
+                Sizing_Option="NonCoincident",
+                Return_Fan="No",
+                Return_Fan_Total_Efficiency="0.7",
+                Return_Fan_Delta_Pressure="500",
+                Return_Fan_Motor_Efficiency="0.9",
+                Return_Fan_Motor_in_Air_Stream_Fraction="1.0",
+                Return_Fan_PartLoad_Power_Coefficients="InletVaneDampers",
+            )
+
+            idf.newidfobject(
+                key="HVACTEMPLATE:PLANT:CHILLEDWATERLOOP",
+                Name="PLANT:CHILLEDWATERLOOP",
+                Pump_Schedule_Name="",
+                Pump_Control_Type="Intermittent",
+                Chiller_Plant_Operation_Scheme_Type="Default",
+                Chiller_Plant_Equipment_Operation_Schemes_Name="",
+                Chilled_Water_Setpoint_Schedule_Name="",
+                Chilled_Water_Design_Setpoint="7.22",
+                Chilled_Water_Pump_Configuration="ConstantPrimaryNoSecondary",
+                Primary_Chilled_Water_Pump_Rated_Head="179352",
+                Secondary_Chilled_Water_Pump_Rated_Head="179352",
+                Condenser_Plant_Operation_Scheme_Type="Default",
+                Condenser_Equipment_Operation_Schemes_Name="",
+                Condenser_Water_Temperature_Control_Type="",
+                Condenser_Water_Setpoint_Schedule_Name="",
+                Condenser_Water_Design_Setpoint="29.4",
+                Condenser_Water_Pump_Rated_Head="179352",
+                Chilled_Water_Setpoint_Reset_Type="None",
+                Chilled_Water_Setpoint_at_Outdoor_DryBulb_Low="12.2",
+                Chilled_Water_Reset_Outdoor_DryBulb_Low="15.6",
+                Chilled_Water_Setpoint_at_Outdoor_DryBulb_High="6.7",
+                Chilled_Water_Reset_Outdoor_DryBulb_High="26.7",
+                Chilled_Water_Primary_Pump_Type="SinglePump",
+                Chilled_Water_Secondary_Pump_Type="SinglePump",
+                Condenser_Water_Pump_Type="SinglePump",
+                Chilled_Water_Supply_Side_Bypass_Pipe="Yes",
+                Chilled_Water_Demand_Side_Bypass_Pipe="Yes",
+                Condenser_Water_Supply_Side_Bypass_Pipe="Yes",
+                Condenser_Water_Demand_Side_Bypass_Pipe="Yes",
+                Fluid_Type="Water",
+                Loop_Design_Delta_Temperature="6.67",
+                Minimum_Outdoor_Dry_Bulb_Temperature="",
+                Chilled_Water_Load_Distribution_Scheme="SequentialLoad",
+                Condenser_Water_Load_Distribution_Scheme="SequentialLoad",
+            )
+
+            idf.newidfobject(
+                key="HVACTEMPLATE:PLANT:HOTWATERLOOP",
+                Name="HotWaterLoop",
+                Pump_Schedule_Name="",
+                Pump_Control_Type="Intermittent",
+                Hot_Water_Plant_Operation_Scheme_Type="Default",
+                Hot_Water_Plant_Equipment_Operation_Schemes_Name="",
+                Hot_Water_Setpoint_Schedule_Name="",
+                Hot_Water_Design_Setpoint="82.0",
+                Hot_Water_Pump_Configuration="ConstantFlow",
+                Hot_Water_Pump_Rated_Head="179352",
+                Hot_Water_Setpoint_Reset_Type="None",
+                Hot_Water_Setpoint_at_Outdoor_DryBulb_Low="82.2",
+                Hot_Water_Reset_Outdoor_DryBulb_Low="-6.7",
+                Hot_Water_Setpoint_at_Outdoor_DryBulb_High="65.6",
+                Hot_Water_Reset_Outdoor_DryBulb_High="10.0",
+                Hot_Water_Pump_Type="SinglePump",
+                Supply_Side_Bypass_Pipe="Yes",
+                Demand_Side_Bypass_Pipe="Yes",
+                Fluid_Type="Water",
+                Loop_Design_Delta_Temperature="11.0",
+                Maximum_Outdoor_Dry_Bulb_Temperature="",
+                Load_Distribution_Scheme="SequentialLoad",
+            )
+
+            idf.newidfobject(
+                key="HVACTEMPLATE:PLANT:CHILLER",
+                Name="PLANT:CHILLER",
+                Chiller_Type="DistrictChilledWater",
+                Capacity="autosize",
+                Nominal_COP="",
+                Condenser_Type="WaterCooled",
+                Priority="",
+                Sizing_Factor=1.0,
+                Minimum_Part_Load_Ratio=0.0,
+                Maximum_Part_Load_Ratio=1.0,
+                Optimum_Part_Load_Ratio=1.0,
+                Minimum_Unloading_Ratio=0.25,
+                Leaving_Chilled_Water_Lower_Temperature_Limit=5.0,
+            )
+
+            idf.newidfobject(
+                key="HVACTEMPLATE:PLANT:BOILER",
+                Name="PLANT:BOILER",
+                Boiler_Type="DistrictHotWater",
+                Capacity="autosize",
+                Efficiency=1,
+                Fuel_Type="",
+                Priority="",
+                Sizing_Factor=1.0,
+                Minimum_Part_Load_Ratio=0.0,
+                Maximum_Part_Load_Ratio=1.1,
+                Optimum_Part_Load_Ratio=1.0,
+                Water_Outlet_Upper_Temperature_Limit=100.0,
+            )
+
+
 class PackagedVAVWithDXCooling(HVACTemplate):
     """For packaged variable air volume systems using direct-expansion cooling.
 
@@ -101,7 +337,6 @@ class PackagedVAVWithDXCooling(HVACTemplate):
         # Calculation" set to Yes.
         for sim_control in idf.idfobjects["SimulationControl".upper()]:
             sim_control.Do_System_Sizing_Calculation = "Yes"
-
 
         stat = idf.newidfobject(
             "HVACTEMPLATE:THERMOSTAT",
@@ -376,4 +611,5 @@ HVACTemplates = {
     "SimpleIdealLoadsSystem": SimpleIdealLoadsSystem(),
     "PTHP": PTHP(),
     "PackagedVAVWithDXCooling": PackagedVAVWithDXCooling(),
+    "VAVWithDistrictHeatingCooling": VAVWithDistrictHeatingCooling()
 }

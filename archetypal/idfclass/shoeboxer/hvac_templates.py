@@ -112,7 +112,7 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
             Constant_Heating_Setpoint=zoneDefinition.Conditioning.HeatingSetpoint,
             Constant_Cooling_Setpoint=zoneDefinition.Conditioning.CoolingSetpoint,
         )
-
+        # https://bigladdersoftware.com/epx/docs/9-3/input-output-reference/group-hvac-templates.html#hvactemplatezonevav
         zone_vav = idf.newidfobject(
             key="HVACTEMPLATE:ZONE:VAV",
             Zone_Name=zone.Name,
@@ -125,7 +125,7 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
             Constant_Minimum_Air_Flow_Fraction="0.2",
             Fixed_Minimum_Air_Flow_Rate="",
             Minimum_Air_Flow_Fraction_Schedule_Name="",
-            Outdoor_Air_Method="Flow/Person",
+            Outdoor_Air_Method="Sum",
             Outdoor_Air_Flow_Rate_per_Person=zoneDefinition.Conditioning.MinFreshAirPerPerson,
             Outdoor_Air_Flow_Rate_per_Zone_Floor_Area=zoneDefinition.Conditioning.MinFreshAirPerArea,
             Outdoor_Air_Flow_Rate_per_Zone=0.0,
@@ -223,7 +223,7 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
                 Chiller_Plant_Operation_Scheme_Type="Default",
                 Chiller_Plant_Equipment_Operation_Schemes_Name="",
                 Chilled_Water_Setpoint_Schedule_Name="",
-                Chilled_Water_Design_Setpoint="7.22",
+                Chilled_Water_Design_Setpoint="6",
                 Chilled_Water_Pump_Configuration="ConstantPrimaryNoSecondary",
                 Primary_Chilled_Water_Pump_Rated_Head="179352",
                 Secondary_Chilled_Water_Pump_Rated_Head="179352",
@@ -233,7 +233,7 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
                 Condenser_Water_Setpoint_Schedule_Name="",
                 Condenser_Water_Design_Setpoint="29.4",
                 Condenser_Water_Pump_Rated_Head="179352",
-                Chilled_Water_Setpoint_Reset_Type="None",
+                Chilled_Water_Setpoint_Reset_Type="OutdoorAirTemperatureReset",
                 Chilled_Water_Setpoint_at_Outdoor_DryBulb_Low="12.2",
                 Chilled_Water_Reset_Outdoor_DryBulb_Low="15.6",
                 Chilled_Water_Setpoint_at_Outdoor_DryBulb_High="6.7",
@@ -246,7 +246,7 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
                 Condenser_Water_Supply_Side_Bypass_Pipe="Yes",
                 Condenser_Water_Demand_Side_Bypass_Pipe="Yes",
                 Fluid_Type="Water",
-                Loop_Design_Delta_Temperature="6.67",
+                Loop_Design_Delta_Temperature=8,
                 Minimum_Outdoor_Dry_Bulb_Temperature="",
                 Chilled_Water_Load_Distribution_Scheme="SequentialLoad",
                 Condenser_Water_Load_Distribution_Scheme="SequentialLoad",
@@ -283,7 +283,7 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
                 Chiller_Type="DistrictChilledWater",
                 Capacity="autosize",
                 Nominal_COP="",
-                Condenser_Type="WaterCooled",
+                Condenser_Type="AirCooled",
                 Priority="",
                 Sizing_Factor=1.0,
                 Minimum_Part_Load_Ratio=0.0,

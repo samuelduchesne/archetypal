@@ -1,5 +1,6 @@
 """Energy measures modules."""
 import functools
+import inspect
 import logging
 
 from archetypal.template.materials.material_layer import MaterialLayer
@@ -56,82 +57,161 @@ def set_path(root, address, value):
 
 
 class MeasureAction:
-    """Stores an Archetypal parameter (or lookup) which 
-       can be associated with a measure 
+    """Stores an Archetypal parameter (or lookup) which
+       can be associated with a measure
     Args:
     """
 
-    def __init__(self, Name, object_address, validator=None, transformer=None):
-        self._name = Name # Names are not mutable
-        assert callable(object_address) or isinstance(object_address, list), "Object address must be a function, list"
-        self._object_address = object_address
-        # TODO: make getters and setters for validator and transformer
-        if callable(validator):
-            self._validator = validator 
-        elif validator is not None:
-            raise ValueError("Provided 'validator' arg is not callable.")
-        if callable(transformer): 
-            self._transformer = transformer
-        elif transformer is not None:
-            raise ValueError("Provided 'transformer' arg is not callable.")
-    
+    def __init__(self, Name, Lookup, validator=None, transformer=None):
+        self._name = Name  # Names are not mutable
+        self.Lookup = Lookup
+        self.Validator = validator
+        self.Transformer = transformer
+
     def __repr__(self):
-        return f"{self.Name}:{self._object_address}"
-    
+        return f"{self.Name}:{self.Lookup}"
+
     def __str__(self):
         """string representation of the object as Name:address"""
         return self.__repr__()
 
     def __hash__(self):
         return hash(self.__repr__())
-    
+
     def __eq__(self, other):
-        return self._object_address == other._object_address
+        return self.Lookup == other.Lookup
 
     @property
     def Name(self):
         return self._name
-    
+
     @property
     def is_dynamic(self):
-        return callable(self._object_address)
-    
-    def determine_full_address(self, building_template):
+        return callable(self.Lookup)
+
+    @property
+    def Lookup(self):
+        """Get or set the action's target lookup"""
+        return self._lookup
+
+    @Lookup.setter
+    def Lookup(self, lookup):
+        """Get or set a measure action target lookup
+
+        Args:
+            lookup (callable | none): if callable, the function will be passed a 'building_template' and can also accept additional **kwargs.
+            If any of the expected arguments are omitted, it should accept **kwargs.
+        """
+        if isinstance(lookup, list):
+            self._lookup = lookup
+        else:
+            sig = inspect.signature(lookup)
+            if any((arg not in sig.parameters for arg in ("building_template",))):
+                assert (
+                    "kwargs" in sig.parameters
+                ), "The supplied lookup must accept **kwargs if it does not accept 'building_template'"
+            self._lookup = lookup
+
+    @property
+    def Validator(self):
+        """Get or set a measure action validator"""
+        return self._validator
+
+    @Validator.setter
+    def Validator(self, validator):
+        """Get or set a measure action validator
+
+        Args:
+            validator (callable | none): if callable, the function will be passed a 'building_template', 'original_value', and 'new_value'
+            and can also accept additional **kwargs.  If any of the expected arguments are omitted, it should accept **kwargs.
+        """
+        if validator is None:
+            self._validator = None
+        else:
+            sig = inspect.signature(validator)
+            if any(
+                (
+                    arg not in sig.parameters
+                    for arg in ("building_template", "original_value", "new_value")
+                )
+            ):
+                assert (
+                    "kwargs" in sig.parameters
+                ), "The supplied validator must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'new_value'"
+            self._validator = validator
+
+    @property
+    def Transformer(self):
+        """Get or set a measure action transformer """
+
+        return self._transformer
+
+    @Transformer.setter
+    def Transformer(self, transformer):
+        """Get or set a measure action transformer
+
+        Args:
+            transformer (callable | none): if callable, the function will be passed a 'building_template', 'original_value', and 'proposed_transformer_value'
+            and can also accept additional **kwargs.  If any of the expected arguments are omitted, it should accept **kwargs.
+        """
+        if transformer is None:
+            self._transformer = None
+        else:
+            sig = inspect.signature(transformer)
+            if any(
+                (
+                    arg not in sig.parameters
+                    for arg in (
+                        "building_template",
+                        "original_value",
+                        "proposed_transformer_value",
+                    )
+                )
+            ):
+                assert (
+                    "kwargs" in sig.parameters
+                ), "The supplied transformer must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'proposed_transformer_value'"
+            self._transformer = transformer
+
+    def determine_full_address(self, building_template, *args, **kwargs):
         """Determine the full mutation path for the action in a given building template
 
         Args:
-            building_template: the building template to find the path in 
+            building_template: the building template to find the path in
         """
 
         return (
-            self._object_address(building_template)
+            self.Lookup(building_template=building_template, *args, **kwargs)
             if self.is_dynamic
-            else self._object_address
+            else self.Lookup
         )
 
-    def determine_parameter_name(self, building_template):
+    def determine_parameter_name(self, building_template, *args, **kwargs):
         """Determine the parameter name to mutate for the action in a given building template
 
         Args:
-            building_template: the building template to find the path in 
+            building_template: the building template to find the path in
         """
-        path = self.determine_full_address(building_template)
+        path = self.determine_full_address(
+            building_template=building_template, *args, **kwargs
+        )
         return path[-1]
 
-    def determine_object_address(self, building_template):
+    def determine_object_address(self, building_template, *args, **kwargs):
         """Determine the path to the object to mutate for the action in a given building template
 
         Args:
-            building_template: the building template to find the path in 
+            building_template: the building template to find the path in
         """
 
-        path = self.determine_full_address(building_template)
+        path = self.determine_full_address(
+            building_template=building_template, *args, **kwargs
+        )
         path = path.copy()
         path.pop()
         return path
 
-
-    def lookup_original_value(self, building_template):
+    def lookup_original_value(self, building_template, *args, **kwargs):
         """Find the current value of the target parameter in a given building template
 
         Args:
@@ -139,32 +219,51 @@ class MeasureAction:
         """
         return get_path(
             root=building_template,
-            address=self.determine_full_address(building_template),
+            address=self.determine_full_address(
+                building_template=building_template, *args, **kwargs
+            ),
         )
 
-    def lookup_original_object(self, building_template):
+    def lookup_original_object(self, building_template, *args, **kwargs):
         """Find the object to mutate in a given building template
 
         Args:
             building_template: the building template to find the object in
         """
+        object_address = self.determine_object_address(
+            building_template=building_template, *args, **kwargs
+        )
         return get_path(
             root=building_template,
-            address=self.determine_object_address(building_template)
+            address=object_address,
         )
-    
-    def compute_new_value(self, building_template, proposed_transformer_value, *args, **kwargs):
+
+    def compute_new_value(
+        self, building_template, proposed_transformer_value, *args, **kwargs
+    ):
         """Return a proposed new value for the target parameter in a building template
 
         Args:
             building_template: the building template to validate a change in
             proposed_transformer_value: the input to the transformer which generates a new value
         """
-        original_value = self.lookup_original_value(building_template)
-        new_value = self._transformer(original_value, proposed_transformer_value, *args, **kwargs) if hasattr(self, "_transformer") else proposed_transformer_value
+        original_value = self.lookup_original_value(
+            building_template=building_template, *args, **kwargs
+        )
+        new_value = (
+            self._transformer(
+                building_template=building_template,
+                original_value=original_value,
+                proposed_transformer_value=proposed_transformer_value,
+                *args,
+                **kwargs,
+            )
+            if getattr(self, "_transformer", None)
+            else proposed_transformer_value
+        )
         return new_value
 
-    def _validate(self, building_template, new_value):
+    def _validate(self, building_template, new_value, *args, **kwargs):
         """Validate a proposed change to a building template and return the new value
 
         Args:
@@ -172,46 +271,68 @@ class MeasureAction:
             new_value: the new value for the target parameter
         """
 
-        original_value = self.lookup_original_value(building_template)
-        return self._validator(
+        original_value = self.lookup_original_value(
+            building_template=building_template, *args, **kwargs
+        )
+        return (
+            self._validator(
+                building_template=building_template,
                 original_value=original_value,
                 new_value=new_value,
-                root=building_template,
-            ) if hasattr(self, "_validator") else True
+                *args,
+                **kwargs,
+            )
+            if getattr(self, "_validator", None)
+            else True
+        )
 
     def mutate(self, building_template, proposed_transformer_value, *args, **kwargs):
-        new_value = self.compute_new_value(building_template, proposed_transformer_value, *args, **kwargs)
-        validated = self._validate(building_template, new_value)
+        new_value = self.compute_new_value(
+            building_template=building_template,
+            proposed_transformer_value=proposed_transformer_value,
+            *args,
+            **kwargs,
+        )
+        validated = self._validate(
+            building_template=building_template, new_value=new_value, *args, **kwargs
+        )
         if validated:
-            address = self.determine_full_address(building_template)
-            set_path(
-                root=building_template,
-                address=address,
-                value=new_value
+            address = self.determine_full_address(
+                building_template=building_template, *args, **kwargs
             )
+            set_path(root=building_template, address=address, value=new_value)
 
 
 class MeasureProperty:
     """Class for controlling multiple actions with a single property value"""
 
-    def __init__(self, Name, AttrName, Description, Default, transformer=None, validator=None, actions=None):
+    def __init__(
+        self,
+        Name,
+        AttrName,
+        Description,
+        Default,
+        transformer=None,
+        validator=None,
+        actions=None,
+    ):
         assert isinstance(Name, str)
-        self._name = Name 
+        self._name = Name
         assert isinstance(AttrName, str) and AttrName.isidentifier()
         self._attr_name = AttrName
-        self._description = Description 
+        self._description = Description
         self._default = Default
         self._transformer = transformer
         self._validator = validator
 
         if isinstance(actions, MeasureAction):
-            actions = [actions] 
+            actions = [actions]
         self._actions = set()
         for action in actions or []:
             self.add_action(action)
 
         self._value = Default
-    
+
     @property
     def Name(self):
         return self._name
@@ -227,47 +348,84 @@ class MeasureProperty:
     @property
     def Default(self):
         return self._default
-    
+
     @Default.setter
     def Default(self, value):
         self._default = value
         self.Value = value
-    
+
     @property
     def Value(self):
         return self._value
-    
+
     @Value.setter
     def Value(self, value):
         # In case we want to do some sort of type checking later
         self._value = value
-    
+
     @property
     def Validator(self):
+        """Get or set a measure property validator """
         return self._validator
 
     @Validator.setter
     def Validator(self, validator):
-        # TODO: Validate that the validator has the correct shape:
-        # lambda root, original_value, new_value: boolean
-        assert callable(validator), "The provided validator is not callable"
-        self._validator = validator
+        """Get or set a measure property validator
+
+        Args:
+            validator (callable | none): Will overwrite the associated action validators. the function will be passed a 'building_template', 'original_value', and 'new_value'
+            and can also accept additional **kwargs.  If any of the expected arguments are omitted, it should accept **kwargs.
+        """
+        if validator is None:
+            self._validator = None
+        else:
+            sig = inspect.signature(validator)
+            if any(
+                (
+                    arg not in sig.parameters
+                    for arg in ("building_template", "original_value", "new_value")
+                )
+            ):
+                assert (
+                    "kwargs" in sig.parameters
+                ), "The supplied validator must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'new_value'"
+            self._validator = validator
         for action in self._actions:
             action._validator = validator
 
     @property
     def Transformer(self):
+        """Get or set a measure action transformer"""
         return self._transformer
 
     @Transformer.setter
     def Transformer(self, transformer):
-        # TODO: Validate that the transformer has the correct shape:
-        # lambda original_value, proposed_transformer_value, *args, **kwargs: boolean
-        assert callable(transformer), "The provided validator is not callable"
-        self._transformer = transformer
+        """Get or set a measure property transformer
+
+        Args:
+            transformer (callable | none): will overwrite associated action transformers; the function will be passed a 'building_template', 'original_value', and 'proposed_transformer_value'
+            and can also accept additional **kwargs.  If any of the expected arguments are omitted, it should accept **kwargs.
+        """
+        if transformer is None:
+            self._transformer = None
+        else:
+            sig = inspect.signature(transformer)
+            if any(
+                (
+                    arg not in sig.parameters
+                    for arg in (
+                        "building_template",
+                        "original_value",
+                        "proposed_transformer_value",
+                    )
+                )
+            ):
+                assert (
+                    "kwargs" in sig.parameters
+                ), "The supplied transformer must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'proposed_transformer_value'"
+            self._transformer = transformer
         for action in self._actions:
             action._transformer = transformer
-
 
     def add_action(self, action):
         """Add an action which will be controlled by this property
@@ -276,33 +434,46 @@ class MeasureProperty:
             action (MeasureAction): the action to add
         """
         assert isinstance(action, MeasureAction)
-        if self.Validator and not hasattr(action, "_validator"):
+        if self.Validator and getattr(action, "_validator", None) is None:
             action._validator = self.Validator
-        if self.Transformer and not hasattr(action, "_transformer"):
+        if self.Transformer and getattr(action, "_transformer", None) is None:
             print(f"adding a transformer to a an action {action}")
             action._transformer = self.Transformer
         self._actions.add(action)
-    
-    def lookup_objects_to_mutate(self, building_template):
+
+    def lookup_objects_to_mutate(self, building_template, *args, **kwargs):
         """Lookup all objects which will be mutated by this property
 
         Args:
             building_template: the template to identify all mutation targets in
         """
-        objects_to_mutate = {} # store the objects to mutate and the path to find it at
+        objects_to_mutate = {}  # store the objects to mutate and the path to find it at
         for action in self._actions:
-            object_to_mutate = action.lookup_original_object(building_template)
-            object_address = action.determine_object_address(building_template)
-            full_path = action.determine_full_address(building_template)
+            object_to_mutate = action.lookup_original_object(
+                building_template=building_template, *args, **kwargs
+            )
+            object_address = action.determine_object_address(
+                building_template=building_template, *args, **kwargs
+            )
+            full_path = action.determine_full_address(
+                building_template=building_template, *args, **kwargs
+            )
             if object_to_mutate not in objects_to_mutate:
                 objects_to_mutate[object_to_mutate] = []
-            objects_to_mutate[object_to_mutate].append({"path": full_path, "object_address": object_address})
+            objects_to_mutate[object_to_mutate].append(
+                {"path": full_path, "object_address": object_address}
+            )
         return objects_to_mutate
-    
-    def mutate(self, building_template):
+
+    def mutate(self, building_template, *args, **kwargs):
         for action in self._actions:
-            action.mutate(building_template=building_template, proposed_transformer_value=self.Value)
-    
+            action.mutate(
+                building_template=building_template,
+                proposed_transformer_value=self.Value,
+                *args,
+                **kwargs,
+            )
+
     def __repr__(self):
         """Return a representation of self."""
         return ":".join([str(self.Name), str(self.AttrName)])
@@ -313,12 +484,12 @@ class MeasureProperty:
 
     def __hash__(self):
         # Hash using name and attr name
-        return hash(self.__repr__()) 
+        return hash(self.__repr__())
 
     def __eq__(self, other):
         # If two properties have the same name and will use the same attribute, they should be considered equal
         return self.__repr__() == other.__repr__()
-    
+
 
 class Measure(object):
     """Main class for the definition of measures.
@@ -349,12 +520,12 @@ class Measure(object):
 
         for prop in Properties or []:
             self.add_property(prop)
-    
+
     @property
     def Name(self):
         """Get or set the Measure's name"""
         return self._name
-    
+
     @Name.setter
     def Name(self, name):
         """Get or set the Measure's name"""
@@ -364,7 +535,7 @@ class Measure(object):
     def Description(self):
         """Get or set the Measure's description"""
         return self._description
-    
+
     @Description.setter
     def Description(self, description):
         """Get or set the Measure's description"""
@@ -373,13 +544,7 @@ class Measure(object):
     def _get_property_by_name(self, name):
         """find a MeasureProperty object by Name"""
         prop = next(
-            iter(
-                    (
-                        x
-                        for x in self._properties
-                        if x.Name == name
-                    )
-            ),
+            iter((x for x in self._properties if x.Name == name)),
             None,
         )
         return prop
@@ -387,13 +552,7 @@ class Measure(object):
     def _get_property_by_attr_name(self, attr_name):
         """find a MeasureProperty object by AttrName"""
         prop = next(
-            iter(
-                    (
-                        x
-                        for x in self._properties
-                        if x.AttrName == attr_name
-                    )
-            ),
+            iter((x for x in self._properties if x.AttrName == attr_name)),
             None,
         )
         return prop
@@ -401,16 +560,19 @@ class Measure(object):
     def __setitem__(self, name, value):
         """Change a MeasureProperty's value using the property's Name"""
         prop = self._get_property_by_name(name)
-        assert isinstance(prop, MeasureProperty), f"Measure:{self.Name} does not have a property named '{name}'"
+        assert isinstance(
+            prop, MeasureProperty
+        ), f"Measure:{self.Name} does not have a property named '{name}'"
         prop.Value = value
 
     def __getitem__(self, name):
         """Get a MeasureProperty's value using the property's Name"""
         prop = self._get_property_by_name(name)
-        assert isinstance(prop, MeasureProperty), f"Measure:{self.Name} does not have a property named '{name}'"
+        assert isinstance(
+            prop, MeasureProperty
+        ), f"Measure:{self.Name} does not have a property named '{name}'"
         return prop.Value
 
-    
     def __setattr__(self, attr_name, value):
         """Change a MeasurProperty's value using the property's AttrName"""
         prop = self._get_property_by_attr_name(attr_name)
@@ -429,17 +591,21 @@ class Measure(object):
 
     def add_property(self, prop):
         """Add a property to a measure
-        
+
         Args:
             prop (MeasureProperty): The property to add
         """
         assert isinstance(prop, MeasureProperty)
-        assert prop.Name not in [_prop.Name for _prop in self._properties], f"Measure {self} already has a property with the Name {prop.Name}"
-        assert prop.AttrName not in [_prop.AttrName for _prop in self._properties], f"Measure {self} already has a property with the AttrName {prop.AttrName}"
+        assert prop.Name not in [
+            _prop.Name for _prop in self._properties
+        ], f"Measure {self} already has a property with the Name {prop.Name}"
+        assert prop.AttrName not in [
+            _prop.AttrName for _prop in self._properties
+        ], f"Measure {self} already has a property with the AttrName {prop.AttrName}"
         self._properties.add(prop)
-    
-    def lookup_objects_to_mutate(self, building_template):
-        """Returns a dict of objects which will be mutated by this measure, 
+
+    def lookup_objects_to_mutate(self, building_template, *args, **kwargs):
+        """Returns a dict of objects which will be mutated by this measure,
         with objects as keys and the path data about the mutations as values.
         Useful for disentanglement before mutation
 
@@ -448,7 +614,9 @@ class Measure(object):
         """
         measure_objects_to_mutate = {}
         for prop in self._properties:
-            prop_objects_to_mutate = prop.lookup_objects_to_mutate(building_template)
+            prop_objects_to_mutate = prop.lookup_objects_to_mutate(
+                building_template=building_template, *args, **kwargs
+            )
             for object_to_mutate, addresses in prop_objects_to_mutate.items():
                 if object_to_mutate not in measure_objects_to_mutate:
                     measure_objects_to_mutate[object_to_mutate] = []
@@ -456,8 +624,8 @@ class Measure(object):
         return measure_objects_to_mutate
 
     def mutate(self, target, disentangle=True, *args, **kwargs):
-        """Mutate a template or a whole library 
-        
+        """Mutate a template or a whole library
+
         Args:
             target (BuildingTemplate | UmiTemplateLibrary): The template or library to upgrade
             disentangle (boolean): If true, the tree of each upgraded object will be duplicated and replaced before mutation
@@ -468,46 +636,61 @@ class Measure(object):
             self.mutate_library(target, disentangle=disentangle, *args, **kwargs)
 
     def mutate_template(self, building_template, disentangle=True, *args, **kwargs):
-        """Mutate a template 
-        
+        """Mutate a template
+
         Args:
             target (BuildingTemplate): The template to upgrade
         """
-        assert isinstance(building_template, BuildingTemplate), "'building_template' argument must be a BuildingTemplate"
+        assert isinstance(
+            building_template, BuildingTemplate
+        ), "'building_template' argument must be a BuildingTemplate"
         if disentangle:
-            # Every object which gets mutated is given an entirely new tree to separate it 
-            # from other templates which may have used the objects or even other objects 
+            # Every object which gets mutated is given an entirely new tree to separate it
+            # from other templates which may have used the objects or even other objects
             # within the same template which may use it
-            objects_to_mutate = self.lookup_objects_to_mutate(building_template)
+            objects_to_mutate = self.lookup_objects_to_mutate(
+                building_template=building_template, *args, **kwargs
+            )
             for metadatas in objects_to_mutate.values():
                 for metadata in metadatas:
                     object_address = metadata["object_address"]
-                    for i in range(1, len(object_address)+1):
+                    for i in range(1, len(object_address) + 1):
                         address = object_address[0:i]
-                        original_object = get_path(root=building_template, address=address)
-                        new_object = original_object.duplicate() if hasattr(original_object, "duplicate") else original_object.copy()
-                        set_path(root=building_template, address=address, value=new_object)
+                        original_object = get_path(
+                            root=building_template, address=address
+                        )
+                        new_object = (
+                            original_object.duplicate()
+                            if hasattr(original_object, "duplicate")
+                            else original_object.copy()
+                        )
+                        set_path(
+                            root=building_template, address=address, value=new_object
+                        )
 
         for prop in self._properties:
             prop.mutate(building_template, *args, **kwargs)
-    
+
     def mutate_library(self, library, disentangle=True, *args, **kwargs):
         """Mutate a library
 
         Args:
             target (UmiTemplateLibrary): The library to upgrade
         """
-        assert isinstance(library, UmiTemplateLibrary), "'library' argument must be an UmiTemplateLibrary"
+        assert isinstance(
+            library, UmiTemplateLibrary
+        ), "'library' argument must be an UmiTemplateLibrary"
         for bt in library.BuildingTemplates:
             self.mutate(bt, disentangle=disentangle, *args, **kwargs)
-    
+
     # TODO: write changelog functions
+
 
 class SetMechanicalVentilation(Measure):
     """Set the Mechanical Ventilation."""
 
-    _name="Set Mechanical Ventilation", 
-    _description="Change mechanical ventilation rates and schedules", 
+    _name = ("Set Mechanical Ventilation",)
+    _description = ("Change mechanical ventilation rates and schedules",)
 
     def __init__(self, VentilationACH=3.5, VentilationSchedule=None, **kwargs):
         """Initialize measure with parameters."""
@@ -522,14 +705,18 @@ class SetMechanicalVentilation(Measure):
             Description="Set Ventilation ACH",
             Default=VentilationACH,
         )
-        ventilation_ach_property.add_action(MeasureAction(
-            Name="Set Perimeter Ventilation ACH",
-            object_address=["Perimeter", "Ventilation", "ScheduledVentilationAch"],
-        ))
-        ventilation_ach_property.add_action(MeasureAction(
-            Name="Set Core Ventilation ACH",
-            object_address=["Core", "Ventilation", "ScheduledVentilationAch"],
-        ))
+        ventilation_ach_property.add_action(
+            MeasureAction(
+                Name="Set Perimeter Ventilation ACH",
+                Lookup=["Perimeter", "Ventilation", "ScheduledVentilationAch"],
+            )
+        )
+        ventilation_ach_property.add_action(
+            MeasureAction(
+                Name="Set Core Ventilation ACH",
+                Lookup=["Core", "Ventilation", "ScheduledVentilationAch"],
+            )
+        )
 
         # Configure Ventilation boolean actions
         ventilation_boolean_property = MeasureProperty(
@@ -538,31 +725,39 @@ class SetMechanicalVentilation(Measure):
             Description="Automatically turn on scheduled ventilation",
             Default=True,
         )
-        ventilation_boolean_property.add_action(MeasureAction(
-            Name="Set Perimeter Ventilation Toggle",
-            object_address=["Perimeter", "Ventilation", "IsScheduledVentilationOn"],
-        ))
-        ventilation_boolean_property.add_action(MeasureAction(
-            Name="Set Core Ventilation ACH",
-            object_address=["Core", "Ventilation", "IsScheduledVentilationOn"],
-        ))
-        
+        ventilation_boolean_property.add_action(
+            MeasureAction(
+                Name="Set Perimeter Ventilation Toggle",
+                Lookup=["Perimeter", "Ventilation", "IsScheduledVentilationOn"],
+            )
+        )
+        ventilation_boolean_property.add_action(
+            MeasureAction(
+                Name="Set Core Ventilation ACH",
+                Lookup=["Core", "Ventilation", "IsScheduledVentilationOn"],
+            )
+        )
+
         # Configure schedule actions
         if VentilationSchedule:
             ventilation_schedule_property = MeasureProperty(
                 Name="Ventilation Schedule",
                 AttrName="ventilation_schedule",
                 Description="Set Ventilation Schedule",
-                Default=VentilationSchedule
+                Default=VentilationSchedule,
             )
-            ventilation_schedule_property.add_action(MeasureAction(
-                Name="Set Perimeter Ventilation Schedule",
-                object_address=["Perimeter", "Ventilation", "ScheduledVentilationSchedule"],
-            ))
-            ventilation_schedule_property.add_action(MeasureAction(
-                Name="Set Core Ventilation Schedule",
-                object_address=["Core", "Ventilation", "ScheduledVentilationSchedule"],
-            ))
+            ventilation_schedule_property.add_action(
+                MeasureAction(
+                    Name="Set Perimeter Ventilation Schedule",
+                    Lookup=["Perimeter", "Ventilation", "ScheduledVentilationSchedule"],
+                )
+            )
+            ventilation_schedule_property.add_action(
+                MeasureAction(
+                    Name="Set Core Ventilation Schedule",
+                    Lookup=["Core", "Ventilation", "ScheduledVentilationSchedule"],
+                )
+            )
 
         # Add properties to measure
         self.add_property(ventilation_ach_property)
@@ -574,14 +769,12 @@ class SetMechanicalVentilation(Measure):
 class SetCOP(Measure):
     """Set the COPs."""
 
-    _name="Set HVAC CoP", 
-    _description="Set heating and cooling coefficients of performance", 
+    _name = ("Set HVAC CoP",)
+    _description = ("Set heating and cooling coefficients of performance",)
 
     def __init__(self, CoolingCoP=3.5, HeatingCoP=1, **kwargs):
         """Initialize measure with parameters."""
-        super(SetCOP, self).__init__(
-            **kwargs
-        )
+        super(SetCOP, self).__init__(**kwargs)
 
         # Configure Heating Property and Actions
         heating_property = MeasureProperty(
@@ -590,14 +783,18 @@ class SetCOP(Measure):
             Description="Set Heating Coefficient of Performance",
             Default=HeatingCoP,
         )
-        heating_property.add_action(MeasureAction(
-            Name="Set Perimeter Heating CoP",
-            object_address=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"],
-        ))
-        heating_property.add_action(MeasureAction(
-            Name="Set Core Core Heating CoP",
-            object_address=["Core", "Conditioning", "HeatingCoeffOfPerf"],
-        ))
+        heating_property.add_action(
+            MeasureAction(
+                Name="Set Perimeter Heating CoP",
+                Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"],
+            )
+        )
+        heating_property.add_action(
+            MeasureAction(
+                Name="Set Core Core Heating CoP",
+                Lookup=["Core", "Conditioning", "HeatingCoeffOfPerf"],
+            )
+        )
 
         # Configure Cooling Property and Actions
         cooling_property = MeasureProperty(
@@ -606,64 +803,73 @@ class SetCOP(Measure):
             Description="Set Cooling Coefficient of Performance",
             Default=CoolingCoP,
         )
-        cooling_property.add_action(MeasureAction(
-            Name="Set Perimeter Cooling CoP",
-            object_address=["Perimeter", "Conditioning", "CoolingCoeffOfPerf"],
-        ))
-        cooling_property.add_action(MeasureAction(
-            Name="Set Core Core Cooling CoP",
-            object_address=["Core", "Conditioning", "CoolingCoeffOfPerf"],
-        ))
+        cooling_property.add_action(
+            MeasureAction(
+                Name="Set Perimeter Cooling CoP",
+                Lookup=["Perimeter", "Conditioning", "CoolingCoeffOfPerf"],
+            )
+        )
+        cooling_property.add_action(
+            MeasureAction(
+                Name="Set Core Core Cooling CoP",
+                Lookup=["Core", "Conditioning", "CoolingCoeffOfPerf"],
+            )
+        )
 
         # Add properties to measure
         self.add_property(heating_property)
         self.add_property(cooling_property)
-        
 
 
 class SetElectricLoadsEfficiency(Measure):
     """The EnergyStarUpgrade changes the equipment power density too."""
 
-    _name="Electric Loads Efficiency",
-    _description="Change equipment and lighting loads efficiency",
+    _name = ("Electric Loads Efficiency",)
+    _description = ("Change equipment and lighting loads efficiency",)
 
     def __init__(self, LightingPowerDensity=8.07, EquipmentPowerDensity=8.07, **kwargs):
         """Initialize measure with parameters."""
-        super(SetElectricLoadsEfficiency, self).__init__(
-            **kwargs
-        )
-        
+        super(SetElectricLoadsEfficiency, self).__init__(**kwargs)
+
         # Configure Equipment Properties and Actions
         equipment_property = MeasureProperty(
-            Name="Equipment Power Density", 
-            AttrName="EquipmentPowerDensity", 
-            Description="Change Equipment Power Density", 
-            Default=EquipmentPowerDensity, 
+            Name="Equipment Power Density",
+            AttrName="EquipmentPowerDensity",
+            Description="Change Equipment Power Density",
+            Default=EquipmentPowerDensity,
         )
-        equipment_property.add_action(MeasureAction(
-            Name="Change Perimeter Equipment Power Density", 
-            object_address=["Perimeter", "Loads", "EquipmentPowerDensity"]
-        ))
-        equipment_property.add_action(MeasureAction(
-            Name="Change Core Equipment Power Density", 
-            object_address=["Core", "Loads", "EquipmentPowerDensity"]
-        ))
+        equipment_property.add_action(
+            MeasureAction(
+                Name="Change Perimeter Equipment Power Density",
+                Lookup=["Perimeter", "Loads", "EquipmentPowerDensity"],
+            )
+        )
+        equipment_property.add_action(
+            MeasureAction(
+                Name="Change Core Equipment Power Density",
+                Lookup=["Core", "Loads", "EquipmentPowerDensity"],
+            )
+        )
 
         # Configure Lighting Properties and Actions
         lighting_property = MeasureProperty(
-            Name="Lighting Power Density", 
-            AttrName="LightingPowerDensity", 
-            Description="Change Lighting Power Density", 
+            Name="Lighting Power Density",
+            AttrName="LightingPowerDensity",
+            Description="Change Lighting Power Density",
             Default=LightingPowerDensity,
         )
-        lighting_property.add_action(MeasureAction(
-            Name="Change Perimeter Lighting Power Density", 
-            object_address=["Perimeter", "Loads", "LightingPowerDensity"]
-        ))
-        lighting_property.add_action(MeasureAction(
-            Name="Change Core Lighting Power Density", 
-            object_address=["Core", "Loads", "LightingPowerDensity"]
-        ))
+        lighting_property.add_action(
+            MeasureAction(
+                Name="Change Perimeter Lighting Power Density",
+                Lookup=["Perimeter", "Loads", "LightingPowerDensity"],
+            )
+        )
+        lighting_property.add_action(
+            MeasureAction(
+                Name="Change Core Lighting Power Density",
+                Lookup=["Core", "Loads", "LightingPowerDensity"],
+            )
+        )
 
         # Add properties to measure
         self.add_property(equipment_property)
@@ -676,9 +882,7 @@ class SetFacadeInsulationThermalResistance(Measure):
     _description = "Upgrade roof and facade insulation by specifying R-Values for the Insulation Layers."
 
     def __init__(self, RoofRValue=5.02, FacadeRValue=3.08, **kwargs):
-        super(SetFacadeInsulationThermalResistance, self).__init__(
-            **kwargs
-        )
+        super(SetFacadeInsulationThermalResistance, self).__init__(**kwargs)
 
         def make_get_insulation_layer_path(structural_part):
             def get_insulation_layer_path(building_template):
@@ -694,6 +898,7 @@ class SetFacadeInsulationThermalResistance(Measure):
                     insulation_layer_index,
                     "r_value",
                 ]
+
             return get_insulation_layer_path
 
         get_facade_insulation_layer_path = make_get_insulation_layer_path("Facade")
@@ -705,10 +910,12 @@ class SetFacadeInsulationThermalResistance(Measure):
             Description="Set facade insulation layer R-Value",
             Default=FacadeRValue,
         )
-        facade_insulation_property.add_action(MeasureAction(
-            Name="Change Facade Insualtion Layer R-Value",
-            object_address=get_facade_insulation_layer_path
-        ))
+        facade_insulation_property.add_action(
+            MeasureAction(
+                Name="Change Facade Insualtion Layer R-Value",
+                Lookup=get_facade_insulation_layer_path,
+            )
+        )
         self.add_property(facade_insulation_property)
 
         roof_insulation_property = MeasureProperty(
@@ -717,17 +924,19 @@ class SetFacadeInsulationThermalResistance(Measure):
             Description="Set roof insulation layer R-Value",
             Default=RoofRValue,
         )
-        roof_insulation_property.add_action(MeasureAction(
-            Name="Change Roof Insualtion Layer R-Value",
-            object_address=get_roof_insulation_layer_path
-        ))
+        roof_insulation_property.add_action(
+            MeasureAction(
+                Name="Change Roof Insualtion Layer R-Value",
+                Lookup=get_roof_insulation_layer_path,
+            )
+        )
         self.add_property(roof_insulation_property)
 
     @classmethod
     def Best(cls):
         return cls(
-            FacadeRValue = 1 / 0.13, 
-            RoofRValue = 1 / 0.11, 
+            FacadeRValue=1 / 0.13,
+            RoofRValue=1 / 0.11,
             Name="Facade Upgrade Best",
             Description="Set R-Value of roof and facade using values from climaplusbeta.com",
         )
@@ -735,8 +944,8 @@ class SetFacadeInsulationThermalResistance(Measure):
     @classmethod
     def Mid(cls):
         return cls(
-            FacadeRValue = 1 / 0.34, 
-            RoofRValue = 1 / 0.33, 
+            FacadeRValue=1 / 0.34,
+            RoofRValue=1 / 0.33,
             Name="Facade Upgrade Mid",
             Description="Set R-Value of roof and facade using values from climaplusbeta.com",
         )
@@ -744,8 +953,8 @@ class SetFacadeInsulationThermalResistance(Measure):
     @classmethod
     def Regular(cls):
         return cls(
-            FacadeRValue = 1 / 1.66, 
-            RoofRValue = 1 / 2.37, 
+            FacadeRValue=1 / 1.66,
+            RoofRValue=1 / 2.37,
             Name="Facade Upgrade Regular",
             Description="Set R-Value of roof and facade using values from climaplusbeta.com",
         )
@@ -753,11 +962,12 @@ class SetFacadeInsulationThermalResistance(Measure):
     @classmethod
     def Low(cls):
         return cls(
-            FacadeRValue = 1 / 3.5, 
-            RoofRValue = 1 / 4.5, 
+            FacadeRValue=1 / 3.5,
+            RoofRValue=1 / 4.5,
             Name="Facade Upgrade Regular",
             Description="Set R-Value of roof and facade using values from climaplusbeta.com",
         )
+
 
 class SetFacadeThermalResistance(Measure):
 
@@ -766,30 +976,31 @@ class SetFacadeThermalResistance(Measure):
 
     def __init__(self, RoofRValue, FacadeRValue, **kwargs):
 
-
-        super(SetFacadeThermalResistance, self).__init__(
-            **kwargs
-        )
+        super(SetFacadeThermalResistance, self).__init__(**kwargs)
         roof_property = MeasureProperty(
             Name="Roof R-Value",
             AttrName="RoofRValue",
             Description="R-value for entire roof assembly",
             Default=RoofRValue,
         )
-        roof_property.add_action(MeasureAction(
-            Name="Change Roof R-Value",
-            object_address=["Perimeter", "Constructions", "Roof", "r_value"]
-        ))
+        roof_property.add_action(
+            MeasureAction(
+                Name="Change Roof R-Value",
+                Lookup=["Perimeter", "Constructions", "Roof", "r_value"],
+            )
+        )
         facade_property = MeasureProperty(
             Name="Facade R-Value",
             AttrName="FacadeRValue",
             Description="R-value for entire facade assembly",
             Default=FacadeRValue,
         )
-        facade_property.add_action(MeasureAction(
-            Name="Change Facade R-Value",
-            object_address=["Perimeter", "Constructions", "Facade", "r_value"]
-        ))
+        facade_property.add_action(
+            MeasureAction(
+                Name="Change Facade R-Value",
+                Lookup=["Perimeter", "Constructions", "Facade", "r_value"],
+            )
+        )
 
         self.add_property(roof_property)
         self.add_property(facade_property)
@@ -797,8 +1008,8 @@ class SetFacadeThermalResistance(Measure):
     @classmethod
     def Best(cls):
         return cls(
-            FacadeRValue = 15, 
-            RoofRValue = 10, 
+            FacadeRValue=15,
+            RoofRValue=10,
             Name="Facade Upgrade Best",
             Description="Set R-Value of roof and facade using values from climaplusbeta.com",
         )
@@ -806,8 +1017,8 @@ class SetFacadeThermalResistance(Measure):
     @classmethod
     def Mid(cls):
         return cls(
-            FacadeRValue = 10, 
-            RoofRValue = 10, 
+            FacadeRValue=10,
+            RoofRValue=10,
             Name="Facade Upgrade Mid",
             Description="Set R-Value of roof and facade using values from climaplusbeta.com",
         )
@@ -815,8 +1026,8 @@ class SetFacadeThermalResistance(Measure):
     @classmethod
     def Regular(cls):
         return cls(
-            FacadeRValue = 2, 
-            RoofRValue = 2, 
+            FacadeRValue=2,
+            RoofRValue=2,
             Name="Facade Upgrade Regular",
             Description="Set R-Value of roof and facade using values from climaplusbeta.com",
         )
@@ -824,8 +1035,8 @@ class SetFacadeThermalResistance(Measure):
     @classmethod
     def Low(cls):
         return cls(
-            FacadeRValue = 1, 
-            RoofRValue = 1, 
+            FacadeRValue=1,
+            RoofRValue=1,
             Name="Facade Upgrade Regular",
             Description="Set R-Value of roof and facade using values from climaplusbeta.com",
         )
@@ -833,16 +1044,16 @@ class SetFacadeThermalResistance(Measure):
 
 class SetInfiltration(Measure):
 
-    _name="Set Infiltration",
-    _description="This measure sets the infiltration ACH of the perimeter zone.",
+    _name = ("Set Infiltration",)
+    _description = ("This measure sets the infiltration ACH of the perimeter zone.",)
 
     def __init__(self, Infiltration=0.6, **kwargs):
         infiltration_action = MeasureAction(
             Name="Set Infiltration ACH",
-            object_address=["Perimeter", "Ventilation", "Infiltration"],
+            Lookup=["Perimeter", "Ventilation", "Infiltration"],
             **kwargs,
         )
-        infiltration_property=MeasureProperty(
+        infiltration_property = MeasureProperty(
             Name="Infiltration",
             AttrName="Infiltration",
             Description="Set Infiltration ACH",
@@ -850,24 +1061,16 @@ class SetInfiltration(Measure):
             actions=infiltration_action,
         )
 
-        super().__init__(
-            Properties=infiltration_property
-        )
+        super().__init__(Properties=infiltration_property)
 
     @classmethod
     def Regular(cls):
-        return cls(
-            Infiltration = 0.6
-        )
+        return cls(Infiltration=0.6)
 
     @classmethod
     def Medium(cls):
-        return cls(
-            Infiltration = 0.3
-        )
+        return cls(Infiltration=0.3)
 
     @classmethod
     def Tight(cls):
-        return cls(
-            Infiltration = 0.1
-        )
+        return cls(Infiltration=0.1)

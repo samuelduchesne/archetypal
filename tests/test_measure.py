@@ -3,12 +3,12 @@ import pytest
 
 from archetypal.template.measures.measure import (
     Measure,
-    MeasureProperty,
     MeasureAction,
+    MeasureProperty,
     SetCOP,
     SetElectricLoadsEfficiency,
-    SetFacadeThermalResistance,
     SetFacadeInsulationThermalResistance,
+    SetFacadeThermalResistance,
     SetInfiltration,
     SetMechanicalVentilation,
 )
@@ -128,12 +128,10 @@ class TestMeasure:
             AttrName="VentilationACH",
             Description="Cange Ventilation ACH",
             Default=1.2,
-            Lookup=["Perimeter", "Ventilation", "ScheduledVentilationAch"]
+            Lookup=["Perimeter", "Ventilation", "ScheduledVentilationAch"],
         )
         measure = Measure(
-            Name="Ventilation",
-            Description="Change Ventilation",
-            Properties=prop
+            Name="Ventilation", Description="Change Ventilation", Properties=prop
         )
 
         measure.mutate_library(umi_library)
@@ -406,16 +404,12 @@ class TestMeasure:
             Description="Proportionally improve equipment efficiency",
         )
 
-        def percent_decrease(
-            original_value, proposed_transformer_value, **kwargs
-        ):
+        def percent_decrease(original_value, proposed_transformer_value, **kwargs):
             """Decrease by the transformer argument interpreted as a percentage"""
             fraction = (100 - proposed_transformer_value) / 100
             return original_value * fraction
 
-        def percent_increase(
-            original_value, proposed_transformer_value, **kwargs
-        ):
+        def percent_increase(original_value, proposed_transformer_value, **kwargs):
             """Decrease by the transformer argument interpreted as a percentage"""
             fraction = (100 + proposed_transformer_value) / 100
             return original_value * fraction
@@ -655,16 +649,14 @@ class TestMeasure:
         assert c_core_loads.EquipmentPowerDensity == 3
         assert d_peri_loads.EquipmentPowerDensity == 3
         assert d_core_loads.EquipmentPowerDensity == 3
-    
-    def test_class_inheritance(self, umi_library):
 
+    def test_class_inheritance(self, umi_library):
         class GSHPandVent(SetCOP, SetMechanicalVentilation):
             HeatingCoP = 4
             CoolingCoP = 3
             VentilationACH = 1.33
             VentilationSchedule = umi_library.YearSchedules[0]
-        
-        
+
         measure = GSHPandVent()
 
         measure.mutate(umi_library)
@@ -675,16 +667,19 @@ class TestMeasure:
             assert bt.Core.Conditioning.HeatingCoeffOfPerf == 4
             assert bt.Perimeter.Conditioning.HeatingCoeffOfPerf == 4
             assert bt.Perimeter.Ventilation.ScheduledVentilationAch == 1.33
-            assert bt.Perimeter.Ventilation.ScheduledVentilationSchedule == umi_library.YearSchedules[0]
+            assert (
+                bt.Perimeter.Ventilation.ScheduledVentilationSchedule
+                == umi_library.YearSchedules[0]
+            )
             assert bt.Core.Ventilation.ScheduledVentilationAch == 1.33
-            assert bt.Core.Ventilation.ScheduledVentilationSchedule == umi_library.YearSchedules[0]
-    
+            assert (
+                bt.Core.Ventilation.ScheduledVentilationSchedule
+                == umi_library.YearSchedules[0]
+            )
+
     def test_getters_and_setters_and_equality(self, building_templates):
         a, _, _, _ = building_templates
-        measure = Measure(
-            Name="A Measure",
-            Description="This is the measure"
-        )
+        measure = Measure(Name="A Measure", Description="This is the measure")
         assert measure.Name == "A Measure"
         assert measure.Description == "This is the measure"
 
@@ -692,14 +687,14 @@ class TestMeasure:
             Name="A Property",
             AttrName="Prop",
             Description="This is the property",
-            Default=2
+            Default=2,
         )
         prop_b = MeasureProperty(
             Name="A Property",
             AttrName="Prop",
             Description="This is the property",
             Default=3,
-            Validator=lambda x, **kwargs: x
+            Validator=lambda x, **kwargs: x,
         )
 
         assert prop_a.Name == "A Property"
@@ -716,19 +711,19 @@ class TestMeasure:
         assert prop_b.Default == 2
 
         action_a = MeasureAction(
-            Name="An action",
-            Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]
+            Name="An action", Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]
         )
         action_b = MeasureAction(
             Name="An action with a different name",
-            Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]
+            Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"],
         )
-        assert action_a.determine_parameter_name(building_template=a) == "HeatingCoeffOfPerf"
+        assert (
+            action_a.determine_parameter_name(building_template=a)
+            == "HeatingCoeffOfPerf"
+        )
 
         assert action_a.Name == "An action"
         assert action_a.Validator == None
         assert action_a.Transformer == None
         assert action_a.Lookup == ["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]
         assert action_a == action_b
-
-

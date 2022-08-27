@@ -183,7 +183,6 @@ class TestMeasure:
 
         measure.mutate(umi_library)
 
-        # TODO: test that disentanglement works for dynamic routes
         # assert that the total wall r_value has changed.
         for bt in umi_library.BuildingTemplates:
             facade = bt.Perimeter.Constructions.Facade
@@ -316,7 +315,7 @@ class TestMeasure:
             AttrName="CoolingCoP",
             Description="Set cooling CoP conditionally",
             Default=0.01,
-            validator=gtValidator,
+            Validator=gtValidator,
             actions=action,
         )
 
@@ -326,7 +325,7 @@ class TestMeasure:
             MeasureAction(
                 Name="Change Core CoP",
                 Lookup=["Core", "Conditioning", "CoolingCoeffOfPerf"],
-                validator=gtValidator,
+                Validator=gtValidator,
             )
         )
 
@@ -409,14 +408,14 @@ class TestMeasure:
         core_lpd_action = MeasureAction(
             Name="Change Core Equipment Power Density",
             Lookup=["Core", "Loads", "LightingPowerDensity"],
-            transformer=percent_increase,
+            Transformer=percent_increase,
         )
         prop = MeasureProperty(
             Name="Equipment Power Density Percentage",
             AttrName="EquipmentPowerDensityPercentage",
             Description="Equipment Power Density percent improvement",
             Default=5,
-            transformer=percent_decrease,
+            Transformer=percent_decrease,
             actions=[core_epd_action, core_lpd_action],
         )
 
@@ -511,8 +510,8 @@ class TestMeasure:
             AttrName="EPD",
             Description="Change EPD conditionally",
             Default=1,
-            validator=validate_lower_than_lpd_by_factor,
-            transformer=subtract,
+            Validator=validate_lower_than_lpd_by_factor,
+            Transformer=subtract,
         )
         prop.add_action(
             MeasureAction(
@@ -636,3 +635,76 @@ class TestMeasure:
         assert c_core_loads.EquipmentPowerDensity == 3
         assert d_peri_loads.EquipmentPowerDensity == 3
         assert d_core_loads.EquipmentPowerDensity == 3
+    
+    def test_class_inheritance(self, umi_library):
+
+        class GSHPandVent(SetCOP, SetMechanicalVentilation):
+            HeatingCoP = 4
+            CoolingCoP = 3
+            VentilationACH = 1.33
+            VentilationSchedule = umi_library.YearSchedules[0]
+        
+        
+        measure = GSHPandVent()
+
+        measure.mutate(umi_library)
+
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Core.Conditioning.CoolingCoeffOfPerf == 3
+            assert bt.Perimeter.Conditioning.CoolingCoeffOfPerf == 3
+            assert bt.Core.Conditioning.HeatingCoeffOfPerf == 4
+            assert bt.Perimeter.Conditioning.HeatingCoeffOfPerf == 4
+            assert bt.Perimeter.Ventilation.ScheduledVentilationAch == 1.33
+            assert bt.Perimeter.Ventilation.ScheduledVentilationSchedule == umi_library.YearSchedules[0]
+            assert bt.Core.Ventilation.ScheduledVentilationAch == 1.33
+            assert bt.Core.Ventilation.ScheduledVentilationSchedule == umi_library.YearSchedules[0]
+    
+    def test_getters_and_setters_and_equality(self):
+        measure = Measure(
+            Name="A Measure",
+            Description="This is the measure"
+        )
+        assert measure.Name == "A Measure"
+        assert measure.Description == "This is the measure"
+
+        prop_a = MeasureProperty(
+            Name="A Property",
+            AttrName="Prop",
+            Description="This is the property",
+            Default=2
+        )
+        prop_b = MeasureProperty(
+            Name="A Property",
+            AttrName="Prop",
+            Description="This is the property",
+            Default=3,
+            Validator=lambda x, **kwargs: x
+        )
+
+        assert prop_a.Name == "A Property"
+        assert prop_a.Description == "This is the property"
+        assert prop_a.Default == 2
+        assert prop_a.Validator == None
+        assert prop_a.Transformer == None
+        assert prop_a == prop_b
+        measure.add_property(prop_a)
+        pytest.raises(AssertionError, match="Measure.*already.*property.*Name")
+        prop_b.Validator = None
+        assert prop_b.Validator == None
+
+        action_a = MeasureAction(
+            Name="An action",
+            Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]
+        )
+        action_b = MeasureAction(
+            Name="An action with a different name",
+            Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]
+        )
+
+        assert action_a.Name == "An action"
+        assert action_a.Validator == None
+        assert action_a.Transformer == None
+        assert action_a.Lookup == ["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]
+        assert action_a == action_b
+
+

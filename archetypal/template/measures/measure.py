@@ -3,9 +3,9 @@ import functools
 import inspect
 import logging
 
-from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.building_template import BuildingTemplate
 from archetypal.umi_template import UmiTemplateLibrary
+from archetypal.template.schedule import UmiSchedule
 
 log = logging.getLogger(__name__)
 
@@ -60,13 +60,17 @@ class MeasureAction:
     """Stores an Archetypal parameter (or lookup) which
        can be associated with a measure
     Args:
+        Name (str): The name of the action
+        Lookup (callable | list<str>): Either an archetypal path array to the target, or a function which returns one
+        Validator (callable | None): Passed building_template, original_value, new_value and returns boolean
+        Transformer (callable | None): Passed building_template, original_value, proposed_transformer_value and returns a new value for the target
     """
 
-    def __init__(self, Name, Lookup, validator=None, transformer=None):
+    def __init__(self, Name, Lookup, Validator=None, Transformer=None):
         self._name = Name  # Names are not mutable
         self.Lookup = Lookup
-        self.Validator = validator
-        self.Transformer = transformer
+        self.Validator = Validator
+        self.Transformer = Transformer
 
     def __repr__(self):
         return f"{self.Name}:{self.Lookup}"
@@ -109,7 +113,7 @@ class MeasureAction:
             if any((arg not in sig.parameters for arg in ("building_template",))):
                 assert (
                     "kwargs" in sig.parameters
-                ), "The supplied lookup must accept **kwargs if it does not accept 'building_template'"
+                ), f"The supplied lookup for action {self} must accept **kwargs if it does not accept 'building_template'"
             self._lookup = lookup
 
     @property
@@ -137,7 +141,7 @@ class MeasureAction:
             ):
                 assert (
                     "kwargs" in sig.parameters
-                ), "The supplied validator must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'new_value'"
+                ), f"The supplied validator for {self} must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'new_value'"
             self._validator = validator
 
     @property
@@ -170,7 +174,7 @@ class MeasureAction:
             ):
                 assert (
                     "kwargs" in sig.parameters
-                ), "The supplied transformer must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'proposed_transformer_value'"
+                ), f"The supplied transformer for {self} must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'proposed_transformer_value'"
             self._transformer = transformer
 
     def determine_full_address(self, building_template, *args, **kwargs):
@@ -251,14 +255,14 @@ class MeasureAction:
             building_template=building_template, *args, **kwargs
         )
         new_value = (
-            self._transformer(
+            self.Transformer(
                 building_template=building_template,
                 original_value=original_value,
                 proposed_transformer_value=proposed_transformer_value,
                 *args,
                 **kwargs,
             )
-            if getattr(self, "_transformer", None)
+            if getattr(self, "Transformer", None)
             else proposed_transformer_value
         )
         return new_value
@@ -275,14 +279,14 @@ class MeasureAction:
             building_template=building_template, *args, **kwargs
         )
         return (
-            self._validator(
+            self.Validator(
                 building_template=building_template,
                 original_value=original_value,
                 new_value=new_value,
                 *args,
                 **kwargs,
             )
-            if getattr(self, "_validator", None)
+            if getattr(self, "Validator", None)
             else True
         )
 
@@ -306,24 +310,36 @@ class MeasureAction:
 class MeasureProperty:
     """Class for controlling multiple actions with a single property value"""
 
+    __slots__ = (
+        "_name",
+        "_attr_name",
+        "_description",
+        "_default",
+        "_value",
+        "_actions",
+        "_transformer",
+        "_validator"
+    )
+
     def __init__(
         self,
         Name,
         AttrName,
         Description,
         Default,
-        transformer=None,
-        validator=None,
+        Transformer=None,
+        Validator=None,
         actions=None,
     ):
         assert isinstance(Name, str)
-        self._name = Name
         assert isinstance(AttrName, str) and AttrName.isidentifier()
+        self._name = Name
         self._attr_name = AttrName
+        self._actions = set()
         self._description = Description
         self._default = Default
-        self._transformer = transformer
-        self._validator = validator
+        self.Transformer = Transformer
+        self.Validator = Validator
 
         if isinstance(actions, MeasureAction):
             actions = [actions]
@@ -388,10 +404,10 @@ class MeasureProperty:
             ):
                 assert (
                     "kwargs" in sig.parameters
-                ), "The supplied validator must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'new_value'"
+                ), f"The supplied validator for {self} must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'new_value'"
             self._validator = validator
         for action in self._actions:
-            action._validator = validator
+            action.Validator = validator
 
     @property
     def Transformer(self):
@@ -422,10 +438,10 @@ class MeasureProperty:
             ):
                 assert (
                     "kwargs" in sig.parameters
-                ), "The supplied transformer must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'proposed_transformer_value'"
+                ), f"The supplied transformer for {self} must accept **kwargs if it does not accept all of 'building_template', 'original_value', and 'proposed_transformer_value'"
             self._transformer = transformer
         for action in self._actions:
-            action._transformer = transformer
+            action.Transformer = transformer
 
     def add_action(self, action):
         """Add an action which will be controlled by this property
@@ -434,11 +450,10 @@ class MeasureProperty:
             action (MeasureAction): the action to add
         """
         assert isinstance(action, MeasureAction)
-        if self.Validator and getattr(action, "_validator", None) is None:
-            action._validator = self.Validator
-        if self.Transformer and getattr(action, "_transformer", None) is None:
-            print(f"adding a transformer to a an action {action}")
-            action._transformer = self.Transformer
+        if self.Validator and getattr(action, "Validator", None) is None:
+            action.Validator = self.Validator
+        if self.Transformer and getattr(action, "Transformer", None) is None:
+            action.Transformer = self.Transformer
         self._actions.add(action)
 
     def lookup_objects_to_mutate(self, building_template, *args, **kwargs):
@@ -500,6 +515,8 @@ class Measure(object):
         Properties (list<MeasureProperty>): Initial properties that are part of the measure
     """
 
+    # TODO: Write change log functions
+    # TODO: Write Properties / Actions getters
     # TODO: Add methods for adding measures together, extending with more properties, etc
     # TODO: abstract inheritance classes into presets objects
     __slots__ = (
@@ -511,6 +528,8 @@ class Measure(object):
     def __init__(self, Name="Measure", Description="Upgrade Templates", Properties=[]):
         # TODO: Get multi-class and nested inheritance working
         super().__setattr__("_properties", set())
+        if not hasattr(self, "_properties"):
+            self._properties = set()
 
         self.Name = Name or self._name
         self.Description = Description or self._description
@@ -602,6 +621,8 @@ class Measure(object):
         assert prop.AttrName not in [
             _prop.AttrName for _prop in self._properties
         ], f"Measure {self} already has a property with the AttrName {prop.AttrName}"
+        if hasattr(self, prop.AttrName):
+            prop.Value = getattr(self, prop.AttrName)
         self._properties.add(prop)
 
     def lookup_objects_to_mutate(self, building_template, *args, **kwargs):
@@ -683,8 +704,6 @@ class Measure(object):
         for bt in library.BuildingTemplates:
             self.mutate(bt, disentangle=disentangle, *args, **kwargs)
 
-    # TODO: write changelog functions
-
 
 class SetMechanicalVentilation(Measure):
     """Set the Mechanical Ventilation."""
@@ -701,7 +720,7 @@ class SetMechanicalVentilation(Measure):
         # Configure Ventilation ACH Property and actions
         ventilation_ach_property = MeasureProperty(
             Name="Ventilation ACH",
-            AttrName="ventilation_ach",
+            AttrName="VentilationACH",
             Description="Set Ventilation ACH",
             Default=VentilationACH,
         )
@@ -720,8 +739,8 @@ class SetMechanicalVentilation(Measure):
 
         # Configure Ventilation boolean actions
         ventilation_boolean_property = MeasureProperty(
-            Name="Is Ventilation",
-            AttrName="is_ventilation_on",
+            Name="Is Ventilation On",
+            AttrName="IsVentilationOn",
             Description="Automatically turn on scheduled ventilation",
             Default=True,
         )
@@ -733,37 +752,37 @@ class SetMechanicalVentilation(Measure):
         )
         ventilation_boolean_property.add_action(
             MeasureAction(
-                Name="Set Core Ventilation ACH",
+                Name="Set Core Ventilation Toggle",
                 Lookup=["Core", "Ventilation", "IsScheduledVentilationOn"],
             )
         )
 
-        # Configure schedule actions
-        if VentilationSchedule:
-            ventilation_schedule_property = MeasureProperty(
-                Name="Ventilation Schedule",
-                AttrName="ventilation_schedule",
-                Description="Set Ventilation Schedule",
-                Default=VentilationSchedule,
-            )
-            ventilation_schedule_property.add_action(
-                MeasureAction(
-                    Name="Set Perimeter Ventilation Schedule",
-                    Lookup=["Perimeter", "Ventilation", "ScheduledVentilationSchedule"],
-                )
-            )
-            ventilation_schedule_property.add_action(
-                MeasureAction(
-                    Name="Set Core Ventilation Schedule",
-                    Lookup=["Core", "Ventilation", "ScheduledVentilationSchedule"],
-                )
-            )
 
+        # Configure schedule actions
+        ventilation_schedule_property = MeasureProperty(
+            Name="Ventilation Schedule",
+            AttrName="VentilationSchedule",
+            Description="Set Ventilation Schedule",
+            Default=VentilationSchedule,
+            Validator=lambda new_value, **kwargs: isinstance(new_value, UmiSchedule)
+        )
+        ventilation_schedule_property.add_action(
+            MeasureAction(
+                Name="Set Perimeter Ventilation Schedule",
+                Lookup=["Perimeter", "Ventilation", "ScheduledVentilationSchedule"],
+            )
+        )
+        ventilation_schedule_property.add_action(
+            MeasureAction(
+                Name="Set Core Ventilation Schedule",
+                Lookup=["Core", "Ventilation", "ScheduledVentilationSchedule"],
+            )
+        )
         # Add properties to measure
         self.add_property(ventilation_ach_property)
         self.add_property(ventilation_boolean_property)
-        if ventilation_schedule_property:
-            self.add_property(ventilation_schedule_property)
+        self.add_property(ventilation_schedule_property)
+
 
 
 class SetCOP(Measure):
@@ -791,7 +810,7 @@ class SetCOP(Measure):
         )
         heating_property.add_action(
             MeasureAction(
-                Name="Set Core Core Heating CoP",
+                Name="Set Core Heating CoP",
                 Lookup=["Core", "Conditioning", "HeatingCoeffOfPerf"],
             )
         )

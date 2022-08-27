@@ -2,16 +2,15 @@
 import pytest
 
 from archetypal.template.measures.measure import (
-    EnergyStarUpgrade,
-    FacadeUpgradeBest,
-    FacadeUpgradeLow,
-    FacadeUpgradeMid,
-    FacadeUpgradeRegular,
-    InfiltrationMedium,
-    InfiltrationRegular,
-    InfiltrationTight,
     Measure,
-    SetFacadeConstructionThermalResistanceToEnergyStar,
+    MeasureProperty,
+    MeasureAction,
+    SetCOP,
+    SetElectricLoadsEfficiency,
+    SetFacadeThermalResistance,
+    SetFacadeInsulationThermalResistance,
+    SetInfiltration,
+    SetMechanicalVentilation,
 )
 
 
@@ -25,40 +24,142 @@ def umi_library():
     )
     yield umi
 
+@pytest.fixture(scope="function")
+def building_templates(umi_library):
+    """Yield building templates."""
+    a = umi_library.BuildingTemplates[0]
+    b = umi_library.BuildingTemplates[1]
+    c = umi_library.BuildingTemplates[2]
+    d = umi_library.BuildingTemplates[3]
+
+    yield a, b, c, d
 
 class TestMeasure:
-    """Test Measures on UmiTemplateLibraries."""
+    def test_create_measure(self, umi_library):
+        equipment_default = 4
+        lighting_default = 5
+        equipment_alt = 2
+        lighting_alt = 3
+        # Create Actions
+        prerimeter_equipment_action = MeasureAction(
+            Name="Change Perimeter Equipment Power Density", 
+            object_address=["Perimeter", "Loads", "EquipmentPowerDensity"]
+        )
+        core_equipment_action = MeasureAction(
+            Name="Change Core Equipment Power Density", 
+            object_address=["Core", "Loads", "EquipmentPowerDensity"]
+        )
+        prerimeter_lighting_action = MeasureAction(
+            Name="Change Perimeter Lighting Power Density", 
+            object_address=["Perimeter", "Loads", "LightingPowerDensity"]
+        )
+        core_lighting_action = MeasureAction(
+            Name="Change Core Lighting Power Density", 
+            object_address=["Core", "Loads", "LightingPowerDensity"]
+        )
+        # Create Props
+        equipment_prop = MeasureProperty(
+            Name="Equipment Power Density", 
+            AttrName="EquipmentPowerDensity", 
+            Description="Change Equipment Power Density", 
+            Default=equipment_default, 
+            actions=[prerimeter_equipment_action, core_equipment_action]
+        )
+        lighting_prop = MeasureProperty(
+            Name="Lighting Power Density", 
+            AttrName="LightingPowerDensity", 
+            Description="Change Lighting Power Density", 
+            Default=lighting_default, 
+            actions=[prerimeter_lighting_action, core_lighting_action]
+        )
+        # Create measure
+        loads_measure = Measure(
+            Name="EnergyStar",
+            Description="Change Loads Efficiency",
+            Properties=[equipment_prop, lighting_prop]
+        )
 
-    def test_apply_measure_to_single_building_template(self, umi_library):
+        """Test that getattr and getitem are working"""
+        assert loads_measure["Equipment Power Density"] == equipment_default
+        assert loads_measure["Lighting Power Density"] == lighting_default
+        assert loads_measure.EquipmentPowerDensity == equipment_default
+        assert loads_measure.LightingPowerDensity == lighting_default
+
+        """Test that setattr is working"""
+        loads_measure.EquipmentPowerDensity = equipment_alt
+        loads_measure.LightingPowerDensity = lighting_alt
+        assert loads_measure["Equipment Power Density"] == equipment_alt
+        assert loads_measure["Lighting Power Density"] == lighting_alt
+        assert loads_measure.EquipmentPowerDensity == equipment_alt
+        assert loads_measure.LightingPowerDensity == lighting_alt
+
+        """Test that setitem is working"""
+        loads_measure["Equipment Power Density"] = equipment_default
+        loads_measure["Lighting Power Density"] = lighting_default
+        assert loads_measure["Equipment Power Density"] == equipment_default
+        assert loads_measure["Lighting Power Density"] == lighting_default
+        assert loads_measure.EquipmentPowerDensity == equipment_default
+        assert loads_measure.LightingPowerDensity == lighting_default
+
+        """Test that we correctly identify objects to mutate"""
+        bt = umi_library.BuildingTemplates[0]
+        loads = bt.Perimeter.Loads
+        assert loads == bt.Core.Loads and loads.id == bt.Core.Loads.id
+        objects_to_mutate = loads_measure.lookup_objects_to_mutate(bt)
+        assert len(objects_to_mutate) == 1
+        assert len(objects_to_mutate[loads]) == 4 
+
+        """Test that library mutation works"""
+        loads_measure.EquipmentPowerDensity = equipment_alt
+        loads_measure.LightingPowerDensity = lighting_alt
+        loads_measure.mutate(umi_library)
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Core.Loads.EquipmentPowerDensity == equipment_alt
+            assert bt.Perimeter.Loads.EquipmentPowerDensity == equipment_alt
+            assert bt.Perimeter.Loads.LightingPowerDensity == lighting_alt
+            assert bt.Core.Loads.LightingPowerDensity == lighting_alt
+
+
+    def test_mutate_single_building_template(self, building_templates):
         """Test applying measure only to a specific building template."""
-        building_template = umi_library.BuildingTemplates[0]
+        a, b, c, d = building_templates
 
-        assert umi_library.BuildingTemplates[0].Core.Loads.LightingPowerDensity == 12.0
+        assert a.Core.Loads.LightingPowerDensity == 12.0
 
-        EnergyStarUpgrade().apply_measure_to_template(building_template)
+        SetElectricLoadsEfficiency().mutate(a)
 
-        assert umi_library.BuildingTemplates[0].Core.Loads.LightingPowerDensity == 8.07
-        assert umi_library.BuildingTemplates[1].Core.Loads.LightingPowerDensity == 16.0
+        """ Make sure template mutated"""
+        assert a.Core.Loads.LightingPowerDensity == 8.07
+        assert a.Perimeter.Loads.LightingPowerDensity == 8.07
+        assert a.Core.Loads.EquipmentPowerDensity == 8.07
+        assert a.Perimeter.Loads.EquipmentPowerDensity == 8.07
+
+        """ Verify that the other templates did not mutate"""
+        assert b.Core.Loads.LightingPowerDensity == 16.0
+        assert b.Perimeter.Loads.LightingPowerDensity == 16.0
 
     def test_apply_measure_to_whole_library(self, umi_library):
         """Test applying measure to whole template library."""
         assert umi_library.BuildingTemplates[0].Core.Loads.LightingPowerDensity == 12.0
 
         # apply the measure
-        EnergyStarUpgrade().apply_measure_to_whole_library(umi_library)
+        SetElectricLoadsEfficiency().mutate(umi_library)
 
         # Assert the value has changed for all ZoneLoads objects.
-        for zone_loads in umi_library.ZoneLoads:
-            assert zone_loads.LightingPowerDensity == 8.07
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Core.Loads.LightingPowerDensity == 8.07
+            assert bt.Perimeter.Loads.LightingPowerDensity == 8.07
+            assert bt.Core.Loads.EquipmentPowerDensity == 8.07
+            assert bt.Perimeter.Loads.EquipmentPowerDensity == 8.07
 
         oc = umi_library.BuildingTemplates[3].Perimeter.Constructions.Facade
         previous_thickness = oc.total_thickness
         previous_r_value = oc.r_value
 
-        measure = SetFacadeConstructionThermalResistanceToEnergyStar(
-            rsi_value_facade=3.08, rsi_value_roof=7.2
+        measure = SetFacadeThermalResistance(
+            FacadeRValue=3.08, RoofRValue=7.2
         )
-        measure.apply_measure_to_whole_library(umi_library)
+        measure.mutate(umi_library)
 
         # assert that the total wall r_value has increased.
         assert oc.r_value > previous_r_value
@@ -70,150 +171,345 @@ class TestMeasure:
     @pytest.mark.parametrize(
         "measure",
         [
-            FacadeUpgradeBest(),
-            FacadeUpgradeMid(),
-            FacadeUpgradeRegular(),
-            FacadeUpgradeLow(),
+            SetFacadeThermalResistance.Best(),
+            SetFacadeThermalResistance.Mid(),
+            SetFacadeThermalResistance.Regular(),
+            SetFacadeThermalResistance.Low(),
         ],
     )
     def test_facade_upgrade(self, measure, umi_library):
         """Test series of facade upgrades using parametrization."""
         # apply the measure
         facade = umi_library.BuildingTemplates[3].Perimeter.Constructions.Facade
-        i = facade.infer_insulation_layer()
-        oc = facade.Layers[i]
 
-        measure.apply_measure_to_whole_library(umi_library)
+        measure.mutate(umi_library)
+
+        # TODO: test that disentanglement works for dynamic routes
+        # assert that the total wall r_value has changed.
+        for bt in umi_library.BuildingTemplates:
+            facade = bt.Perimeter.Constructions.Facade
+            assert facade.r_value == pytest.approx(measure.FacadeRValue)
+
+    @pytest.mark.parametrize(
+        "measure",
+        [
+            SetFacadeInsulationThermalResistance.Best(),
+            SetFacadeInsulationThermalResistance.Mid(),
+            SetFacadeInsulationThermalResistance.Regular(),
+            SetFacadeInsulationThermalResistance.Low(),
+        ],
+    )
+    def test_facade_insulation_upgrade(self, measure, umi_library):
+        """Test series of facade upgrades using parametrization."""
+        insulation_indices = [bt.Perimeter.Constructions.Facade.infer_insulation_layer() for bt in umi_library.BuildingTemplates]
+
+        measure.mutate(umi_library)
 
         # assert that the total wall r_value has increased.
-        assert oc.r_value == pytest.approx(measure.rsi_value_facade)
+        for i, bt in zip(insulation_indices, umi_library.BuildingTemplates):
+            facade = bt.Perimeter.Constructions.Facade
+            oc = facade.Layers[insulation_indices[i]]
+            assert oc.r_value == pytest.approx(measure.FacadeRValue)
+
 
     @pytest.mark.parametrize(
         "measure, infiltration_ach",
         [
-            (InfiltrationRegular(), 0.6),
-            (InfiltrationMedium(), 0.3),
-            (InfiltrationTight(), 0.1),
+            (SetInfiltration.Regular(), 0.6),
+            (SetInfiltration.Medium(), 0.3),
+            (SetInfiltration.Tight(), 0.1),
         ],
     )
     def test_infiltration_upgrade(self, measure, infiltration_ach, umi_library):
         """Test applying the infiltration measures."""
-        measure.apply_measure_to_whole_library(umi_library)
+        measure.mutate(umi_library)
 
         for bldg in umi_library.BuildingTemplates:
             assert bldg.Perimeter.Ventilation.Infiltration == infiltration_ach
 
     @pytest.mark.parametrize(
-        "modifier_name, modifier_prop, default, object_address, getExpectedValue",
+        "prop_description, prop_name, prop_attr, default, action_name, object_address, get_expected_value",
         [
             (
-                "SetPerimeterCoolingSetpoint",
-                "cooling_setpoint",
+                "Set Cooling Setpoint",
+                "Cooling Setpoint",
+                "CoolingSetpoint",
                 27,
+                "Change Perimeter Cooling Setpoint",
                 ["Perimeter", "Conditioning", "CoolingSetpoint"],
                 # Explicitly tell the test where to find the correct val
                 lambda bt: bt.Perimeter.Conditioning.CoolingSetpoint,
             ),
             (
-                "SetCoreHeatingSetpoint",
-                "heating_setpoint",
+                "Set Heating Setpoint",
+                "Heating Setpoint",
+                "HeatingSetpoint",
                 20,
+                "Change Core Heating Setpoint",
                 ["Core", "Conditioning", "HeatingSetpoint"],
                 lambda bt: bt.Core.Conditioning.HeatingSetpoint,
             ),
         ],
     )
-    def test_create_basic_measure(
+    def test_create_basic_class(
         self,
-        modifier_name,
-        modifier_prop,
+        prop_description,
+        prop_name,
+        prop_attr,
         default,
+        action_name,
         object_address,
+        get_expected_value,
         umi_library,
-        getExpectedValue,
     ):
         """Test building custom measures with the add_modifier method"""
 
         # Define a custom measure
         class MyMeasure(Measure):
-            name = "MyMeasure"
-            description = "Test Measure"
 
-            def __init__(self):
+            def __init__(self, **kwargs):
                 """Initialize measure with parameters."""
-                super(MyMeasure, self).__init__()
-
-                self.add_modifier(
-                    modifier_name=modifier_name,
-                    modifier_prop=modifier_prop,
-                    default=default,
-                    object_address=object_address,
+                super(MyMeasure, self).__init__(
+                    **kwargs
                 )
+                prop = MeasureProperty(
+                    Name=prop_name,
+                    AttrName=prop_attr,
+                    Description=prop_description,
+                    Default=default,
+                )
+                prop.add_action(MeasureAction(
+                    Name=action_name,
+                    object_address=object_address,
+                ))
+                self.add_property(prop)
 
         # create the measure
         measure = MyMeasure()
 
-        # Check that the getters are working
-        expectedProps = {}
-        expectedProps[modifier_prop] = default
-        assert measure.props == expectedProps
-        assert measure._props == {modifier_prop}
-        assert measure._actions == {modifier_name}
-
         # Test the measure application works
-        measure.apply_measure_to_whole_library(umi_library)
+        measure.mutate(umi_library)
 
         for bldg in umi_library.BuildingTemplates:
-            assert getExpectedValue(bldg) == default
+            assert get_expected_value(bldg) == default
 
     def test_validated_measure(self, umi_library):
         """Test validated measures"""
         measure = Measure()
-        measure.name = "Cooling Setpoints"
-        measure.description = (
-            "Set Cooling setpoints conditionally (only if they improve)"
-        )
-
-        print("here testing")
+        measure.Name = "Cooling Efficiency"
+        measure.Description = "Change cooling coefficient of performance in core and perimeter"
 
         def gtValidator(original_value, new_value, root):
-            print(f"validating {root.Name}")
-            print(f"Original Value: { original_value }")
-            print(f"New Value: { new_value }")
             return new_value > original_value
 
-        # Only adjust cooling cop if the new value is greater
-        measure.add_modifier(
-            modifier_name="SetPerimCoolingCoP",
-            modifier_prop="cooling_CoP",
-            default=0.01,
+        action = MeasureAction(
+            Name="Change Perimeter CoP",
             object_address=["Perimeter", "Conditioning", "CoolingCoeffOfPerf"],
-            validator=gtValidator,
         )
-        measure.add_modifier(
-            modifier_name="SetCoreCoolingCoP",
-            modifier_prop="cooling_cop",
-            default=0.01,
+        """Tests that the validator gets added to an action added to a prop before when the prop is initted or after"""
+
+        # Only adjust cooling cop if the new value is greater
+        prop = MeasureProperty(
+            Name="Cooling CoP",
+            AttrName="CoolingCoP",
+            Description="Set cooling CoP conditionally",
+            Default=0.01,
+            validator=gtValidator,
+            actions=action
+        )
+
+        measure.add_property(prop)
+
+        prop.add_action(MeasureAction(
+            Name="Change Core CoP",
             object_address=["Core", "Conditioning", "CoolingCoeffOfPerf"],
             validator=gtValidator,
-        )
+        ))
 
         # Get the original value for each template and make sure it doesn't change
         # since 0.01 is worse than all of the existing values
         for bt in umi_library.BuildingTemplates:
             original_perim_cool_cop = bt.Perimeter.Conditioning.CoolingCoeffOfPerf
             original_core_cool_cop = bt.Core.Conditioning.CoolingCoeffOfPerf
-            measure.apply_measure_to_template(bt)
+            measure.mutate(bt)
             assert (
                 original_perim_cool_cop == bt.Perimeter.Conditioning.CoolingCoeffOfPerf
             )
             assert original_core_cool_cop == bt.Core.Conditioning.CoolingCoeffOfPerf
 
         # update the measure
-        measure.cooling_cop = 6
+        measure.CoolingCoP = 6
 
         # Test that all values now update
-        measure.apply_measure_to_whole_library(umi_library)
+        measure.mutate(umi_library)
         for bt in umi_library.BuildingTemplates:
             assert bt.Perimeter.Conditioning.CoolingCoeffOfPerf == 6
             assert bt.Core.Conditioning.CoolingCoeffOfPerf == 6
+
+        measure["Cooling CoP"] = 4
+
+        # Test that all values did not update
+        measure.mutate(umi_library)
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Perimeter.Conditioning.CoolingCoeffOfPerf == 6
+            assert bt.Core.Conditioning.CoolingCoeffOfPerf == 6
+        
+        """ Test that using the Validator setter works"""
+        difference_validator = lambda original_value, new_value, root: new_value - original_value > 2
+        prop.Validator = difference_validator
+        measure.CoolingCoP = 8
+        measure.mutate(umi_library)
+
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Perimeter.Conditioning.CoolingCoeffOfPerf == 6
+            assert bt.Core.Conditioning.CoolingCoeffOfPerf == 6
+
+        difference_validator = lambda original_value, new_value, root: new_value - original_value > 1
+
+        prop.Validator = difference_validator
+        measure.mutate(umi_library)
+
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Perimeter.Conditioning.CoolingCoeffOfPerf == 8
+            assert bt.Core.Conditioning.CoolingCoeffOfPerf == 8
+    
+    def test_create_percentage_class(self, umi_library):
+        measure = Measure(
+            Name="Relative Equipment Efficiency",
+            Description="Proportionally improve equipment efficiency"
+        )
+
+        def percent_decrease(original_value, proposed_transformer_value):
+            """Decrease by the transformer argument interpreted as a percentage"""
+            fraction = (100-proposed_transformer_value)/100
+            return original_value*fraction
+
+        def percent_increase(original_value, proposed_transformer_value):
+            """Decrease by the transformer argument interpreted as a percentage"""
+            fraction = (100+proposed_transformer_value)/100
+            return original_value*fraction
+
+        """ Test that the transformer works when action is added to prop during init or after, but not if action already had transformer"""
+        core_epd_action = MeasureAction(
+            Name="Change Core Equipment Power Density",
+            object_address=["Core", "Loads", "EquipmentPowerDensity"]
+        )
+        core_lpd_action = MeasureAction(
+            Name="Change Core Equipment Power Density",
+            object_address=["Core", "Loads", "LightingPowerDensity"],
+            transformer=percent_increase
+        )
+        prop = MeasureProperty(
+            Name="Equipment Power Density Percentage",
+            AttrName="EquipmentPowerDensityPercentage",
+            Description="Equipment Power Density percent improvement",
+            Default=5,
+            transformer=percent_decrease,
+            actions=[core_epd_action, core_lpd_action ]
+        )
+
+        prop.add_action(MeasureAction(
+            Name="Change Equipment Power Density",
+            object_address=["Perimeter", "Loads", "EquipmentPowerDensity"],
+        ))
+
+        measure.add_property(prop)
+
+        original_epd_peri_values = []
+        original_epd_core_values = []
+        original_lpd_core_values = []
+        for bt in umi_library.BuildingTemplates:
+            original_epd_peri_values.append(bt.Perimeter.Loads.EquipmentPowerDensity)
+            original_epd_core_values.append(bt.Core.Loads.EquipmentPowerDensity)
+            original_lpd_core_values.append(bt.Core.Loads.LightingPowerDensity)
+
+        measure.mutate(umi_library)
+
+        for original_value, bt in zip(original_lpd_core_values, umi_library.BuildingTemplates):
+            assert bt.Core.Loads.LightingPowerDensity == pytest.approx(1.05 * original_value)
+        for original_value, bt in zip(original_epd_peri_values, umi_library.BuildingTemplates):
+            assert bt.Perimeter.Loads.EquipmentPowerDensity == pytest.approx(0.95 * original_value)
+        for original_value, bt in zip(original_epd_core_values, umi_library.BuildingTemplates):
+            assert bt.Core.Loads.EquipmentPowerDensity == pytest.approx(0.95 * original_value)
+
+        """Test that using the Transformer setter overwrites all transformers for the prop"""
+        prop.Transformer = percent_decrease
+
+        original_epd_peri_values = []
+        original_epd_core_values = []
+        original_lpd_core_values = []
+        for bt in umi_library.BuildingTemplates:
+            original_epd_peri_values.append(bt.Perimeter.Loads.EquipmentPowerDensity)
+            original_epd_core_values.append(bt.Core.Loads.EquipmentPowerDensity)
+            original_lpd_core_values.append(bt.Core.Loads.LightingPowerDensity)
+
+        measure.mutate(umi_library)
+
+        for original_value, bt in zip(original_epd_peri_values, umi_library.BuildingTemplates):
+            assert bt.Perimeter.Loads.EquipmentPowerDensity == pytest.approx(0.95 * original_value)
+        for original_value, bt in zip(original_epd_core_values, umi_library.BuildingTemplates):
+            assert bt.Core.Loads.EquipmentPowerDensity == pytest.approx(0.95 * original_value)
+        for original_value, bt in zip(original_lpd_core_values, umi_library.BuildingTemplates):
+            assert bt.Core.Loads.LightingPowerDensity == pytest.approx(0.95 * original_value)
+
+    def test_disentanglement(self, building_templates):
+        _, _, c, d = building_templates
+        c_peri_loads = c.Perimeter.Loads
+        c_core_loads = c.Core.Loads
+        d_peri_loads = d.Perimeter.Loads
+        d_core_loads = d.Core.Loads
+
+        """ Confirm that all of the objects are the same"""
+        loads = set((c_peri_loads, d_peri_loads, c_core_loads, d_core_loads))
+        assert len(loads) == 1 
+
+        measure = Measure()
+        prop = MeasureProperty(
+            Name="EPD",
+            AttrName="EPD",
+            Description="Change EPD",
+            Default=3
+        )
+        prop.add_action(MeasureAction(
+            Name="change epd",
+            object_address=["Perimeter", "Loads", "EquipmentPowerDensity"]
+        ))
+        measure.add_property(prop)
+
+        # Since both templates use the same Zone Definition for peri and core,
+        # Changing the EPD in one template's perimeter will affect both peris and both cores
+        measure.mutate(c, disentangle=False)
+
+        c_peri_loads = c.Perimeter.Loads
+        c_core_loads = c.Core.Loads
+        d_peri_loads = d.Perimeter.Loads
+        d_core_loads = d.Core.Loads
+        loads = loads.union((c_peri_loads, d_peri_loads, c_core_loads, d_core_loads))
+        assert len(loads) == 1 
+        assert d.Perimeter.Loads.EquipmentPowerDensity == measure.EPD
+        assert d.Core.Loads.EquipmentPowerDensity == measure.EPD
+        assert c.Perimeter.Loads.EquipmentPowerDensity == measure.EPD
+        assert c.Core.Loads.EquipmentPowerDensity == measure.EPD
+
+        measure.EPD = 2
+
+        measure.mutate(c, disentangle=True) # Also true if omitted
+
+        """Check that the C Perimeter is now different but others still the same"""
+        c_peri_loads = c.Perimeter.Loads
+        c_core_loads = c.Core.Loads
+        d_peri_loads = d.Perimeter.Loads
+        d_core_loads = d.Core.Loads
+        loads = loads.union((c_peri_loads, d_peri_loads, c_core_loads, d_core_loads))
+        assert len(loads) == 2
+        assert c_peri_loads.EquipmentPowerDensity == 2
+        assert c_core_loads.EquipmentPowerDensity == 3
+        assert d_peri_loads.EquipmentPowerDensity == 3
+        assert d_core_loads.EquipmentPowerDensity == 3
+
+
+
+
+
+
+

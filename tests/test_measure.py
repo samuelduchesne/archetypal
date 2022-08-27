@@ -659,7 +659,8 @@ class TestMeasure:
             assert bt.Core.Ventilation.ScheduledVentilationAch == 1.33
             assert bt.Core.Ventilation.ScheduledVentilationSchedule == umi_library.YearSchedules[0]
     
-    def test_getters_and_setters_and_equality(self):
+    def test_getters_and_setters_and_equality(self, building_templates):
+        a, _, _, _ = building_templates
         measure = Measure(
             Name="A Measure",
             Description="This is the measure"
@@ -691,6 +692,8 @@ class TestMeasure:
         pytest.raises(AssertionError, match="Measure.*already.*property.*Name")
         prop_b.Validator = None
         assert prop_b.Validator == None
+        prop_b.Default = 2
+        assert prop_b.Default == 2
 
         action_a = MeasureAction(
             Name="An action",
@@ -700,6 +703,7 @@ class TestMeasure:
             Name="An action with a different name",
             Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]
         )
+        assert action_a.determine_parameter_name(building_template=a) == "HeatingCoeffOfPerf"
 
         assert action_a.Name == "An action"
         assert action_a.Validator == None

@@ -517,8 +517,6 @@ class Measure(object):
 
     # TODO: Write change log functions
     # TODO: Write Properties / Actions getters
-    # TODO: Add methods for adding measures together, extending with more properties, etc
-    # TODO: abstract inheritance classes into presets objects
     __slots__ = (
         "_name",
         "_description",
@@ -526,10 +524,7 @@ class Measure(object):
     )
 
     def __init__(self, Name="Measure", Description="Upgrade Templates", Properties=[]):
-        # TODO: Get multi-class and nested inheritance working
         super().__setattr__("_properties", set())
-        if not hasattr(self, "_properties"):
-            self._properties = set()
 
         self.Name = Name or self._name
         self.Description = Description or self._description

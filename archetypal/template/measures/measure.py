@@ -330,14 +330,15 @@ class MeasureProperty:
         Transformer=None,
         Validator=None,
         actions=None,
+        Lookup=None
     ):
         assert isinstance(Name, str)
         assert isinstance(AttrName, str) and AttrName.isidentifier()
         self._name = Name
         self._attr_name = AttrName
-        self._actions = set()
         self._description = Description
-        self._default = Default
+        self._actions = set()
+        self.Default = Default
         self.Transformer = Transformer
         self.Validator = Validator
 
@@ -347,7 +348,13 @@ class MeasureProperty:
         for action in actions or []:
             self.add_action(action)
 
-        self._value = Default
+        self.Value = Default
+        if Lookup is not None:
+            action = MeasureAction(
+                Name=self.Name,
+                Lookup=Lookup
+            )
+            self.add_action(action)
 
     @property
     def Name(self):

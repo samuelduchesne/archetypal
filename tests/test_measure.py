@@ -121,6 +121,26 @@ class TestMeasure:
             assert bt.Perimeter.Loads.LightingPowerDensity == lighting_alt
             assert bt.Core.Loads.LightingPowerDensity == lighting_alt
 
+    def test_create_measure_with_shortcut(self, umi_library):
+        """Test creating a measure and property with the action creator shortcut via Lookup"""
+        prop = MeasureProperty(
+            Name="Ventilation ACH",
+            AttrName="VentilationACH",
+            Description="Cange Ventilation ACH",
+            Default=1.2,
+            Lookup=["Perimeter", "Ventilation", "ScheduledVentilationAch"]
+        )
+        measure = Measure(
+            Name="Ventilation",
+            Description="Change Ventilation",
+            Properties=prop
+        )
+
+        measure.mutate_library(umi_library)
+
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Perimeter.Ventilation.ScheduledVentilationAch == 1.2
+
     def test_mutate_single_building_template(self, building_templates):
         """Test applying measure only to a specific building template."""
         a, b, c, d = building_templates

@@ -178,8 +178,17 @@ measure.mutate(lib)
 ```
 If you omit a `MeasureProperty` from the subclass definition, the default value from the original measure will be used.
 
-*nb:* To combine instanced measures, you should iterate over the properties of one measure and add them as properties to another measure (or add them as properties to both).
+You can also easily combine measure instances using addition, e.g.:
 
+```
+measure_c = measure_a + measure_b
+```
+
+or
+
+```
+measure_a += measure_b
+```
 # Subclassing Measure
 
 You may easily define Measure your own `Measure` subclasses to preserve or share your custom measures.  Inherit `Measure`, call provide a `_name` and `_description` class arg, and then define your measure in `__init__`.  `__init__` should accept `**kwargs` and should provide default values for the properties it uses by their `AttrNames`. the See the following example:

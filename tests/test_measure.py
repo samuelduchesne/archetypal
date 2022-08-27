@@ -139,6 +139,30 @@ class TestMeasure:
         for bt in umi_library.BuildingTemplates:
             assert bt.Perimeter.Ventilation.ScheduledVentilationAch == 1.2
 
+    def test_add_and_iadd_measures(self, umi_library):
+        measure_a = SetCOP(HeatingCoP=4, CoolingCoP=4)
+        measure_b = SetInfiltration(Infiltration=0.1)
+        measure_c = measure_a + measure_b
+        measure_c.mutate(umi_library)
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Core.Conditioning.HeatingCoeffOfPerf == 4
+            assert bt.Perimeter.Conditioning.HeatingCoeffOfPerf == 4
+            assert bt.Core.Conditioning.CoolingCoeffOfPerf == 4
+            assert bt.Perimeter.Conditioning.CoolingCoeffOfPerf == 4
+            assert bt.Perimeter.Ventilation.Infiltration == 0.1
+
+        measure_a += measure_b
+        measure_a.HeatingCoP = 5
+        measure_a.CoolingCoP = 5
+        measure_a.Infiltration = 0.05
+        measure_a.mutate(umi_library)
+        for bt in umi_library.BuildingTemplates:
+            assert bt.Core.Conditioning.HeatingCoeffOfPerf == 5
+            assert bt.Perimeter.Conditioning.HeatingCoeffOfPerf == 5
+            assert bt.Core.Conditioning.CoolingCoeffOfPerf == 5
+            assert bt.Perimeter.Conditioning.CoolingCoeffOfPerf == 5
+            assert bt.Perimeter.Ventilation.Infiltration == 0.05
+
     def test_mutate_single_building_template(self, building_templates):
         """Test applying measure only to a specific building template."""
         a, b, c, d = building_templates

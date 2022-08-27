@@ -559,6 +559,27 @@ class Measure(object):
         """Get or set the Measure's description"""
         self._description = description
 
+    def __iter__(self):
+        for prop in self._properties:
+            yield prop
+
+    def __add__(self, other):
+        # prefer LHS metadata
+        new_measure = Measure(
+            Name=self.Name,
+            Description=self.Description,
+            Properties=[prop for prop in self],
+        )
+        for prop in other:
+            new_measure.add_property(prop)
+
+        return new_measure
+
+    def __iadd__(self, other):
+        for prop in other:
+            self.add_property(prop)
+        return self
+
     def _get_property_by_name(self, name):
         """find a MeasureProperty object by Name"""
         prop = next(

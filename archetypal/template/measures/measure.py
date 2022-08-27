@@ -329,7 +329,7 @@ class MeasureProperty:
         Default,
         Transformer=None,
         Validator=None,
-        actions=None,
+        Actions=None,
         Lookup=None
     ):
         assert isinstance(Name, str)
@@ -342,10 +342,10 @@ class MeasureProperty:
         self.Transformer = Transformer
         self.Validator = Validator
 
-        if isinstance(actions, MeasureAction):
-            actions = [actions]
+        if isinstance(Actions, MeasureAction):
+            Actions = [Actions]
         self._actions = set()
-        for action in actions or []:
+        for action in Actions or []:
             self.add_action(action)
 
         self.Value = Default
@@ -1079,7 +1079,7 @@ class SetInfiltration(Measure):
             AttrName="Infiltration",
             Description="Set Infiltration ACH",
             Default=Infiltration,
-            actions=infiltration_action,
+            Actions=infiltration_action,
         )
 
         super().__init__(Properties=infiltration_property)

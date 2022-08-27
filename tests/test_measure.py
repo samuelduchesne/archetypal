@@ -65,14 +65,14 @@ class TestMeasure:
             AttrName="EquipmentPowerDensity",
             Description="Change Equipment Power Density",
             Default=equipment_default,
-            actions=[prerimeter_equipment_action, core_equipment_action],
+            Actions=[prerimeter_equipment_action, core_equipment_action],
         )
         lighting_prop = MeasureProperty(
             Name="Lighting Power Density",
             AttrName="LightingPowerDensity",
             Description="Change Lighting Power Density",
             Default=lighting_default,
-            actions=[prerimeter_lighting_action, core_lighting_action],
+            Actions=[prerimeter_lighting_action, core_lighting_action],
         )
         # Create measure
         loads_measure = Measure(
@@ -336,7 +336,7 @@ class TestMeasure:
             Description="Set cooling CoP conditionally",
             Default=0.01,
             Validator=gtValidator,
-            actions=action,
+            Actions=action,
         )
 
         measure.add_property(prop)
@@ -436,7 +436,7 @@ class TestMeasure:
             Description="Equipment Power Density percent improvement",
             Default=5,
             Transformer=percent_decrease,
-            actions=[core_epd_action, core_lpd_action],
+            Actions=[core_epd_action, core_lpd_action],
         )
 
         prop.add_action(

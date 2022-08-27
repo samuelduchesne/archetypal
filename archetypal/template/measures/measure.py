@@ -4,8 +4,8 @@ import inspect
 import logging
 
 from archetypal.template.building_template import BuildingTemplate
-from archetypal.umi_template import UmiTemplateLibrary
 from archetypal.template.schedule import UmiSchedule
+from archetypal.umi_template import UmiTemplateLibrary
 
 log = logging.getLogger(__name__)
 
@@ -318,7 +318,7 @@ class MeasureProperty:
         "_value",
         "_actions",
         "_transformer",
-        "_validator"
+        "_validator",
     )
 
     def __init__(
@@ -330,7 +330,7 @@ class MeasureProperty:
         Transformer=None,
         Validator=None,
         Actions=None,
-        Lookup=None
+        Lookup=None,
     ):
         assert isinstance(Name, str)
         assert isinstance(AttrName, str) and AttrName.isidentifier()
@@ -350,10 +350,7 @@ class MeasureProperty:
 
         self.Value = Default
         if Lookup is not None:
-            action = MeasureAction(
-                Name=self.Name,
-                Lookup=Lookup
-            )
+            action = MeasureAction(Name=self.Name, Lookup=Lookup)
             self.add_action(action)
 
     @property
@@ -759,14 +756,13 @@ class SetMechanicalVentilation(Measure):
             )
         )
 
-
         # Configure schedule actions
         ventilation_schedule_property = MeasureProperty(
             Name="Ventilation Schedule",
             AttrName="VentilationSchedule",
             Description="Set Ventilation Schedule",
             Default=VentilationSchedule,
-            Validator=lambda new_value, **kwargs: isinstance(new_value, UmiSchedule)
+            Validator=lambda new_value, **kwargs: isinstance(new_value, UmiSchedule),
         )
         ventilation_schedule_property.add_action(
             MeasureAction(
@@ -784,7 +780,6 @@ class SetMechanicalVentilation(Measure):
         self.add_property(ventilation_ach_property)
         self.add_property(ventilation_boolean_property)
         self.add_property(ventilation_schedule_property)
-
 
 
 class SetCOP(Measure):
@@ -1065,8 +1060,8 @@ class SetFacadeThermalResistance(Measure):
 
 class SetInfiltration(Measure):
 
-    _name = ("Set Infiltration",)
-    _description = ("This measure sets the infiltration ACH of the perimeter zone.",)
+    _name = "Set Infiltration"
+    _description = "This measure sets the infiltration ACH of the perimeter zone."
 
     def __init__(self, Infiltration=0.6, **kwargs):
         infiltration_action = MeasureAction(

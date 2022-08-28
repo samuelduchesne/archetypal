@@ -121,6 +121,65 @@ class TestMeasure:
             assert bt.Perimeter.Loads.LightingPowerDensity == lighting_alt
             assert bt.Core.Loads.LightingPowerDensity == lighting_alt
 
+    def test_changelog(self, umi_library):
+        measure = SetInfiltration.Tight() + SetElectricLoadsEfficiency()
+        original_values = []
+        for bt in umi_library.BuildingTemplates:
+            original_values.append(
+                {
+                    "Infiltration": bt.Perimeter.Ventilation.Infiltration,
+                    "PerimeterEPD": bt.Perimeter.Loads.EquipmentPowerDensity,
+                    "CoreEPD": bt.Core.Loads.EquipmentPowerDensity,
+                    "PerimeterLPD": bt.Perimeter.Loads.LightingPowerDensity,
+                    "CoreLPD": bt.Core.Loads.LightingPowerDensity,
+                }
+            )
+        changelog = measure.changelog(umi_library)
+        assert len(changelog) == len(umi_library.BuildingTemplates)
+        for original_value, bt in zip(original_values, umi_library.BuildingTemplates):
+            assert (
+                original_value["Infiltration"] == bt.Perimeter.Ventilation.Infiltration
+            )
+            assert (
+                original_value["PerimeterEPD"]
+                == bt.Perimeter.Loads.EquipmentPowerDensity
+            )
+            assert original_value["CoreEPD"] == bt.Core.Loads.EquipmentPowerDensity
+            assert (
+                original_value["PerimeterLPD"]
+                == bt.Perimeter.Loads.LightingPowerDensity
+            )
+            assert original_value["CoreLPD"] == bt.Core.Loads.LightingPowerDensity
+            assert len(changelog[bt]) == 5
+            for change in changelog[bt]:
+                assert change in [
+                    (
+                        ["Perimeter", "Ventilation", "Infiltration"],
+                        original_value["Infiltration"],
+                        measure.Infiltration,
+                    ),
+                    (
+                        ["Core", "Loads", "EquipmentPowerDensity"],
+                        original_value["CoreEPD"],
+                        measure.EquipmentPowerDensity,
+                    ),
+                    (
+                        ["Perimeter", "Loads", "EquipmentPowerDensity"],
+                        original_value["PerimeterEPD"],
+                        measure.EquipmentPowerDensity,
+                    ),
+                    (
+                        ["Core", "Loads", "LightingPowerDensity"],
+                        original_value["CoreLPD"],
+                        measure.LightingPowerDensity,
+                    ),
+                    (
+                        ["Perimeter", "Loads", "LightingPowerDensity"],
+                        original_value["PerimeterLPD"],
+                        measure.LightingPowerDensity,
+                    ),
+                ]
+
     def test_create_measure_with_shortcut(self, umi_library):
         """Test creating a measure and property with the action creator shortcut via Lookup"""
         prop = MeasureProperty(

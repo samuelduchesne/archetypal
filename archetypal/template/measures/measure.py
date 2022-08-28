@@ -290,12 +290,22 @@ class MeasureAction:
             else True
         )
 
-    def mutate(self, building_template, proposed_transformer_value, *args, **kwargs):
+    def mutate(
+        self,
+        building_template,
+        proposed_transformer_value,
+        changelog_only=False,
+        *args,
+        **kwargs,
+    ):
         new_value = self.compute_new_value(
             building_template=building_template,
             proposed_transformer_value=proposed_transformer_value,
             *args,
             **kwargs,
+        )
+        original_value = self.lookup_original_value(
+            building_template=building_template, *args, **kwargs
         )
         validated = self._validate(
             building_template=building_template, new_value=new_value, *args, **kwargs
@@ -304,7 +314,11 @@ class MeasureAction:
             address = self.determine_full_address(
                 building_template=building_template, *args, **kwargs
             )
-            set_path(root=building_template, address=address, value=new_value)
+            if not changelog_only:
+                set_path(root=building_template, address=address, value=new_value)
+            return (address, original_value, new_value)
+        else:
+            return None
 
 
 class MeasureProperty:
@@ -467,7 +481,7 @@ class MeasureProperty:
             building_template: the template to identify all mutation targets in
         """
         objects_to_mutate = {}  # store the objects to mutate and the path to find it at
-        for action in self._actions:
+        for action in self:
             object_to_mutate = action.lookup_original_object(
                 building_template=building_template, *args, **kwargs
             )
@@ -484,14 +498,19 @@ class MeasureProperty:
             )
         return objects_to_mutate
 
-    def mutate(self, building_template, *args, **kwargs):
-        for action in self._actions:
-            action.mutate(
+    def mutate(self, building_template, changelog_only=False, *args, **kwargs):
+        mutations = []
+        for action in self:
+            mutation = action.mutate(
                 building_template=building_template,
                 proposed_transformer_value=self.Value,
+                changelog_only=changelog_only,
                 *args,
                 **kwargs,
             )
+            if mutation:
+                mutations.append(mutation)
+        return mutations
 
     def __repr__(self):
         """Return a representation of self."""
@@ -508,6 +527,10 @@ class MeasureProperty:
     def __eq__(self, other):
         # If two properties have the same name and will use the same attribute, they should be considered equal
         return self.__repr__() == other.__repr__()
+
+    def __iter__(self):
+        for action in self._actions:
+            yield action
 
 
 class Measure(object):
@@ -664,19 +687,49 @@ class Measure(object):
                 measure_objects_to_mutate[object_to_mutate].extend(addresses)
         return measure_objects_to_mutate
 
-    def mutate(self, target, disentangle=True, *args, **kwargs):
+    def changelog(self, target, *args, **kwargs):
+        """Report a changelog for all BuildingTemplates in target without mutation
+        Args:
+            target (BuildingTemplate or UmiTemplateLibrary): The object to report changelog for
+        
+        Returns:
+            changelog: dict<BuildingTemplate, (List of str, value, value)
+        """
+        return self.mutate(
+            target=target, disentangle=False, changelog_only=True, *args, **kwargs
+        )
+
+    def mutate(self, target, disentangle=True, changelog_only=False, *args, **kwargs):
         """Mutate a template or a whole library
 
         Args:
-            target (BuildingTemplate | UmiTemplateLibrary): The template or library to upgrade
+            target (BuildingTemplate or UmiTemplateLibrary): The template or library to upgrade
             disentangle (boolean): If true, the tree of each upgraded object will be duplicated and replaced before mutation
+            changelog_only (boolean): If true, reports a changelog without mutating the target
         """
+        mutations = {}
         if isinstance(target, BuildingTemplate):
-            self.mutate_template(target, disentangle=disentangle, *args, **kwargs)
+            bt_mutations = self.mutate_template(
+                target,
+                disentangle=disentangle,
+                changelog_only=changelog_only,
+                *args,
+                **kwargs,
+            )
+            mutations[target] = bt_mutations
         elif isinstance(target, UmiTemplateLibrary):
-            self.mutate_library(target, disentangle=disentangle, *args, **kwargs)
+            mutations = self.mutate_library(
+                target,
+                disentangle=disentangle,
+                changelog_only=changelog_only,
+                *args,
+                **kwargs,
+            )
+        return mutations
 
-    def mutate_template(self, building_template, disentangle=True, *args, **kwargs):
+    def mutate_template(
+        self, building_template, disentangle=True, changelog_only=False, *args, **kwargs
+    ):
         """Mutate a template
 
         Args:
@@ -685,7 +738,7 @@ class Measure(object):
         assert isinstance(
             building_template, BuildingTemplate
         ), "'building_template' argument must be a BuildingTemplate"
-        if disentangle:
+        if disentangle and not changelog_only:
             # Every object which gets mutated is given an entirely new tree to separate it
             # from other templates which may have used the objects or even other objects
             # within the same template which may use it
@@ -709,10 +762,20 @@ class Measure(object):
                             root=building_template, address=address, value=new_object
                         )
 
-        for prop in self._properties:
-            prop.mutate(building_template, *args, **kwargs)
+        mutations = []
+        for prop in self:
+            prop_mutations = prop.mutate(
+                building_template=building_template,
+                changelog_only=changelog_only,
+                *args,
+                **kwargs,
+            )
+            mutations.extend(prop_mutations)
+        return mutations
 
-    def mutate_library(self, library, disentangle=True, *args, **kwargs):
+    def mutate_library(
+        self, library, disentangle=True, changelog_only=False, *args, **kwargs
+    ):
         """Mutate a library
 
         Args:
@@ -721,8 +784,17 @@ class Measure(object):
         assert isinstance(
             library, UmiTemplateLibrary
         ), "'library' argument must be an UmiTemplateLibrary"
+        mutations = {}
         for bt in library.BuildingTemplates:
-            self.mutate(bt, disentangle=disentangle, *args, **kwargs)
+            bt_mutations = self.mutate_template(
+                bt,
+                disentangle=disentangle,
+                changelog_only=changelog_only,
+                *args,
+                **kwargs,
+            )
+            mutations[bt] = bt_mutations
+        return mutations
 
 
 class SetMechanicalVentilation(Measure):

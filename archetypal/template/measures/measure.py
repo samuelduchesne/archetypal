@@ -651,6 +651,39 @@ class Measure(object):
         else:
             super().__getattr__(attr_name)
 
+    @property
+    def Properties(self):
+        """Get or set the measure's properties"""
+        return self._properties
+
+    @Properties.setter
+    def Properties(self, Properties):
+        """Get or set the measure's properties"""
+        self._properties = set()
+        if isinstance(Properties, MeasureProperty):
+            Properties = [Properties]
+        for prop in Properties:
+            print(f"adding a prop - {prop}")
+            self.add_property(prop)
+
+    @property
+    def PropNames(self):
+        return [prop.Name for prop in self]
+
+    @property
+    def PropAttrs(self):
+        return [prop.AttrName for prop in self]
+
+    def get_property(self, AttrName=None, Name=None):
+        if AttrName:
+            return self._get_property_by_attr_name(AttrName)
+        else:
+            return self._get_property_by_name(Name)
+
+    def remove_property(self, AttrName=None, Name=None):
+        prop = self.get_property(AttrName, Name)
+        self._properties.remove(prop)
+
     def add_property(self, prop):
         """Add a property to a measure
 
@@ -691,7 +724,7 @@ class Measure(object):
         """Report a changelog for all BuildingTemplates in target without mutation
         Args:
             target (BuildingTemplate or UmiTemplateLibrary): The object to report changelog for
-        
+
         Returns:
             changelog: dict<BuildingTemplate, (List of str, value, value)
         """

@@ -779,6 +779,12 @@ class TestMeasure:
             Default=3,
             Validator=lambda x, **kwargs: x,
         )
+        prop_c = MeasureProperty(
+            Name="Another Property",
+            AttrName="PropC",
+            Description="This is the property",
+            Default=2,
+        )
 
         assert prop_a.Name == "A Property"
         assert prop_a.Description == "This is the property"
@@ -787,11 +793,32 @@ class TestMeasure:
         assert prop_a.Transformer == None
         assert prop_a == prop_b
         measure.add_property(prop_a)
-        pytest.raises(AssertionError, match="Measure.*already.*property.*Name")
+        assert measure.Properties == {prop_a}
+
+        with pytest.raises(AssertionError, match="Measure.*already.*property.*Name"):
+            measure.add_property(prop_b)
+        prop_b._name = "other name"  # unsafely set name for testing purposes
+        with pytest.raises(
+            AssertionError, match="Measure.*already.*property.*AttrName"
+        ):
+            measure.add_property(prop_b)
+
         prop_b.Validator = None
         assert prop_b.Validator == None
         prop_b.Default = 2
         assert prop_b.Default == 2
+        assert measure.get_property(prop_c.AttrName) is None
+        measure.add_property(prop_c)
+        assert prop_c == measure.get_property(prop_c.AttrName)
+        measure.remove_property(Name=prop_c.Name)
+        assert measure.get_property(prop_c.AttrName) is None
+        assert measure.get_property(Name=prop_c.Name) is None
+        assert measure.PropAttrs == [prop_a.AttrName]
+        assert measure.PropNames == [prop_a.Name]
+        measure.Properties = prop_c
+        assert measure.Properties == {prop_c}
+        measure.Properties = [prop_c, prop_a]
+        assert measure.Properties == {prop_c, prop_a}
 
         action_a = MeasureAction(
             Name="An action", Lookup=["Perimeter", "Conditioning", "HeatingCoeffOfPerf"]

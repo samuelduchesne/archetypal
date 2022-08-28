@@ -43,6 +43,20 @@ This behavior is enabled by default, but if you wish to preserve the entanglemen
 measure.mutate(lib, disentangle=False)
 ```
 
+### Changelogs
+
+The changes executed by a measure are returneed as a changelog by each call to mutate an `UmiTemplateLibrary` or `BuildingTemplate`.  The log is formatted as a dict, with `BuildingTemplate`s as keys, and tuples of `(address, original_value, new_value)` as values:
+
+```
+changelog = measure.mutate(lib)
+```
+
+You can also generate a changelog of pending changes without mutating the target by using the `changelog` method.  
+
+```
+changelog = measure.changelog(lib)
+```
+
 # What is a Measure
 
 An UMI `Measure`  is defined by a collection of `MeasureProperties`, which each define a set of `MeasureActions` to mutate a `BuildingTemplate`.  `Measures` can be composed into new `Measures` which combine several other` Measures`, and each` MeasureProperty` or `MeasureAction` may have `Validators` associated with it (e.g. to only allow upgrades to be applied if certain conditions are met).  Each `MeasureProperty` or `MeasureAction` may also have a `Transformer` associated with it, which allows the new values applied by an upgrade to depend on the current state of the `BuildingTemplate` (see [Advanced Usage](#advanced-usage)).  Archetypal comes with several pre-defined measures, but the `Measure` class makes it easy to define your own.

@@ -1,5 +1,5 @@
 networkx~=2.6.1
-geomeppy @ git+https://github.com/samuelduchesne/geomeppy.git#geomeppy
+geomeppy @ git+https://github.com/samuelduchesne/geomeppy.git@v0.12#geomeppy
 eppy==0.5.56  # for stability
 matplotlib~=3.4  # because of TwoSlopesNorm
 pycountry~=20.7.3

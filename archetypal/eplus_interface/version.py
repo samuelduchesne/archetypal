@@ -84,7 +84,7 @@ class EnergyPlusVersion(Version):
                 sorted(
                     (
                         Version(
-                            re.search(r"([\d]*?)-([\d]*?)-([\d])", home.stem)
+                            re.search(r"\d+(-\d+)+", home.stem)
                             .group()
                             .replace("-", ".")
                         )

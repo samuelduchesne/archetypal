@@ -31,6 +31,7 @@ measure.HeatingCoP = 3.2
 measure.mutate(lib.BuildingTemplates[0]) 
 ```
 
+
 ### Entanglement
 
 By default, when you apply a measure, it will duplicate and replace the tree of any objects which are mutated so that the mutation does not ripple out to other parents of the targeted object.  
@@ -42,6 +43,8 @@ This behavior is enabled by default, but if you wish to preserve the entanglemen
 ```
 measure.mutate(lib, disentangle=False)
 ```
+
+*nb: when mutating a template (rather than a whole library) with `disentangle=True`, the new components will not automatically be added to any of the template's parent libraries `LIB_GROUPS` arrays automatically; remember to call `lib.update_components_list()` to extract the new components into their corresponding `LIB_GROUPS` array, e.g. `lib.ZoneDefinitions`.*
 
 ### Changelogs
 

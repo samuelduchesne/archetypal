@@ -827,6 +827,7 @@ class Measure(object):
                 **kwargs,
             )
             mutations[bt] = bt_mutations
+        library.update_components_list()
         return mutations
 
 

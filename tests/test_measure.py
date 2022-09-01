@@ -120,6 +120,10 @@ class TestMeasure:
             assert bt.Perimeter.Loads.EquipmentPowerDensity == equipment_alt
             assert bt.Perimeter.Loads.LightingPowerDensity == lighting_alt
             assert bt.Core.Loads.LightingPowerDensity == lighting_alt
+            assert bt.Core.Loads in umi_library.ZoneLoads # Make sure that lib.update_components_list worked
+            assert bt.Perimeter.Loads in umi_library.ZoneLoads
+            assert bt.Perimeter in umi_library.ZoneDefinitions
+            assert bt.Core in umi_library.ZoneDefinitions
 
     def test_changelog(self, umi_library):
         measure = SetInfiltration.Tight() + SetElectricLoadsEfficiency()
@@ -734,11 +738,12 @@ class TestMeasure:
         assert d_core_loads.EquipmentPowerDensity == 3
 
     def test_class_inheritance(self, umi_library):
+        schedule_to_use = umi_library.YearSchedules[0]
         class GSHPandVent(SetCOP, SetMechanicalVentilation):
             HeatingCoP = 4
             CoolingCoP = 3
             VentilationACH = 1.33
-            VentilationSchedule = umi_library.YearSchedules[0]
+            VentilationSchedule = schedule_to_use
 
         measure = GSHPandVent()
 
@@ -752,12 +757,12 @@ class TestMeasure:
             assert bt.Perimeter.Ventilation.ScheduledVentilationAch == 1.33
             assert (
                 bt.Perimeter.Ventilation.ScheduledVentilationSchedule
-                == umi_library.YearSchedules[0]
+                == schedule_to_use
             )
             assert bt.Core.Ventilation.ScheduledVentilationAch == 1.33
             assert (
                 bt.Core.Ventilation.ScheduledVentilationSchedule
-                == umi_library.YearSchedules[0]
+                == schedule_to_use
             )
 
     def test_getters_and_setters_and_equality(self, building_templates):

@@ -4,6 +4,7 @@ import hashlib
 import os
 from collections import OrderedDict
 from io import StringIO
+from typing import List
 
 import eppy
 from eppy.EPlusInterfaceFunctions import parse_idd
@@ -83,35 +84,14 @@ def get_idf_version(file, doted=True):
     Returns:
         str: the version id
     """
-    if isinstance(file, StringIO):
-        file.seek(0)
-        txt = file.read()
-    else:
-        with open(os.path.abspath(file), "r", encoding="latin-1") as fhandle:
-            txt = fhandle.read()
-    try:
-        ntxt = parse_idd.nocomment(txt, "!")
-        blocks = ntxt.split(";")
-        blocks = [block.strip() for block in blocks]
-        bblocks = [block.split(",") for block in blocks]
-        bblocks1 = [[item.strip() for item in block] for block in bblocks]
-        ver_blocks = [block for block in bblocks1 if block[0].upper() == "VERSION"]
-        ver_block = ver_blocks[0]
-        if doted:
-            versionid = ver_block[1]
-        else:
-            versionid = ver_block[1].replace(".", "-") + "-0"
-    except IndexError:
-        raise Exception(
-            "The IDF model does not contain a 'Version' object. "
-            "Specify file_version=<version> in the IDF() constructor."
-        )
-    except Exception as e:
-        log('Version id for file "{}" cannot be found'.format(file))
-        log("{}".format(e))
-        raise
-    else:
-        return versionid
+    import re
+    with open(file) as f:
+        txt = f.read()
+        versions: List = re.findall(r"(?s)(?<=Version,).*?(?=;)", txt, re.IGNORECASE)
+        for v in versions:
+            if doted:
+                return v.strip()
+            return v.strip().replace(".", "-")
 
 
 def getoldiddfile(versionid):

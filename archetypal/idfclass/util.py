@@ -8,6 +8,7 @@ from typing import List
 
 import eppy
 from eppy.EPlusInterfaceFunctions import parse_idd
+from packaging.version import Version
 
 from archetypal.utils import log
 
@@ -89,9 +90,10 @@ def get_idf_version(file, doted=True):
         txt = f.read()
         versions: List = re.findall(r"(?s)(?<=Version,).*?(?=;)", txt, re.IGNORECASE)
         for v in versions:
+            version = Version(v.strip())
             if doted:
-                return v.strip()
-            return v.strip().replace(".", "-")
+                return f"{version.major}.{version.minor}.{version.micro}"
+            return f"{version.major}-{version.minor}-{version.micro}"
 
 
 def getoldiddfile(versionid):

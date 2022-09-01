@@ -154,8 +154,8 @@ class EnergyPlusVersion(Version):
             value = {}
             for basedir in get_eplus_basedirs():
                 # match the Idd file contained in basedir
-                match = re.search(r"([\d]*?-[\d]*?-[\d])", basedir)
-                version = match.group(1)
+                match = re.search(r"\d+(-\d+)+", basedir)
+                version = match.group()
                 value[version] = basedir.expand()
         self._install_locations = value
 
@@ -185,13 +185,13 @@ class EnergyPlusVersion(Version):
             else:
                 _valid_paths = {}
                 for iddname in iddnames:
-                    match = re.search(".+V(\d*?-\d*?-\d)", str(iddname))
+                    match = re.search("\d+(-\d+)+", iddname.stem)
                     if match is None:
                         # match the Idd file contained in basedir
-                        match = re.search(r"([\d]*?-[\d]*?-[\d])", iddname)
-                        version = match.group(1)
+                        match = re.search(r"\d+(-\d+)+", iddname.stem)
+                        version = match.group()
                     else:
-                        version = match.group(1)
+                        version = match.group()
 
                     _valid_paths[version] = iddname
         self._valid_paths = dict(sorted(_valid_paths.items()))

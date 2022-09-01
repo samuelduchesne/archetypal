@@ -95,7 +95,7 @@ class TransitionExe(EnergyPlusProgram):
             copytree(self.idf.idfversionupdater_dir, self.running_directory)
             self._trans_exec = {
                 EnergyPlusVersion(
-                    re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
+                    re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", exec).group(1)
                 ): exec
                 for exec in self.running_directory.files("Transition-V*")
             }
@@ -235,7 +235,7 @@ class TransitionThread(Thread):
         """Return dict of {EnergyPlusVersion, executable} for each transitions."""
         return {
             EnergyPlusVersion(
-                re.search(r"to-V(([\d])-([\d])-([\d]))", exec).group(1)
+                re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", exec).group(1)
             ): exec
             for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
         }

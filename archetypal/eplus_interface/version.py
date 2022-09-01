@@ -83,7 +83,11 @@ class EnergyPlusVersion(Version):
             iter(
                 sorted(
                     (
-                        re.search(r"([\d])-([\d])-([\d])", home.stem).group()
+                        Version(
+                            re.search(r"([\d])*?-([\d])*?-([\d])", home.stem)
+                            .group()
+                            .replace("-", ".")
+                        )
                         for home in eplus_homes
                     ),
                     reverse=True,

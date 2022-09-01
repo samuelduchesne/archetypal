@@ -1,16 +1,13 @@
 """IdfClass utilities."""
 
 import hashlib
+import io
 import os
 from collections import OrderedDict
 from io import StringIO
-from typing import List
+from typing import List, Union
 
-import eppy
-from eppy.EPlusInterfaceFunctions import parse_idd
 from packaging.version import Version
-
-from archetypal.utils import log
 
 
 def hash_model(idfname, **kwargs):
@@ -74,7 +71,7 @@ def hash_model(idfname, **kwargs):
     return hasher.hexdigest()
 
 
-def get_idf_version(file, doted=True):
+def get_idf_version(file: Union[str, io.StringIO], doted=True):
     """Get idf version quickly by reading first few lines of idf file containing
     the 'VERSION' identifier
 
@@ -86,14 +83,20 @@ def get_idf_version(file, doted=True):
         str: the version id
     """
     import re
-    with open(file) as f:
-        txt = f.read()
-        versions: List = re.findall(r"(?s)(?<=Version,).*?(?=;)", txt, re.IGNORECASE)
-        for v in versions:
-            version = Version(v.strip())
-            if doted:
-                return f"{version.major}.{version.minor}.{version.micro}"
-            return f"{version.major}-{version.minor}-{version.micro}"
+
+    if isinstance(file, io.StringIO):
+        file.seek(0)
+        txt = file.read()
+    else:
+        with open(file) as f:
+            txt = f.read()
+
+    versions: List = re.findall(r"(?s)(?<=Version,).*?(?=;)", txt, re.IGNORECASE)
+    for v in versions:
+        version = Version(v.strip())
+        if doted:
+            return f"{version.major}.{version.minor}.{version.micro}"
+        return f"{version.major}-{version.minor}-{version.micro}"
 
 
 def getoldiddfile(versionid):
@@ -103,6 +106,8 @@ def getoldiddfile(versionid):
     Args:
         versionid:
     """
+    import eppy
+
     vlist = versionid.split(".")
     if len(vlist) == 1:
         vlist = vlist + ["0", "0"]

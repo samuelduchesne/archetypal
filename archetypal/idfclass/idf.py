@@ -2380,7 +2380,7 @@ class IDF(GeomIDF):
     def _execute_transitions(self, idf_file, to_version, **kwargs):
         trans_exec = {
             EnergyPlusVersion(
-                re.search(r"to-V(([\d])-([\d])-([\d]))", executable).group(1)
+                re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", executable).group(1)
             ): executable
             for executable in self.idfversionupdater_dir.files("Transition-V*")
         }

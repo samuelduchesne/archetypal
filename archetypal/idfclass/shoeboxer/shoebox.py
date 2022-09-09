@@ -69,23 +69,6 @@ class ShoeBox(IDF):
         return 1 / (u_factor_times_area / gross_area)
 
     @property
-    def total_envelope_area(self):
-        """Get the total gross envelope area including windows [m2].
-
-        Note:
-            The envelope is consisted of surfaces that have an outside boundary
-            condition different then `Adiabatic` or `Surface` or that participate in
-            the heat exchange with the exterior.
-
-        """
-        total_area = 0
-        for surface in self.getsurfaces():
-            if surface.Outside_Boundary_Condition.lower() in ["adiabatic", "surface"]:
-                continue
-            total_area += surface.area
-        return total_area
-
-    @property
     def total_building_volume(self):
         """Get the total building air volume [m3]."""
         import numpy as np

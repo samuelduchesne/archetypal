@@ -65,7 +65,7 @@ setup(
     install_requires=install_requires,
     extras_require={"dev": dev_requires},
     dependency_links=[
-        "https://github.com/samuelduchesne/geomeppy.git@v0.12#egg=geomeppy"
+        "https://github.com/samuelduchesne/geomeppy.git@v0.12.3#egg=geomeppy"
     ],
     test_suite="tests",
     entry_points="""

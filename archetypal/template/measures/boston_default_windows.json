@@ -1,7 +1,7 @@
 {
   "GasMaterials": [
     {
-      "$id": "1",
+      "$id": "239393209120",
       "Category": "Gases",
       "Type": "AIR",
       "Conductivity": 0.0,
@@ -19,7 +19,7 @@
       "Name": "AIR"
     },
     {
-      "$id": "2",
+      "$id": "239393209121",
       "Category": "Gases",
       "Type": "ARGON",
       "Conductivity": 0.0,
@@ -37,7 +37,7 @@
       "Name": "ARGON"
     },
     {
-      "$id": "3",
+      "$id": "239393209122",
       "Category": "Gases",
       "Type": "KRYPTON",
       "Conductivity": 0.0,
@@ -55,7 +55,7 @@
       "Name": "KRYPTON"
     },
     {
-      "$id": "5",
+      "$id": "239393209123",
       "Category": "Gases",
       "Type": "SF6",
       "Conductivity": 0.0,
@@ -73,7 +73,7 @@
       "Name": "SF6"
     },
     {
-      "$id": "4",
+      "$id": "239393209124",
       "Category": "Gases",
       "Type": "XENON",
       "Conductivity": 0.0,
@@ -93,7 +93,7 @@
   ],
   "GlazingMaterials": [
     {
-      "$id": "7",
+      "$id": "939393209121",
       "DirtFactor": 1.0,
       "IREmissivityBack": 0.84,
       "IREmissivityFront": 0.84,
@@ -122,7 +122,7 @@
       "Name": "B_Glass_Clear_3"
     },
     {
-      "$id": "9",
+      "$id": "939393209122",
       "DirtFactor": 1.0,
       "IREmissivityBack": 0.84,
       "IREmissivityFront": 0.84,
@@ -151,7 +151,7 @@
       "Name": "B_Glass_Clear_3_LoE_1"
     },
     {
-      "$id": "8",
+      "$id": "939393209123",
       "DirtFactor": 1.0,
       "IREmissivityBack": 0.84,
       "IREmissivityFront": 0.84,
@@ -180,7 +180,7 @@
       "Name": "B_Glass_Clear_3_Ref_H"
     },
     {
-      "$id": "6",
+      "$id": "939393209124",
       "DirtFactor": 1.0,
       "IREmissivityBack": 0.84,
       "IREmissivityFront": 0.84,
@@ -211,7 +211,7 @@
   ],
   "OpaqueMaterials": [
     {
-      "$id": "18",
+      "$id": "939393209125",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -236,7 +236,7 @@
       "Name": "B_Air_Floor_15cm"
     },
     {
-      "$id": "12",
+      "$id": "939393209126",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -261,7 +261,7 @@
       "Name": "B_Air_Wall_3cm"
     },
     {
-      "$id": "22",
+      "$id": "939393209127",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.8,
@@ -288,7 +288,7 @@
       "Name": "B_Cement_Mortar"
     },
     {
-      "$id": "19",
+      "$id": "939393209128",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.4,
@@ -314,7 +314,7 @@
       "Name": "B_Ceramic_Tile"
     },
     {
-      "$id": "17",
+      "$id": "939393209129",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.5,
@@ -339,7 +339,7 @@
       "Name": "B_Clay_Brick_H"
     },
     {
-      "$id": "11",
+      "$id": "939393209110",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -364,7 +364,7 @@
       "Name": "B_Concrete_Block_H"
     },
     {
-      "$id": "15",
+      "$id": "939393209111",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -389,7 +389,7 @@
       "Name": "B_Concrete_Block_S"
     },
     {
-      "$id": "14",
+      "$id": "939393209112",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -414,7 +414,7 @@
       "Name": "B_Concrete_MC_Light"
     },
     {
-      "$id": "13",
+      "$id": "939393209113",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -439,7 +439,7 @@
       "Name": "B_Concrete_RC_Dense"
     },
     {
-      "$id": "24",
+      "$id": "939393209114",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.6,
@@ -464,7 +464,7 @@
       "Name": "B_Fiberglass_Batts"
     },
     {
-      "$id": "16",
+      "$id": "939393209115",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.6,
@@ -491,7 +491,7 @@
       "Name": "B_Gypsum_Board"
     },
     {
-      "$id": "21",
+      "$id": "939393209116",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -518,7 +518,7 @@
       "Name": "B_Gypsum_Plaster"
     },
     {
-      "$id": "26",
+      "$id": "939393209117",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.6,
@@ -545,7 +545,7 @@
       "Name": "B_Hardwood_General"
     },
     {
-      "$id": "23",
+      "$id": "939393209118",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -570,7 +570,7 @@
       "Name": "B_Plywood_Board"
     },
     {
-      "$id": "28",
+      "$id": "939393209119",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.6,
@@ -595,7 +595,7 @@
       "Name": "B_Slate_Tile"
     },
     {
-      "$id": "27",
+      "$id": "939393209100",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.6,
@@ -622,7 +622,7 @@
       "Name": "B_Softwood_General"
     },
     {
-      "$id": "31",
+      "$id": "939393209101",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.4,
@@ -647,7 +647,7 @@
       "Name": "B_Steel_General"
     },
     {
-      "$id": "25",
+      "$id": "939393209102",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -672,7 +672,7 @@
       "Name": "B_Urethane_Carpet"
     },
     {
-      "$id": "30",
+      "$id": "939393209103",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.7,
@@ -697,7 +697,7 @@
       "Name": "B_Vinyl_Cladding"
     },
     {
-      "$id": "10",
+      "$id": "939393209104",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.6,
@@ -723,7 +723,7 @@
       "Name": "B_Wood_Floor"
     },
     {
-      "$id": "29",
+      "$id": "939393209105",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.6,
@@ -748,7 +748,7 @@
       "Name": "B_Wood_Shingle"
     },
     {
-      "$id": "20",
+      "$id": "939393209106",
       "MoistureDiffusionResistance": 50.0,
       "Roughness": "Rough",
       "SolarAbsorptance": 0.6,
@@ -778,23 +778,23 @@
   "OpaqueConstructions": [],
   "WindowConstructions": [
     {
-      "$id": "57",
+      "$id": "939393209000",
       "Layers": [
         {
           "Material": {
-            "$ref": "7"
+            "$ref": "939393209121"
           },
           "Thickness": 0.003
         },
         {
           "Material": {
-            "$ref": "1"
+            "$ref": "239393209120"
           },
           "Thickness": 0.006
         },
         {
           "Material": {
-            "$ref": "7"
+            "$ref": "939393209121"
           },
           "Thickness": 0.003
         }
@@ -810,23 +810,23 @@
       "Name": "B_Dbl_Air_Cl"
     },
     {
-      "$id": "58",
+      "$id": "939393209001",
       "Layers": [
         {
           "Material": {
-            "$ref": "9"
+            "$ref": "939393209122"
           },
           "Thickness": 0.003
         },
         {
           "Material": {
-            "$ref": "1"
+            "$ref": "239393209120"
           },
           "Thickness": 0.006
         },
         {
           "Material": {
-            "$ref": "7"
+            "$ref": "939393209121"
           },
           "Thickness": 0.003
         }
@@ -842,23 +842,23 @@
       "Name": "B_Dbl_Air_Le"
     },
     {
-      "$id": "59",
+      "$id": "939393209002",
       "Layers": [
         {
           "Material": {
-            "$ref": "7"
+            "$ref": "939393209121"
           },
           "Thickness": 0.003
         },
         {
           "Material": {
-            "$ref": "2"
+            "$ref": "239393209121"
           },
           "Thickness": 0.006
         },
         {
           "Material": {
-            "$ref": "7"
+            "$ref": "939393209121"
           },
           "Thickness": 0.003
         }
@@ -874,23 +874,23 @@
       "Name": "B_Dbl_Arg_Cl"
     },
     {
-      "$id": "60",
+      "$id": "939393209003",
       "Layers": [
         {
           "Material": {
-            "$ref": "9"
+            "$ref": "939393209122"
           },
           "Thickness": 0.003
         },
         {
           "Material": {
-            "$ref": "2"
+            "$ref": "239393209121"
           },
           "Thickness": 0.006
         },
         {
           "Material": {
-            "$ref": "7"
+            "$ref": "939393209121"
           },
           "Thickness": 0.003
         }
@@ -906,11 +906,11 @@
       "Name": "B_Dbl_Arg_Le"
     },
     {
-      "$id": "61",
+      "$id": "939393209004",
       "Layers": [
         {
           "Material": {
-            "$ref": "6"
+            "$ref": "939393209124"
           },
           "Thickness": 0.004
         }

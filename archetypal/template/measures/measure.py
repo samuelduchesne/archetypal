@@ -1118,7 +1118,7 @@ class SetFacadeThermalResistance(Measure):
     _name = "Facade Upgrade"
     _description = "Upgrade roof and facade insulation by specifying R-Values for entire assemblies."
 
-    def __init__(self, RoofRValue, FacadeRValue, **kwargs):
+    def __init__(self, RoofRValue=1/2.37, FacadeRValue=1/1.66, **kwargs):
 
         super(SetFacadeThermalResistance, self).__init__(**kwargs)
         roof_property = MeasureProperty(

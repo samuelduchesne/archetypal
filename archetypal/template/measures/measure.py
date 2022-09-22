@@ -1,10 +1,12 @@
 """Energy measures modules."""
 import functools
 import inspect
+import json
 import logging
 import os
 
 from archetypal.template.building_template import BuildingTemplate
+from archetypal.template.materials.opaque_material import OpaqueMaterial
 from archetypal.template.schedule import UmiSchedule
 from archetypal.umi_template import UmiTemplateLibrary
 
@@ -1225,7 +1227,7 @@ class InstallDoublePaneWindowsWithFixedUValueAndCoating(Measure):
     _name = "Install Double Pane Windows With Fixed UValue"
     _description = "Upgrade windows to fixed double pane window"
 
-    def __init__(self, AirGapThickness=80, IsLowE=True, Gas="AIR", **kwargs):
+    def __init__(self, AirGapThickness=0.080, IsLowE=True, Gas="AIR", **kwargs):
         super(InstallDoublePaneWindowsWithFixedUValueAndCoating, self).__init__(**kwargs)
 
         def create_double_pane_window( AirGapThickness, IsLowE, Gas):
@@ -1292,6 +1294,60 @@ class InstallDoublePaneWindowsWithFixedUValueAndCoating(Measure):
         self.add_property(window_lowe_prop)
         self.add_property(window_airgap_property)
 
-    # def mutate(self, target, disentangle=True, changelog_only=False, *args, **kwargs):
-    #     return super().mutate(target, disentangle, changelog_only, WindowUValue=self.WindowUValue, IsLowE=self.IsLowE, Gas=self.Gas, *args, **kwargs)
 
+class AddInsulationIfItDoesNotExistOrUpgrade(Measure):
+
+    _name = "Install Double Pane Windows With Fixed UValue"
+    _description = "Upgrade windows to fixed double pane window"
+
+    def __init__(self, FacadeRValue=2, RoofRValue=2, **kwargs):
+        super(AddInsulationIfItDoesNotExistOrUpgrade, self).__init__(**kwargs)
+
+        def create_insulation_material():
+            location = os.path.join(os.path.dirname(os.path.abspath(__file__)), "default_insulation.json")
+            data = {}
+            with open(location) as f:
+                data = json.load(f)
+            insulation_material = OpaqueMaterial.from_dict(data)
+            return insulation_material
+
+        def AddInsulationLayerAndSetRValue(original_value, proposed_transformer_value, *args, **kwargs):
+            new = original_value.duplicate()
+            if len(original_value.Layers) == 1:
+                from archetypal.template.materials.material_layer import MaterialLayer
+                mat = create_insulation_material()
+                layer = MaterialLayer(mat, 0.060)
+                new = original_value.duplicate()
+                new.Layers.append(layer)
+            new.r_value = proposed_transformer_value
+            return new
+
+        facade_insulation_addition = MeasureAction(
+            Name="Add Facade Insulation",
+            Lookup=["Perimeter", "Constructions", "Facade"],
+            Transformer=AddInsulationLayerAndSetRValue,
+        )
+        
+        facade_insulation_creation_prop= MeasureProperty(
+            Name="Facade R-Value",
+            AttrName="FacadeRValue",
+            Description="Adds an insulation layer if none exists, then set r-value of entire assembly.",
+            Default=FacadeRValue,
+            Actions=[facade_insulation_addition]
+        )
+        self.add_property(facade_insulation_creation_prop)
+
+        roof_insulation_addition = MeasureAction(
+            Name="Add Roof Insulation",
+            Lookup=["Perimeter", "Constructions", "Roof"],
+            Transformer=AddInsulationLayerAndSetRValue,
+        )
+        
+        roof_insulation_creation_prop= MeasureProperty(
+            Name="Roof R-Value",
+            AttrName="RoofRValue",
+            Description="Adds an insulation layer if none exists, then set r-value of entire assembly.",
+            Default=RoofRValue,
+            Actions=[roof_insulation_addition]
+        )
+        self.add_property(roof_insulation_creation_prop)

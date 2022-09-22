@@ -1,0 +1,25 @@
+{
+  "$id": "0234183819",
+  "MoistureDiffusionResistance": 50.0,
+  "Roughness": "Rough",
+  "SolarAbsorptance": 0.6,
+  "SpecificHeat": 840.0,
+  "ThermalEmittance": 0.9,
+  "VisibleAbsorptance": 0.6,
+  "Conductivity": 0.043,
+  "Cost": 0.0,
+  "Density": 12.0,
+  "EmbodiedCarbon": 1.35,
+  "EmbodiedEnergy": 28.0,
+  "SubstitutionRatePattern": [
+    0.5
+  ],
+  "SubstitutionTimestep": 30.0,
+  "TransportCarbon": 0.067,
+  "TransportDistance": 1000.0,
+  "TransportEnergy": 0.94,
+  "Category": "Uncategorized",
+  "Comments": null,
+  "DataSource": "default",
+  "Name": "B_Fiberglass_Batts"
+}

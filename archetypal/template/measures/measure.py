@@ -2,6 +2,7 @@
 import functools
 import inspect
 import logging
+import os
 
 from archetypal.template.building_template import BuildingTemplate
 from archetypal.template.schedule import UmiSchedule
@@ -1217,3 +1218,80 @@ class SetInfiltration(Measure):
     @classmethod
     def Tight(cls):
         return cls(Infiltration=0.1)
+
+
+class InstallDoublePaneWindowsWithFixedUValueAndCoating(Measure):
+
+    _name = "Install Double Pane Windows With Fixed UValue"
+    _description = "Upgrade windows to fixed double pane window"
+
+    def __init__(self, AirGapThickness=80, IsLowE=True, Gas="AIR", **kwargs):
+        super(InstallDoublePaneWindowsWithFixedUValueAndCoating, self).__init__(**kwargs)
+
+        def create_double_pane_window( AirGapThickness, IsLowE, Gas):
+            location = os.path.join(os.path.dirname(os.path.abspath(__file__)), "boston_default_windows.json")
+            window_lib = UmiTemplateLibrary.open(location)
+            gasOffset = 0
+            if (Gas.lower() == "air"):
+                pass
+            elif (Gas.lower() == "argon"):
+                gasOffset = 2
+            else:
+                raise ValueError("Unsupported gas specified.")
+            lowEOffset = 0
+            if (not IsLowE):
+                pass
+            elif (IsLowE):
+                lowEOffset = 1
+
+            window = window_lib.WindowConstructions[gasOffset+lowEOffset]
+
+            window.Layers[1].Thickness = AirGapThickness
+            return window
+            
+        
+        def WindowReplacer(original_value, proposed_transformer_value, *args, **kwargs):
+            return create_double_pane_window(self.AirGapThickness, self.IsLowE, self.Gas)
+
+        window_replacement_action = MeasureAction(
+            Name="Replace Window",
+            Lookup=["Windows", "Construction"],
+            Transformer=WindowReplacer,
+        )
+        
+        window_replacement_property = MeasureProperty(
+            Name="Window Replacer",
+            AttrName="WindowReplacer",
+            Description="Replaces the window construction",
+            Default=None,
+            Actions=[window_replacement_action]
+        )
+        window_gas_prop = MeasureProperty(
+            Name="Gas",
+            AttrName="Gas",
+            Description="Select the gas layer",
+            Default=Gas,
+            Actions=[]
+        )
+        window_lowe_prop = MeasureProperty(
+            Name="Is LowE",
+            AttrName="IsLowE",
+            Description="Adds a low-e coating",
+            Default=IsLowE,
+            Actions=[]
+        )
+        window_airgap_property = MeasureProperty(
+            Name="Air Gap Thickness",
+            AttrName="AirGapThickness",
+            Description="Change the airgap thickness",
+            Default=AirGapThickness,
+            Actions=[]
+        )
+        self.add_property(window_replacement_property)
+        self.add_property(window_gas_prop)
+        self.add_property(window_lowe_prop)
+        self.add_property(window_airgap_property)
+
+    # def mutate(self, target, disentangle=True, changelog_only=False, *args, **kwargs):
+    #     return super().mutate(target, disentangle, changelog_only, WindowUValue=self.WindowUValue, IsLowE=self.IsLowE, Gas=self.Gas, *args, **kwargs)
+

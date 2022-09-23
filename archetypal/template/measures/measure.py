@@ -1312,13 +1312,11 @@ class AddInsulationIfItDoesNotExistOrUpgrade(Measure):
             return insulation_material
 
         def AddInsulationLayerAndSetRValue(original_value, proposed_transformer_value, *args, **kwargs):
+            from archetypal.template.materials.material_layer import MaterialLayer
+            mat = create_insulation_material()
+            layer = MaterialLayer(mat, 0.060)
             new = original_value.duplicate()
-            if len(original_value.Layers) == 1:
-                from archetypal.template.materials.material_layer import MaterialLayer
-                mat = create_insulation_material()
-                layer = MaterialLayer(mat, 0.060)
-                new = original_value.duplicate()
-                new.Layers.append(layer)
+            new.Layers.append(layer)
             new.r_value = proposed_transformer_value
             return new
 

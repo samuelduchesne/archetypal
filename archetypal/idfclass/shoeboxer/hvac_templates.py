@@ -1,5 +1,13 @@
-"""HVAC Templates Module."""
-from typing import Literal
+"""HVAC Templates Module.
+
+TODO:
+    -[] VAV AHU w/PFP Terminals
+    -[] WSHP
+    -[x] Packaged rooftop heat pump (PTHP)
+    -[] Packaged rooftop AC + Furnace
+
+"""
+from typing import Literal, Optional
 
 
 class HVACTemplate:
@@ -73,8 +81,8 @@ class SimpleIdealLoadsSystem(HVACTemplate):
         )
 
 
-class VAVWithDistrictHeatingCooling(HVACTemplate):
-    """For packaged variable air volume systems using direct-expansion cooling.
+class VAVWithBoilersAndChillers(HVACTemplate):
+    """For variable air volume systems with boilers and air-cooled chillers.
 
     - HVACTemplate:Thermostat
     - HVACTemplate:Zone:VAV or
@@ -89,6 +97,46 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
 
     REQUIRED = ["HVACTemplate:Thermostat", "HVACTemplate:System:PackagedVAV"]
     OPTIONAL = []
+
+    def __init__(
+        self,
+        Baseboard_Heating_Type: Literal["None", "HotWater", "Electric"] = "None",
+        Boiler_Type: Literal[
+            "DistrictHotWater", "HotWaterBoiler", "CondensingHotWaterBoiler"
+        ] = "DistrictHotWater",
+        Chiller_Type: Literal[
+            "DistrictChilledWater",
+            "ElectricCentrifugalChiller",
+            "ElectricScrewChiller",
+            "ElectricReciprocatingChiller",
+        ] = "DistrictChilledWater",
+        Condenser_Type: Literal[
+            "AirCooled", "WaterCooled", "EvaporativelyCooled"
+        ] = "AirCooled",
+    ):
+        """Initialize a VAV System with Chillers and Boilers.
+
+        Args:
+            Baseboard_Heating_Type (str): This field specifies the availability of
+                thermostatically controlled baseboard heat in this zone.
+            Boiler_Type (str): While EnergyPlus has a variety of boiler options,
+                the choices for this field are: DistrictHotWater – District heating,
+                HotWaterBoiler – Hot water boiler (non-condensing),
+                CondensingHotWaterBoiler – Hot water boiler (condensing)
+            Chiller_Type (str): While EnergyPlus has a variety of chiller options,
+                the only choices currently for this field are: DistrictChilledWater,
+                ElectricCentrifugalChiller, ElectricScrewChiller,
+                ElectricReciprocatingChiller
+            Condenser_Type (str): The choices for this field are: AirCooled,
+                WaterCooled, EvaporativelyCooled. The default value is WaterCooled.
+                If WaterCooled, then one HVACTemplate:Plant:Tower is created. Not
+                applicable if Chiller Type is Purchased Chilled Water.
+        """
+        super(VAVWithBoilersAndChillers, self).__init__()
+        self.Condenser_Type = Condenser_Type
+        self.Chiller_Type = Chiller_Type
+        self.Baseboard_Heating_Type = Baseboard_Heating_Type
+        self.Boiler_Type = Boiler_Type
 
     def create_from(self, zone, zoneDefinition):
         """Create.
@@ -129,7 +177,7 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
             Outdoor_Air_Flow_Rate_per_Person=zoneDefinition.Conditioning.MinFreshAirPerPerson,
             Outdoor_Air_Flow_Rate_per_Zone_Floor_Area=zoneDefinition.Conditioning.MinFreshAirPerArea,
             Outdoor_Air_Flow_Rate_per_Zone=0.0,
-            Reheat_Coil_Type="None",
+            Reheat_Coil_Type="HotWater",
             Reheat_Coil_Availability_Schedule_Name="",
             Damper_Heating_Action="Reverse",
             Maximum_Flow_per_Zone_Floor_Area_During_Reheat="",
@@ -138,7 +186,7 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
             Design_Specification_Outdoor_Air_Object_Name_for_Control="",
             Supply_Plenum_Name="",
             Return_Plenum_Name="",
-            Baseboard_Heating_Type="None",
+            Baseboard_Heating_Type=self.Baseboard_Heating_Type,
             Baseboard_Heating_Availability_Schedule_Name="",
             Baseboard_Heating_Capacity="autosize",
             Zone_Cooling_Design_Supply_Air_Temperature_Input_Method="SystemSupplyAirTemperature",
@@ -280,10 +328,10 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
             idf.newidfobject(
                 key="HVACTEMPLATE:PLANT:CHILLER",
                 Name="PLANT:CHILLER",
-                Chiller_Type="DistrictChilledWater",
+                Chiller_Type=self.Chiller_Type,
                 Capacity="autosize",
-                Nominal_COP="",
-                Condenser_Type="AirCooled",
+                Nominal_COP=zoneDefinition.Conditioning.CoolingCoeffOfPerf,
+                Condenser_Type=self.Condenser_Type,
                 Priority="",
                 Sizing_Factor=1.0,
                 Minimum_Part_Load_Ratio=0.0,
@@ -293,13 +341,27 @@ class VAVWithDistrictHeatingCooling(HVACTemplate):
                 Leaving_Chilled_Water_Lower_Temperature_Limit=5.0,
             )
 
+            if self.Condenser_Type == "WaterCooled":
+                idf.newidfobject(
+                    key="HVACTEMPLATE:PLANT:TOWER",
+                    Name="CoolingTower",
+                    Tower_Type="SingleSpeed",
+                    High_Speed_Nominal_Capacity="autosize",
+                    High_Speed_Fan_Power="autosize",
+                    Low_Speed_Nominal_Capacity="autosize",
+                    Low_Speed_Fan_Power="autosize",
+                    Free_Convection_Capacity="autosize",
+                    Priority="",
+                    Sizing_Factor=1.0,
+                )
+
             idf.newidfobject(
                 key="HVACTEMPLATE:PLANT:BOILER",
-                Name="PLANT:BOILER",
-                Boiler_Type="DistrictHotWater",
+                Name="PlantBoiler",
+                Boiler_Type=self.Boiler_Type,
                 Capacity="autosize",
-                Efficiency=1,
-                Fuel_Type="",
+                Efficiency=min(zoneDefinition.Conditioning.HeatingCoeffOfPerf, 1),
+                Fuel_Type=zoneDefinition.Conditioning.HeatingFuelType,
                 Priority="",
                 Sizing_Factor=1.0,
                 Minimum_Part_Load_Ratio=0.0,
@@ -357,7 +419,7 @@ class PackagedVAVWithDXCooling(HVACTemplate):
             Constant_Minimum_Air_Flow_Fraction="0.2",
             Fixed_Minimum_Air_Flow_Rate="",
             Minimum_Air_Flow_Fraction_Schedule_Name="",
-            Outdoor_Air_Method="Flow/Person",
+            Outdoor_Air_Method="Sum",
             Outdoor_Air_Flow_Rate_per_Person=zoneDefinition.Conditioning.MinFreshAirPerPerson,
             Outdoor_Air_Flow_Rate_per_Zone_Floor_Area=zoneDefinition.Conditioning.MinFreshAirPerArea,
             Outdoor_Air_Flow_Rate_per_Zone=0.0,
@@ -447,7 +509,10 @@ class PackagedVAVWithDXCooling(HVACTemplate):
 
 
 class PTHP(HVACTemplate):
-    """For packaged terminal air-to-air heat pump (PTHP) systems."""
+    """For packaged terminal air-to-air heat pump (PTHP) systems.
+
+    Each zone gets its own PTHP.
+    """
 
     REQUIRED = ["HVACTemplate:Thermostat", "HVACTemplate:Zone:PTHP"]
     OPTIONAL = []
@@ -469,9 +534,9 @@ class PTHP(HVACTemplate):
             No_Load_Supply_Air_Flow_Rate="",
             Zone_Heating_Sizing_Factor="",
             Zone_Cooling_Sizing_Factor="",
-            Outdoor_Air_Method="Flow/Person",
-            Outdoor_Air_Flow_Rate_per_Person="0.00944",
-            Outdoor_Air_Flow_Rate_per_Zone_Floor_Area="0.0",
+            Outdoor_Air_Method="Sum",
+            Outdoor_Air_Flow_Rate_per_Person=zoneDefinition.Conditioning.MinFreshAirPerPerson,
+            Outdoor_Air_Flow_Rate_per_Zone_Floor_Area=zoneDefinition.Conditioning.MinFreshAirPerArea,
             Outdoor_Air_Flow_Rate_per_Zone=0.0,
             System_Availability_Schedule_Name="",
             Supply_Fan_Operating_Mode_Schedule_Name="",
@@ -554,9 +619,9 @@ class BaseboardHeatingSystem(HVACTemplate):
             Baseboard_Heating_Availability_Schedule_Name="",
             Baseboard_Heating_Capacity="autosize",
             Dedicated_Outdoor_Air_System_Name="",
-            Outdoor_Air_Method="Flow/Person",
-            Outdoor_Air_Flow_Rate_per_Person="0.00944",
-            Outdoor_Air_Flow_Rate_per_Zone_Floor_Area="0.0",
+            Outdoor_Air_Method="Sum",
+            Outdoor_Air_Flow_Rate_per_Person=zoneDefinition.Conditioning.MinFreshAirPerPerson,
+            Outdoor_Air_Flow_Rate_per_Zone_Floor_Area=zoneDefinition.Conditioning.MinFreshAirPerArea,
             Outdoor_Air_Flow_Rate_per_Zone=0.0,
         )
 
@@ -590,8 +655,8 @@ class BaseboardHeatingSystem(HVACTemplate):
                 Name="PlantBoiler",
                 Boiler_Type=self.Boiler_Type,
                 Capacity="autosize",
-                Efficiency="0.8",
-                Fuel_Type="",
+                Efficiency=min(zoneDefinition.Conditioning.HeatingCoeffOfPerf, 1),
+                Fuel_Type=zoneDefinition.Conditioning.HeatingFuelType,  # Not applicable if Boiler Type is DistrictHotWater
                 Priority="",
                 Sizing_Factor=1.0,
                 Minimum_Part_Load_Ratio=0.0,
@@ -599,6 +664,28 @@ class BaseboardHeatingSystem(HVACTemplate):
                 Optimum_Part_Load_Ratio=1.0,
                 Water_Outlet_Upper_Temperature_Limit=100.0,
             )
+
+
+class WaterSourceHeatPumpWithTowerAndBoiler(HVACTemplate):
+    """For water to air heat pumps with boiler and cooling tower.
+
+    HVACTemplate:Thermostat
+    HVACTemplate:Zone:WaterToAirHeatPump
+    HVACTemplate:Plant:MixedWaterLoop
+    HVACTemplate:Plant:Boiler
+    HVACTemplate:Plant:Tower
+    """
+
+    REQUIRED = [
+        "HVACTemplate:Thermostat",
+        "HVACTemplate:Zone:WaterToAirHeatPump",
+        "HVACTemplate:Plant:MixedWaterLoop",
+        "HVACTemplate:Plant:Boiler",
+        "HVACTemplate:Plant:Tower",
+    ]
+    OPTIONAL = []
+
+    # TODO: Complete class
 
 
 HVACTemplates = {
@@ -611,5 +698,5 @@ HVACTemplates = {
     "SimpleIdealLoadsSystem": SimpleIdealLoadsSystem(),
     "PTHP": PTHP(),
     "PackagedVAVWithDXCooling": PackagedVAVWithDXCooling(),
-    "VAVWithDistrictHeatingCooling": VAVWithDistrictHeatingCooling()
+    "VAVWithDistrictHeatingCooling": VAVWithBoilersAndChillers(),
 }

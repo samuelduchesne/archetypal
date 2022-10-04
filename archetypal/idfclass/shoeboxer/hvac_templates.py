@@ -197,6 +197,7 @@ class VAVWithBoilersAndChillers(HVACTemplate):
             Zone_Heating_Design_Supply_Air_Temperature_Difference=30.0,
         )
 
+        # stating here, these objects are only for the whole building.
         if len(idf.idfobjects["HVACTEMPLATE:SYSTEM:VAV"]) == 0:
             idf.newidfobject(
                 key="HVACTEMPLATE:SYSTEM:VAV",
@@ -204,8 +205,8 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 System_Availability_Schedule_Name="",
                 Supply_Fan_Maximum_Flow_Rate="autosize",
                 Supply_Fan_Minimum_Flow_Rate="autosize",
-                Supply_Fan_Total_Efficiency="0.7",
-                Supply_Fan_Delta_Pressure="1000",
+                Supply_Fan_Total_Efficiency="0.69",
+                Supply_Fan_Delta_Pressure="872",  # from Dynamic
                 Supply_Fan_Motor_Efficiency="0.9",
                 Supply_Fan_Motor_in_Air_Stream_Fraction="1.0",
                 Cooling_Coil_Type="ChilledWater",
@@ -228,7 +229,7 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Minimum_Outdoor_Air_Flow_Rate="autosize",
                 Minimum_Outdoor_Air_Control_Type="ProportionalMinimum",
                 Minimum_Outdoor_Air_Schedule_Name="",
-                Economizer_Type="NoEconomizer",
+                Economizer_Type="DifferentialDryBulbAndEnthalpy",
                 Economizer_Lockout="NoLockout",
                 Economizer_Upper_Temperature_Limit="",
                 Economizer_Lower_Temperature_Limit="",
@@ -237,13 +238,13 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Supply_Plenum_Name="",
                 Return_Plenum_Name="",
                 Supply_Fan_Placement="DrawThrough",
-                Supply_Fan_PartLoad_Power_Coefficients="InletVaneDampers",
-                Night_Cycle_Control="StayOff",
+                Supply_Fan_PartLoad_Power_Coefficients="VariableSpeedMotor",  # from Dynamic
+                Night_Cycle_Control="CycleOnAny",  # from Dynamic
                 Night_Cycle_Control_Zone_Name="",
-                Heat_Recovery_Type="None",
-                Sensible_Heat_Recovery_Effectiveness="0.70",
-                Latent_Heat_Recovery_Effectiveness="0.65",
-                Cooling_Coil_Setpoint_Reset_Type="None",
+                Heat_Recovery_Type=zoneDefinition.Conditioning.HeatRecoveryType,
+                Sensible_Heat_Recovery_Effectiveness=zoneDefinition.Conditioning.HeatRecoveryEfficiencySensible,
+                Latent_Heat_Recovery_Effectiveness=zoneDefinition.Conditioning.HeatRecoveryEfficiencyLatent,
+                Cooling_Coil_Setpoint_Reset_Type="Warmest",  # from Dynamic
                 Heating_Coil_Setpoint_Reset_Type="None",
                 Dehumidification_Control_Type="None",
                 Dehumidification_Control_Zone_Name="",
@@ -255,12 +256,12 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Humidifier_Control_Zone_Name="",
                 Humidifier_Setpoint=30.0,
                 Sizing_Option="NonCoincident",
-                Return_Fan="No",
-                Return_Fan_Total_Efficiency="0.7",
-                Return_Fan_Delta_Pressure="500",
+                Return_Fan="Yes",  # from Dynamic
+                Return_Fan_Total_Efficiency="0.69",  # from Dynamic
+                Return_Fan_Delta_Pressure="750",  # from Dynamic
                 Return_Fan_Motor_Efficiency="0.9",
                 Return_Fan_Motor_in_Air_Stream_Fraction="1.0",
-                Return_Fan_PartLoad_Power_Coefficients="InletVaneDampers",
+                Return_Fan_PartLoad_Power_Coefficients="VariableSpeedMotor",  # from Dynamic
             )
 
             idf.newidfobject(
@@ -281,7 +282,7 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Condenser_Water_Setpoint_Schedule_Name="",
                 Condenser_Water_Design_Setpoint="29.4",
                 Condenser_Water_Pump_Rated_Head="179352",
-                Chilled_Water_Setpoint_Reset_Type="OutdoorAirTemperatureReset",
+                Chilled_Water_Setpoint_Reset_Type='None',  # from Dynamic
                 Chilled_Water_Setpoint_at_Outdoor_DryBulb_Low="12.2",
                 Chilled_Water_Reset_Outdoor_DryBulb_Low="15.6",
                 Chilled_Water_Setpoint_at_Outdoor_DryBulb_High="6.7",

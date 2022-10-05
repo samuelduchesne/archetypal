@@ -197,7 +197,7 @@ class VAVWithBoilersAndChillers(HVACTemplate):
             Zone_Heating_Design_Supply_Air_Temperature_Difference=30.0,
         )
 
-        # stating here, these objects are only for the whole building.
+        # starting here, these objects are only for the whole building.
         if len(idf.idfobjects["HVACTEMPLATE:SYSTEM:VAV"]) == 0:
             idf.newidfobject(
                 key="HVACTEMPLATE:SYSTEM:VAV",
@@ -241,7 +241,7 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Supply_Fan_PartLoad_Power_Coefficients="VariableSpeedMotor",  # from Dynamic
                 Night_Cycle_Control="CycleOnAny",  # from Dynamic
                 Night_Cycle_Control_Zone_Name="",
-                Heat_Recovery_Type=zoneDefinition.Conditioning.HeatRecoveryType,
+                Heat_Recovery_Type=zoneDefinition.Conditioning.HeatRecoveryType.name,
                 Sensible_Heat_Recovery_Effectiveness=zoneDefinition.Conditioning.HeatRecoveryEfficiencySensible,
                 Latent_Heat_Recovery_Effectiveness=zoneDefinition.Conditioning.HeatRecoveryEfficiencyLatent,
                 Cooling_Coil_Setpoint_Reset_Type="Warmest",  # from Dynamic
@@ -273,7 +273,7 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Chiller_Plant_Equipment_Operation_Schemes_Name="",
                 Chilled_Water_Setpoint_Schedule_Name="",
                 Chilled_Water_Design_Setpoint="6",
-                Chilled_Water_Pump_Configuration="ConstantPrimaryNoSecondary",
+                Chilled_Water_Pump_Configuration="VariablePrimaryNoSecondary ",
                 Primary_Chilled_Water_Pump_Rated_Head="179352",
                 Secondary_Chilled_Water_Pump_Rated_Head="179352",
                 Condenser_Plant_Operation_Scheme_Type="Default",
@@ -282,12 +282,12 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Condenser_Water_Setpoint_Schedule_Name="",
                 Condenser_Water_Design_Setpoint="29.4",
                 Condenser_Water_Pump_Rated_Head="179352",
-                Chilled_Water_Setpoint_Reset_Type='None',  # from Dynamic
+                Chilled_Water_Setpoint_Reset_Type="None",  # from Dynamic
                 Chilled_Water_Setpoint_at_Outdoor_DryBulb_Low="12.2",
                 Chilled_Water_Reset_Outdoor_DryBulb_Low="15.6",
                 Chilled_Water_Setpoint_at_Outdoor_DryBulb_High="6.7",
                 Chilled_Water_Reset_Outdoor_DryBulb_High="26.7",
-                Chilled_Water_Primary_Pump_Type="SinglePump",
+                Chilled_Water_Primary_Pump_Type="PumpPerChiller",  # from Dynamic
                 Chilled_Water_Secondary_Pump_Type="SinglePump",
                 Condenser_Water_Pump_Type="SinglePump",
                 Chilled_Water_Supply_Side_Bypass_Pipe="Yes",
@@ -297,8 +297,8 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Fluid_Type="Water",
                 Loop_Design_Delta_Temperature=8,
                 Minimum_Outdoor_Dry_Bulb_Temperature="",
-                Chilled_Water_Load_Distribution_Scheme="SequentialLoad",
-                Condenser_Water_Load_Distribution_Scheme="SequentialLoad",
+                Chilled_Water_Load_Distribution_Scheme="Optimal",  # from Dynamic
+                Condenser_Water_Load_Distribution_Scheme="Optimal",  # from Dynamic
             )
 
             idf.newidfobject(
@@ -310,20 +310,20 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Hot_Water_Plant_Equipment_Operation_Schemes_Name="",
                 Hot_Water_Setpoint_Schedule_Name="",
                 Hot_Water_Design_Setpoint="82.0",
-                Hot_Water_Pump_Configuration="ConstantFlow",
+                Hot_Water_Pump_Configuration="VariableFlow",  # from Dynamic
                 Hot_Water_Pump_Rated_Head="179352",
                 Hot_Water_Setpoint_Reset_Type="None",
                 Hot_Water_Setpoint_at_Outdoor_DryBulb_Low="82.2",
                 Hot_Water_Reset_Outdoor_DryBulb_Low="-6.7",
                 Hot_Water_Setpoint_at_Outdoor_DryBulb_High="65.6",
                 Hot_Water_Reset_Outdoor_DryBulb_High="10.0",
-                Hot_Water_Pump_Type="SinglePump",
+                Hot_Water_Pump_Type="PumpPerBoiler",  # from Dynamic
                 Supply_Side_Bypass_Pipe="Yes",
                 Demand_Side_Bypass_Pipe="Yes",
                 Fluid_Type="Water",
                 Loop_Design_Delta_Temperature="11.0",
                 Maximum_Outdoor_Dry_Bulb_Temperature="",
-                Load_Distribution_Scheme="SequentialLoad",
+                Load_Distribution_Scheme="Optimal",  # from Dynamic
             )
 
             idf.newidfobject(
@@ -361,8 +361,8 @@ class VAVWithBoilersAndChillers(HVACTemplate):
                 Name="PlantBoiler",
                 Boiler_Type=self.Boiler_Type,
                 Capacity="autosize",
-                Efficiency=min(zoneDefinition.Conditioning.HeatingCoeffOfPerf, 1),
-                Fuel_Type=zoneDefinition.Conditioning.HeatingFuelType,
+                Efficiency=zoneDefinition.Conditioning.HeatingCoeffOfPerf,
+                Fuel_Type=zoneDefinition.Conditioning.HeatingFuelType.name,
                 Priority="",
                 Sizing_Factor=1.0,
                 Minimum_Part_Load_Ratio=0.0,
@@ -657,7 +657,7 @@ class BaseboardHeatingSystem(HVACTemplate):
                 Boiler_Type=self.Boiler_Type,
                 Capacity="autosize",
                 Efficiency=min(zoneDefinition.Conditioning.HeatingCoeffOfPerf, 1),
-                Fuel_Type=zoneDefinition.Conditioning.HeatingFuelType,  # Not applicable if Boiler Type is DistrictHotWater
+                Fuel_Type=zoneDefinition.Conditioning.HeatingFuelType.name,  # Not applicable if Boiler Type is DistrictHotWater
                 Priority="",
                 Sizing_Factor=1.0,
                 Minimum_Part_Load_Ratio=0.0,

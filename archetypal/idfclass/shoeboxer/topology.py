@@ -50,27 +50,28 @@ class Meters(Quantity):
     """
     Numbers with units
     """
+    _BASEUNIT = "meter"
 
     @classmethod
     def __get_validators__(cls):
         # one or more validators may be yielded which will be called in the
         # order to validate the input, each validator will receive as an input
         # the value returned from the previous validator
-        yield cls.validate
+        yield cls.parse_as_quantity
         yield cls.transform_units
         yield cls.to_magnitude
 
     @classmethod
-    def validate(cls, v):
+    def parse_as_quantity(cls, v):
         if isinstance(v, str):
             q = unit_registry.parse_expression(v)
         else:
-            q = Quantity(v, "meter")
+            q = Quantity(v, cls._BASEUNIT)
         return cls(q.magnitude, q.units)
 
     @classmethod
     def transform_units(cls, v):
-        q = v.to("m")
+        q = v.to(cls._BASEUNIT)
         return cls(q.magnitude, q.units)
 
     @classmethod

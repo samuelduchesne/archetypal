@@ -18,7 +18,7 @@ from geomeppy.recipes import (
 )
 from validator_collection import checkers, validators
 
-from .hvac_templates import HVACTemplates
+from .hvac_templates import HVACTemplates, HVACTemplate
 
 log = logging.getLogger(__name__)
 
@@ -181,7 +181,7 @@ class ShoeBox(IDF):
         """Create Shoebox from a template.
 
         Args:
-            system (str): Name of HVAC system template. Default
+            system (str or HVACTemplate): Name of HVAC system template. Default
                 :"SimpleIdealLoadsSystem".
             building_template (BuildingTemplate):
             ddy_file (str): A design day file.
@@ -293,12 +293,19 @@ class ShoeBox(IDF):
             zone_window_area = cls.zone_window_area(zone)
             opening_area_ratio = building_template.Windows.OperableArea
 
+            if isinstance(system, str):
+                template = HVACTemplates[system]
+            elif isinstance(system, HVACTemplate):
+                template = system
+            else:
+                raise ValueError()
+
             if is_core(zone):
                 # add internal gains
                 building_template.Core.Loads.to_epbunch(idf, zone.Name)
 
                 # Heating System; create one for each zone.
-                HVACTemplates[system].create_from(zone, building_template.Core)
+                template.create_from(zone, building_template.Core)
 
                 # Create InternalMass object, then convert to EpBunch.
                 internal_mass = InternalMass(
@@ -314,7 +321,7 @@ class ShoeBox(IDF):
                 building_template.Perimeter.Loads.to_epbunch(idf, zone.Name)
 
                 # Heating System; create one for each zone.
-                HVACTemplates[system].create_from(zone, building_template.Perimeter)
+                template.create_from(zone, building_template.Perimeter)
 
                 # Create InternalMass object, then convert to EpBunch.
                 if building_template.Perimeter.InternalMassExposedPerFloorArea > 0:

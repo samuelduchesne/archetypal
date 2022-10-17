@@ -1,1 +1,0 @@
-"""Energy measures module."""

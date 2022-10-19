@@ -63,14 +63,14 @@ class TestUmiTemplate:
         # Only make the `OpaqueMaterial` objects unique.
         nb_materials_before = len(c.OpaqueMaterials)
         nb_opaque_constructions = len(c.OpaqueConstructions)
-        c.unique_components("OpaqueMaterials")
+        c.unique_components(keep_orphaned="OpaqueMaterials")
         assert len(c.OpaqueMaterials) < nb_materials_before
         assert len(c.OpaqueConstructions) == nb_opaque_constructions
 
         # test wrong inclusion
         with pytest.raises(AssertionError):
             # missing S.
-            c.unique_components("OpaqueMaterial")
+            c.unique_components(keep_orphaned="OpaqueMaterial")
 
     def test_graph(self):
         """Test initialization of networkx DiGraph"""

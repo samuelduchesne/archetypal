@@ -205,6 +205,7 @@ class UmiTemplateLibrary:
         processors=-1,
         keep_all_zones=False,
         unique_components=None,
+        debug=False,
         **kwargs,
     ):
         """Initialize an UmiTemplateLibrary object from one or more idf_files.
@@ -656,7 +657,9 @@ class UmiTemplateLibrary:
 
         return data_dict
 
-    def unique_components(self, *args: str, exceptions: List[str] = None):
+    def unique_components(
+        self, *args: str, exceptions: List[str] = None, keep_orphaned=False
+    ):
         """Keep only unique components.
 
         Starts by clearing all objects in self except self.BuildingTemplates.
@@ -667,11 +670,13 @@ class UmiTemplateLibrary:
         object in the graph.
 
         Args:
-            *args (str): UmiBase class names that should not be replaced with a
+            *args (str): UmiBase class names that should be replaced with a
                 unique equivalent. For example, if only "OpaqueMaterials" should be
-                unique, then use self.unique_components("OpaqueMaterials")
+                unique, then use self.unique_components("OpaqueMaterials"). If none
+                are provided, all umi components be unique.
             exceptions (List[str]): A list of UmiBase class names that will not be
-                cleared and therefore, not be
+                cleared from self.
+            keep_orphaned (bool): if True, orphaned objects are kept.
         """
         if keep_orphaned:
             G = self.to_graph(include_orphans=True)
@@ -734,7 +739,21 @@ class UmiTemplateLibrary:
         for key, group in self:
             for component in group:
                 for parent, key, child in parent_key_child_traversal(component):
-                    if isinstance(child, UmiBase):
+                    if isinstance(child, UmiSchedule) and not isinstance(
+                        child, (DaySchedule, WeekSchedule, YearSchedule)
+                    ):
+                        y, ws, ds = child.to_year_week_day()
+                        if not any(o.id == y.id for o in self.YearSchedules):
+                            self.YearSchedules.append(y)
+                        for w in ws:
+                            if not any(o.id == w.id for o in self.WeekSchedules):
+                                self.WeekSchedules.append(w)
+                        for d in ds:
+                            if not any(o.id == d.id for o in self.DaySchedules):
+                                self.DaySchedules.append(d)
+                        # finally, replace it with y
+                        setattr(parent, key, y)
+                    elif isinstance(child, UmiBase):
                         obj_list = self.__dict__[child.__class__.__name__ + "s"]
                         if not any(o.id == child.id for o in obj_list):
                             # Important to compare on UmiBase.id and not on identity.
@@ -760,6 +779,7 @@ class UmiTemplateLibrary:
                 obj for obj in self.object_list if obj.id not in (n.id for n in G)
             ]
             for orphan in orphans:
+                G.add_node(orphan)
                 for parent, child in parent_child_traversal(orphan):
                     if parent:
                         G.add_edge(parent, child)
@@ -849,6 +869,5 @@ def parent_child_traversal(parent):
 
 
 def traverse(parent):
-    """Iterate over all children of the parent. 
-    """
+    """Iterate over all children of the parent."""
     return parent_child_traversal(parent)

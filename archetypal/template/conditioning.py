@@ -88,6 +88,7 @@ class ZoneConditioning(UmiBase):
 
     .. image:: ../images/template/zoninfo-conditioning.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (

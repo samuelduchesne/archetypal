@@ -25,6 +25,7 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (

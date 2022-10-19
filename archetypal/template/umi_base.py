@@ -410,8 +410,7 @@ class UmiBase(object):
                         (
                             x
                             for x in self._CREATED_OBJECTS
-                            if x == self
-                            and x.Name == self.Name
+                            if x == self and x.Name == self.Name
                         ),
                         key=lambda x: x.unit_number,
                     )
@@ -424,11 +423,7 @@ class UmiBase(object):
             obj = next(
                 iter(
                     sorted(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                            if x == self
-                        ),
+                        (x for x in self._CREATED_OBJECTS if x == self),
                         key=lambda x: x.unit_number,
                     )
                 ),

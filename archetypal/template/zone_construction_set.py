@@ -12,6 +12,7 @@ from archetypal.utils import log, reduce, timeit
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
+
     _CREATED_OBJECTS = []
 
     __slots__ = (

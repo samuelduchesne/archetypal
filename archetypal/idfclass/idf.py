@@ -2523,10 +2523,22 @@ class IDF(GeomIDF):
         if not self.rotated:
             self.rotate(None, (0, 0, 0))
 
-    def view_model(self, test=False):
-        # type: (Optional[bool]) -> None
+    def view_model(
+        self,
+        title=None,
+        save=False,
+        show=True,
+        close=False,
+        ax=None,
+        axis_off=False,
+        dpi=300,
+        file_format="png",
+        filename="unnamed",
+    ):
         """Show a zoomable, rotatable representation of the IDF."""
+        from matplotlib import pyplot as plt
         from geomeppy.view_geometry import view_idf
+        from archetypal.plot import save_and_show
 
         if (
             "relative"
@@ -2540,7 +2552,23 @@ class IDF(GeomIDF):
                 "Model is in relative coordinates and must be translated to world using "
                 "IDF.to_world()."
             )
-        view_idf(idf=self, test=test)
+        view_idf(idf=self, test=False)
+
+        fig = plt.gcf()
+        axes = fig.get_axes()
+
+        return save_and_show(
+            fig,
+            axes,
+            save=save,
+            show=show,
+            close=close,
+            filename=filename,
+            file_format=file_format,
+            dpi=dpi,
+            axis_off=axis_off,
+            extent=None,
+        )
 
     @property
     def coords_are_truly_relative(self):

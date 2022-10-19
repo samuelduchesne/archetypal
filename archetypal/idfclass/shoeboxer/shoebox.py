@@ -26,10 +26,10 @@ log = logging.getLogger(__name__)
 class ShoeBox(IDF):
     """Shoebox Model."""
 
-    def __init__(self, *args, azimuth=180, **kwargs):
+    def __init__(self, *args, azimuth=None, **kwargs):
         """Initialize Shoebox."""
         super(ShoeBox, self).__init__(*args, **kwargs)
-        self.azimuth = azimuth  # 0 is north
+        self.azimuth: Optional[int] = azimuth  # 0 is north
 
     @property
     def total_envelope_resistance(self):
@@ -259,12 +259,16 @@ class ShoeBox(IDF):
         # Set wwr
         if wwr_map is None:
             wwr_map = {
-                0: 0,
-                90: 0,
-                180: 0,
-                270: 0,
+                0: building_template.DefaultWindowToWallRatio,
+                90: building_template.DefaultWindowToWallRatio,
+                180: building_template.DefaultWindowToWallRatio,
+                270: building_template.DefaultWindowToWallRatio,
             }  # initialize wwr_map for orientation.
-            wwr_map.update({idf.azimuth: building_template.DefaultWindowToWallRatio})
+            if idf.azimuth is None:
+                wwr_map = {0: 0, 90: 0, 180: 0, 270: 0}
+                wwr_map.update(
+                    {idf.azimuth: building_template.DefaultWindowToWallRatio}
+                )
         set_wwr(idf, construction=window.Name, wwr_map=wwr_map, force=True)
 
         if ddy_file:

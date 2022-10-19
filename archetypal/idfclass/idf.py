@@ -2664,6 +2664,38 @@ class IDF(GeomIDF):
             )
         return list(surfaces)
 
+    @property
+    def total_envelope_area(self):
+        """Get the total gross envelope area including windows [m2].
+
+        Note:
+            The envelope is consisted of surfaces that have an outside boundary
+            condition different then `Adiabatic` or `Surface` or that participate in
+            the heat exchange with the exterior.
+
+        """
+        total_area = 0
+        area = 0
+        zones = self.idfobjects["ZONE"]
+        zone: EpBunch
+        for zone in zones:
+            for surface in zone.zonesurfaces:
+                if hasattr(surface, "tilt"):
+                    if surface.tilt == 180.0:
+                        multiplier = float(
+                            zone.Multiplier if zone.Multiplier != "" else 1
+                        )
+
+                        area += surface.area * multiplier
+        self._area_total = area
+        for surface in self.getsurfaces():
+            if surface.Outside_Boundary_Condition.lower() in ["adiabatic", "surface"]:
+                continue
+            zone = surface.get_referenced_object("Zone_Name")
+            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+            total_area += surface.area * multiplier
+        return total_area
+
 
 def _process_csv(file, working_dir, simulname):
     """Process csv file.

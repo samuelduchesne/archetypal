@@ -6,13 +6,12 @@ import logging as lg
 from validator_collection import validators
 
 from archetypal.template.constructions.opaque_construction import OpaqueConstruction
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.utils import log, reduce, timeit
 
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_facade",
@@ -68,90 +67,66 @@ class ZoneConstructionSet(UmiBase):
             **kwargs:
         """
         super(ZoneConstructionSet, self).__init__(Name, **kwargs)
-        self.Slab = Slab
         self.IsSlabAdiabatic = IsSlabAdiabatic
-        self.Roof = Roof
         self.IsRoofAdiabatic = IsRoofAdiabatic
-        self.Partition = Partition
         self.IsPartitionAdiabatic = IsPartitionAdiabatic
-        self.Ground = Ground
         self.IsGroundAdiabatic = IsGroundAdiabatic
-        self.Facade = Facade
         self.IsFacadeAdiabatic = IsFacadeAdiabatic
         self.area = area
         self.volume = volume
+        # Set UmiBase Properties after standard properties
+        self.Slab = Slab
+        self.Roof = Roof
+        self.Partition = Partition
+        self.Ground = Ground
+        self.Facade = Facade
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
 
-    @property
+    @umibase_property(type_of_property=OpaqueConstruction)
     def Facade(self):
         """Get or set the Facade OpaqueConstruction."""
         return self._facade
 
     @Facade.setter
     def Facade(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Facade must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
         self._facade = value
 
-    @property
+    @umibase_property(type_of_property=OpaqueConstruction)
     def Ground(self):
         """Get or set the Ground OpaqueConstruction."""
         return self._ground
 
     @Ground.setter
     def Ground(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Ground must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
         self._ground = value
 
-    @property
+    @umibase_property(type_of_property=OpaqueConstruction)
     def Partition(self):
         """Get or set the Partition OpaqueConstruction."""
         return self._partition
 
     @Partition.setter
     def Partition(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Partition must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
         self._partition = value
 
-    @property
+    @umibase_property(type_of_property=OpaqueConstruction)
     def Roof(self):
         """Get or set the Roof OpaqueConstruction."""
         return self._roof
 
     @Roof.setter
     def Roof(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Roof must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
         self._roof = value
 
-    @property
+    @umibase_property(type_of_property=OpaqueConstruction)
     def Slab(self):
         """Get or set the Slab OpaqueConstruction."""
         return self._slab
 
     @Slab.setter
     def Slab(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Slab must be"
-                f" an OpaqueConstruction, not a {type(value)}"
-            )
         self._slab = value
 
     @property
@@ -464,7 +439,7 @@ class ZoneConstructionSet(UmiBase):
                     iter(
                         filter(
                             lambda x: getattr(x, attr, None) is not None,
-                            ZoneConstructionSet._CREATED_OBJECTS,
+                            UmiBase.all_objects_of_type(ZoneConstructionSet),
                         )
                     ),
                     None,

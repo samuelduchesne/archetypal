@@ -5,6 +5,7 @@ import collections
 from eppy.bunch_subclass import EpBunch
 from validator_collection import validators
 
+from archetypal.template.umi_base import UmiBase
 from archetypal.template.materials import GasMaterial
 from archetypal.template.materials.material_base import MaterialBase
 from archetypal.utils import log, signif
@@ -15,8 +16,6 @@ class OpaqueMaterial(MaterialBase):
 
     .. image:: ../images/template/materials-opaque.png
     """
-
-    _CREATED_OBJECTS = []
 
     _ROUGHNESS_TYPES = (
         "VeryRough",
@@ -125,6 +124,7 @@ class OpaqueMaterial(MaterialBase):
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def Conductivity(self):
@@ -243,7 +243,7 @@ class OpaqueMaterial(MaterialBase):
             **kwargs,
         )
 
-    def combine(self, other, weights=None, allow_duplicates=False):
+    def combine(self, other, weights=None, allow_duplicates=False, **kwargs):
         """Combine two OpaqueMaterial objects.
 
         Args:
@@ -300,6 +300,7 @@ class OpaqueMaterial(MaterialBase):
             MoistureDiffusionResistance=self.float_mean(
                 other, "MoistureDiffusionResistance", weights
             ),
+            **kwargs,
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj

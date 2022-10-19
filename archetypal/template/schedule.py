@@ -11,13 +11,12 @@ import pandas as pd
 from validator_collection import validators
 
 from archetypal.schedule import Schedule, _ScheduleParser, get_year_for_first_weekday
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, UmiBaseHelper, UmiBaseList
 from archetypal.utils import log
 
 
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
-    _CREATED_OBJECTS = []
 
     __slots__ = ("_quantity",)
 
@@ -88,7 +87,7 @@ class UmiSchedule(Schedule, UmiBase):
             Name=Name, Values=Values, Type=Type, **kwargs
         )
 
-    def combine(self, other, weights=None, quantity=None):
+    def combine(self, other, weights=None, quantity=None, **kwargs):
         """Combine two UmiSchedule objects together.
 
         Args:
@@ -207,7 +206,7 @@ class UmiSchedule(Schedule, UmiBase):
             [self.quantity or float("nan"), other.quantity or float("nan")]
         )
         new_obj = UmiSchedule.from_values(
-            Values=new_values, Type="Fraction", quantity=quantity, **meta
+            Values=new_values, Type="Fraction", quantity=quantity, **meta, **kwargs
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.weights = sum(weights)
@@ -275,7 +274,7 @@ class UmiSchedule(Schedule, UmiBase):
             iter(
                 [
                     value
-                    for value in UmiSchedule.CREATED_OBJECTS
+                    for value in UmiBase.all_objects_of_type(UmiSchedule)
                     if value.id == ref["$ref"]
                 ]
             ),
@@ -339,7 +338,7 @@ class UmiSchedule(Schedule, UmiBase):
         )
 
 
-class YearSchedulePart:
+class YearSchedulePart(UmiBaseHelper, object):
     """Helper Class for YearSchedules defined with FromDay FromMonth ToDay ToMonth."""
 
     __slots__ = ("_from_day", "_from_month", "_to_day", "_to_month", "_schedule")
@@ -368,10 +367,12 @@ class YearSchedulePart:
                 object.
             kwargs (dict): Other Keyword arguments.
         """
+        super(YearSchedulePart, self).__init__(umi_base_property="Schedule")
         self.FromDay = FromDay
         self.FromMonth = FromMonth
         self.ToDay = ToDay
         self.ToMonth = ToMonth
+        # Set UmiBase Properties after standard properties
         self.Schedule = Schedule
 
     @property
@@ -517,6 +518,7 @@ class DaySchedule(UmiSchedule):
         super(DaySchedule, self).__init__(
             Category=Category, Name=Name, Values=Values, **kwargs
         )
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def all_values(self) -> np.ndarray:
@@ -729,7 +731,9 @@ class WeekSchedule(UmiSchedule):
             **kwargs:
         """
         super(WeekSchedule, self).__init__(Name, Category=Category, **kwargs)
+        self._days = UmiBaseList(self, "Days")
         self.Days = Days
+        UmiBase._GRAPH.add_node(self)
 
     @property
     def Days(self):
@@ -742,7 +746,7 @@ class WeekSchedule(UmiSchedule):
             assert all(
                 isinstance(x, DaySchedule) for x in value
             ), f"Input value error '{value}'. Expected list of DaySchedule."
-        self._days = value
+        self.Days.relink_list(value)
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
@@ -922,14 +926,24 @@ class YearSchedule(UmiSchedule):
             Parts (list of YearSchedulePart): The YearScheduleParts.
             **kwargs:
         """
+        super(YearSchedule, self).__init__(
+            Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
+        )
         self.epbunch = kwargs.get("epbunch", None)
+        self._parts = UmiBaseList(self, "Parts")
         if Parts is None:
             self.Parts = self._get_parts(self.epbunch)
         else:
             self.Parts = Parts
-        super(YearSchedule, self).__init__(
-            Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
-        )
+        UmiBase._GRAPH.add_node(self)
+
+    @property
+    def Parts(self):
+        return self._parts
+
+    @Parts.setter
+    def Parts(self, Parts):
+        self.Parts.relink_list(Parts)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

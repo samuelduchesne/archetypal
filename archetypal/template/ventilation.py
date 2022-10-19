@@ -10,7 +10,7 @@ from sigfig import round
 from validator_collection import checkers, validators
 
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.utils import log, timeit, top, weighted_mean
 
 
@@ -62,7 +62,6 @@ class VentilationSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_infiltration",
@@ -183,7 +182,6 @@ class VentilationSetting(UmiBase):
         self.Infiltration = Infiltration
         self.IsInfiltrationOn = IsInfiltrationOn
         self.IsNatVentOn = IsNatVentOn
-        self.NatVentSchedule = NatVentSchedule
         self.IsWindOn = IsWindOn
         self.IsBuoyancyOn = IsBuoyancyOn
         self.NatVentMaxOutdoorAirTemp = NatVentMaxOutdoorAirTemp
@@ -192,17 +190,22 @@ class VentilationSetting(UmiBase):
         self.NatVentZoneTempSetpoint = NatVentZoneTempSetpoint
         self.ScheduledVentilationAch = ScheduledVentilationAch
         self.ScheduledVentilationSetpoint = ScheduledVentilationSetpoint
-        self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
+        # prevent validation error
+        self._scheduled_ventilation_schedule = ScheduledVentilationSchedule
         self.IsScheduledVentilationOn = IsScheduledVentilationOn
+        self._scheduled_ventilation_schedule = None
         self.VentilationType = VentilationType
         self.Afn = Afn
         self.area = area
         self.volume = volume
+        # Set UmiBase Properties after standard properties
+        self.ScheduledVentilationSchedule = ScheduledVentilationSchedule
+        self.NatVentSchedule = NatVentSchedule
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def NatVentSchedule(self):
         """Get or set the natural ventilation schedule.
 
@@ -213,14 +216,9 @@ class VentilationSetting(UmiBase):
 
     @NatVentSchedule.setter
     def NatVentSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. NatVentSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._nat_ventilation_schedule = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def ScheduledVentilationSchedule(self):
         """Get or set the scheduled ventilation schedule."""
         return self._scheduled_ventilation_schedule
@@ -228,10 +226,6 @@ class VentilationSetting(UmiBase):
     @ScheduledVentilationSchedule.setter
     def ScheduledVentilationSchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. ScheduledVentilationSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
             value.quantity = self.ScheduledVentilationAch
         self._scheduled_ventilation_schedule = value
 

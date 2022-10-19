@@ -2,7 +2,7 @@
 
 import itertools
 import math
-import re
+import networkx as nx
 from collections.abc import Hashable, MutableSet
 
 import numpy as np
@@ -45,6 +45,9 @@ def _shorten_name(long_name):
 class UmiBase(object):
     """Base class for template objects."""
 
+    _GRAPH = nx.MultiDiGraph()
+    _CREATED_OBJECTS_BY_CLASS = {}
+
     __slots__ = (
         "_id",
         "_datasource",
@@ -54,6 +57,7 @@ class UmiBase(object):
         "_comments",
         "_allow_duplicates",
         "_unit_number",
+        "_parents",
     )
     _ids = itertools.count(0)  # unique id for each class instance
 
@@ -90,6 +94,7 @@ class UmiBase(object):
         self.allow_duplicates = allow_duplicates
         self.unit_number = next(self._ids)
         self.predecessors = None
+        self._parents = nx.MultiDiGraph()
 
     @property
     def Name(self):
@@ -107,6 +112,10 @@ class UmiBase(object):
 
     @id.setter
     def id(self, value):
+        if getattr(self, "id", None):
+            raise AttributeError(
+                "The id of an `UmiBase` object cannot change once it has been set."
+            )
         if value is None:
             value = id(self)
         self._id = validators.string(value, coerce_value=True)
@@ -223,7 +232,7 @@ class UmiBase(object):
             ),
         }
 
-    def combine(self, other, allow_duplicates=False):
+    def combine(self, other, allow_duplicates=False, **kwargs):
         pass
 
     def rename(self, name):
@@ -371,9 +380,7 @@ class UmiBase(object):
         if other is None:
             return self
         self._CREATED_OBJECTS.remove(self)
-        id = self.id
-        new_obj = self.combine(other, allow_duplicates=allow_duplicates)
-        new_obj.id = id
+        new_obj = self.combine(other, allow_duplicates=allow_duplicates, id=self.id)
         for key in self.mapping(validate=False):
             setattr(self, key, getattr(new_obj, key))
         return self
@@ -406,15 +413,11 @@ class UmiBase(object):
             # We want to return the first similar object (equality) that has this name.
             obj = next(
                 iter(
-                    sorted(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                            if x == self
-                            and x.Name == self.Name
-                        ),
-                        key=lambda x: x.unit_number,
-                    )
+                    (
+                        x
+                        for x in self._CREATED_OBJECTS
+                        if x == self and x.Name == self.Name
+                    ),
                 ),
                 self,
             )
@@ -423,19 +426,154 @@ class UmiBase(object):
             # name.
             obj = next(
                 iter(
-                    sorted(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                            if x == self
-                        ),
-                        key=lambda x: x.unit_number,
-                    )
+                    (x for x in self._CREATED_OBJECTS if x == self),
                 ),
                 self,
             )
 
         return obj
+
+    @property
+    def Parents(self):
+        """ Get the parents of an UmiBase Object"""
+        parents = set()
+        for component in self._parents:
+            """Don't add self to parents!"""
+            if component != self and component.id != self.id:
+                parents.add(component)
+        return parents
+
+    @property
+    def ParentTemplates(self):
+        """Get the parent templates of an UmiBase object"""
+        templates = set()
+        # TODO: Compare performanc using direct graph path traversal
+        # for bt in UmiBase.all_objects_of_type("BuildingTemplates"):
+        #     if nx.has_path(UmiBase._GRAPH, bt, self):
+        #         templates.add(bt)
+
+        for parent in self.Parents:
+            # Recursive call terminates at Parent Template level, or if self.Parents is empty
+            if parent.__class__.__name__ == "BuildingTemplate":
+                templates.add(parent)
+            else:
+                templates = templates.union(parent.ParentTemplates)
+        return templates
+
+    def replace_me_with(self, other, force=False):
+        # Copy the edge metadata since the edge dict will change while iterating
+        if self.id == other.id and not force:
+            return
+        edges = [
+            (parent, _self, key, data)
+            for parent, _self, key, data in self._parents.edges(data=True, keys=True)
+        ]
+
+        # Iterate over the edges and replace each key
+        for (parent, _, key, data) in edges:
+            # fire the attr setter
+            if data["meta"] is not None:
+                meta = data["meta"]
+                attr = meta["attr"]
+                index = meta["index"]
+                umibase_list = getattr(parent, attr)  # get the base list
+                umibase_list[index] = other  # fire the setter
+            else:
+                parent[key] = other
+
+    def link(self, parent, key, meta=None):
+        """Link this object as child to a parent
+        Args:
+            parent (UmiBase): the parent to link
+            key (str): the property which this child was used for in the parent and which should be unlinked, or <attr>_<index> if a list element
+            meta (dict or NoneType): if self is an UmiBaseList element, stores meta stores {"attr": <attr>, "index": <index>}
+        """
+        self._parents.add_edge(parent, self, key, meta=meta)
+        UmiBase._GRAPH.add_edge(parent, self, key, meta=meta)
+
+    def unlink(self, parent, key):
+        """Unlink this object as a child from a parent
+        Args:
+            parent (UmiBase): the parent to unlink
+            key (str): the property which the child was used for in the parent and which should be unlinked.
+        """
+        if self._parents.has_node(parent):
+            # Fails silently if edge does not exist
+            self._parents.remove_edges_from([(parent, self, key)])
+            UmiBase._GRAPH.remove_edges_from([(parent, self, key)])
+
+            if len(self._parents[parent]) == 0:
+                self._parents.remove_node(parent)
+
+    def relink(self, child, key):
+        """Parents call this to link to a new child and unlink the old child for an attr
+        Args:
+            child (UmiBase): The new child
+            key (str): The cache value to store in th link, which should match a Property getter
+        """
+        current_child = getattr(self, key, None)
+        if current_child:
+            # print(f"link {self} --> {key} --> {child} (replacing: {current_child})")
+            getattr(self, key).unlink(self, key)
+        if child is not None:
+            # print(f"link {self} --> {key} --> {child}")
+            child.link(self, key)
+
+    @classmethod
+    def all_objects_of_type(cls, class_to_lookup):
+        """Returns all objects of a given type
+
+        Args:
+            class_to_lookup (str or class or UmiBase): The class of objects to lookup
+        """
+        try:
+            if isinstance(class_to_lookup, str):
+                try:
+                    return UmiBase._CREATED_OBJECTS_BY_CLASS[class_to_lookup]
+                except KeyError as e:
+                    return UmiBase._CREATED_OBJECTS_BY_CLASS[
+                        class_to_lookup[:-1]
+                    ]  # Works if an s was appended
+            elif isinstance(class_to_lookup, UmiBase):
+                return UmiBase._CREATED_OBJECTS_BY_CLASS[
+                    class_to_lookup.__class__.__name__
+                ]
+            elif isinstance(class_to_lookup, type):
+                return UmiBase._CREATED_OBJECTS_BY_CLASS[class_to_lookup.__name__]
+        except KeyError:
+            raise ValueError(
+                f"You must provide a string, class, or object which corresponds to an UmiBase class, and nothing was found for {class_to_lookup}"
+            )
+
+    @property
+    def _CREATED_OBJECTS(self):
+        return UmiBase.all_objects_of_type(self)
+
+    @classmethod
+    def all_objects(cls):
+        all_objects = []
+        for _, objects in cls.groups():
+            all_objects.extend(objects)
+        return all_objects
+
+    @classmethod
+    def groups(cls):
+        for group, objects in cls._CREATED_OBJECTS_BY_CLASS.items():
+            yield group, objects
+
+    @classmethod
+    def _clear_class_memory(cls):
+        for group, _ in cls.groups():
+            cls._CREATED_OBJECTS_BY_CLASS[group] = []
+        cls._GRAPH = nx.MultiDiGraph()
+
+    def __init_subclass__(cls):
+        """Register subclasses of UmiBase in the dictionary of created objects"""
+        try:
+            # If somehow the class has been defined already, skip
+            UmiBase._CREATED_OBJECTS_BY_CLASS[cls.__name__]
+        except KeyError:
+            UmiBase._CREATED_OBJECTS_BY_CLASS[cls.__name__] = []
 
 
 class UserSet(Hashable, MutableSet):
@@ -527,3 +665,152 @@ class UniqueName(str):
             new_name = f"{name}_{str(new_count)}"
             cls.existing[name] = new_count
             return new_name
+
+
+def umibase_property(type_of_property):
+    """Create a new property decorator which will automatically
+       configure the property to handle type-checking and parent-graph relinking
+       Needs to be abstracted into a single class rather than a class generator
+
+    Args:
+        type_of_property (class inherits UmiBase): which class of UmiBase object the property will store
+    """
+
+    class UmiBaseProperty(property):
+        def __init__(self, getter_func, *args, **kwargs):
+            super().__init__(getter_func, *args, **kwargs)
+            self.type_of_property = type_of_property
+            self.attr_name = getter_func.__name__
+
+        def __get__(self, obj, owner):
+            try:
+                return super().__get__(obj, owner)
+            except AttributeError:
+                return None
+
+        def __set__(self, obj, value):
+            self.type_check(value)
+            self.relink(obj, value)
+            super().__set__(obj, value)
+
+        def type_check(self, value):
+            if value is not None:
+                assert isinstance(value, self.type_of_property), (
+                    f"Input value error. {self.attr_name} must be of "
+                    f"type {self.type_of_property}, not {type(value)}."
+                )
+
+        def relink(self, obj, value):
+            obj.relink(value, self.attr_name)
+
+    return UmiBaseProperty
+
+    # def _setter(self, fset):
+    #     obj = super().setter(fset)
+    #     obj.type_of_property = self.type_of_property
+    #     return obj
+
+    # def setter(self, type_of_property):
+    #     self.type_of_property = type_of_property
+    #     return self._setter
+
+
+class UmiBaseHelper:
+    """Base for Helper classes so that the UmiBase object can be
+    found and operated on via the helper, e.g. for YearScheduleParts
+    """
+
+    __slots__ = "_umi_base_property"
+
+    def __init__(self, umi_base_property):
+        assert isinstance(
+            umi_base_property, str
+        ), "'umi_base_property' must be a string"
+        self._umi_base_property = umi_base_property
+
+    def __getattr__(self, attr):
+        umi_base = getattr(self, self._umi_base_property)
+        return getattr(umi_base, attr)
+
+
+class UmiBaseList:
+    """This class is a hook for lists so that UmiBase fields which store lists
+    can link and unlink list elements from a parent attr
+    """
+
+    def __init__(self, parent, attr, objects=[]):
+        assert isinstance(objects, list), "UmiBaseList must be initialized with a list"
+        assert isinstance(
+            parent, UmiBase
+        ), "UmiBaseList's parent must be initialized with an UmiBase object"
+        assert isinstance(attr, str), "UmiBaseList's attr must be a str"
+        assert attr in dir(
+            parent
+        ), f"UmiBaseLest's attr '{attr}' is not a valid attr of parent {parent}"
+        self._attr = attr
+        self._parent = parent
+        self.link_list(objects)
+
+    def __getitem__(self, index):
+        return self._objects[index]
+
+    def format_graph_key(self, index):
+        return f"{self._attr}_{index}"
+
+    def format_edge_meta(self, index):
+        return {"attr": self._attr, "index": index}
+
+    def __setitem__(self, index, value):
+        should_insert_into_helper_obj = isinstance(
+            self[index], UmiBaseHelper
+        ) and isinstance(value, UmiBase)
+        if self[index]:
+            self[index].unlink(self._parent, self.format_graph_key(index))
+            if should_insert_into_helper_obj:
+                setattr(self[index], self[index]._umi_base_property, value)
+        if not should_insert_into_helper_obj or not self[index]:
+            self._objects[index] = value
+        value.link(
+            self._parent,
+            self.format_graph_key(index),
+            meta=self.format_edge_meta(index),
+        )
+
+    def __eq__(self, other):
+        """Check if two UmiBaseLists are equal by iterating through the arrays"""
+        # TODO: make sure this has no other knock on effects
+        # By allowing two lists which are not the same obj in memory to be equal
+        if not isinstance(other, UmiBaseList):
+            return NotImplemented
+        else:
+            if len(self) > len(other):
+                return False
+            else:
+                return all([a == b for a, b in zip(self, other)])
+
+    def unlink_list(self):
+        for index, obj in enumerate(self._objects):
+            obj.unlink(self._parent, self.format_graph_key(index))
+        self._objects = []
+
+    def link_list(self, objects):
+        self._objects = [None for obj in objects]
+        for i, obj in enumerate(objects):
+            self[i] = obj  # fire the setter
+
+    def relink_list(self, objects):
+        if len(self._objects) > 0:
+            self.unlink_list()
+
+        new_list = objects._objects if isinstance(objects, UmiBaseList) else objects
+        self.link_list(new_list)
+
+    def __len__(self):
+        return len(self._objects)
+
+    def __getattr__(self, attr):
+        """ Provid access to underlying list methods"""
+        return getattr(self._objects, attr)
+
+    # TODO: implement aliases for underlying list methods which mutate the list to handle
+    # relinking

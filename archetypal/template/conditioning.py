@@ -13,7 +13,7 @@ from validator_collection import checkers, validators
 
 from archetypal.reportdata import ReportData
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.utils import float_round, log
 
 
@@ -88,7 +88,6 @@ class ZoneConditioning(UmiBase):
 
     .. image:: ../images/template/zoninfo-conditioning.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_cooling_setpoint",
@@ -259,9 +258,6 @@ class ZoneConditioning(UmiBase):
                 :class:`archetypal.template.UmiBase`
         """
         super(ZoneConditioning, self).__init__(Name, **kwargs)
-        self.MechVentSchedule = MechVentSchedule
-        self.HeatingSchedule = HeatingSchedule
-        self.CoolingSchedule = CoolingSchedule
         self.CoolingCoeffOfPerf = CoolingCoeffOfPerf
         self.CoolingLimitType = CoolingLimitType
         self.CoolingFuelType = CoolingFuelType
@@ -285,6 +281,11 @@ class ZoneConditioning(UmiBase):
         self.MinFreshAirPerPerson = MinFreshAirPerPerson
 
         self.area = area
+
+        # set UmiBase Properties after standard properties
+        self.MechVentSchedule = MechVentSchedule
+        self.HeatingSchedule = HeatingSchedule
+        self.CoolingSchedule = CoolingSchedule
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
@@ -389,18 +390,13 @@ class ZoneConditioning(UmiBase):
         )
         self._is_heating_on = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def HeatingSchedule(self):
         """Get or set the heating availability schedule."""
         return self._heating_schedule
 
     @HeatingSchedule.setter
     def HeatingSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. HeatingSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._heating_schedule = value
 
     @property
@@ -469,18 +465,13 @@ class ZoneConditioning(UmiBase):
         )
         self._is_cooling_on = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def CoolingSchedule(self):
         """Get or set the cooling availability schedule."""
         return self._cooling_schedule
 
     @CoolingSchedule.setter
     def CoolingSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. CoolingSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._cooling_schedule = value
 
     @property
@@ -571,18 +562,13 @@ class ZoneConditioning(UmiBase):
         elif isinstance(value, EconomizerTypes):
             self._economizer_type = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def MechVentSchedule(self):
         """Get or set the outdoor air requirements over time."""
         return self._mech_vent_schedule
 
     @MechVentSchedule.setter
     def MechVentSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. MechVentSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._mech_vent_schedule = value
 
     @property
@@ -1390,7 +1376,7 @@ class ZoneConditioning(UmiBase):
 
         return cop
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, **kwargs):
         """Combine two ZoneConditioning objects together.
 
         Args:
@@ -1475,7 +1461,7 @@ class ZoneConditioning(UmiBase):
         )
         # create a new object with the previous attributes
         new_obj = self.__class__(
-            **meta, **new_attr, allow_duplicates=self.allow_duplicates
+            **meta, **new_attr, allow_duplicates=self.allow_duplicates, **kwargs
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj

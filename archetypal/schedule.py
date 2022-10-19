@@ -1572,7 +1572,7 @@ class Schedule:
         fig.savefig(f, format="svg")
         return f.getvalue()
 
-    def combine(self, other, weights=None, quantity=None):
+    def combine(self, other, weights=None, quantity=None, **kwargs):
         """Combine two schedule objects together.
 
         Args:
@@ -1614,7 +1614,7 @@ class Schedule:
         # the new object's name
         name = "+".join([self.Name, other.Name])
 
-        new_obj = self.__class__(name, value=new_values)
+        new_obj = self.__class__(name, value=new_values, **kwargs)
 
         return new_obj
 

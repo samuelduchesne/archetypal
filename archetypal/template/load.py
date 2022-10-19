@@ -13,7 +13,7 @@ from validator_collection import checkers, validators
 
 from archetypal import settings
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.utils import log, reduce, timeit
 
 
@@ -42,7 +42,6 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_dimming_type",
@@ -119,11 +118,8 @@ class ZoneLoad(UmiBase):
         super(ZoneLoad, self).__init__(Name, **kwargs)
 
         self.EquipmentPowerDensity = EquipmentPowerDensity
-        self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
         self.LightingPowerDensity = LightingPowerDensity
-        self.LightsAvailabilitySchedule = LightsAvailabilitySchedule
         self.PeopleDensity = PeopleDensity
-        self.OccupancySchedule = OccupancySchedule
         self.IsEquipmentOn = IsEquipmentOn
         self.IsLightingOn = IsLightingOn
         self.IsPeopleOn = IsPeopleOn
@@ -131,6 +127,10 @@ class ZoneLoad(UmiBase):
         self.IlluminanceTarget = IlluminanceTarget
         self.area = area
         self.volume = volume
+        # Set UmiBase Properties after standard properties
+        self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
+        self.LightsAvailabilitySchedule = LightsAvailabilitySchedule
+        self.OccupancySchedule = OccupancySchedule
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
@@ -165,7 +165,7 @@ class ZoneLoad(UmiBase):
         else:
             raise ValueError(f"Could not set DimmingType with value '{value}'")
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def EquipmentAvailabilitySchedule(self):
         """Get or set the equipment availability schedule."""
         return self._equipment_availability_schedule
@@ -173,11 +173,6 @@ class ZoneLoad(UmiBase):
     @EquipmentAvailabilitySchedule.setter
     def EquipmentAvailabilitySchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input value error for '{value}'. Value must be of type '"
-                f"{UmiSchedule}', not {type(value)}"
-            )
-            # set quantity on schedule as well
             value.quantity = self.EquipmentPowerDensity
         self._equipment_availability_schedule = value
 
@@ -212,7 +207,7 @@ class ZoneLoad(UmiBase):
             value, minimum=0, allow_empty=True
         )
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def LightsAvailabilitySchedule(self) -> UmiSchedule:
         """Get or set the lights availability schedule."""
         return self._lights_availability_schedule
@@ -220,15 +215,11 @@ class ZoneLoad(UmiBase):
     @LightsAvailabilitySchedule.setter
     def LightsAvailabilitySchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input value error for '{value}'. Value must be of type '"
-                f"{UmiSchedule}', not {type(value)}"
-            )
             # set quantity on schedule as well
             value.quantity = self.LightingPowerDensity
         self._lights_availability_schedule = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def OccupancySchedule(self) -> UmiSchedule:
         """Get or set the occupancy schedule."""
         return self._occupancy_schedule
@@ -236,11 +227,6 @@ class ZoneLoad(UmiBase):
     @OccupancySchedule.setter
     def OccupancySchedule(self, value):
         if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input value error for '{value}'. Value must be if type '"
-                f"{UmiSchedule}', not {type(value)}"
-            )
-            # set quantity on schedule as well
             value.quantity = self.PeopleDensity
         self._occupancy_schedule = value
 
@@ -509,7 +495,7 @@ class ZoneLoad(UmiBase):
         )
         return z_load
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, **kwargs):
         """Combine two ZoneLoad objects together. Returns a new object.
 
         Args:
@@ -587,6 +573,7 @@ class ZoneLoad(UmiBase):
             IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),
             IsPeopleOn=any([self.IsPeopleOn, other.IsPeopleOn]),
             PeopleDensity=self.float_mean(other, "PeopleDensity", weights),
+            **kwargs,
         )
 
         new_obj = self.__class__(

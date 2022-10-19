@@ -63,8 +63,6 @@ class WindowConstruction(LayeredConstruction):
     .. image:: ../images/template/constructions-window.png
     """
 
-    _CREATED_OBJECTS = []
-
     _CATEGORIES = ("single", "double", "triple", "quadruple")
 
     __slots__ = ("_category",)
@@ -360,7 +358,7 @@ class WindowConstruction(LayeredConstruction):
             Name=self.Name,
         )
 
-    def combine(self, other, weights=None):
+    def combine(self, other, weights=None, **kwargs):
         """Append other to self. Return self + other as a new object.
 
         For now, simply returns self.

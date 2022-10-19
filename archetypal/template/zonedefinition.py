@@ -13,7 +13,7 @@ from archetypal.template.constructions.internal_mass import InternalMass
 from archetypal.template.constructions.opaque_construction import OpaqueConstruction
 from archetypal.template.dhw import DomesticHotWaterSetting
 from archetypal.template.load import ZoneLoad
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.template.ventilation import VentilationSetting
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
@@ -25,7 +25,6 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_internal_mass_exposed_per_floor_area",
@@ -98,17 +97,9 @@ class ZoneDefinition(UmiBase):
         """
         super(ZoneDefinition, self).__init__(Name, **kwargs)
 
-        self.Ventilation = Ventilation
-        self.Loads = Loads
-        self.Conditioning = Conditioning
-        self.Constructions = Constructions
         self.DaylightMeshResolution = DaylightMeshResolution
         self.DaylightWorkplaneHeight = DaylightWorkplaneHeight
-        self.DomesticHotWater = DomesticHotWater
-        self.InternalMassConstruction = InternalMassConstruction
         self.InternalMassExposedPerFloorArea = InternalMassExposedPerFloorArea
-
-        self.Windows = Windows  # This is not used in to_dict()
 
         if zone_surfaces is None:
             zone_surfaces = []
@@ -120,78 +111,61 @@ class ZoneDefinition(UmiBase):
         self.is_part_of_total_floor_area = is_part_of_total_floor_area
         self.multiplier = multiplier
         self.is_core = is_core
+        # Set UmiBase Properties after standard properties
+        self.Ventilation = Ventilation
+        self.Windows = Windows  # This is not used in to_dict()
+        self.Loads = Loads
+        self.Conditioning = Conditioning
+        self.Constructions = Constructions
+        self.DomesticHotWater = DomesticHotWater
+        self.InternalMassConstruction = InternalMassConstruction
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
 
-    @property
+    @umibase_property(ZoneConstructionSet)
     def Constructions(self):
         """Get or set the ZoneConstructionSet object."""
         return self._constructions
 
     @Constructions.setter
     def Constructions(self, value):
-        if value is not None:
-            assert isinstance(value, ZoneConstructionSet), (
-                f"Input value error. Constructions must be of "
-                f"type {ZoneConstructionSet}, not {type(value)}."
-            )
         self._constructions = value
 
-    @property
+    @umibase_property(ZoneLoad)
     def Loads(self):
         """Get or set the ZoneLoad object."""
         return self._loads
 
     @Loads.setter
     def Loads(self, value):
-        if value is not None:
-            assert isinstance(value, ZoneLoad), (
-                f"Input value error. Loads must be of "
-                f"type {ZoneLoad}, not {type(value)}."
-            )
         self._loads = value
 
-    @property
+    @umibase_property(type_of_property=ZoneConditioning)
     def Conditioning(self):
         """Get or set the ZoneConditioning object."""
         return self._conditioning
 
     @Conditioning.setter
     def Conditioning(self, value):
-        if value is not None:
-            assert isinstance(value, ZoneConditioning), (
-                f"Input value error. Conditioning must be of "
-                f"type {ZoneConditioning}, not {type(value)}."
-            )
         self._conditioning = value
 
-    @property
+    @umibase_property(type_of_property=VentilationSetting)
     def Ventilation(self):
         """Get or set the VentilationSetting object."""
         return self._ventilation
 
     @Ventilation.setter
     def Ventilation(self, value):
-        if value is not None:
-            assert isinstance(value, VentilationSetting), (
-                f"Input value error. Ventilation must be of "
-                f"type {VentilationSetting}, not {type(value)}."
-            )
         self._ventilation = value
 
-    @property
+    @umibase_property(type_of_property=DomesticHotWaterSetting)
     def DomesticHotWater(self):
         """Get or set the DomesticHotWaterSetting object."""
         return self._domestic_hot_water
 
     @DomesticHotWater.setter
     def DomesticHotWater(self, value):
-        if value is not None:
-            assert isinstance(value, DomesticHotWaterSetting), (
-                f"Input value error. DomesticHotWater must be of "
-                f"type {DomesticHotWaterSetting}, not {type(value)}."
-            )
         self._domestic_hot_water = value
 
     @property
@@ -212,18 +186,13 @@ class ZoneDefinition(UmiBase):
     def DaylightWorkplaneHeight(self, value):
         self._daylight_workplane_height = validators.float(value, minimum=0)
 
-    @property
+    @umibase_property(type_of_property=OpaqueConstruction)
     def InternalMassConstruction(self):
         """Get or set the internal mass construction object."""
         return self._internal_mass_construction
 
     @InternalMassConstruction.setter
     def InternalMassConstruction(self, value):
-        if value is not None:
-            assert isinstance(value, OpaqueConstruction), (
-                f"Input value error. InternalMassConstruction must be of "
-                f"type {OpaqueConstruction}, not {type(value)}."
-            )
         self._internal_mass_construction = value
 
     @property
@@ -235,18 +204,13 @@ class ZoneDefinition(UmiBase):
     def InternalMassExposedPerFloorArea(self, value):
         self._internal_mass_exposed_per_floor_area = validators.float(value, minimum=0)
 
-    @property
+    @umibase_property(type_of_property=WindowSetting)
     def Windows(self):
         """Get or set the WindowSetting object."""
         return self._windows
 
     @Windows.setter
     def Windows(self, value):
-        if value is not None:
-            assert isinstance(value, WindowSetting), (
-                f"Input value error. Windows must be of "
-                f"type {WindowSetting}, not {type(value)}."
-            )
         self._windows = value
 
     @property
@@ -576,7 +540,7 @@ class ZoneDefinition(UmiBase):
         )
         return zone
 
-    def combine(self, other, weights=None, allow_duplicates=False):
+    def combine(self, other, weights=None, allow_duplicates=False, **kwargs):
         """Combine two ZoneDefinition objects together.
 
         Args:
@@ -658,6 +622,7 @@ class ZoneDefinition(UmiBase):
                 other, "InternalMassExposedPerFloorArea", weights
             ),
             Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
+            **kwargs,
         )
         new_obj = ZoneDefinition(**meta, **new_attr)
 

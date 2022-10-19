@@ -20,7 +20,7 @@ from archetypal.template.dhw import DomesticHotWaterSetting
 from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.schedule import YearSchedulePart
 from archetypal.template.structure import MassRatio, StructureInformation
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.utils import log, reduce
@@ -31,7 +31,6 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_partition_ratio",
@@ -102,10 +101,6 @@ class BuildingTemplate(UmiBase):
         super(BuildingTemplate, self).__init__(Name, **kwargs)
         self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
-        self.Core = Core
-        self.Perimeter = Perimeter
-        self.Structure = Structure
-        self.Windows = Windows
         self.DefaultWindowToWallRatio = DefaultWindowToWallRatio
         self._year_from = YearFrom  # set privately to allow validation
         self.YearTo = YearTo
@@ -114,56 +109,49 @@ class BuildingTemplate(UmiBase):
         self.Authors = Authors if Authors else []
         self.AuthorEmails = AuthorEmails if AuthorEmails else []
         self.Version = Version
+        # Set UmiBase Properties after standard properties
+        self.Core = Core
+        self.Perimeter = Perimeter
+        self.Structure = Structure
+        self.Windows = Windows
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
 
-    @property
+    @umibase_property(type_of_property=ZoneDefinition)
     def Perimeter(self):
         """Get or set the perimeter ZoneDefinition."""
         return self._perimeter
 
     @Perimeter.setter
     def Perimeter(self, value):
-        assert isinstance(
-            value, ZoneDefinition
-        ), f"Expected a ZoneDefinition, not {type(value)}"
         self._perimeter = value
 
-    @property
+    @umibase_property(type_of_property=ZoneDefinition)
     def Core(self):
         """Get or set the core ZoneDefinition."""
         return self._core
 
     @Core.setter
     def Core(self, value):
-        assert isinstance(
-            value, ZoneDefinition
-        ), f"Expected a ZoneDefinition, not {type(value)}"
         self._core = value
 
-    @property
+    @umibase_property(type_of_property=StructureInformation)
     def Structure(self):
         """Get or set the StructureInformation."""
         return self._structure_definition
 
     @Structure.setter
     def Structure(self, value):
-        assert isinstance(
-            value, StructureInformation
-        ), f"Expected a StructureInformation, not {type(value)}"
         self._structure_definition = value
 
-    @property
+    @umibase_property(type_of_property=WindowSetting)
     def Windows(self):
         """Get or set the WindowSetting."""
         return self._window_setting
 
     @Windows.setter
     def Windows(self, value):
-        assert isinstance(
-            value, WindowSetting
-        ), f"Expected a WindowSetting, not {type(value)}"
         self._window_setting = value
 
     @property
@@ -332,12 +320,40 @@ class BuildingTemplate(UmiBase):
         perim = zone_definitions[data.pop("Perimeter")["$ref"]]
         structure = structure_definitions[data.pop("Structure")["$ref"]]
         window_data = data.pop("Windows")
+
+        window = None
         try:
-            window = window_settings[window_data["$ref"]]
+            window_ref = window_data["$ref"]
+            window = window_settings[window_ref]
         except KeyError:
-            window = WindowSetting.from_dict(
-                window_data, schedules, window_constructions
-            )
+            try:
+                window = window_settings[window_data["$id"]]
+            except KeyError:
+                # If the window id changed because of preserve_ids, look for
+                # the matching window in window_settings
+                try:
+                    window = next(
+                        iter(
+                            [
+                                _window
+                                for _window in window_settings.values()
+                                if _window.id == window_data["$id"]
+                            ]
+                        )
+                    )
+                except StopIteration:
+                    # then look in all objects
+                    for obj in UmiBase.all_objects_of_type(WindowSetting):
+                        if obj.id == window_data["$id"]:
+                            obj_data = obj.to_dict()
+                            if obj_data == window_data:
+                                window = obj
+                                break
+                    # Create the window if it does not yet exist
+                    if window is None:
+                        window = WindowSetting.from_dict(
+                            window_data, schedules, window_constructions
+                        )
 
         return cls(
             Core=core,
@@ -623,7 +639,7 @@ class BuildingTemplate(UmiBase):
             iter(
                 [
                     value
-                    for value in BuildingTemplate.CREATED_OBJECTS
+                    for value in UmiBase.all_objects_of_type(BuildingTemplate)
                     if value.id == ref["$ref"]
                 ]
             ),

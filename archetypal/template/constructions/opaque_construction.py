@@ -31,8 +31,6 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
-    _CREATED_OBJECTS = []
-
     __slots__ = ("area",)
 
     def __init__(self, Name, Layers, **kwargs):
@@ -167,7 +165,7 @@ class OpaqueConstruction(LayeredConstruction):
         """Return the material layer index that corresponds to the insulation layer."""
         return self.Layers.index(max(self.Layers, key=lambda x: x.r_value))
 
-    def combine(self, other, method="dominant_wall", allow_duplicates=False):
+    def combine(self, other, method="dominant_wall", allow_duplicates=False, **kwargs):
         """Combine two OpaqueConstruction together.
 
         Args:
@@ -217,7 +215,7 @@ class OpaqueConstruction(LayeredConstruction):
             )
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
-        new_obj = self.__class__(**meta, Layers=layers)
+        new_obj = self.__class__(**meta, Layers=layers, **kwargs)
         new_name = (
             "Combined Opaque Construction {{{}}} with u_value "
             "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)

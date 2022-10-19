@@ -47,6 +47,8 @@ class UmiTemplateLibrary:
     - See :meth:`from_idf_files` to create a library by converting existing IDF models.
     """
 
+    _CREATED_LIBS = []
+
     _LIB_GROUPS = [
         "GasMaterials",
         "GlazingMaterials",
@@ -142,6 +144,12 @@ class UmiTemplateLibrary:
         self.GasMaterials = GasMaterials or []
         self.GlazingMaterials = GlazingMaterials or []
 
+        for obj in self.object_list:
+            UmiBase._GRAPH.add_node(
+                obj
+            )  # Add all objects to graph in case they are complete orphans
+        UmiTemplateLibrary._CREATED_LIBS.append(self)
+
     def __iter__(self):
         """Iterate over component groups. Yields tuple of (group, value)."""
         for group in self._LIB_GROUPS:
@@ -152,10 +160,10 @@ class UmiTemplateLibrary:
 
     def __add__(self, other: "UmiTemplateLibrary"):
         """Combined"""
-        for key, group in other:
-            # for each group items
-            for component in group:
-                component.id = None  # Reset the component's id
+        # for key, group in other:
+        #     # for each group items
+        #     for component in group:
+        #         component.id = None  # Reset the component's id
 
         attrs = {}
         for group, value in self:
@@ -271,7 +279,9 @@ class UmiTemplateLibrary:
         ]
 
         if keep_all_zones:
-            _zones = set(obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS)
+            _zones = set(
+                obj.get_unique() for obj in UmiBase.all_objects_of_type(ZoneDefinition)
+            )
             for zone in _zones:
                 umi_template.ZoneDefinitions.append(zone)
             exceptions = [ZoneDefinition.__name__]
@@ -314,28 +324,65 @@ class UmiTemplateLibrary:
         return BuildingTemplate.from_idf(idf, **kwargs)
 
     @classmethod
-    def open(cls, filename):
+    def open(cls, filename, preserve_ids=False):
         """Initialize an UmiTemplate object from an UMI Template Library File.
 
         Args:
             filename (str or Path): PathLike object giving the pathname of the UMI
                 Template File.
+            preserve_ids: (bool): If `True` original object ids will be kept even if an object with the original_id exists.  If False, ids will be changed when creating objects if one already exists
 
         Returns:
             UmiTemplateLibrary: The template object.
         """
         name = Path(filename)
         with open(filename, "r") as f:
-            t = cls.loads(f.read(), name)
+            t = cls.loads(f.read(), name=name, preserve_ids=preserve_ids)
 
         return t
 
     @classmethod
-    def loads(cls, s, name):
-        """load string."""
+    def loads(cls, s, name, preserve_ids=False):
+        """load string.
+
+        Args:
+            name (str): Name for the UmiTemplatLibrary object
+            preserve_ids: (bool): If `True` original object ids will be kept even if an object with the original_id exists.  If False, ids will be changed when creating objects if one already exists
+
+        """
         datastore = json.loads(s)
         # with datastore, create each objects
         t = cls(name)
+        id_cache = {}
+        for lib_group in cls._LIB_GROUPS:
+            if lib_group == "BuildingTemplates":
+                continue  # Building Templates do not have IDs
+            elif lib_group == "ZoneDefinitions":
+                dict_group = "Zones"
+            elif lib_group == "StructureInformations":
+                dict_group = "StructureDefinitions"
+            else:
+                dict_group = lib_group
+            id_cache[dict_group] = {}
+            for store in datastore[dict_group]:
+                original_id = store["$id"] if store.get("$id") else store["$ref"]
+                cache_id = original_id
+                if not preserve_ids and original_id in [
+                    o.id for o in UmiBase.all_objects()
+                ]:
+                    new_id = str(id(store))
+                    if store.get("$id"):
+                        store["$id"] = new_id
+                    else:
+                        # handle windows
+                        store["$id"] = new_id
+                        for bt in datastore["BuildingTemplates"]:
+                            if bt["Windows"].get("$id") == original_id:
+                                bt["Windows"]["$id"] = new_id
+                        store["$ref"] = new_id
+                    cache_id = new_id
+                id_cache[dict_group][cache_id] = original_id
+
         t.GasMaterials = [
             GasMaterial.from_dict(store, allow_duplicates=False)
             for store in datastore["GasMaterials"]
@@ -352,7 +399,7 @@ class UmiTemplateLibrary:
             OpaqueConstruction.from_dict(
                 store,
                 materials={
-                    a.id: a
+                    id_cache[a.__class__.__name__ + "s"][a.id]: a
                     for a in (t.GasMaterials + t.GlazingMaterials + t.OpaqueMaterials)
                 },
                 allow_duplicates=True,
@@ -362,7 +409,10 @@ class UmiTemplateLibrary:
         t.WindowConstructions = [
             WindowConstruction.from_dict(
                 store,
-                materials={a.id: a for a in (t.GasMaterials + t.GlazingMaterials)},
+                materials={
+                    id_cache[a.__class__.__name__ + "s"][a.id]: a
+                    for a in (t.GasMaterials + t.GlazingMaterials)
+                },
                 allow_duplicates=True,
             )
             for store in datastore["WindowConstructions"]
@@ -370,7 +420,9 @@ class UmiTemplateLibrary:
         t.StructureInformations = [
             StructureInformation.from_dict(
                 store,
-                materials={a.id: a for a in t.OpaqueMaterials},
+                materials={
+                    id_cache["OpaqueMaterials"][a.id]: a for a in t.OpaqueMaterials
+                },
                 allow_duplicates=True,
             )
             for store in datastore["StructureDefinitions"]
@@ -382,7 +434,9 @@ class UmiTemplateLibrary:
         t.WeekSchedules = [
             WeekSchedule.from_dict(
                 store,
-                day_schedules={a.id: a for a in t.DaySchedules},
+                day_schedules={
+                    id_cache["DaySchedules"][a.id]: a for a in t.DaySchedules
+                },
                 allow_duplicates=True,
             )
             for store in datastore["WeekSchedules"]
@@ -390,7 +444,9 @@ class UmiTemplateLibrary:
         t.YearSchedules = [
             YearSchedule.from_dict(
                 store,
-                week_schedules={a.id: a for a in t.WeekSchedules},
+                week_schedules={
+                    id_cache["WeekSchedules"][a.id]: a for a in t.WeekSchedules
+                },
                 allow_duplicates=True,
             )
             for store in datastore["YearSchedules"]
@@ -398,7 +454,7 @@ class UmiTemplateLibrary:
         t.DomesticHotWaterSettings = [
             DomesticHotWaterSetting.from_dict(
                 store,
-                schedules={a.id: a for a in t.YearSchedules},
+                schedules={id_cache["YearSchedules"][a.id]: a for a in t.YearSchedules},
                 allow_duplicates=True,
             )
             for store in datastore["DomesticHotWaterSettings"]
@@ -406,7 +462,7 @@ class UmiTemplateLibrary:
         t.VentilationSettings = [
             VentilationSetting.from_dict(
                 store,
-                schedules={a.id: a for a in t.YearSchedules},
+                schedules={id_cache["YearSchedules"][a.id]: a for a in t.YearSchedules},
                 allow_duplicates=True,
             )
             for store in datastore["VentilationSettings"]
@@ -414,7 +470,7 @@ class UmiTemplateLibrary:
         t.ZoneConditionings = [
             ZoneConditioning.from_dict(
                 store,
-                schedules={a.id: a for a in t.YearSchedules},
+                schedules={id_cache["YearSchedules"][a.id]: a for a in t.YearSchedules},
                 allow_duplicates=True,
             )
             for store in datastore["ZoneConditionings"]
@@ -422,7 +478,10 @@ class UmiTemplateLibrary:
         t.ZoneConstructionSets = [
             ZoneConstructionSet.from_dict(
                 store,
-                opaque_constructions={a.id: a for a in t.OpaqueConstructions},
+                opaque_constructions={
+                    id_cache["OpaqueConstructions"][a.id]: a
+                    for a in t.OpaqueConstructions
+                },
                 allow_duplicates=True,
             )
             for store in datastore["ZoneConstructionSets"]
@@ -430,7 +489,7 @@ class UmiTemplateLibrary:
         t.ZoneLoads = [
             ZoneLoad.from_dict(
                 store,
-                schedules={a.id: a for a in t.YearSchedules},
+                schedules={id_cache["YearSchedules"][a.id]: a for a in t.YearSchedules},
                 allow_duplicates=True,
             )
             for store in datastore["ZoneLoads"]
@@ -438,14 +497,26 @@ class UmiTemplateLibrary:
         t.ZoneDefinitions = [
             ZoneDefinition.from_dict(
                 store,
-                zone_conditionings={a.id: a for a in t.ZoneConditionings},
-                zone_construction_sets={a.id: a for a in t.ZoneConstructionSets},
-                domestic_hot_water_settings={
-                    a.id: a for a in t.DomesticHotWaterSettings
+                zone_conditionings={
+                    id_cache["ZoneConditionings"][a.id]: a for a in t.ZoneConditionings
                 },
-                opaque_constructions={a.id: a for a in t.OpaqueConstructions},
-                zone_loads={a.id: a for a in t.ZoneLoads},
-                ventilation_settings={a.id: a for a in t.VentilationSettings},
+                zone_construction_sets={
+                    id_cache["ZoneConstructionSets"][a.id]: a
+                    for a in t.ZoneConstructionSets
+                },
+                domestic_hot_water_settings={
+                    id_cache["DomesticHotWaterSettings"][a.id]: a
+                    for a in t.DomesticHotWaterSettings
+                },
+                opaque_constructions={
+                    id_cache["OpaqueConstructions"][a.id]: a
+                    for a in t.OpaqueConstructions
+                },
+                zone_loads={id_cache["ZoneLoads"][a.id]: a for a in t.ZoneLoads},
+                ventilation_settings={
+                    id_cache["VentilationSettings"][a.id]: a
+                    for a in t.VentilationSettings
+                },
                 allow_duplicates=True,
             )
             for store in datastore["Zones"]
@@ -454,14 +525,20 @@ class UmiTemplateLibrary:
             WindowSetting.from_ref(
                 store["$ref"],
                 datastore["BuildingTemplates"],
-                schedules={a.id: a for a in t.YearSchedules},
-                window_constructions={a.id: a for a in t.WindowConstructions},
+                schedules={id_cache["YearSchedules"][a.id]: a for a in t.YearSchedules},
+                window_constructions={
+                    id_cache["WindowConstructions"][a.id]: a
+                    for a in t.WindowConstructions
+                },
             )
             if "$ref" in store
             else WindowSetting.from_dict(
                 store,
-                schedules={a.id: a for a in t.YearSchedules},
-                window_constructions={a.id: a for a in t.WindowConstructions},
+                schedules={id_cache["YearSchedules"][a.id]: a for a in t.YearSchedules},
+                window_constructions={
+                    id_cache["WindowConstructions"][a.id]: a
+                    for a in t.WindowConstructions
+                },
                 allow_duplicates=True,
             )
             for store in datastore["WindowSettings"]
@@ -469,15 +546,31 @@ class UmiTemplateLibrary:
         t.BuildingTemplates = [
             BuildingTemplate.from_dict(
                 store,
-                zone_definitions={a.id: a for a in t.ZoneDefinitions},
-                structure_definitions={a.id: a for a in t.StructureInformations},
-                window_settings={a.id: a for a in t.WindowSettings},
-                schedules={a.id: a for a in t.YearSchedules},
-                window_constructions={a.id: a for a in t.WindowConstructions},
+                zone_definitions={
+                    id_cache["Zones"][a.id]: a for a in t.ZoneDefinitions
+                },
+                structure_definitions={
+                    id_cache["StructureDefinitions"][a.id]: a
+                    for a in t.StructureInformations
+                },
+                window_settings={
+                    id_cache["WindowSettings"][a.id]: a for a in t.WindowSettings
+                },
+                schedules={id_cache["YearSchedules"][a.id]: a for a in t.YearSchedules},
+                window_constructions={
+                    id_cache["WindowConstructions"][a.id]: a
+                    for a in t.WindowConstructions
+                },
                 allow_duplicates=True,
             )
             for store in datastore["BuildingTemplates"]
         ]
+
+        for obj in t.object_list:
+            UmiBase._GRAPH.add_node(
+                obj
+            )  # Add all objects to graph in case they are complete orphans
+
         return t
 
     def validate(self, defaults=True):
@@ -665,15 +758,18 @@ class UmiTemplateLibrary:
                 cleared from self.
             keep_orphaned (bool): if True, orphaned objects are kept.
         """
+        G = self.to_graph(fast_return=True)
         if keep_orphaned:
-            G = self.to_graph(include_orphans=True)
-            connected_to_building = set()
-            for bldg in self.BuildingTemplates:
-                for obj in nx.dfs_preorder_nodes(G, bldg):
-                    connected_to_building.add(obj)
-            orphans = [
-                obj for obj in self.object_list if obj not in connected_to_building
-            ]
+            def get_orphans():
+                connected_to_building = []
+                for bldg in self.BuildingTemplates:
+                    for obj in nx.dfs_preorder_nodes(G, bldg):
+                        connected_to_building.append(obj)
+                orphans = [
+                    obj for obj in self.object_list if obj not in connected_to_building
+                ]
+                return orphans
+            orphans = get_orphans()
         self._clear_components_list(exceptions)  # First clear components
 
         # Inclusion is a set of object classes that will be unique.
@@ -688,18 +784,20 @@ class UmiTemplateLibrary:
                     f"{', '.join(set(self._LIB_GROUPS))}"
                 )
             inclusion = set(self._LIB_GROUPS)
-        for key, group in self:
-            # for each group
-            for component in group:
-                # travers each object using generator
-                for parent, key, obj in parent_key_child_traversal(component):
-                    if obj.__class__.__name__ + "s" in inclusion:
-                        if key:
-                            setattr(
-                                parent, key, obj.get_unique()
-                            )  # set unique object on key
 
-        self.update_components_list(exceptions=exceptions)  # Update the components list
+        self.update_components_list()
+
+        def replacement():
+            for group, components in self:
+                if group != "BuildingTemplates":
+                    for component in components:
+                        if component.__class__.__name__ + "s" in inclusion:
+                            equivalent_component = component.get_unique()
+                            component.replace_me_with(equivalent_component) # will skip replacement if ids are equal
+        replacement()
+        self.update_components_list()
+
+
         if keep_orphaned:
             for obj in orphans:
                 self[obj.__class__.__name__ + "s"].append(obj)
@@ -711,67 +809,98 @@ class UmiTemplateLibrary:
             this (UmiBase): The reference to replace with `that`.
             that (UmiBase): The object to replace each references with.
         """
-        for bldg in self.BuildingTemplates:
-            for parent, key, obj in parent_key_child_traversal(bldg):
-                if obj is this:
-                    setattr(parent, key, that)
-
+        this.replace_me_with(that)
         self.update_components_list()
 
     def update_components_list(self, exceptions=None):
         """Update the component groups with connected components."""
         # clear components list except BuildingTemplate
         self._clear_components_list(exceptions)
+        G = self.to_graph(fast_return=True)
+        for bt in self.BuildingTemplates:
+            for component in nx.dfs_preorder_nodes(G, bt):
+                if isinstance(component, UmiSchedule) and not isinstance(
+                    component, (DaySchedule, WeekSchedule, YearSchedule)
+                ):
+                    y, ws, ds = component.to_year_week_day()
+                    if not any(o.id == y.id for o in self.YearSchedules):
+                        self.YearSchedules.append(y)
+                    for w in ws:
+                        if not any(o.id == w.id for o in self.WeekSchedules):
+                            self.WeekSchedules.append(w)
+                    for d in ds:
+                        if not any(o.id == d.id for o in self.DaySchedules):
+                            self.DaySchedules.append(d)
+                    # finally, replace it with y
+                    component.replace_me_with(y)
 
-        for key, group in self:
-            for component in group:
-                for parent, key, child in parent_key_child_traversal(component):
-                    if isinstance(child, UmiSchedule) and not isinstance(
-                        child, (DaySchedule, WeekSchedule, YearSchedule)
-                    ):
-                        y, ws, ds = child.to_year_week_day()
-                        if not any(o.id == y.id for o in self.YearSchedules):
-                            self.YearSchedules.append(y)
-                        for w in ws:
-                            if not any(o.id == w.id for o in self.WeekSchedules):
-                                self.WeekSchedules.append(w)
-                        for d in ds:
-                            if not any(o.id == d.id for o in self.DaySchedules):
-                                self.DaySchedules.append(d)
-                        # finally, replace it with y
-                        setattr(parent, key, y)
-                    elif isinstance(child, UmiBase):
-                        obj_list = self.__dict__[child.__class__.__name__ + "s"]
-                        if not any(o.id == child.id for o in obj_list):
-                            # Important to compare on UmiBase.id and not on identity.
-                            obj_list.append(child)
+                else:
+                    if component.id not in [
+                        n.id for n in self[component.__class__.__name__ + "s"]
+                    ]:
+                        self[component.__class__.__name__ + "s"].append(component)
 
-    def to_graph(self, include_orphans=False):
-        """Create a :class:`networkx.DiGraph` of self.
+    def to_graph(self, include_orphans=False, fast_return=False):
+        """Create a :class:`networkx.MultiDiGraph` of self.
 
         This networkx.DiGraph object is then useful for graph-theory operations on
         the hierarchy of the UmiTemplateLibrary.
+
+        Todo: Test performance of nx.dfs_preorder_nodes vs nx.has_path for building graphs
+
+        Args:
+            include_orphans (bool): If `True`, components which do not have a path to a Building Template will be included.
+            fast_return: If `True` a copy of the entire Graph is returned, which is much more performant than filtering out orphans
+        Returns:
+            :class:`networkx.MultiDiGraph`: a copy of the UmiBase:_GRAPH or just the graph for the current lib.
+
         """
         import networkx as nx
 
-        G = nx.DiGraph()
+        G = UmiBase._GRAPH.copy()
+        if fast_return:
+            return G
+        if len(UmiTemplateLibrary._CREATED_LIBS) == 1:
+            if include_orphans:
+                return G
+            else:
+                nodes_to_remove = []
+                for node in G:
+                    if node in self.BuildingTemplates:
+                        continue # all building templates always included
+                    remove_node = True
+                    for bt in self.BuildingTemplates:
+                        if nx.has_path(G, bt, node):
+                            remove_node = False
+                            break
+                    if remove_node:
+                        nodes_to_remove.append(node)
+                G.remove_nodes_from(nodes_to_remove)
+                return G
+        else:
+            nodes_to_remove = []
+            for node in G:
+                if node.id not in [n.id for n in self.object_list]:
+                    nodes_to_remove.append(node)
+                    continue # nodes outside of lib always removed
+                if not include_orphans:
+                    if node in self.BuildingTemplates:
+                        continue # building templates always included
+                    remove_node = True
+                    for bt in self.BuildingTemplates:
+                        # if node in nx.dfs_preorder_nodes(G, bt): # why are
+                        if nx.has_path(G, bt, node):
+                            remove_node = False
+                            break
+                    if remove_node:
+                        nodes_to_remove.append(node)
+            G.remove_nodes_from(nodes_to_remove)
+            return G
 
-        for bldg in self.BuildingTemplates:
-            for parent, child in parent_child_traversal(bldg):
-                if parent:
-                    G.add_edge(parent, child)
-
-        if include_orphans:
-            orphans = [
-                obj for obj in self.object_list if obj.id not in (n.id for n in G)
-            ]
-            for orphan in orphans:
-                G.add_node(orphan)
-                for parent, child in parent_child_traversal(orphan):
-                    if parent:
-                        G.add_edge(parent, child)
-
-        return G
+    @classmethod
+    def _clear_class_memory(cls):
+        cls._CREATED_LIBS = []
+        UmiBase._clear_class_memory()
 
 
 def no_duplicates(file, attribute="Name"):
@@ -850,7 +979,7 @@ def parent_child_traversal(parent: UmiBase):
     :attr:`UmiBase.children` attribute and had a better performance than
     :func:`parent_key_child_traversal`.
     """
-    for child in parent.children:
+    for child in getattr(parent, "children", ()):
         yield parent, child
         yield from parent_child_traversal(child)
 

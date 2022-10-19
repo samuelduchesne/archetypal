@@ -10,7 +10,7 @@ from validator_collection import validators
 
 from archetypal import settings
 from archetypal.template.schedule import UmiSchedule
-from archetypal.template.umi_base import UmiBase
+from archetypal.template.umi_base import UmiBase, umibase_property
 from archetypal.utils import log, reduce, timeit
 
 
@@ -19,7 +19,6 @@ class DomesticHotWaterSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-dhw.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_flow_rate_per_floor_area",
@@ -59,8 +58,9 @@ class DomesticHotWaterSetting(UmiBase):
         self.IsOn = IsOn
         self.WaterSupplyTemperature = WaterSupplyTemperature
         self.WaterTemperatureInlet = WaterTemperatureInlet
-        self.WaterSchedule = WaterSchedule
         self.area = area
+        # Set UmiBase Properties after standard properties
+        self.WaterSchedule = WaterSchedule
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
@@ -87,18 +87,13 @@ class DomesticHotWaterSetting(UmiBase):
         )
         self._is_on = value
 
-    @property
+    @umibase_property(type_of_property=UmiSchedule)
     def WaterSchedule(self):
         """Get or set the schedule which modulates the FlowRatePerFloorArea."""
         return self._water_schedule
 
     @WaterSchedule.setter
     def WaterSchedule(self, value):
-        if value is not None:
-            assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. WaterSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
-            )
         self._water_schedule = value
 
     @property
@@ -408,6 +403,7 @@ class DomesticHotWaterSetting(UmiBase):
             ),
             area=self.area + other.area,
             **meta,
+            **kwargs,
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj

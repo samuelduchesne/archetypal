@@ -868,7 +868,7 @@ class VentilationSetting(UmiBase):
             )
         else:
             infiltration_epbunch = None
-            log("No epbunch created since IsInfiltrationOn == False.")
+            log("No 'ZONEINFILTRATION:DESIGNFLOWRATE' created since IsInfiltrationOn == False.")
 
         if self.IsScheduledVentilationOn:
             ventilation_epbunch = idf.newidfobject(
@@ -904,7 +904,7 @@ class VentilationSetting(UmiBase):
             )
         else:
             ventilation_epbunch = None
-            log("No epbunch created since IsScheduledVentilationOn == False.")
+            log("No 'ZONEVENTILATION:DESIGNFLOWRATE' created since IsScheduledVentilationOn == False.")
 
         if self.IsNatVentOn:
             natural_epbunch = idf.newidfobject(
@@ -931,7 +931,7 @@ class VentilationSetting(UmiBase):
             )
         else:
             natural_epbunch = None
-            log("No epbunch created since IsNatVentOn == False.")
+            log("No 'ZONEVENTILATION:WINDANDSTACKOPENAREA' created since IsNatVentOn == False.")
 
         return infiltration_epbunch, ventilation_epbunch, natural_epbunch
 

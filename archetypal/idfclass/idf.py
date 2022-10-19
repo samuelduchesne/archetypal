@@ -2095,6 +2095,10 @@ class IDF(GeomIDF):
                 # Backwards compatibility
                 if str(e) == "unknown field Key_Name":
                     abunch["Name"] = v
+                elif str(e) == "unknown field Zone_or_ZoneList_Name":
+                    abunch["Zone_or_ZoneList_or_Space_or_SpaceList_Name"] = v
+                elif str(e) == "unknown field People_per_Zone_Floor_Area":
+                    abunch["People_per_Floor_Area"] = v
                 else:
                     raise e
         abunch.theidf = self

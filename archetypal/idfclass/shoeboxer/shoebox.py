@@ -37,7 +37,7 @@ class ShoeBox(IDF):
 
         Note:
             The envelope is consisted of surfaces that have an outside boundary
-            condition different then `Adiabatic` or `Surface` or that participate in
+            condition different from `Adiabatic` or `Surface` or that participate in
             the heat exchange with the exterior.
 
         """
@@ -176,11 +176,20 @@ class ShoeBox(IDF):
         coordinates=None,
         zones_data=None,
         zoning="by_storey",
+        below_ground_stories=0,
+        below_ground_storey_height=2.5,
         **kwargs,
     ):
         """Create Shoebox from a template.
 
         Args:
+            zones_data (list of dict): Specify the size and name of zones to create
+                with a list of dict. The list of dict should have this form:
+                {"name": "Core", "coordinates": [(10, 0), (10, 5), (0, 5), (0, 0)],
+                "height": 3, "num_stories": 1, "zoning": "by_storey", "perim_depth":
+                3}. See :meth:`geomeppy.idf.IDF.add_block` for more information on the
+                attributes of the zone dict.
+            coordinates: A list of (x, y) tuples representing the building outline.
             system (str or HVACTemplate): Name of HVAC system template. Default
                 :"SimpleIdealLoadsSystem".
             building_template (BuildingTemplate):
@@ -188,12 +197,10 @@ class ShoeBox(IDF):
             ground_temperature (int or list): The ground temperature in degC. If a
                 single numeric value is passed, the value is applied to all months.
                 If a list is passed, it must have len == 12.
-            zones_data (list of dict): Specify the size and name of zones to create
-                with a list of dict. The list of dict should have this form:
-                {"name": "Core", "coordinates": [(10, 0), (10, 5), (0, 5), (0, 0)],
-                "height": 3, "num_stories": 1, "zoning": "by_storey", "perim_depth":
-                3}. See :meth:`geomeppy.idf.IDF.add_block` for more information on the
-                attributes of the zone dict.
+            below_ground_storey_height (float): The height of each basement storey.
+                Default : 2.5.
+            below_ground_stories (int): The number of stories below ground. Default :
+                0.
             zoning (str): The zoning pattern of the zone. Default : "by_storey".
 
         Returns:
@@ -214,6 +221,8 @@ class ShoeBox(IDF):
                     "coordinates": coordinates or [(10, 0), (10, 5), (0, 5), (0, 0)],
                     "height": height,
                     "num_stories": number_of_stories,
+                    "below_ground_stories": below_ground_stories,
+                    "below_ground_storey_height": below_ground_storey_height,
                     "zoning": zoning,
                     "perim_depth": 3,
                 },
@@ -224,9 +233,12 @@ class ShoeBox(IDF):
                 zones_data.append(
                     {
                         "name": "Perim",
-                        "coordinates": coordinates or [(10, 5), (10, 10), (0, 10), (0, 5)],
+                        "coordinates": coordinates
+                        or [(10, 5), (10, 10), (0, 10), (0, 5)],
                         "height": height,
                         "num_stories": number_of_stories,
+                        "below_ground_stories": below_ground_stories,
+                        "below_ground_storey_height": below_ground_storey_height,
                         "zoning": zoning,
                         "perim_depth": 3,
                     }

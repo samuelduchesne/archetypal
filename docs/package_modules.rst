@@ -81,6 +81,21 @@ Classes that support the :ref:`templates_label` classes above.
     constructions.window_construction.WindowType
     constructions.window_construction.ShadingType
 
+Shoebox Module
+--------------
+
+.. currentmodule:: archetypal.idfclass.shoeboxer
+
+.. autosummary::
+    :template: autosummary.rst
+    :nosignatures:
+    :toctree: reference/
+    :recursive:
+
+    ShoeBox
+    HVACTemplates
+
+
 Graph Module
 ------------
 

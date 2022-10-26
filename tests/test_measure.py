@@ -11,6 +11,7 @@ from archetypal.template.measures.measure import (
     SetFacadeThermalResistance,
     SetInfiltration,
     SetMechanicalVentilation,
+    InstallDoublePaneWindowsWithFixedUValueAndCoating,
 )
 
 
@@ -120,7 +121,9 @@ class TestMeasure:
             assert bt.Perimeter.Loads.EquipmentPowerDensity == equipment_alt
             assert bt.Perimeter.Loads.LightingPowerDensity == lighting_alt
             assert bt.Core.Loads.LightingPowerDensity == lighting_alt
-            assert bt.Core.Loads in umi_library.ZoneLoads # Make sure that lib.update_components_list worked
+            assert (
+                bt.Core.Loads in umi_library.ZoneLoads
+            )  # Make sure that lib.update_components_list worked
             assert bt.Perimeter.Loads in umi_library.ZoneLoads
             assert bt.Perimeter in umi_library.ZoneDefinitions
             assert bt.Core in umi_library.ZoneDefinitions
@@ -292,6 +295,24 @@ class TestMeasure:
         for bt in umi_library.BuildingTemplates:
             facade = bt.Perimeter.Constructions.Facade
             assert facade.r_value == pytest.approx(measure.FacadeRValue)
+
+    @pytest.mark.parametrize(
+        "measure,gas",
+        (
+            (InstallDoublePaneWindowsWithFixedUValueAndCoating(), "air"),
+            (InstallDoublePaneWindowsWithFixedUValueAndCoating(IsLowE=False), "air"),
+            (InstallDoublePaneWindowsWithFixedUValueAndCoating(Gas="ARGON"), "argon"),
+        ),
+    )
+    def test_install_double_pane_windows_with_fixed_u_value_and_coating(
+        self, measure, gas, umi_library
+    ):
+        measure.mutate(umi_library)
+        # assert that the glazing count is 2 for all windows
+        for bt in umi_library.BuildingTemplates:
+            window = bt.Windows
+            assert window.Construction.glazing_count == 2
+            assert window.Construction.Layers[1].Material.Name.lower() == gas
 
     @pytest.mark.parametrize(
         "measure",
@@ -739,6 +760,7 @@ class TestMeasure:
 
     def test_class_inheritance(self, umi_library):
         schedule_to_use = umi_library.YearSchedules[0]
+
         class GSHPandVent(SetCOP, SetMechanicalVentilation):
             HeatingCoP = 4
             CoolingCoP = 3
@@ -756,14 +778,10 @@ class TestMeasure:
             assert bt.Perimeter.Conditioning.HeatingCoeffOfPerf == 4
             assert bt.Perimeter.Ventilation.ScheduledVentilationAch == 1.33
             assert (
-                bt.Perimeter.Ventilation.ScheduledVentilationSchedule
-                == schedule_to_use
+                bt.Perimeter.Ventilation.ScheduledVentilationSchedule == schedule_to_use
             )
             assert bt.Core.Ventilation.ScheduledVentilationAch == 1.33
-            assert (
-                bt.Core.Ventilation.ScheduledVentilationSchedule
-                == schedule_to_use
-            )
+            assert bt.Core.Ventilation.ScheduledVentilationSchedule == schedule_to_use
 
     def test_getters_and_setters_and_equality(self, building_templates):
         a, _, _, _ = building_templates

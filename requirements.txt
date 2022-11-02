@@ -20,4 +20,4 @@ sklearn~=0.0
 CoolProp~=6.4.1
 energy-pandas~=0.3.3
 validator_collection~=1.5.0
-pint~=0.19
+pint==0.19

@@ -15,7 +15,7 @@ jobs:
       matrix:
         python-version: [ 3.8 ]
         os: [ ubuntu-latest ]  # later, add macos-latest, windows-latest
-        energyplus-version: [ 9.2.0 ]  # later, add 9.4.0
+        energyplus-version: [ 9.2.0, 9.6.0, 22.1.0 ]  # later, add 9.6.0
         include:
           - runs-on: ubuntu-latest
             compiler: gcc
@@ -23,9 +23,13 @@ jobs:
             energyplus-sha: 921312fa1d
             energyplus-install: 9-2-0
           # later, add 9.4.0
-          # - energyplus-version: 9.4.0
-          #   energyplus-sha: 998c4b761e
-          #   energyplus-install: 9-4-0
+          - energyplus-version: 9.6.0
+            energyplus-sha: 998c4b761e
+            energyplus-install: 9-6-0
+          # add 22.1.0
+          - energyplus-version: 22.1.0
+            energyplus-sha: ed759b17ee
+            energyplus-install: 22-1-0
     steps:
       - name: Display the OS
         run: echo $OSTYPE

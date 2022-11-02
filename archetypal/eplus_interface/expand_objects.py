@@ -54,7 +54,8 @@ class ExpandObjectsThread(Thread):
 
             # Move files into place
             tmp = self.tmp
-            self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
+            if self.idf.epw is not None:
+                self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
             self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
             expand_object_exe = shutil.which("ExpandObjects", path=self.eplus_home)

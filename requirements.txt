@@ -2,7 +2,7 @@ networkx~=2.6.1
 eppy==0.5.60  # for stability
 matplotlib~=3.4  # because of TwoSlopesNorm
 pycountry~=20.7.3
-scikit-learn~=1.0.2
+scikit-learn~=1.1.3
 pandas>=1.2.0
 numpy>=1.17
 tqdm~=4.61.2

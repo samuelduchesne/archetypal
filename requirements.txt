@@ -1,5 +1,5 @@
 networkx~=2.6.1
-eppy==0.5.56  # for stability
+eppy==0.5.60  # for stability
 matplotlib~=3.4  # because of TwoSlopesNorm
 pycountry~=20.7.3
 scikit-learn~=1.0.2
@@ -21,3 +21,4 @@ CoolProp~=6.4.1
 energy-pandas~=0.3.3
 validator_collection~=1.5.0
 pint==0.19
+typing_extensions==4.3.0

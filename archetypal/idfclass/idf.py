@@ -2697,19 +2697,6 @@ class IDF(GeomIDF):
 
         """
         total_area = 0
-        area = 0
-        zones = self.idfobjects["ZONE"]
-        zone: EpBunch
-        for zone in zones:
-            for surface in zone.zonesurfaces:
-                if hasattr(surface, "tilt"):
-                    if surface.tilt == 180.0:
-                        multiplier = float(
-                            zone.Multiplier if zone.Multiplier != "" else 1
-                        )
-
-                        area += surface.area * multiplier
-        self._area_total = area
         for surface in self.getsurfaces():
             if surface.Outside_Boundary_Condition.lower() in ["adiabatic", "surface"]:
                 continue

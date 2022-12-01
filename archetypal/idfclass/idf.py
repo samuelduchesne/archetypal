@@ -118,6 +118,7 @@ class IDF(GeomIDF):
             "design_day",
             "readvars",
             "as_version",
+            "reporting_frequency",
         ],
         "variables": [
             "idfobjects",
@@ -126,6 +127,7 @@ class IDF(GeomIDF):
             "design_day",
             "readvars",
             "as_version",
+            "reporting_frequency",
         ],
         "sim_id": [
             "idfobjects",
@@ -255,6 +257,7 @@ class IDF(GeomIDF):
         self._position = position
         self._translated = False
         self._rotated = False
+        self._reporting_frequency = reporting_frequency
         self.output_prefix = None
         self.name = (
             name
@@ -2661,6 +2664,14 @@ class IDF(GeomIDF):
     @rotated.setter
     def rotated(self, value):
         self._rotated = bool(value)
+
+    @property
+    def reporting_frequency(self):
+        return self._reporting_frequency
+
+    @reporting_frequency.setter
+    def reporting_frequency(self, value):
+        self._reporting_frequency = value
 
     def getsiteshadingsurfaces(self, surface_type=""):
         site_shading_types = self.idd_index["ref2names"][

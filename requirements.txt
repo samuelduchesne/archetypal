@@ -1,4 +1,4 @@
-networkx~=2.6.1
+networkx~=3.0
 eppy==0.5.60  # for stability
 matplotlib~=3.4  # because of TwoSlopesNorm
 pycountry~=20.7.3

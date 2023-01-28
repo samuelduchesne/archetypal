@@ -181,20 +181,21 @@ class EnergyPlusVersion(Version):
                         basedirs_.append(basedir.files("*.idd"))
                 iddnames = set(chain.from_iterable(basedirs_))
             except FileNotFoundError:
-                _valid_paths = {}
+                value = {}
             else:
-                _valid_paths = {}
+                value = {}
                 for iddname in iddnames:
-                    match = re.search("\d+(-\d+)+", iddname.stem)
+                    match = re.search(r"\d+(-\d+)+", iddname.stem)
                     if match is None:
                         # match the Idd file contained in basedir
                         match = re.search(r"\d+(-\d+)+", iddname.stem)
-                        version = match.group()
-                    else:
-                        version = match.group()
+                        if match is None:
+                            # Match the version in the whole path
+                            match = re.search(r"\d+(-\d+)+", iddname)
+                    version = match.group()
 
-                    _valid_paths[version] = iddname
-        self._valid_paths = dict(sorted(_valid_paths.items()))
+                    value[version] = iddname
+        self._valid_paths = dict(sorted(value.items()))
 
     @classmethod
     def current(cls):
@@ -226,15 +227,14 @@ class EnergyPlusVersion(Version):
 
 def get_eplus_basedirs():
     """Return a list of possible E+ install paths."""
-    if platform.system() == "Windows":
-        eplus_homes = Path("C:\\").dirs("EnergyPlus*")
-        return eplus_homes
+    if settings.energyplus_location is not None:
+        return [Path(settings.energyplus_location)]
+    elif platform.system() == "Windows":
+        return Path("C:\\").dirs("EnergyPlus*")
     elif platform.system() == "Linux":
-        eplus_homes = Path("/usr/local/").dirs("EnergyPlus*")
-        return eplus_homes
+        return Path("/usr/local/").dirs("EnergyPlus*")
     elif platform.system() == "Darwin":
-        eplus_homes = Path("/Applications").dirs("EnergyPlus*")
-        return eplus_homes
+        return Path("/Applications").dirs("EnergyPlus*")
     else:
         warnings.warn(
             "Archetypal is not compatible with %s. It is only compatible "

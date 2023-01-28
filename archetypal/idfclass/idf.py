@@ -774,8 +774,7 @@ class IDF(GeomIDF):
         """
         if self._output_directory is None:
             cache_filename = self._original_cache
-            output_directory = settings.cache_folder / cache_filename
-            self._output_directory = output_directory.expand()
+            self._output_directory = settings.cache_folder / cache_filename
         return Path(self._output_directory)
 
     @output_directory.setter

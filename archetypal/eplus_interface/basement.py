@@ -11,7 +11,7 @@ from path import Path
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from archetypal.utils import log
+from ..utils import log
 
 from ..eplus_interface.exceptions import EnergyPlusProcessError
 

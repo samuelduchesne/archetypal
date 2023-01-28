@@ -4,7 +4,7 @@ from path import Path
 from archetypal.idfclass.idf import IDF
 from archetypal.utils import config, parallel_process
 
-config(cache_folder="../../tests/.temp/cache", use_cache=True, log_console=True)
+config(cache_folder="../../tests/.temp/cache", cache_responses=True, log_console=True)
 
 
 def main():
@@ -34,6 +34,6 @@ def main():
 
 
 if __name__ == "__main__":
-    config(use_cache=True, log_console=True)
+    config(cache_responses=True, log_console=True)
     idfs = main()
     print(idfs)

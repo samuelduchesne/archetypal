@@ -32,7 +32,7 @@ def config(
     logs_folder=settings.logs_folder,
     imgs_folder=settings.imgs_folder,
     cache_folder=settings.cache_folder,
-    use_cache=settings.cache_responses,
+    cache_responses=settings.cache_responses,
     log_file=settings.log_file,
     log_console=settings.log_console,
     log_level=settings.log_level,
@@ -51,7 +51,8 @@ def config(
         logs_folder (str): where to write the log files.
         imgs_folder (str): where to save figures.
         cache_folder (str): where to save the simulation results.
-        use_cache (bool): if True, use a local cache to save/retrieve DataPortal API
+        cache_responses (bool): if True, use a local cache to save/retrieve
+        DataPortal API
             calls for the same requests.
         log_file (bool): if true, save log output to a log file in logs_folder.
         log_console (bool): if true, print log output to the console.
@@ -68,7 +69,7 @@ def config(
         None
     """
     # set each global variable to the passed-in parameter value
-    settings.cache_responses = use_cache
+    settings.cache_responses = cache_responses
     settings.cache_folder = Path(cache_folder).expand().makedirs_p()
     settings.data_folder = Path(data_folder).expand().makedirs_p()
     settings.imgs_folder = Path(imgs_folder).expand().makedirs_p()

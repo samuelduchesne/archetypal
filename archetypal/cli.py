@@ -27,7 +27,7 @@ class CliConfig(object):
         self.logs_folder = settings.logs_folder
         self.imgs_folder = settings.imgs_folder
         self.cache_folder = settings.cache_folder
-        self.use_cache = settings.cache_responses
+        self.cache_responses = settings.cache_responses
         self.log_file = settings.log_file
         self.log_console = settings.log_console
         self.log_level = settings.log_level
@@ -67,7 +67,7 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
 )
 @click.option(
     "-c",
-    "--use-cache",
+    "--cache-responses",
     is_flag=True,
     default=False,
     help="Use a local cache to save/retrieve DataPortal API calls for the same "

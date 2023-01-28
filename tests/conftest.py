@@ -43,7 +43,7 @@ def config():
         logs_folder="tests/.temp/logs",
         imgs_folder="tests/.temp/images",
         cache_folder="tests/.temp/cache",
-        use_cache=True,
+        cache_responses=True,
         log_file=False,
         log_console=True,
         debug=True,

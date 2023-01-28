@@ -119,7 +119,7 @@ def cli(
     logs_folder,
     imgs_folder,
     cache_folder,
-    use_cache,
+    cache_responses,
     log_file,
     log_console,
     log_level,
@@ -138,7 +138,7 @@ def cli(
     cli_config.logs_folder = logs_folder
     cli_config.imgs_folder = imgs_folder
     cli_config.cache_folder = cache_folder
-    cli_config.cache_responses = use_cache
+    cli_config.cache_responses = cache_responses
     cli_config.log_file = log_file
     cli_config.log_console = log_console
     cli_config.log_level = log_level

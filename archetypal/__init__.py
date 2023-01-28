@@ -6,9 +6,9 @@
 ################################################################################
 import logging as lg
 from pathlib import Path
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Any
 
-from energy_pandas.units import unit_registry as UnitReg
+from energy_pandas.units import unit_registry
 
 # Version of the package
 from pkg_resources import get_distribution, DistributionNotFound
@@ -16,9 +16,7 @@ from pydantic import (
     BaseSettings,
     Field,
     validator,
-    FilePath,
     DirectoryPath,
-    root_validator,
 )
 
 # don't display futurewarnings
@@ -51,6 +49,9 @@ class ZoneWeight(object):
 
 
 class Settings(BaseSettings):
+    class Config:
+        arbitrary_types_allowed = True
+        validate_assignment = True
 
     data_folder: Path = Field("data", env="ARCHETYPAL_DATA")
     logs_folder: Path = Field("logs", env="ARCHETYPAL_LOGS")
@@ -180,19 +181,22 @@ class Settings(BaseSettings):
         description="Root directory of the EnergyPlus install.",
     )
 
-    unit_registry = UnitReg
+    unit_registry: Any = None
 
     @validator("unit_registry")
     def initialize_units(cls, v):
-        additional_units = (
-            "Dimensionless = dimensionless = Fraction = fraction",
-            "@alias degC = Temperature = temperature",
-        )
-        for unit in additional_units:
-            v.define(unit)
+        if v is not None:
+            additional_units = (
+                "Dimensionless = dimensionless = Fraction = fraction",
+                "@alias degC = Temperature = temperature",
+            )
+            for unit in additional_units:
+                v.define(unit)
+        return v
 
 
 settings = Settings()
+settings.unit_registry = unit_registry
 
 # After settings are loaded, import other modules
 from .idfclass import IDF

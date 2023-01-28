@@ -1389,7 +1389,7 @@ class IDF(GeomIDF):
                 )
 
         if (
-                self.simulation_dir.exists() and not force
+            self.simulation_dir.exists() and not force
         ):  # don't simulate if results exists
             return self
 

@@ -5,6 +5,7 @@ different forms.
 """
 import io
 import itertools
+import logging
 import logging as lg
 import math
 import os
@@ -1377,14 +1378,20 @@ class IDF(GeomIDF):
             outputs.
 
         """
-        if (
-            self.simulation_dir.exists() and not force
-        ):  # don't simulate if results exists
-            return self
         # First, update keys with new values
         for key, value in kwargs.items():
             if f"_{key}" in self.__dict__.keys():
                 setattr(self, key, value)
+            else:
+                log(
+                    f"IDF.simulate got invalid keyword '{key}'. Ignored",
+                    level=logging.WARNING,
+                )
+
+        if (
+                self.simulation_dir.exists() and not force
+        ):  # don't simulate if results exists
+            return self
 
         if self.as_version is not None:
             if self.as_version != EnergyPlusVersion(self.idd_version):

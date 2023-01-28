@@ -12,7 +12,14 @@ from energy_pandas.units import unit_registry as UnitReg
 
 # Version of the package
 from pkg_resources import get_distribution, DistributionNotFound
-from pydantic import BaseSettings, Field, validator, FilePath, DirectoryPath
+from pydantic import (
+    BaseSettings,
+    Field,
+    validator,
+    FilePath,
+    DirectoryPath,
+    root_validator,
+)
 
 # don't display futurewarnings
 

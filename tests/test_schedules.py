@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import archetypal.settings as settings
+from archetypal import settings
 from archetypal import IDF
 from archetypal.eplus_interface import EnergyPlusVersion
 from archetypal.schedule import Schedule, ScheduleTypeLimits

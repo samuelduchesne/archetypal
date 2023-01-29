@@ -7,16 +7,18 @@ Requirements
 
 .. warning::
 
-    Prior to installing this package, you must have EnergyPlus version 9.2.0 (download_ here at the bottom of
-    the page).
+    Archetypal is most compatible with energyplus v9.2.0 (download_ here at the bottom of
+    the page). although it will parse, convert and simulate other versions
+    (older or newer).
 
 `EnergyPlus`_ should be installed in it's default location. On Windows that would be in `C:\\EnergyPlusV9-2-0` and on
-MacOS that would be in `/Applications/EnergyPlus-9-2-0`.
+MacOS that would be in `/Applications/EnergyPlus-9-2-0`. For custom install locations, see :ref:`Creating an Umi
+template`
 
 It is also recommended that the older transition programs be installed as well. These programs allow older IDF files
-(versions 7.2 and below) to be upgraded to version 9-2-0. Since these, don't come by default with EnergyPlus, they
-need to be installed by hand. A script has been created for windows (see `Installation from scratch`_). For
-macOS, refer to the `supplementary conversion programs`_.
+(versions 7.2 and below) to be upgraded to version 9-2-0 (and above). Since these, don't come by default with
+EnergyPlus, they need to be installed by hand. A script has been created for windows (see `Installation from
+scratch`_). For macOS, refer to the `supplementary conversion programs`_.
 
 Installation from scratch
 -------------------------

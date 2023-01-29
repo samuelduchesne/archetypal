@@ -202,7 +202,8 @@ settings.unit_registry = unit_registry
 from .idfclass import IDF
 from .eplus_interface.version import EnergyPlusVersion
 from .umi_template import UmiTemplateLibrary
-from .utils import config, clear_cache
+from .utils import config, clear_cache, parallel_process
+from .umi_template import BuildingTemplate
 
 
 try:

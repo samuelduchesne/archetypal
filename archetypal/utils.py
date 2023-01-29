@@ -633,7 +633,6 @@ def parallel_process(
                 settings.log_name,
                 settings.log_filename,
                 settings.useful_idf_objects,
-                settings.umitemplate,
                 "area",
                 settings.ep_version,
                 settings.debug,

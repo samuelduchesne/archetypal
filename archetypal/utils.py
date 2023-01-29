@@ -775,3 +775,10 @@ def signif(x, digits=4):
         return x
     digits -= math.ceil(math.log10(abs(x)))
     return round(x, digits)
+
+
+def clear_cache():
+    """Clear the cache."""
+    import shutil
+
+    shutil.rmtree(settings.cache_folder)

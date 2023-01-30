@@ -22,3 +22,4 @@ validator_collection~=1.5.0
 pint==0.19
 typing_extensions==4.3.0
 pydantic
+geomeppy~=0.11.8

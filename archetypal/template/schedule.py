@@ -17,7 +17,6 @@ from archetypal.utils import log
 
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
-    _CREATED_OBJECTS = []
 
     __slots__ = ("_quantity",)
 
@@ -33,7 +32,7 @@ class UmiSchedule(Schedule, UmiBase):
         self.quantity = quantity
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def quantity(self):
@@ -503,6 +502,10 @@ class YearSchedulePart:
 class DaySchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles daily schedules."""
 
+    _POSSIBLE_PARENTS = [
+        ("WeekSchedule", lambda parent: [(i, day) for i, day in enumerate(parent.Days)])
+    ]
+
     __slots__ = ("_values",)
 
     def __init__(self, Name, Values, Category="Day", **kwargs):
@@ -517,6 +520,7 @@ class DaySchedule(UmiSchedule):
         super(DaySchedule, self).__init__(
             Category=Category, Name=Name, Values=Values, **kwargs
         )
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def all_values(self) -> np.ndarray:
@@ -719,6 +723,12 @@ class DaySchedule(UmiSchedule):
 class WeekSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles weekly schedules."""
 
+    _POSSIBLE_PARENTS = [
+        (
+            "YearSchedule",
+            lambda parent: [(i, p.Schedule) for i, p in enumerate(parent.Parts)],
+        )
+    ]
     __slots__ = ("_days", "_values")
 
     def __init__(self, Name, Days=None, Category="Week", **kwargs):
@@ -730,6 +740,7 @@ class WeekSchedule(UmiSchedule):
         """
         super(WeekSchedule, self).__init__(Name, Category=Category, **kwargs)
         self.Days = Days
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Days(self):
@@ -912,6 +923,35 @@ class WeekSchedule(UmiSchedule):
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
 
+    _POSSIBLE_PARENTS = [
+        (
+            "WindowSetting",
+            [
+                "AfnWindowAvailability",
+                "ShadingSystemAvailabilitySchedule",
+                "ZoneMixingAvailabilitySchedule",
+            ],
+        ),
+        ("VentilationSetting", ["NatVentSchedule", "ScheduledVentilationSchedule"]),
+        (
+            "ZoneLoad",
+            [
+                "EquipmentAvailabilitySchedule",
+                "LightsAvailabilitySchedule",
+                "OccupancySchedule",
+            ],
+        ),
+        ("DomesticHotWaterSetting", ["WaterSchedule"]),
+        (
+            "ZoneConditioning",
+            [
+                "CoolingSchedule",
+                "HeatingSchedule",
+                "MechVentSchedule",
+            ],
+        ),
+    ]
+
     def __init__(self, Name, Type="Fraction", Parts=None, Category="Year", **kwargs):
         """Initialize a YearSchedule object with parameters.
 
@@ -930,6 +970,7 @@ class YearSchedule(UmiSchedule):
         super(YearSchedule, self).__init__(
             Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
         )
+        self.CREATED_OBJECTS.append(self)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -1068,7 +1109,7 @@ class YearSchedule(UmiSchedule):
                     next(
                         (
                             x
-                            for x in self._CREATED_OBJECTS
+                            for x in self.CREATED_OBJECTS
                             if x.Name == week_day_schedule_name
                             and type(x).__name__ == "WeekSchedule"
                         )

@@ -12,8 +12,8 @@ from archetypal.utils import log, reduce, timeit
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
-    _CREATED_OBJECTS = []
 
+    _POSSIBLE_PARENTS = [("ZoneDefinition", ["Constructions"])]
     __slots__ = (
         "_facade",
         "_ground",
@@ -82,7 +82,7 @@ class ZoneConstructionSet(UmiBase):
         self.volume = volume
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Facade(self):

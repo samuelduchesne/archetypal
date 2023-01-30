@@ -62,8 +62,8 @@ class VentilationSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
-    _CREATED_OBJECTS = []
 
+    _POSSIBLE_PARENTS = [("ZoneDefinition", ["Ventilation"])]
     __slots__ = (
         "_infiltration",
         "_is_infiltration_on",
@@ -200,7 +200,7 @@ class VentilationSetting(UmiBase):
         self.volume = volume
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def NatVentSchedule(self):

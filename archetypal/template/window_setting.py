@@ -36,8 +36,11 @@ class WindowSetting(UmiBase):
 
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
-    _CREATED_OBJECTS = []
 
+    _POSSIBLE_PARENTS = [
+        ("BuildingTemplate", ["Windows"]),
+        ("ZoneDefinition", ["Windows"]),
+    ]
     __slots__ = (
         "_operable_area",
         "_afn_discharge_c",
@@ -133,7 +136,7 @@ class WindowSetting(UmiBase):
         self.area = area
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def area(self):

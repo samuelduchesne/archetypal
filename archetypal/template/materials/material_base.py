@@ -14,6 +14,27 @@ class MaterialBase(UmiBase):
     -cycle-impact
     """
 
+    _POSSIBLE_PARENTS = [
+        (
+            "WindowConstruction",
+            lambda parent: [
+                (i, layer.Material) for i, layer in enumerate(parent.Layers)
+            ],
+        ),
+        (
+            "OpaqueConstruction",
+            lambda parent: [
+                (i, layer.Material) for i, layer in enumerate(parent.Layers)
+            ],
+        ),
+        (
+            "StructureInformation",
+            lambda parent: [
+                (i, ratio.Material) for i, ratio in enumerate(parent.MassRatios)
+            ],
+        ),
+    ]
+
     __slots__ = (
         "_cost",
         "_embodied_carbon",

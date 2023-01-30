@@ -14,7 +14,6 @@ class GasMaterial(MaterialBase):
 
     .. image:: ../images/template/materials-gas.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = ("_type", "_conductivity", "_density")
 
@@ -41,7 +40,7 @@ class GasMaterial(MaterialBase):
         self.Density = Density
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Name(self):

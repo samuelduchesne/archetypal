@@ -25,7 +25,8 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
-    _CREATED_OBJECTS = []
+
+    _POSSIBLE_PARENTS = [("BuildingTemplate", ["Perimeter", "Core"])]
 
     __slots__ = (
         "_internal_mass_exposed_per_floor_area",
@@ -122,7 +123,7 @@ class ZoneDefinition(UmiBase):
         self.is_core = is_core
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Constructions(self):
@@ -134,7 +135,7 @@ class ZoneDefinition(UmiBase):
         if value is not None:
             assert isinstance(value, ZoneConstructionSet), (
                 f"Input value error. Constructions must be of "
-                f"type {ZoneConstructionSet}, not {type(value)}."
+                f"type { ZoneConstructionSet}, not {type(value)}."
             )
         self._constructions = value
 
@@ -148,7 +149,7 @@ class ZoneDefinition(UmiBase):
         if value is not None:
             assert isinstance(value, ZoneLoad), (
                 f"Input value error. Loads must be of "
-                f"type {ZoneLoad}, not {type(value)}."
+                f"type { ZoneLoad}, not {type(value)}."
             )
         self._loads = value
 
@@ -162,7 +163,7 @@ class ZoneDefinition(UmiBase):
         if value is not None:
             assert isinstance(value, ZoneConditioning), (
                 f"Input value error. Conditioning must be of "
-                f"type {ZoneConditioning}, not {type(value)}."
+                f"type { ZoneConditioning}, not {type(value)}."
             )
         self._conditioning = value
 
@@ -176,7 +177,7 @@ class ZoneDefinition(UmiBase):
         if value is not None:
             assert isinstance(value, VentilationSetting), (
                 f"Input value error. Ventilation must be of "
-                f"type {VentilationSetting}, not {type(value)}."
+                f"type { VentilationSetting}, not {type(value)}."
             )
         self._ventilation = value
 
@@ -190,7 +191,7 @@ class ZoneDefinition(UmiBase):
         if value is not None:
             assert isinstance(value, DomesticHotWaterSetting), (
                 f"Input value error. DomesticHotWater must be of "
-                f"type {DomesticHotWaterSetting}, not {type(value)}."
+                f"type { DomesticHotWaterSetting}, not {type(value)}."
             )
         self._domestic_hot_water = value
 
@@ -222,7 +223,7 @@ class ZoneDefinition(UmiBase):
         if value is not None:
             assert isinstance(value, OpaqueConstruction), (
                 f"Input value error. InternalMassConstruction must be of "
-                f"type {OpaqueConstruction}, not {type(value)}."
+                f"type { OpaqueConstruction}, not {type(value)}."
             )
         self._internal_mass_construction = value
 
@@ -245,7 +246,7 @@ class ZoneDefinition(UmiBase):
         if value is not None:
             assert isinstance(value, WindowSetting), (
                 f"Input value error. Windows must be of "
-                f"type {WindowSetting}, not {type(value)}."
+                f"type { WindowSetting}, not {type(value)}."
             )
         self._windows = value
 
@@ -674,7 +675,7 @@ class ZoneDefinition(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if self.InternalMassConstruction is None:
+        if not self.InternalMassConstruction:
             internal_mass = InternalMass.generic_internalmass_from_zone(self)
             self.InternalMassConstruction = internal_mass.construction
             self.InternalMassExposedPerFloorArea = (

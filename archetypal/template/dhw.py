@@ -19,7 +19,8 @@ class DomesticHotWaterSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-dhw.png
     """
-    _CREATED_OBJECTS = []
+
+    _POSSIBLE_PARENTS = [("ZoneDefinition", ["DomesticHotWater"])]
 
     __slots__ = (
         "_flow_rate_per_floor_area",
@@ -63,7 +64,7 @@ class DomesticHotWaterSetting(UmiBase):
         self.area = area
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def FlowRatePerFloorArea(self):

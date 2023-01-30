@@ -139,7 +139,7 @@ class StructureInformation(ConstructionBase):
     .. image:: ../images/template/constructions-structure.png
     """
 
-    _CREATED_OBJECTS = []
+    _POSSIBLE_PARENTS = [("BuildingTemplate", ["Structure"])]
 
     __slots__ = ("_mass_ratios",)
 
@@ -154,7 +154,7 @@ class StructureInformation(ConstructionBase):
         self.MassRatios = MassRatios
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def MassRatios(self):

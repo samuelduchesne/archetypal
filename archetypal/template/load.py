@@ -42,7 +42,8 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
-    _CREATED_OBJECTS = []
+
+    _POSSIBLE_PARENTS = [("ZoneDefinition", ["Loads"])]
 
     __slots__ = (
         "_dimming_type",
@@ -133,7 +134,7 @@ class ZoneLoad(UmiBase):
         self.volume = volume
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def DimmingType(self):

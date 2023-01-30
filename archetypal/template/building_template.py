@@ -31,7 +31,6 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
-    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_partition_ratio",
@@ -116,7 +115,7 @@ class BuildingTemplate(UmiBase):
         self.Version = Version
 
         # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
+        self.CREATED_OBJECTS.append(self)
 
     @property
     def Perimeter(self):
@@ -657,6 +656,13 @@ class BuildingTemplate(UmiBase):
                     self.Version == other.Version,
                 ]
             )
+
+    @property
+    def ParentTemplates(self):
+        """Bails out of Parent Templates recursive call from UmiBase
+        And returns array of self for concatenation
+        """
+        return {self}
 
     @property
     def children(self):

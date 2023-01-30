@@ -45,6 +45,30 @@ def _shorten_name(long_name):
 class UmiBase(object):
     """Base class for template objects."""
 
+    _POSSIBLE_PARENTS = []
+
+    _CREATED_OBJECTS = {
+        "GasMaterials": [],
+        "GlazingMaterials": [],
+        "OpaqueMaterials": [],
+        "NoMassMaterials": [],
+        "OpaqueConstructions": [],
+        "WindowConstructions": [],
+        "StructureInformations": [],
+        "DaySchedules": [],
+        "WeekSchedules": [],
+        "YearSchedules": [],
+        "DomesticHotWaterSettings": [],
+        "VentilationSettings": [],
+        "ZoneConditionings": [],
+        "ZoneConstructionSets": [],
+        "ZoneLoads": [],
+        "ZoneDefinitions": [],
+        "WindowSettings": [],
+        "BuildingTemplates": [],
+        "UmiSchedules": [],
+    }
+
     __slots__ = (
         "_id",
         "_datasource",
@@ -90,6 +114,7 @@ class UmiBase(object):
         self.allow_duplicates = allow_duplicates
         self.unit_number = next(self._ids)
         self.predecessors = None
+
 
     @property
     def Name(self):
@@ -370,7 +395,7 @@ class UmiBase(object):
             return other
         if other is None:
             return self
-        self._CREATED_OBJECTS.remove(self)
+        self.CREATED_OBJECTS.remove(self)
         id = self.id
         new_obj = self.combine(other, allow_duplicates=allow_duplicates)
         new_obj.id = id
@@ -409,9 +434,8 @@ class UmiBase(object):
                     sorted(
                         (
                             x
-                            for x in self._CREATED_OBJECTS
-                            if x == self
-                            and x.Name == self.Name
+                            for x in self.CREATED_OBJECTS
+                            if x == self and x.Name == self.Name
                         ),
                         key=lambda x: x.unit_number,
                     )
@@ -424,11 +448,7 @@ class UmiBase(object):
             obj = next(
                 iter(
                     sorted(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                            if x == self
-                        ),
+                        (x for x in self.CREATED_OBJECTS if x == self),
                         key=lambda x: x.unit_number,
                     )
                 ),
@@ -436,6 +456,57 @@ class UmiBase(object):
             )
 
         return obj
+
+    @property
+    def Parents(self):
+        """ Get the parents of an UmiBase Object"""
+        parents = {}
+        for (umi_class, lookup_children_of) in self._POSSIBLE_PARENTS:
+            possible_parents = UmiBase._CREATED_OBJECTS[umi_class + "s"]
+            for parent in possible_parents:
+                # For each parent, find the possible children which
+                # may equal self
+                keyed_children = []  # stores list of (key, child)
+                if callable(lookup_children_of):
+                    keyed_children = lookup_children_of(parent)
+                elif isinstance(lookup_children_of, list):
+                    keyed_children = [
+                        (attr, getattr(parent, attr))
+                        for attr in lookup_children_of
+                        if getattr(parent, attr, None)
+                    ]
+                else:
+                    raise ValueError(
+                        "The provided parent lookup is not valid.  It must be a list of str or return a list of enumerated children"
+                    )
+                for key, child in keyed_children:
+                    if child.id == self.id:
+                        if child == self:
+                            if parent not in parents:
+                                parents[parent] = set()
+                            parents[parent].add(key)
+        return parents
+
+    @property
+    def ParentTemplates(self):
+        """ Get the parent templates of an UmiBase object"""
+        templates = set()
+        for parent in self.Parents.keys():
+            # Recursive call terminates at Parent Template level, or if self.Parents is empty
+            templates = templates.union(parent.ParentTemplates)
+        return templates
+
+    @classmethod
+    def CREATED_OBJECTS(cls, object_class):
+        """ Return all objects of a given class that UmiBase is aware of
+            Args:
+                object_class (class): Inherits UmiBase
+        """
+        return cls._CREATED_OBJECTS[object_class.__name__ + "s"]
+
+    @property
+    def CREATED_OBJECTS(self):
+        return UmiBase._CREATED_OBJECTS[self.__class__.__name__ + "s"]
 
 
 class UserSet(Hashable, MutableSet):

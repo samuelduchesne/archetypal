@@ -21,3 +21,4 @@ energy-pandas~=0.3.3
 validator_collection~=1.5.0
 pint==0.19
 typing_extensions==4.3.0
+pydantic

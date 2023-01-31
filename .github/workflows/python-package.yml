@@ -47,7 +47,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.energyplus-sha }}
       - if: ${{ steps.cache-energyplus.outputs.cache-hit != 'true' }}
         name: List the state of node modules
-        continue-on-error: false
+        continue-on-error: true
         run: energyplus --version
       - name: Install EnergyPlus
         env:

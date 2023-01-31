@@ -36,6 +36,19 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip' # caching pip dependencies
+      - name: Cache Energyplus
+        id: cache-energyplus
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-energyplus
+        with:
+          # energyplus stored in  `/usr/local/EnergyPlus-{energyplus-install}` on Linux/macOS
+          path: /usr/local/EnergyPlus-${{ matrix.energyplus-install }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.energyplus-sha }}
+      - if: ${{ steps.cache-energyplus.outputs.cache-hit != 'true' }}
+        name: List the state of node modules
+        continue-on-error: false
+        run: energyplus --version
       - name: Install EnergyPlus
         env:
           ENERGYPLUS_VERSION: ${{ matrix.energyplus-version }}

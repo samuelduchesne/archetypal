@@ -6,6 +6,7 @@ from threading import Thread
 
 import eppy
 from eppy.runner.run_functions import paths_from_version
+from packaging.version import Version
 from path import Path
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm

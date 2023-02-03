@@ -19,6 +19,7 @@ class DomesticHotWaterSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-dhw.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (

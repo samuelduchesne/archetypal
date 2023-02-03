@@ -42,6 +42,7 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (

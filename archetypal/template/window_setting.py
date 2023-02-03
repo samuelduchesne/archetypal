@@ -36,6 +36,7 @@ class WindowSetting(UmiBase):
 
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (

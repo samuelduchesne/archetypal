@@ -4,6 +4,7 @@ import json
 import logging as lg
 from collections import OrderedDict
 from concurrent.futures.thread import ThreadPoolExecutor
+from copy import copy, deepcopy
 from typing import List
 
 import networkx as nx
@@ -182,6 +183,18 @@ class UmiTemplateLibrary:
         for name, group in self:
             objs.extend(group)
         return objs
+
+    @property
+    def objects_by_id(self):
+        """Get dictionary of objects with their id as a key.
+
+        Note:
+            Includes orphaned objects.
+        """
+        objs_dict = {}
+        for name, group in self:
+            objs_dict.update({obj.id: obj for obj in group})
+        return objs_dict
 
     @classmethod
     def from_idf_files(
@@ -843,7 +856,7 @@ def parent_key_child_traversal(parent):
                     yield from parent_key_child_traversal(child)
 
 
-def parent_child_traversal(parent: UmiBase):
+def parent_child_traversal(parent):
     """Iterate over all children of the parent.
 
     This generator recursively yields (parent, child) tuples. It uses the
@@ -856,4 +869,5 @@ def parent_child_traversal(parent: UmiBase):
 
 
 def traverse(parent):
+    """Iterate over all children of the parent."""
     return parent_child_traversal(parent)

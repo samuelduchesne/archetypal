@@ -63,14 +63,14 @@ class TestUmiTemplate:
         # Only make the `OpaqueMaterial` objects unique.
         nb_materials_before = len(c.OpaqueMaterials)
         nb_opaque_constructions = len(c.OpaqueConstructions)
-        c.unique_components("OpaqueMaterials")
+        c.unique_components(keep_orphaned="OpaqueMaterials")
         assert len(c.OpaqueMaterials) < nb_materials_before
         assert len(c.OpaqueConstructions) == nb_opaque_constructions
 
         # test wrong inclusion
         with pytest.raises(AssertionError):
             # missing S.
-            c.unique_components("OpaqueMaterial")
+            c.unique_components(keep_orphaned="OpaqueMaterial")
 
     def test_graph(self):
         """Test initialization of networkx DiGraph"""
@@ -83,6 +83,11 @@ class TestUmiTemplate:
         # Test option to include orphaned objects.
         G = a.to_graph(include_orphans=True)
         assert len(G) > n_nodes
+
+    def test_object_by_id(self, two_identical_libraries):
+        """Test getting an object by its id."""
+        lib, _ = two_identical_libraries
+        assert lib.objects_by_id["1"].id == "1"
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and

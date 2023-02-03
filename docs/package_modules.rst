@@ -91,6 +91,30 @@ Classes that support the :ref:`templates_label` classes above.
     constructions.window_construction.WindowType
     constructions.window_construction.ShadingType
 
+UMI Measures
+------------
+
+.. currentmodule:: archetypal.template.measures
+
+.. autosummary::
+    :template: autosummary.rst
+    :nosignatures:
+    :toctree: reference/
+
+    Measure
+
+Available Measures
+..................
+
+.. autosummary::
+    :template: autosummary.rst
+    :nosignatures:
+    :toctree: reference/
+
+    EnergyStarUpgrade
+    SetFacadeConstructionThermalResistanceToEnergyStar
+
+
 Graph Module
 ------------
 

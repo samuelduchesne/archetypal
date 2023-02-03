@@ -24,7 +24,7 @@ from pandas.io.json import json_normalize
 from path import Path
 from tqdm.auto import tqdm
 
-from archetypal import __version__, settings
+from archetypal import settings
 
 
 def config(
@@ -32,14 +32,13 @@ def config(
     logs_folder=settings.logs_folder,
     imgs_folder=settings.imgs_folder,
     cache_folder=settings.cache_folder,
-    use_cache=settings.use_cache,
+    cache_responses=settings.cache_responses,
     log_file=settings.log_file,
     log_console=settings.log_console,
     log_level=settings.log_level,
     log_name=settings.log_name,
     log_filename=settings.log_filename,
     useful_idf_objects=settings.useful_idf_objects,
-    umitemplate=settings.umitemplate,
     default_weight_factor="area",
     ep_version=settings.ep_version,
     debug=settings.debug,
@@ -52,7 +51,8 @@ def config(
         logs_folder (str): where to write the log files.
         imgs_folder (str): where to save figures.
         cache_folder (str): where to save the simulation results.
-        use_cache (bool): if True, use a local cache to save/retrieve DataPortal API
+        cache_responses (bool): if True, use a local cache to save/retrieve
+        DataPortal API
             calls for the same requests.
         log_file (bool): if true, save log output to a log file in logs_folder.
         log_console (bool): if true, print log output to the console.
@@ -69,7 +69,7 @@ def config(
         None
     """
     # set each global variable to the passed-in parameter value
-    settings.use_cache = use_cache
+    settings.cache_responses = cache_responses
     settings.cache_folder = Path(cache_folder).expand().makedirs_p()
     settings.data_folder = Path(data_folder).expand().makedirs_p()
     settings.imgs_folder = Path(imgs_folder).expand().makedirs_p()
@@ -80,7 +80,6 @@ def config(
     settings.log_name = log_name
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
-    settings.umitemplate = umitemplate
     settings.zone_weight.set_weigth_attr(default_weight_factor)
     settings.ep_version = ep_version
     settings.debug = debug
@@ -627,14 +626,13 @@ def parallel_process(
                 settings.logs_folder,
                 settings.imgs_folder,
                 settings.cache_folder,
-                settings.use_cache,
+                settings.cache_responses,
                 settings.log_file,
                 settings.log_console,
                 settings.log_level,
                 settings.log_name,
                 settings.log_filename,
                 settings.useful_idf_objects,
-                settings.umitemplate,
                 "area",
                 settings.ep_version,
                 settings.debug,
@@ -687,6 +685,8 @@ def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
     elif refobj.key.upper() == "ZONE":
         return name in refobj.Name
     elif refobj.key.upper() == "ZONELIST":
+        from archetypal import settings, __version__
+
         raise NotImplementedError(
             f"Checking against a ZoneList is "
             f"not yet supported in archetypal "
@@ -775,3 +775,10 @@ def signif(x, digits=4):
         return x
     digits -= math.ceil(math.log10(abs(x)))
     return round(x, digits)
+
+
+def clear_cache():
+    """Clear the cache."""
+    import shutil
+
+    shutil.rmtree(settings.cache_folder)

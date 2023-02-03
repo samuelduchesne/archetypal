@@ -19,14 +19,16 @@ from archetypal.utils import log
 class ExpandObjectsExe(EnergyPlusProgram):
     """ExpandObject Wrapper"""
 
-    def __init__(self, idf):
+    def __init__(self, idf, tmp_dir):
         """Constructor."""
         super().__init__(idf)
+        self.running_directory = tmp_dir
 
     @property
     def cmd(self):
         """Get the command."""
-        return ["ExpandObjects"]
+        cmd_path = Path(shutil.which("ExpandObjects", path=self.eplus_home))
+        return [cmd_path.relpath(self.running_directory)]
 
 
 class ExpandObjectsThread(Thread):
@@ -54,7 +56,8 @@ class ExpandObjectsThread(Thread):
 
             # Move files into place
             tmp = self.tmp
-            self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
+            if self.idf.epw is not None:
+                self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
             self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
             expand_object_exe = shutil.which("ExpandObjects", path=self.eplus_home)
@@ -63,7 +66,7 @@ class ExpandObjectsThread(Thread):
 
             # Run ExpandObjects Program
             with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
-                self.cmd = ExpandObjectsExe(self.idf).cmd
+                self.cmd = ExpandObjectsExe(self.idf, self.run_dir).cmd
                 with tqdm(
                     unit_scale=True,
                     miniters=1,

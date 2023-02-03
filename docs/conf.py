@@ -44,6 +44,7 @@ version = release = ".".join(release.split(".")[:2])
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinxcontrib.autodoc_pydantic",
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
@@ -59,6 +60,10 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
 ]
+
+# autodoc_pydantic config
+autodoc_pydantic_model_show_json = False
+autodoc_pydantic_model_show_config = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

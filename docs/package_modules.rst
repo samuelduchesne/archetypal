@@ -1,6 +1,16 @@
 Modules
 =======
 
+Settings
+--------
+
+.. currentmodule:: archetypal
+
+.. autosummary::
+    :toctree: reference/
+
+    Settings
+
 IDF Class
 ---------
 

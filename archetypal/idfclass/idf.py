@@ -5,6 +5,7 @@ different forms.
 """
 import io
 import itertools
+import logging
 import logging as lg
 import math
 import os
@@ -19,7 +20,9 @@ from collections import defaultdict
 from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
-from typing import IO, Iterable, Optional, Tuple, Union
+from typing import IO, Iterable, Optional, Tuple, Union, Literal
+
+ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
 
 import eppy
 import pandas as pd
@@ -116,6 +119,7 @@ class IDF(GeomIDF):
             "design_day",
             "readvars",
             "as_version",
+            "reporting_frequency",
         ],
         "variables": [
             "idfobjects",
@@ -124,6 +128,7 @@ class IDF(GeomIDF):
             "design_day",
             "readvars",
             "as_version",
+            "reporting_frequency",
         ],
         "sim_id": [
             "idfobjects",
@@ -196,6 +201,7 @@ class IDF(GeomIDF):
         output_directory=None,
         outputtype="standard",
         iddname: Optional[Union[str, IO, Path]] = None,
+        reporting_frequency: ReportingFrequency = "Monthly",
         **kwargs,
     ):
         """Initialize an IDF object.
@@ -218,6 +224,9 @@ class IDF(GeomIDF):
             convert (bool): If True, only convert IDF->epJSON or epJSON->IDF.
             outputtype (str): Specifies the idf string representation of the model.
                 Choices are: "standard", "nocomment1", "nocomment2", "compressed".
+            reporting_frequency (str): Choice of "Annual", "Monthly", "Daily",
+                "Hourly", "Timestep". Defaults to "Monthly". Is used in the
+                initialization of the self.Outputs object.
 
         EnergyPlus args:
             tmp_dir=None,
@@ -226,7 +235,7 @@ class IDF(GeomIDF):
             include=None,
             keep_original=True,
         """
-        # Set independents to there original values
+        # Set independents to their original values
         if include is None:
             include = []
         self.idfname = idfname
@@ -249,6 +258,7 @@ class IDF(GeomIDF):
         self._position = position
         self._translated = False
         self._rotated = False
+        self._reporting_frequency = reporting_frequency
         self.output_prefix = None
         self.name = (
             name
@@ -299,7 +309,12 @@ class IDF(GeomIDF):
                     self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
-            self._outputs = Outputs(idf=self, include_html=False, include_sqlite=False)
+            self._outputs = Outputs(
+                idf=self,
+                include_html=False,
+                include_sqlite=False,
+                reporting_frequency=reporting_frequency,
+            )
             if self.prep_outputs:
                 self._outputs.include_html = True
                 self._outputs.include_sqlite = True
@@ -759,8 +774,7 @@ class IDF(GeomIDF):
         """
         if self._output_directory is None:
             cache_filename = self._original_cache
-            output_directory = settings.cache_folder / cache_filename
-            self._output_directory = output_directory.expand()
+            self._output_directory = settings.cache_folder / cache_filename
         return Path(self._output_directory)
 
     @output_directory.setter
@@ -1363,14 +1377,20 @@ class IDF(GeomIDF):
             outputs.
 
         """
-        if (
-            self.simulation_dir.exists() and not force
-        ):  # don't simulate if results exists
-            return self
         # First, update keys with new values
         for key, value in kwargs.items():
             if f"_{key}" in self.__dict__.keys():
                 setattr(self, key, value)
+            else:
+                log(
+                    f"IDF.simulate got invalid keyword '{key}'. Ignored",
+                    level=logging.WARNING,
+                )
+
+        if (
+            self.simulation_dir.exists() and not force
+        ):  # don't simulate if results exists
+            return self
 
         if self.as_version is not None:
             if self.as_version != EnergyPlusVersion(self.idd_version):
@@ -2650,6 +2670,14 @@ class IDF(GeomIDF):
     @rotated.setter
     def rotated(self, value):
         self._rotated = bool(value)
+
+    @property
+    def reporting_frequency(self):
+        return self._reporting_frequency
+
+    @reporting_frequency.setter
+    def reporting_frequency(self, value):
+        self._reporting_frequency = value
 
     def getsiteshadingsurfaces(self, surface_type=""):
         site_shading_types = self.idd_index["ref2names"][

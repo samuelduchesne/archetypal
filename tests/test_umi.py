@@ -106,7 +106,6 @@ class TestUmiTemplate:
     def test_umitemplate(self, config):
         """Test creating UmiTemplateLibrary from 2 IDF files"""
         idf_source = [
-            "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
             EnergyPlusVersion.current().current_install_dir
             / "ExampleFiles"
             / "VentilationSimpleTest.idf",

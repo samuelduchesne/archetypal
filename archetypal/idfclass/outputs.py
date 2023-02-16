@@ -32,7 +32,7 @@ class Outputs:
         "Zone Lights Total Heating Energy",
     )
     ELECTRIC_EQUIP = (
-        "Zone Electric Equipment Electricity Energy",
+        "Zone Electric Equipment Electric Energy",
         "Zone Electric Equipment Total Heating Energy",
         "Zone Electric Equipment Radiant Heating Energy",
         "Zone Electric Equipment Convective Heating Energy",

@@ -582,7 +582,7 @@ class DomesticHotWaterSetting(UmiBase):
                 Name=f"{zone_name} DHW",
                 EndUse_Subcategory="DHW",
                 # TODO: check if this needs to be a string in sci not (self.FlowRatePerFloorArea)
-                Peak_Flow_Rate=self.FlowRatePerFloorArea * zone_area,  # m3/s
+                Peak_Flow_Rate=self.FlowRatePerFloorArea / 3600 * zone_area,  # m3/s
                 Flow_Rate_Fraction_Schedule_Name=self.WaterSchedule.to_epbunch(
                     idf
                 ).Name,  # self.WaterSchedule.to_epbunch(idf).Name

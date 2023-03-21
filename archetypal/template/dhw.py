@@ -19,6 +19,7 @@ class DomesticHotWaterSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-dhw.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -541,6 +542,69 @@ class DomesticHotWaterSetting(UmiBase):
     @property
     def children(self):
         return (self.WaterSchedule,)
+
+    def to_epbunch(self, idf, zone_name, zone_area):
+        """Convert self to the EpBunches given an idf model, a zone name.
+
+        Notes:
+            'Target_Temperature_Schedule_Name' Reference to the schedule object specifying the
+            target water temperature [C]. Hot and cold water are mixed at the tap to attain
+            the target temperature. If insufficient hot water is available to reach the target
+            temperature, the result is cooler water at the tap. If blank, the target
+            temperature defaults to the hot water supply temperature.
+
+        Args:
+            idf (IDF): The idf model in which the EpBunch is created.
+            zone_name (str): The zone name to associate this EpBunch (str)
+            zone_area (float): The occupied zone floor area (m2)
+
+        .. code-block::
+
+            WATERUSE:EQUIPMENT,
+                DHW Perim,                !- Name
+                DHW Perim,                !- EndUse Subcategory
+                2.796438e-07,             !- Peak Flow Rate
+                B_Off_Y_Dhw,              !- Flow Rate Fraction Schedule Name
+                DHW Supply Temperature Perim,    !- Target Temperature Schedule Name
+                DHW Supply Temperature Perim,    !- Hot Water Supply Temperature Schedule Name
+                DHW Mains Temperature Perim,    !- Cold Water Supply Temperature Schedule Name
+                ,                         !- Zone Name
+                ,                         !- Sensible Fraction Schedule Name
+                ;                         !- Latent Fraction Schedule Name
+
+        Returns:
+            tuple: An EpBunch object added to the idf model.
+        """
+        if self.IsOn:
+            # Create ep_bunch for zone
+            dhw_epbunch = idf.newidfobject(
+                key="WATERUSE:EQUIPMENT",
+                Name=f"{zone_name} DHW",
+                EndUse_Subcategory="DHW",
+                # TODO: check if this needs to be a string in sci not (self.FlowRatePerFloorArea)
+                Peak_Flow_Rate=self.FlowRatePerFloorArea / 3600 * zone_area,  # m3/s
+                Flow_Rate_Fraction_Schedule_Name=self.WaterSchedule.to_epbunch(
+                    idf
+                ).Name,  # self.WaterSchedule.to_epbunch(idf).Name
+                Target_Temperature_Schedule_Name="",
+                Hot_Water_Supply_Temperature_Schedule_Name=idf.newidfobject(
+                    key="SCHEDULE:CONSTANT",
+                    Name="DhwHotTemp",
+                    Hourly_Value=self.WaterSupplyTemperature,
+                ).Name,
+                Cold_Water_Supply_Temperature_Schedule_Name=idf.newidfobject(
+                    key="SCHEDULE:CONSTANT",
+                    Name="DhwInletTemp",
+                    Hourly_Value=self.WaterTemperatureInlet,
+                ).Name,
+                Zone_Name=zone_name,
+                Sensible_Fraction_Schedule_Name="",
+                Latent_Fraction_Schedule_Name="",
+            )
+        else:
+            infiltration_epbunch = None
+            log("No 'WATERUSE:EQUIPMENT' created since DHW IsOn == False.")
+        return dhw_epbunch
 
 
 def water_main_correlation(t_out_avg, max_diff):

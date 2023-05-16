@@ -37,7 +37,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: 'pip' # caching pip dependencies
       - name: Install EnergyPlus
-        uses: Elementa-Engineering/install-energyplus
+        uses: Elementa-Engineering/install-energyplus@v1
         with:
           energyplus-version: ${{ matrix.energyplus-version }}
           energyplus-sha: ${{ matrix.energyplus-sha }}

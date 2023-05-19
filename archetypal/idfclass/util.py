@@ -71,13 +71,14 @@ def hash_model(idfname, **kwargs):
     return hasher.hexdigest()
 
 
-def get_idf_version(file: Union[str, io.StringIO], doted=True):
+def get_idf_version(file: Union[str, io.StringIO], doted=True, encoding=None):
     """Get idf version quickly by reading first few lines of idf file containing
     the 'VERSION' identifier
 
     Args:
         file (str or StringIO): Absolute or relative Path to the idf file
         doted (bool, optional): Wheter or not to return the version number
+        encoding (str): The encoding used to open the file.
 
     Returns:
         str: the version id
@@ -88,7 +89,7 @@ def get_idf_version(file: Union[str, io.StringIO], doted=True):
         file.seek(0)
         txt = file.read()
     else:
-        with open(file) as f:
+        with open(file, encoding=encoding) as f:
             txt = f.read()
 
     versions: List = re.findall(r"(?s)(?<=Version,).*?(?=;)", txt, re.IGNORECASE)

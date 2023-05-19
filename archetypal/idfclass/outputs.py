@@ -643,7 +643,6 @@ class Outputs:
         return self
 
     def add_load_balance_components(self):
-
         for group in [
             self.COOLING,
             self.HEATING,
@@ -720,12 +719,12 @@ class Outputs:
     def apply(self):
         """Applies the outputs to the idf model. Modifies the model by calling
         :meth:`~archetypal.idfclass.idf.IDF.newidfobject`"""
-        for (variable, reporting_frequency) in self.output_variables:
+        for variable, reporting_frequency in self.output_variables:
             self.idf.newidfobject(
                 key="Output:Variable".upper(),
                 **dict(Variable_Name=variable, Reporting_Frequency=reporting_frequency),
             )
-        for (meter, reporting_frequency) in self.output_meters:
+        for meter, reporting_frequency in self.output_meters:
             self.idf.newidfobject(
                 key="Output:Meter".upper(),
                 **dict(Key_Name=meter, Reporting_Frequency=reporting_frequency),

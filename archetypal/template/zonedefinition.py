@@ -469,7 +469,7 @@ class ZoneDefinition(UmiBase):
             """Get zone volume from simulation sql file."""
             with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
                 sql_query = (
-                    "SELECT t.Value FROM TabularDataWithStrings t "
+                    "SELECT CAST(t.Value AS float) FROM TabularDataWithStrings t "
                     "WHERE TableName='Zone Summary' and ColumnName='Volume' and "
                     "RowName=?"
                 )
@@ -480,13 +480,13 @@ class ZoneDefinition(UmiBase):
             """Get zone occupants from simulation sql file."""
             with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
                 sql_query = (
-                    "SELECT t.Value FROM TabularDataWithStrings t "
+                    "SELECT CAST(t.Value AS float) FROM TabularDataWithStrings t "
                     "WHERE TableName='Average Outdoor Air During Occupied Hours' and ColumnName='Nominal Number of Occupants' and RowName=?"
                 )
 
                 fetchone = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
                 (res,) = fetchone or (0,)
-            return float(res)
+            return res
 
         def calc_is_part_of_conditioned_floor_area(zone_ep):
             """Return True if zone is part of the conditioned floor area."""

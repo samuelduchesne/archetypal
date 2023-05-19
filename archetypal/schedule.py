@@ -1262,6 +1262,7 @@ class Schedule:
         return cls.from_values(
             Name=Name,
             Values=np.ones((8760,)) * value,
+            Type=Type,
             **kwargs,
         )
 

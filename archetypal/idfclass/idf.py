@@ -200,6 +200,7 @@ class IDF(GeomIDF):
         name=None,
         output_directory=None,
         outputtype="standard",
+        encoding=None,
         iddname: Optional[Union[str, IO, Path]] = None,
         reporting_frequency: ReportingFrequency = "Monthly",
         **kwargs,
@@ -224,6 +225,7 @@ class IDF(GeomIDF):
             convert (bool): If True, only convert IDF->epJSON or epJSON->IDF.
             outputtype (str): Specifies the idf string representation of the model.
                 Choices are: "standard", "nocomment1", "nocomment2", "compressed".
+            encoding (str): Specify the encoding of the idf file to be parsed.
             reporting_frequency (str): Choice of "Annual", "Monthly", "Daily",
                 "Hourly", "Timestep". Defaults to "Monthly". Is used in the
                 initialization of the self.Outputs object.
@@ -258,6 +260,7 @@ class IDF(GeomIDF):
         self._position = position
         self._translated = False
         self._rotated = False
+        self._file_encoding = encoding
         self._reporting_frequency = reporting_frequency
         self.output_prefix = None
         self.name = (
@@ -384,7 +387,6 @@ class IDF(GeomIDF):
             EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
         )
         try:
-
             file = next(
                 iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf"))
             )
@@ -544,7 +546,9 @@ class IDF(GeomIDF):
     def file_version(self) -> EnergyPlusVersion:
         """Return the :class:`EnergyPlusVersion` of the idf text file."""
         if self._file_version is None:
-            return EnergyPlusVersion(get_idf_version(self.idfname))
+            return EnergyPlusVersion(
+                get_idf_version(self.idfname, encoding=self.encoding)
+            )
         else:
             return self._file_version
 
@@ -567,6 +571,15 @@ class IDF(GeomIDF):
     @include.setter
     def include(self, value):
         self._include = value
+
+    @property
+    def encoding(self) -> str:
+        """Get or set the file encoding."""
+        return self._file_encoding
+
+    @encoding.setter
+    def encoding(self, value):
+        self._file_encoding = value
 
     @property
     def keep_data_err(self) -> bool:

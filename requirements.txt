@@ -13,7 +13,7 @@ outdated~=0.2.1
 deprecation~=2.1.0
 sigfig~=1.1.9
 requests~=2.25.1
-packaging~=21.0
+packaging~=23.1
 pytest~=6.2.4
 setuptools==67.7.2
 CoolProp~=6.4.1

@@ -418,8 +418,14 @@ class Outputs:
             self._other_outputs.append(output)
         return self
 
-    def add_umi_template_outputs(self):
-        """Adds the necessary outputs in order to create an UMI template."""
+    def add_umi_template_outputs(self, reporting_frequency="Hourly"):
+        """Adds the necessary outputs in order to create an UMI template.
+
+        Note:
+            The reporting frequency must be 'Hourly' for archetypal to convert IDF
+            models to UMI templates. Set to 'None' to use the reporting frequency of
+            the Outputs object.
+        """
         # list the outputs here
         variables = [
             "Air System Outdoor Air Minimum Flow Fraction",
@@ -435,7 +441,9 @@ class Outputs:
             "Zone Thermostat Heating Setpoint Temperature",
         ]
         for output in variables:
-            self._output_variables.add((output, self.reporting_frequency))
+            self._output_variables.add(
+                (output, reporting_frequency or self.reporting_frequency)
+            )
 
         meters = [
             "Baseboard:EnergyTransfer",

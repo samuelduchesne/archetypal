@@ -5,10 +5,11 @@ import logging as lg
 import math
 import sqlite3
 from enum import Enum
+from typing import Optional
 
 import numpy as np
 import pandas as pd
-from pydantic import Field
+from pydantic import Field, confloat
 from sigfig import round
 from validator_collection import checkers, validators
 
@@ -43,6 +44,7 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
+
     _CREATED_OBJECTS = []
 
     EquipmentPowerDensity: float = Field(
@@ -59,7 +61,7 @@ class ZoneLoad(UmiBase):
     LightsAvailabilitySchedule: UmiSchedule = Field(
         description="The schedule that modifies the design level "
         "parameter for lighting.",
-        default=UmiSchedule.constant_schedule()
+        default=UmiSchedule.constant_schedule(),
     )
     PeopleDensity: float = Field(
         0, description="Density of people in the zone (people/m²)."
@@ -103,10 +105,6 @@ class ZoneLoad(UmiBase):
     )
     area: float = 1
     volume: float = 1
-
-
-        # Only at the end append self to _CREATED_OBJECTS
-        self._CREATED_OBJECTS.append(self)
 
     @property
     def EquipmentAvailabilitySchedule(self):

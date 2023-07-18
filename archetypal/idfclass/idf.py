@@ -2585,7 +2585,7 @@ class IDF(GeomIDF):
                 "Model is in relative coordinates and must be translated to world using "
                 "IDF.to_world()."
             )
-        view_idf(idf=self, test=False)
+        view_idf(idf=self, test=~show)
 
         fig = plt.gcf()
         axes = fig.get_axes()

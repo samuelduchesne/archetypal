@@ -31,6 +31,7 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -543,6 +544,7 @@ class BuildingTemplate(UmiBase):
         data_dict["Perimeter"] = self.Perimeter.to_ref()
         data_dict["Structure"] = self.Structure.to_ref()
         data_dict["Windows"] = self.Windows.to_ref()
+        data_dict["DefaultWindowToWallRatio"] = self.DefaultWindowToWallRatio
         data_dict["Category"] = validators.string(self.Category, allow_empty=True)
         data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource

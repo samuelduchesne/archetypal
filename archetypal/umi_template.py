@@ -243,7 +243,7 @@ class UmiTemplateLibrary:
         )
         for filename, res in results.items():
             if isinstance(res, EnergyPlusProcessError):
-                filename = (settings.logs_folder / "failed_reduce.txt").expand()
+                filename = settings.logs_folder / "failed_reduce.txt"
                 with open(filename, "a") as file:
                     file.writelines(res.write())
                     log(

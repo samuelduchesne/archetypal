@@ -16,7 +16,7 @@ requests~=2.25.1
 packaging~=21.0
 pytest~=6.2.4
 setuptools==67.7.2
-CoolProp~=6.4.1
+CoolProp~=6.5.0
 energy-pandas~=0.3.3
 validator_collection~=1.5.0
 pint==0.19

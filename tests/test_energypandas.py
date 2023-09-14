@@ -51,7 +51,7 @@ class TestEnergySeries:
             kind=kind,
             cmap="Reds",
             figsize=(4, 4),
-            edgecolors="grey",
+            # edgecolors="grey",
             linewidths=0.01,
         )
 

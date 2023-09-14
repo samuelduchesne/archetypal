@@ -12,8 +12,8 @@ from energy_pandas.units import unit_registry
 
 # Version of the package
 from pkg_resources import get_distribution, DistributionNotFound
+from pydantic_settings import BaseSettings
 from pydantic import (
-    BaseSettings,
     Field,
     validator,
     DirectoryPath,
@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     cache_responses: bool = Field(False, env="ARCHETYPAL_CACHE_RESPONSES")
 
     # Debug behavior
-    debug = Field(False, env="ARCHETYPAL_DEBUG")
+    debug: bool = Field(False, env="ARCHETYPAL_DEBUG")
 
     # write log to file and/or to console
     log_file: bool = Field(False)
@@ -166,7 +166,7 @@ class Settings(BaseSettings):
         Errors={"PrimaryKey": ["ErrorIndex"], "ParseDates": []},
     )
 
-    zone_weight = ZoneWeight(n=0)
+    zone_weight: ZoneWeight = ZoneWeight(n=0)
 
     ep_version: str = Field(
         "9-2-0",

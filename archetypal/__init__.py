@@ -53,25 +53,25 @@ class Settings(BaseSettings):
         arbitrary_types_allowed = True
         validate_assignment = True
 
-    data_folder: Path = Field("data", env="ARCHETYPAL_DATA")
-    logs_folder: Path = Field("logs", env="ARCHETYPAL_LOGS")
-    imgs_folder: Path = Field("images", env="ARCHETYPAL_IMAGES")
-    cache_folder: Path = Field("cache", env="ARCHETYPAL_CACHE")
+    data_folder: Path = Field("data", validation_alias="ARCHETYPAL_DATA")
+    logs_folder: Path = Field("logs", validation_alias="ARCHETYPAL_LOGS")
+    imgs_folder: Path = Field("images", validation_alias="ARCHETYPAL_IMAGES")
+    cache_folder: Path = Field("cache", validation_alias="ARCHETYPAL_CACHE")
 
     # cache server responses
-    cache_responses: bool = Field(False, env="ARCHETYPAL_CACHE_RESPONSES")
+    cache_responses: bool = Field(False, validation_alias="ARCHETYPAL_CACHE_RESPONSES")
 
     # Debug behavior
-    debug: bool = Field(False, env="ARCHETYPAL_DEBUG")
+    debug: bool = Field(False, validation_alias="ARCHETYPAL_DEBUG")
 
     # write log to file and/or to console
     log_file: bool = Field(False)
     log_console: bool = Field(False)
     log_notebook: bool = Field(False)
     log_level: Literal[0, 10, 20, 30, 40, 50] = Field(
-        lg.INFO, env="ARCHETYPAL_LOG_LEVEL"
+        lg.INFO, validation_alias="ARCHETYPAL_LOG_LEVEL"
     )
-    log_name: str = Field("archetypal", env="ARCHETYPAL_LOG_NAME")
+    log_name: str = Field("archetypal", validation_alias="ARCHETYPAL_LOG_NAME")
     log_filename: str = Field("archetypal")
 
     # usual idfobjects
@@ -170,14 +170,14 @@ class Settings(BaseSettings):
 
     ep_version: str = Field(
         "9-2-0",
-        env="ENERGYPLUS_VERSION",
+        validation_alias="ENERGYPLUS_VERSION",
         description="Latest version of EnergyPlus compatible with archetypal. looks "
         "for ENERGYPLUS_VERSION in os.environ",
     )
 
     energyplus_location: Optional[DirectoryPath] = Field(
         None,
-        env="ENERGYPLUS_LOCATION",
+        validation_alias="ENERGYPLUS_LOCATION",
         description="Root directory of the EnergyPlus install.",
     )
 

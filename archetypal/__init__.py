@@ -20,13 +20,6 @@ from pydantic import (
     ConfigDict,
 )
 
-# don't display futurewarnings
-
-import warnings
-
-warnings.simplefilter(action="ignore", category=FutureWarning)
-warnings.simplefilter(action="ignore", category=UserWarning)
-
 
 class ZoneWeight(object):
     """Zone weights for Umi Templates"""

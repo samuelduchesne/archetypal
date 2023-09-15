@@ -119,7 +119,7 @@ def makedict(self: Eplusdata, dictfile, fnamefobject):
 
 
 def _parse_idd_type(epbunch, name):
-    """Parse the fieldvalue type into a python type.
+    r"""Parse the fieldvalue type into a python type.
 
     Possible types are:
         - integer -> int

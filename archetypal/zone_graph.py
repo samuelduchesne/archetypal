@@ -270,7 +270,8 @@ class ZoneGraph(networkx.Graph):
         # Define color range proportional to number of edges adjacent to a
         # single node
         colors = {
-            i: plt.cm.get_cmap(cmap)(self.degree[i] / edge_max) for i in self.nodes
+            i: matplotlib.colormaps.get_cmap(cmap)(self.degree[i] / edge_max)
+            for i in self.nodes
         }
         labels = {}
         if annotate:
@@ -571,12 +572,12 @@ def discrete_cmap(N, base_cmap=None):
     """
 
     # Note that if base_cmap is a string or None, you can simply do
-    #    return plt.cm.get_cmap(base_cmap, N)
+    #    return matplotlib.colormaps.get_cmap(base_cmap, N)
     # The following works for string, None, or a colormap instance:
     import matplotlib.pyplot as plt
     from numpy.core.function_base import linspace
 
-    base = plt.cm.get_cmap(base_cmap)
+    base = matplotlib.colormaps.get_cmap(base_cmap)
     color_list = base(linspace(0, 1, N))
     cmap_name = base.name + str(N)
     return matplotlib.colors.ListedColormap(color_list, cmap_name, N)

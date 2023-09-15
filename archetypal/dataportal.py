@@ -226,7 +226,7 @@ def tabula_building_details_sheet(
         df = df.data.apply(pd.Series)
 
         # remove html tags from labels
-        df.label = df.label.str.replace("<[^<]+?>", " ")
+        df.label = df.label.str.replace("<[^<]+?>", " ", regex=True)
         return df
     else:
         raise ValueError(

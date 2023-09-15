@@ -154,11 +154,9 @@ class MeterGroup:
         # members of an object
         members = []
         for i in inspect.getmembers(self):
-
             # to remove private and protected
             # functions
             if not i[0].startswith("_"):
-
                 # To remove other methods that
                 # do not start with an underscore
                 if not inspect.ismethod(i[1]):
@@ -202,7 +200,9 @@ class Meters:
         meters = pd.read_csv(
             mdd, skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"]
         )
-        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace(r"\;.*", "")
+        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace(
+            r"\;.*", "", regex=True
+        )
         for key, group in meters.groupby("key"):
             meters_dict = group.T.to_dict()
             setattr(
@@ -217,11 +217,9 @@ class Meters:
         # members of an object
         members = []
         for i in inspect.getmembers(self):
-
             # to remove private and protected
             # functions
             if not i[0].startswith("_"):
-
                 # To remove other methods that
                 # do not start with an underscore
                 if not inspect.ismethod(i[1]):

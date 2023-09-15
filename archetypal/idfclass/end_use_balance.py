@@ -658,8 +658,8 @@ class EndUseBalance:
 
     def to_sankey(self, path_or_buf):
         system_data = self.to_df(separate_gains_and_losses=True)
-        annual_system_data = system_data.sum().sum(
-            level=["Component", "Period", "Gain/Loss"]
+        annual_system_data = (
+            system_data.sum().groupby(level=["Component", "Period", "Gain/Loss"]).sum()
         )
         annual_system_data.rename(
             {

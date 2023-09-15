@@ -17,6 +17,7 @@ from pydantic import (
     Field,
     DirectoryPath,
     field_validator,
+    ConfigDict,
 )
 
 # don't display futurewarnings
@@ -49,9 +50,7 @@ class ZoneWeight(object):
 
 
 class Settings(BaseSettings):
-    class Config:
-        arbitrary_types_allowed = True
-        validate_assignment = True
+    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
 
     data_folder: Path = Field("data", validation_alias="ARCHETYPAL_DATA")
     logs_folder: Path = Field("logs", validation_alias="ARCHETYPAL_LOGS")

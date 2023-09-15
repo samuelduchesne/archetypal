@@ -42,7 +42,7 @@ class SlabThread(Thread):
     def cmd(self):
         """Get the command."""
         cmd_path = Path(shutil.which("Slab", path=self.run_dir))
-        return [cmd_path.relpath(self.run_dir)]
+        return [cmd_path]
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface."""
@@ -81,7 +81,6 @@ class SlabThread(Thread):
                 desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
-
                 self.p = subprocess.Popen(
                     self.cmd,
                     stdout=subprocess.PIPE,

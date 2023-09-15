@@ -541,7 +541,7 @@ def nrel_bcl_api_request(data):
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
-        domain = re.findall(r"//(?s)(.*?)/", url)[0]
+        domain = re.findall(r"(?s)//(.*?)/", url)[0]
         log(
             "Downloaded {:,.1f}KB from {}"
             " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)

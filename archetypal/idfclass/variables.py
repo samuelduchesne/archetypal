@@ -218,7 +218,7 @@ class Variables:
             names=["key", "Key_Value", "Variable_Name", "Reporting_Frequency"],
         )
         variables.Reporting_Frequency = variables.Reporting_Frequency.str.replace(
-            r"\;.*", ""
+            r"\;.*", "", regex=True
         )
         for key, group in variables.groupby("key"):
             variable_dict = group.T.to_dict()

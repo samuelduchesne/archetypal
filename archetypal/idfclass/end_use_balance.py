@@ -313,8 +313,8 @@ class EndUseBalance:
             columns = None
         return EnergyDataFrame(
             (
-                _hvac_input_heated_surface.sum(level="KeyValue", axis=1)
-                - _hvac_input_cooled_surface.sum(level="KeyValue", axis=1)
+                _hvac_input_heated_surface.groupby(level="KeyValue", axis=1).sum()
+                - _hvac_input_cooled_surface.groupby(level="KeyValue", axis=1).sum()
             ).values,
             columns=columns,
             index=_hvac_input_heated_surface.index,
@@ -447,7 +447,10 @@ class EndUseBalance:
     def subtract_solar_from_window_net(cls, window_flow, solar_gain, level="Key_Name"):
         columns = window_flow.columns
         return EnergyDataFrame(
-            (window_flow.sum(level=level, axis=1) - solar_gain.sum(level=level, axis=1))
+            (
+                window_flow.groupby(level=level, axis=1).sum()
+                - solar_gain.groupby(level=level, axis=1).sum()
+            )
             .loc[:, list(columns.get_level_values(level))]
             .values,
             columns=columns,
@@ -458,8 +461,8 @@ class EndUseBalance:
     def subtract_vent_from_system(cls, system, vent, level="Key_Name"):
         columns = vent.columns
         return EnergyDataFrame(
-            system.sum(level=level, axis=1).values
-            - vent.sum(level=level, axis=1).values,
+            system.groupby(level=level, axis=1).sum().values
+            - vent.groupby(level=level, axis=1).sum().values,
             columns=columns,
             index=system.index,
         )
@@ -537,9 +540,11 @@ class EndUseBalance:
             for (surface_type), data in self.separate_gains_and_losses(
                 "opaque_flow", level="Zone_Name"
             ).groupby(level=["Surface_Type"], axis=1):
-                summary_by_component[surface_type] = data.sum(
-                    level=["Zone_Name", "Period", "Gain/Loss"], axis=1
-                ).sort_index(axis=1)
+                summary_by_component[surface_type] = (
+                    data.groupby(level=["Zone_Name", "Period", "Gain/Loss"], axis=1)
+                    .sum()
+                    .sort_index(axis=1)
+                )
 
         else:
             summary_by_component = {}
@@ -596,32 +601,38 @@ class EndUseBalance:
         sum_opaque_flow = (
             self.separate_gains_and_losses("opaque_flow", "Zone_Name")
             .sum()
-            .sum(level=["Period", "Gain/Loss"])
+            .groupby(level=["Period", "Gain/Loss"])
+            .sum()
         )
         sum_window_flow = (
             self.separate_gains_and_losses("window_flow", "Zone_Name")
             .sum()
-            .sum(level=["Period", "Gain/Loss"])
+            .groupby(level=["Period", "Gain/Loss"])
+            .sum()
         )
         sum_solar_gain = (
             self.separate_gains_and_losses("solar_gain")
             .sum()
-            .sum(level=["Period", "Gain/Loss"])
+            .groupby(level=["Period", "Gain/Loss"])
+            .sum()
         )
         sum_lighting = (
             self.separate_gains_and_losses("lighting")
             .sum()
-            .sum(level=["Period", "Gain/Loss"])
+            .groupby(level=["Period", "Gain/Loss"])
+            .sum()
         )
         sum_infiltration = (
             self.separate_gains_and_losses("infiltration")
             .sum()
-            .sum(level=["Period", "Gain/Loss"])
+            .groupby(level=["Period", "Gain/Loss"])
+            .sum()
         )
         sum_people_gain = (
             self.separate_gains_and_losses("people_gain")
             .sum()
-            .sum(level=["Period", "Gain/Loss"])
+            .groupby(level=["Period", "Gain/Loss"])
+            .sum()
         )
 
         df = pd.concat(
@@ -647,8 +658,8 @@ class EndUseBalance:
 
     def to_sankey(self, path_or_buf):
         system_data = self.to_df(separate_gains_and_losses=True)
-        annual_system_data = system_data.sum().sum(
-            level=["Component", "Period", "Gain/Loss"]
+        annual_system_data = (
+            system_data.sum().groupby(level=["Component", "Period", "Gain/Loss"]).sum()
         )
         annual_system_data.rename(
             {

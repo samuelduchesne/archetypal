@@ -28,7 +28,7 @@ class ExpandObjectsExe(EnergyPlusProgram):
     def cmd(self):
         """Get the command."""
         cmd_path = Path(shutil.which("ExpandObjects", path=self.eplus_home))
-        return [cmd_path.relpath(self.running_directory)]
+        return [cmd_path]
 
 
 class ExpandObjectsThread(Thread):
@@ -73,7 +73,6 @@ class ExpandObjectsThread(Thread):
                     desc=f"{expand_object_exe} #{self.idf.position}-{self.idf.name}",
                     position=self.idf.position,
                 ) as progress:
-
                     self.p = subprocess.Popen(
                         self.cmd,
                         stdout=subprocess.PIPE,

@@ -152,7 +152,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
 
 # region Step 1. Determine glass-to-glass Resistance
 def r_i_w(u_factor):
-    """The resistance of the interior film coefficient under standard winter
+    r"""The resistance of the interior film coefficient under standard winter
     conditions in units of m\ :sup:`2`\ K/W
 
     Args:
@@ -170,7 +170,7 @@ def r_i_w(u_factor):
 
 
 def r_o_w(u_factor):
-    """The resistance of the exterior film coefficient under standard winter
+    r"""The resistance of the exterior film coefficient under standard winter
     conditions in units of m\ :sup:`2`\ K/W
 
     Args:
@@ -186,7 +186,7 @@ def r_o_w(u_factor):
 
 
 def r_l_w(u_factor):
-    """The resisance of the bare window under winter conditions (without the
+    r"""The resisance of the bare window under winter conditions (without the
     film coefficients) in units of
     m\ :sup:`2`\ K/W.
 
@@ -226,7 +226,7 @@ def r_l_w(u_factor):
 
 # region Step 2. Determine Layer Thickness
 def thickness(r_l_w):
-    """The thickness of the equivalent layer in units of meters.
+    r"""The thickness of the equivalent layer in units of meters.
 
     Args:
         r_l_w (double): The resistance of the bare window under winter
@@ -242,7 +242,7 @@ def thickness(r_l_w):
 
 
 def lambda_eff(thickness, r_l_w):
-    """The effective thermal conductivity of the equivalent layer in W/m-K.
+    r"""The effective thermal conductivity of the equivalent layer in W/m-K.
 
     Args:
         thickness: The thickness of the equivalent layer in units of meters.
@@ -260,16 +260,17 @@ def lambda_eff(thickness, r_l_w):
 
 # endregion
 
+
 # region Step 4. Determine Layer Solar Transmittance
 def t_sol_intermediate(shgc, u_factor):
     if u_factor >= 4.5 and shgc < 0.7206:
-        return 0.939998 * shgc ** 2 + 0.20332 * shgc
+        return 0.939998 * shgc**2 + 0.20332 * shgc
     if u_factor >= 4.5 and shgc >= 0.7206:
         return 1.30415 * shgc - 0.30515
     if u_factor <= 3.4 and shgc <= 0.15:
         return 0.41040 * shgc
     if u_factor <= 3.4 and shgc > 0.15:
-        return 0.085775 * shgc ** 2 + 0.963954 * shgc - 0.084958
+        return 0.085775 * shgc**2 + 0.963954 * shgc - 0.084958
     pass
 
 
@@ -300,6 +301,7 @@ def t_sol(shgc, u_factor):
 
 
 # endregion
+
 
 # region Step 5. Determine Layer Solar Reflectance
 def r_i_s_intermediate(shgc, t_sol, u_factor):
@@ -375,7 +377,7 @@ def r_o_s(shgc, t_sol, u_factor):
 
 
 def frac_inward(r_o_s, r_l_w, r_i_s):
-    """The inward flowing fraction
+    r"""The inward flowing fraction
 
     Args:
         r_o_s: Resistance of the inside coefficient under summer conditions
@@ -392,7 +394,7 @@ def frac_inward(r_o_s, r_l_w, r_i_s):
 
 
 def r_s_f(t_sol, shgc, r_o_s, r_l_w, r_i_s):
-    """The solar reflectance of the front face
+    r"""The solar reflectance of the front face
 
     Notes: The solar reflectance of the back face is the same as the solar
     reflectance of the front face.
@@ -427,7 +429,7 @@ def r_vis_b(t_vis):
     Returns:
         double: The visible light reflectance for the back surface
     """
-    return -0.7409 * t_vis ** 3 + 1.6531 * t_vis ** 2 - 1.2299 * t_vis + 0.4547
+    return -0.7409 * t_vis**3 + 1.6531 * t_vis**2 - 1.2299 * t_vis + 0.4547
 
 
 def r_vis_f(t_vis):
@@ -440,7 +442,7 @@ def r_vis_f(t_vis):
         double: The visible light reflectance for the front surface
 
     """
-    return -0.0622 * t_vis ** 3 + 0.4277 * t_vis ** 2 - 0.4169 * t_vis + 0.2399
+    return -0.0622 * t_vis**3 + 0.4277 * t_vis**2 - 0.4169 * t_vis + 0.2399
 
 
 # endregion

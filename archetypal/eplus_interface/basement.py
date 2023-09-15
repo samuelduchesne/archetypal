@@ -42,7 +42,7 @@ class BasementThread(Thread):
     def cmd(self):
         """Get the command."""
         cmd_path = Path(shutil.which("Basement", path=self.run_dir))
-        return [cmd_path.relpath(self.run_dir)]
+        return [cmd_path]
 
     def run(self):
         """Wrapper around the Basement command line interface."""
@@ -97,7 +97,6 @@ class BasementThread(Thread):
                 desc=f"RunBasement #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
-
                 self.p = subprocess.Popen(
                     self.cmd,
                     stdout=subprocess.PIPE,

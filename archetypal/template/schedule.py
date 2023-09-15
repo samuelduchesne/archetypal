@@ -17,6 +17,7 @@ from archetypal.utils import log
 
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
+
     _CREATED_OBJECTS = []
 
     __slots__ = ("_quantity",)
@@ -947,7 +948,7 @@ class YearSchedule(UmiSchedule):
         """Return numpy array of schedule Values."""
         if self._values is None:
             index = pd.date_range(start=self.startDate, freq="1H", periods=8760)
-            series = pd.Series(index=index)
+            series = pd.Series(index=index, dtype="float")
             for part in self.Parts:
                 start = "{}-{}-{}".format(self.year, part.FromMonth, part.FromDay)
                 end = "{}-{}-{}".format(self.year, part.ToMonth, part.ToDay)

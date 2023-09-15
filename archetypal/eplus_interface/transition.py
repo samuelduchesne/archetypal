@@ -130,7 +130,7 @@ class TransitionExe(EnergyPlusProgram):
         """Get the platform-specific command."""
         _which = Path(shutil.which(self.get_exe_path()))
         if platform.system() == "Windows":
-            cmd = [_which.relpath(), self.idfname.basename()]
+            cmd = [_which, self.idfname.basename()]
         else:
             # must specify current dir on Unix
             cmd = ["./" + _which.basename(), self.idfname.basename()]

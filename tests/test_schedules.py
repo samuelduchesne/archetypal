@@ -49,8 +49,8 @@ class TestSchedule:
 
     def test_scale(self, schedules_in_necb_specific):
         before_sum = sum(schedules_in_necb_specific.Values)
-        assert pytest.approx(
-            before_sum, sum(schedules_in_necb_specific.scale(0.1).Values)
+        assert before_sum == pytest.approx(
+            sum(schedules_in_necb_specific.scale(0.1).Values)
         )
 
     def test_plot(self, schedules_in_necb_specific):

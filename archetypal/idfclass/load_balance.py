@@ -145,9 +145,9 @@ class LoadBalance:
             window_flow = cls.subtract_loss_from_gain(window_gain, window_loss)
             window_flow = cls.match_window_to_zone(idf, window_flow)
         face_energy_flow = opaque_flow.add(
-            window_flow.sum(level=["Building_Surface_Name"], axis=1).rename(
-                columns=str.upper
-            ),
+            window_flow.groupby(level=["Building_Surface_Name"], axis=1)
+            .sum()
+            .rename(columns=str.upper),
             level="Key_Name",
             axis=1,
             fill_value=0,

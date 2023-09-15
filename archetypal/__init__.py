@@ -15,8 +15,8 @@ from pkg_resources import get_distribution, DistributionNotFound
 from pydantic_settings import BaseSettings
 from pydantic import (
     Field,
-    validator,
     DirectoryPath,
+    field_validator,
 )
 
 # don't display futurewarnings
@@ -183,7 +183,8 @@ class Settings(BaseSettings):
 
     unit_registry: Any = None
 
-    @validator("unit_registry")
+    @field_validator("unit_registry")
+    @classmethod
     def initialize_units(cls, v):
         if v is not None:
             additional_units = (

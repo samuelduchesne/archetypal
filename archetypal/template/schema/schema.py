@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Any, ClassVar, Generic, TypeVar, Union
+from typing import Any, ClassVar, Generic, TypeVar, Union, Optional
 from uuid import uuid4
 
 import networkx as nx
@@ -18,10 +18,21 @@ from pydantic import (
 
 
 class UmiBase(BaseModel, validate_assignment=True):
-    all: ClassVar[dict[int, "UmiBase"]] = {}
-    graph: ClassVar[nx.MultiDiGraph] = nx.MultiDiGraph()
+    """
+    UmiBase is a class which all UMI Template Library Objects must inherit from.
 
-    id: UUID4 = Field(..., default_factory=uuid4, title="Object ID")
+    It automatically handles generating unique IDs for objects, changing IDs when objects are copied,
+    adding objects to a global cache, building and dynamically maintaining a graph, etc.
+    """
+
+    all: ClassVar[
+        dict[int, "UmiBase"]
+    ] = {}  # Class Variable for storing all objects in a hash
+    graph: ClassVar[nx.MultiDiGraph] = nx.MultiDiGraph()  # Dynamically updated graph
+
+    id: UUID4 = Field(
+        ..., default_factory=uuid4, title="Object ID"
+    )  # All objects have a unique id.
 
     @field_serializer("id", when_used="always")
     def serialize_id(val, info):
@@ -35,8 +46,13 @@ class UmiBase(BaseModel, validate_assignment=True):
         """
         When objects are created, they are either fetched from the cache
         if the ID exists already, otherwise they are added to the cache
+
+        This also handles automatically adding the object to the graph,
+        and additionally, connecting the object to any children which it has.
         """
 
+        # Get the object if it exists already, or add it to the cache and graph
+        # if not
         node = self
         if self.id.int not in UmiBase.all:
             UmiBase.all[self.id.int] = self
@@ -44,13 +60,24 @@ class UmiBase(BaseModel, validate_assignment=True):
         else:
             node = UmiBase.all[self.id.int]
 
+        # Update edges in the graph
+        # Get the existing children of the object and remove edges
         children = list(UmiBase.graph.successors(self))
         for child in children:
             UmiBase.graph.remove_edge(u=self, v=child)
+
+        # add edges for all fields which are UmiBase objects
+        # TODO: this could possibly be sped up by pre maintaining a list of
+        # each field which is an UmiBase field, but it is a very small loop anyways
+        # so not super important
+        # start by getting a list of fields
         nodedict = node.model_dump()
         for field in nodedict.keys():
+            # Get the value for each field and check if it is UmiBase
             other = getattr(node, field)
             if isinstance(other, UmiBase):
+                # Add the edge, using the field as the edge label, to allow
+                # multiple edges between nodes (e.g. ConstructonSet-:Slab:->Construction)
                 UmiBase.graph.add_edge(u_for_edge=node, v_for_edge=other, key=field)
 
         return node
@@ -59,6 +86,8 @@ class UmiBase(BaseModel, validate_assignment=True):
     def classes(cls):
         """
         Return a key/class dict of all UmiBase classes.
+
+        This allows getting a list of all UmiClasses indexed by their name
         """
         umiclasses = {}
         for umiclass in cls.__subclasses__():
@@ -122,18 +151,42 @@ class UmiBase(BaseModel, validate_assignment=True):
         if update is None:
             update = {}
 
+        # Generate a new id
         update["id"] = uuid4()
 
         copied = super().model_copy(update=update, deep=deep)
+        # Validate is not called on copied objects, but we need validation
+        # to run for adding it to the cache and graph
         copied = copied.model_validate(copied)
         return copied
 
 
+# Generic type; must be populated with a subclass of UmiBase
 ListT = TypeVar("ListT", bound=UmiBase)
 
 
 class UmiList(UmiBase, Generic[ListT]):
-    objects: list[ListT] = []
+    """
+    UmiList is responsible for managing fields which are actually list of UmiObjects.
+
+    It is critical for successfully maintaining a dynamically updated graph.
+
+    It addrsses the classic problem that occurs when updating, appending, inserting, etc into a list:
+
+    If e.g. Construction stored its Layers as a plain list, then when a new MaterialLayer is added
+    at runtime e.g. with append, it would not trigger any pydantic validation etc, since it would
+    just be a list op; there would be no way of knowing that new edge needs to be drawn
+    from the Construction to the new MaterialLayer.
+
+    This class resolves that problem, by wrapping a list to enable validation when accessing.
+
+    It can be registed as a field type in another UmiBase model by populating the generic, e.g.:
+
+    Layers: UmiList[MaterialLayer] = Field(,title="List of MaterialLayers")
+
+    """
+
+    objects: list[ListT] = []  # the list to store objects of type ListT
 
     @model_validator(
         mode="after",
@@ -144,6 +197,7 @@ class UmiList(UmiBase, Generic[ListT]):
         for i, child in enumerate(list(children)):
             UmiBase.graph.remove_edge(u=self, v=child)
         for i, child in enumerate(self.objects):
+            # Use the index of the entry as the edge key, e.g. UmiList[MaterialLayers]-:5:->MaterialLayer
             UmiBase.graph.add_edge(u_for_edge=self, v_for_edge=child, key=i)
         return self
 
@@ -156,8 +210,33 @@ class UmiList(UmiBase, Generic[ListT]):
     def append(self, obj: ListT):
         self.objects.append(obj)
         UmiBase.graph.add_edge(
-            u_for_edge=self, v_for_edge=obj, key=len(self.objects - 1)
+            u_for_edge=self,
+            v_for_edge=obj,
+            key=len(self.objects) - 1,
         )
+
+    def insert(self, ix: int, obj: ListT):
+        self.objects.insert(ix, obj)
+        self.model_validate(self)
+
+    def extend(self, objs: list[ListT]):
+        self.objects.extend(objs)
+        self.model_validate(self)
+
+    def pop(self, ix: int = -1) -> ListT:
+        obj = self.objects.pop(ix)
+        self.model_validate(self)
+        return obj
+
+    def remove(self, obj: ListT):
+        self.objects.remove(obj)
+        self.model_validate(self)
+
+    def count(self, obj: ListT) -> int:
+        return self.objects.count(obj)
+
+    def __len__(self):
+        return len(self.objects)
 
     def __getitem__(self, ix: int):
         return self.objects[ix]
@@ -166,7 +245,11 @@ class UmiList(UmiBase, Generic[ListT]):
         old = self.objects[ix]
         self.objects[ix] = obj
         UmiBase.graph.remove_edge(u=self, v=old, key=ix)
-        UmiBase.graph.add_edge(u_for_edge=self, v_for_edge=obj, key=ix)
+        UmiBase.graph.add_edge(
+            u_for_edge=self,
+            v_for_edge=obj,
+            key=ix,
+        )
 
 
 class NumericSchemaExtra(BaseModel):

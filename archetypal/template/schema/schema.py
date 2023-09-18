@@ -10,6 +10,7 @@ from pydantic import (
     field_validator,
     ValidationInfo,
     field_serializer,
+    computed_field
 )
 from uuid import uuid4
 import networkx as nx
@@ -188,6 +189,20 @@ class MaterialBase(UmiBase):
         description="Specific Heat 'C_p', in J/(kg*K) of material",
         json_schema_extra=NumericSchemaExtra(units="J/(kg*K)").model_dump(),
     )
+
+    Density: float = Field(
+        ...,
+        ge=0,
+        le=10000,
+        title="Density",
+        description="Density 'rho', in kg/m^3 of material",
+        json_schema_extra=NumericSchemaExtra(units="kg/m^3").model_dump(),
+    )
+
+    @computed_field
+    @property
+    def DiffusionCoefficient(self) -> float:
+        return self.Conductivity / (self.Density * self.SpecificHeat)
 
 
 class MaterialLayer(UmiBase):

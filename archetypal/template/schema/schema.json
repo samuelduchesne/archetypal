@@ -113,12 +113,27 @@
                     "title": "Specific Heat",
                     "type": "number",
                     "units": "J/(kg*K)"
+                },
+                "Density": {
+                    "description": "Density 'rho', in kg/m^3 of material",
+                    "maximum": 10000,
+                    "minimum": 0,
+                    "title": "Density",
+                    "type": "number",
+                    "units": "kg/m^3"
+                },
+                "DiffusionCoefficient": {
+                    "readOnly": true,
+                    "title": "Diffusioncoefficient",
+                    "type": "number"
                 }
             },
             "required": [
                 "id",
                 "Conductivity",
-                "SpecificHeat"
+                "SpecificHeat",
+                "Density",
+                "DiffusionCoefficient"
             ],
             "title": "Material Definition",
             "type": "object"

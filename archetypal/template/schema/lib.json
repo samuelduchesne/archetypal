@@ -1,203 +1,237 @@
 {
-    "id": "ae42b5e3-505f-46d3-809a-adb176eb76fe",
+    "id": "a73b2bab-dbff-48f0-98bd-d57a22c44142",
     "Templates": {
-        "id": "b28d2d11-005e-4e67-be69-2147dccab1d8",
+        "id": "6648772c-849a-4c8e-8a89-f8ed99949947",
         "objects": [
             {
-                "id": "cd69afa7-e470-43a6-ad02-b3342d26ea51",
+                "id": "39528836-a391-434d-91cf-5b269d943e76",
                 "Perimeter": {
-                    "id": "9043cbf0-3f82-44e9-9394-7fffcbc2ad80",
+                    "id": "ff5465cd-0d37-4ebb-a3ee-6cb7acd51740",
                     "DaylightWorkplaneHeight": 1.0,
                     "Constructions": {
-                        "id": "b8702e3b-3c8e-4385-b81e-e26f1470b803",
+                        "id": "aa8554d5-3f8f-4f24-9cac-49e21ffc9bd6",
                         "Partition": {
-                            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+                            "id": "7874ba7a-cd52-41f9-951f-c0ab03ba9285",
                             "Layers": {
-                                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+                                "id": "2ec3f32b-2b33-40af-a310-b1b8e161d6dc",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+                                        "id": "79716d57-98ca-45ab-bc37-220ff6852e6e",
                                         "Thickness": 0.05,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     }
                                 ]
                             }
                         },
                         "Roof": {
-                            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+                            "id": "7874ba7a-cd52-41f9-951f-c0ab03ba9285",
                             "Layers": {
-                                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+                                "id": "2ec3f32b-2b33-40af-a310-b1b8e161d6dc",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+                                        "id": "79716d57-98ca-45ab-bc37-220ff6852e6e",
                                         "Thickness": 0.05,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     }
                                 ]
                             }
                         },
                         "Ground": {
-                            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+                            "id": "7874ba7a-cd52-41f9-951f-c0ab03ba9285",
                             "Layers": {
-                                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+                                "id": "2ec3f32b-2b33-40af-a310-b1b8e161d6dc",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+                                        "id": "79716d57-98ca-45ab-bc37-220ff6852e6e",
                                         "Thickness": 0.05,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     }
                                 ]
                             }
                         },
                         "Slab": {
-                            "id": "68b5939a-9277-4767-86dd-d2205c0638c6",
+                            "id": "9caed05c-0701-4fc6-ad76-297ebb8fec60",
                             "Layers": {
-                                "id": "c35ec581-b6f5-4c74-8f30-c1b467eb1bb5",
+                                "id": "9e318544-d868-4e72-897c-4c14501ad69b",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "d4214a94-4f17-4cdd-a155-fe509bf42499",
+                                        "id": "83669ef6-4ba5-4843-91c7-b8414e0399e3",
                                         "Thickness": 0.5,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "632c9f4b-4735-4daa-9d58-31285bf2f799",
+                                        "id": "b6c757b1-e843-4f70-86a1-e423c379f128",
                                         "Thickness": 0.5,
                                         "Material": {
-                                            "id": "d58d6620-d367-4460-ab0f-ad3c69fffe37",
+                                            "id": "3bc32a37-0faa-4a56-b93a-ba58da966b8a",
                                             "Conductivity": 0.35,
-                                            "SpecificHeat": 500.0
+                                            "SpecificHeat": 500.0,
+                                            "Density": 100.0,
+                                            "DiffusionCoefficient": 7e-6
                                         }
                                     }
                                 ]
                             }
                         },
                         "Wall": {
-                            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+                            "id": "7874ba7a-cd52-41f9-951f-c0ab03ba9285",
                             "Layers": {
-                                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+                                "id": "2ec3f32b-2b33-40af-a310-b1b8e161d6dc",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+                                        "id": "79716d57-98ca-45ab-bc37-220ff6852e6e",
                                         "Thickness": 0.05,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     }
                                 ]
@@ -206,198 +240,232 @@
                     }
                 },
                 "Core": {
-                    "id": "4a16bd00-1eba-4b08-98d9-ac897058e212",
-                    "DaylightWorkplaneHeight": 1.0,
+                    "id": "1ba07e4b-4bc0-45b8-9f1e-7a63f5755d74",
+                    "DaylightWorkplaneHeight": 2.0,
                     "Constructions": {
-                        "id": "b8702e3b-3c8e-4385-b81e-e26f1470b803",
+                        "id": "aa8554d5-3f8f-4f24-9cac-49e21ffc9bd6",
                         "Partition": {
-                            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+                            "id": "7874ba7a-cd52-41f9-951f-c0ab03ba9285",
                             "Layers": {
-                                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+                                "id": "2ec3f32b-2b33-40af-a310-b1b8e161d6dc",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+                                        "id": "79716d57-98ca-45ab-bc37-220ff6852e6e",
                                         "Thickness": 0.05,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     }
                                 ]
                             }
                         },
                         "Roof": {
-                            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+                            "id": "7874ba7a-cd52-41f9-951f-c0ab03ba9285",
                             "Layers": {
-                                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+                                "id": "2ec3f32b-2b33-40af-a310-b1b8e161d6dc",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+                                        "id": "79716d57-98ca-45ab-bc37-220ff6852e6e",
                                         "Thickness": 0.05,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     }
                                 ]
                             }
                         },
                         "Ground": {
-                            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+                            "id": "7874ba7a-cd52-41f9-951f-c0ab03ba9285",
                             "Layers": {
-                                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+                                "id": "2ec3f32b-2b33-40af-a310-b1b8e161d6dc",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+                                        "id": "79716d57-98ca-45ab-bc37-220ff6852e6e",
                                         "Thickness": 0.05,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     }
                                 ]
                             }
                         },
                         "Slab": {
-                            "id": "68b5939a-9277-4767-86dd-d2205c0638c6",
+                            "id": "9caed05c-0701-4fc6-ad76-297ebb8fec60",
                             "Layers": {
-                                "id": "c35ec581-b6f5-4c74-8f30-c1b467eb1bb5",
+                                "id": "9e318544-d868-4e72-897c-4c14501ad69b",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "d4214a94-4f17-4cdd-a155-fe509bf42499",
+                                        "id": "83669ef6-4ba5-4843-91c7-b8414e0399e3",
                                         "Thickness": 0.5,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "632c9f4b-4735-4daa-9d58-31285bf2f799",
+                                        "id": "b6c757b1-e843-4f70-86a1-e423c379f128",
                                         "Thickness": 0.5,
                                         "Material": {
-                                            "id": "d58d6620-d367-4460-ab0f-ad3c69fffe37",
+                                            "id": "3bc32a37-0faa-4a56-b93a-ba58da966b8a",
                                             "Conductivity": 0.35,
-                                            "SpecificHeat": 500.0
+                                            "SpecificHeat": 500.0,
+                                            "Density": 100.0,
+                                            "DiffusionCoefficient": 7e-6
                                         }
                                     }
                                 ]
                             }
                         },
                         "Wall": {
-                            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+                            "id": "7874ba7a-cd52-41f9-951f-c0ab03ba9285",
                             "Layers": {
-                                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+                                "id": "2ec3f32b-2b33-40af-a310-b1b8e161d6dc",
                                 "objects": [
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     },
                                     {
-                                        "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+                                        "id": "79716d57-98ca-45ab-bc37-220ff6852e6e",
                                         "Thickness": 0.05,
                                         "Material": {
-                                            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+                                            "id": "68ef4d9a-53f9-4bfd-8262-370d2ebd218e",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 1000.0
+                                            "SpecificHeat": 1000.0,
+                                            "Density": 300.0,
+                                            "DiffusionCoefficient": 6.666666666666667e-6
                                         }
                                     },
                                     {
-                                        "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+                                        "id": "19432b9c-44ac-4f1a-a8da-949d7b6f42a2",
                                         "Thickness": 0.1,
                                         "Material": {
-                                            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+                                            "id": "518b6176-e624-4046-834c-15cf4b35c3d2",
                                             "Conductivity": 2.0,
-                                            "SpecificHeat": 800.0
+                                            "SpecificHeat": 800.0,
+                                            "Density": 200.0,
+                                            "DiffusionCoefficient": 0.0000125
                                         }
                                     }
                                 ]

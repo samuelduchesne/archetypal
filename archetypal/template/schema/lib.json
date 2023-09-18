@@ -1,0 +1,381 @@
+{
+    "id": "cc39c38d-7782-4c2a-9f95-6318ead702a7",
+    "Templates": [
+        {
+            "id": "42c3184d-8d43-460d-91fa-40ecd9f38e73",
+            "Perimeter": {
+                "id": "a14763a8-d81d-46fe-8757-393b7476bad4",
+                "DaylightWorkplaneHeight": 1.0,
+                "Constructions": {
+                    "id": "bef0afcc-a790-4fe5-b8df-5da83cdfc47a",
+                    "Partition": {
+                        "id": "71afcaa3-8839-404c-8112-83ba5266c9b6",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "9cebce96-a8cf-44bd-b476-6d61e8127bc6",
+                                "Thickness": 0.05,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            }
+                        ]
+                    },
+                    "Roof": {
+                        "id": "71afcaa3-8839-404c-8112-83ba5266c9b6",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "9cebce96-a8cf-44bd-b476-6d61e8127bc6",
+                                "Thickness": 0.05,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            }
+                        ]
+                    },
+                    "Ground": {
+                        "id": "71afcaa3-8839-404c-8112-83ba5266c9b6",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "9cebce96-a8cf-44bd-b476-6d61e8127bc6",
+                                "Thickness": 0.05,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            }
+                        ]
+                    },
+                    "Slab": {
+                        "id": "8bd78d9a-9fc2-4c51-80f8-6e2593423e61",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "99124aec-d6d6-4a2b-a198-2b966b5666dd",
+                                "Thickness": 0.5,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "83b121c4-f0e2-4852-94eb-f2053c3c2861",
+                                "Thickness": 0.5,
+                                "Material": {
+                                    "id": "26da103c-14ed-468d-a4b6-b456a3aed3df",
+                                    "Conductivity": 0.35,
+                                    "SpecificHeat": 500.0
+                                }
+                            }
+                        ]
+                    },
+                    "Wall": {
+                        "id": "71afcaa3-8839-404c-8112-83ba5266c9b6",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "9cebce96-a8cf-44bd-b476-6d61e8127bc6",
+                                "Thickness": 0.05,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "Core": {
+                "id": "1ace3b62-225d-4f63-b9e3-1d7cfe0c5536",
+                "DaylightWorkplaneHeight": 1.0,
+                "Constructions": {
+                    "id": "bef0afcc-a790-4fe5-b8df-5da83cdfc47a",
+                    "Partition": {
+                        "id": "71afcaa3-8839-404c-8112-83ba5266c9b6",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "9cebce96-a8cf-44bd-b476-6d61e8127bc6",
+                                "Thickness": 0.05,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            }
+                        ]
+                    },
+                    "Roof": {
+                        "id": "71afcaa3-8839-404c-8112-83ba5266c9b6",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "9cebce96-a8cf-44bd-b476-6d61e8127bc6",
+                                "Thickness": 0.05,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            }
+                        ]
+                    },
+                    "Ground": {
+                        "id": "71afcaa3-8839-404c-8112-83ba5266c9b6",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "9cebce96-a8cf-44bd-b476-6d61e8127bc6",
+                                "Thickness": 0.05,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            }
+                        ]
+                    },
+                    "Slab": {
+                        "id": "8bd78d9a-9fc2-4c51-80f8-6e2593423e61",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "99124aec-d6d6-4a2b-a198-2b966b5666dd",
+                                "Thickness": 0.5,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "83b121c4-f0e2-4852-94eb-f2053c3c2861",
+                                "Thickness": 0.5,
+                                "Material": {
+                                    "id": "26da103c-14ed-468d-a4b6-b456a3aed3df",
+                                    "Conductivity": 0.35,
+                                    "SpecificHeat": 500.0
+                                }
+                            }
+                        ]
+                    },
+                    "Wall": {
+                        "id": "71afcaa3-8839-404c-8112-83ba5266c9b6",
+                        "Layers": [
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            },
+                            {
+                                "id": "9cebce96-a8cf-44bd-b476-6d61e8127bc6",
+                                "Thickness": 0.05,
+                                "Material": {
+                                    "id": "d85ea741-8718-428a-9184-0c76b02a3907",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 1000.0
+                                }
+                            },
+                            {
+                                "id": "f71ea0fc-48a3-446d-9fe5-998e361d7203",
+                                "Thickness": 0.1,
+                                "Material": {
+                                    "id": "4072a446-6e5a-4d51-aa6c-ff33b6e4fdb1",
+                                    "Conductivity": 2.0,
+                                    "SpecificHeat": 800.0
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "YearFrom": 2000,
+            "YearTo": 2001,
+            "Country": "USA"
+        }
+    ]
+}

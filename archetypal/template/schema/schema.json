@@ -1,0 +1,281 @@
+{
+    "$defs": {
+        "Construction": {
+            "description": "A Construction is a set of Material Layers that represent an assembly.",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "Layers": {
+                    "description": "The list of Material Layers which define this construction",
+                    "items": {
+                        "$ref": "#/$defs/MaterialLayer"
+                    },
+                    "title": "Material Layers",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "id",
+                "Layers"
+            ],
+            "title": "Construction",
+            "type": "object"
+        },
+        "ConstructionSet": {
+            "description": "A Zone Construction Set defines the assemblies for the walls, roofs, etc that make up\nthe envelope of a zone.",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "Partition": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/Construction"
+                        }
+                    ],
+                    "description": "Construction assembly for interior partition walls;used to divide Perimeter and Core Zones.",
+                    "title": "Partition Wall"
+                },
+                "Roof": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/Construction"
+                        }
+                    ],
+                    "description": "Construction assembly for roof",
+                    "title": "Parition Wall"
+                },
+                "Ground": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/Construction"
+                        }
+                    ],
+                    "description": "Construction assembly for ground",
+                    "title": "Ground"
+                },
+                "Slab": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/Construction"
+                        }
+                    ],
+                    "description": "Construction assembly for slabs",
+                    "title": "Slab"
+                },
+                "Wall": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/Construction"
+                        }
+                    ],
+                    "description": "Construction assembly for exterior walls",
+                    "title": "Exterior Wall"
+                }
+            },
+            "required": [
+                "id",
+                "Partition",
+                "Roof",
+                "Ground",
+                "Slab",
+                "Wall"
+            ],
+            "title": "Zone Construction Set",
+            "type": "object"
+        },
+        "MaterialBase": {
+            "description": "Material Definition used in construction assemblies and windows",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "Conductivity": {
+                    "description": "Thermal conductivity 'k', in W/(m*K) of material",
+                    "maximum": 5,
+                    "minimum": 0,
+                    "title": "Thermal Conductivity",
+                    "type": "number",
+                    "units": "W/(m*K)"
+                },
+                "SpecificHeat": {
+                    "description": "Specific Heat 'C_p', in J/(kg*K) of material",
+                    "maximum": 2000,
+                    "minimum": 100,
+                    "title": "Specific Heat",
+                    "type": "number",
+                    "units": "J/(kg*K)"
+                }
+            },
+            "required": [
+                "id",
+                "Conductivity",
+                "SpecificHeat"
+            ],
+            "title": "Material Definition",
+            "type": "object"
+        },
+        "MaterialLayer": {
+            "description": "Material Layers are Used to build up Assemblies.",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "Thickness": {
+                    "description": "Thickness of this layer",
+                    "examples": [
+                        0.01,
+                        0.05,
+                        0.006
+                    ],
+                    "minimum": 0.003,
+                    "title": "Thickness",
+                    "type": "number",
+                    "units": "m"
+                },
+                "Material": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/MaterialBase"
+                        }
+                    ],
+                    "description": "Material used in this layer.",
+                    "title": "Material"
+                }
+            },
+            "required": [
+                "id",
+                "Thickness",
+                "Material"
+            ],
+            "title": "Material Layer",
+            "type": "object"
+        },
+        "Template": {
+            "description": "An UMI Template is a building simulation archetype which will be used to create\nshoebox energy model definitions for each building assigned to that archetype\nin an UMI simulation.",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "Perimeter": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/Zone"
+                        }
+                    ],
+                    "description": "Zone definition for Perimeter zone",
+                    "title": "Perimeter Zone"
+                },
+                "Core": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/Zone"
+                        }
+                    ],
+                    "description": "Zone definition for Core zone",
+                    "title": "Core Zone"
+                },
+                "YearFrom": {
+                    "description": "Start of range years for which this UMI Template is applicable.",
+                    "minimum": 1800,
+                    "title": "Year From",
+                    "type": "integer"
+                },
+                "YearTo": {
+                    "description": "End of range years for which this UMI Template is applicable.",
+                    "minimum": 1800,
+                    "title": "Year To",
+                    "type": "integer"
+                },
+                "Country": {
+                    "description": "Country of Origin for the Template",
+                    "examples": [
+                        "USA",
+                        "UK"
+                    ],
+                    "title": "Country of Origin",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "Perimeter",
+                "Core",
+                "YearFrom",
+                "YearTo",
+                "Country"
+            ],
+            "title": "UMI Template",
+            "type": "object"
+        },
+        "Zone": {
+            "description": "A Zone Definition represents a single zone within an Energy Model.",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "DaylightWorkplaneHeight": {
+                    "default": 0.8,
+                    "description": "Offset for workplane height in daylight simulations",
+                    "examples": [
+                        0.8,
+                        0.3
+                    ],
+                    "minimum": 0,
+                    "title": "Daylight Workplane Height",
+                    "type": "number"
+                },
+                "Constructions": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/ConstructionSet"
+                        }
+                    ],
+                    "description": "Assembly definitions for the zone's envelope, i.e. exterior walls, partition walls, etc."
+                }
+            },
+            "required": [
+                "id",
+                "DaylightWorkplaneHeight",
+                "Constructions"
+            ],
+            "title": "Zone Definition",
+            "type": "object"
+        }
+    },
+    "description": "An UMI Template Library represents a collection of templates which will\nbe used in an UMI simulation.  Each UMI Template is an archetype which\nwill be used to generate shoebox energy models for all buildings assigned\nto that archetype.",
+    "properties": {
+        "id": {
+            "format": "uuid4",
+            "title": "Object ID",
+            "type": "string"
+        },
+        "Templates": {
+            "description": "A list of UMI Templates in the library",
+            "items": {
+                "$ref": "#/$defs/Template"
+            },
+            "title": "UMI Templates",
+            "type": "array"
+        }
+    },
+    "required": [
+        "id",
+        "Templates"
+    ],
+    "title": "UMI Template Library",
+    "type": "object"
+}

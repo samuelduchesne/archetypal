@@ -9,12 +9,13 @@
                     "type": "string"
                 },
                 "Layers": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/UmiList_MaterialLayer_"
+                        }
+                    ],
                     "description": "The list of Material Layers which define this construction",
-                    "items": {
-                        "$ref": "#/$defs/MaterialLayer"
-                    },
-                    "title": "Material Layers",
-                    "type": "array"
+                    "title": "Material Layers"
                 }
             },
             "required": [
@@ -219,6 +220,52 @@
             "title": "UMI Template",
             "type": "object"
         },
+        "UmiList_MaterialLayer_": {
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "objects": {
+                    "default": [],
+                    "items": {
+                        "$ref": "#/$defs/MaterialLayer"
+                    },
+                    "title": "Objects",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "id",
+                "objects"
+            ],
+            "title": "UmiList[MaterialLayer]",
+            "type": "object"
+        },
+        "UmiList_Template_": {
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "objects": {
+                    "default": [],
+                    "items": {
+                        "$ref": "#/$defs/Template"
+                    },
+                    "title": "Objects",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "id",
+                "objects"
+            ],
+            "title": "UmiList[Template]",
+            "type": "object"
+        },
         "Zone": {
             "description": "A Zone Definition represents a single zone within an Energy Model.",
             "properties": {
@@ -264,12 +311,13 @@
             "type": "string"
         },
         "Templates": {
+            "allOf": [
+                {
+                    "$ref": "#/$defs/UmiList_Template_"
+                }
+            ],
             "description": "A list of UMI Templates in the library",
-            "items": {
-                "$ref": "#/$defs/Template"
-            },
-            "title": "UMI Templates",
-            "type": "array"
+            "title": "UMI Templates"
         }
     },
     "required": [

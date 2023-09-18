@@ -1,0 +1,167 @@
+{
+    "MaterialBase": [
+        {
+            "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043",
+            "Conductivity": 2.0,
+            "SpecificHeat": 800.0
+        },
+        {
+            "id": "92a07aad-afc5-4385-87fb-64d679ccfebd",
+            "Conductivity": 2.0,
+            "SpecificHeat": 1000.0
+        },
+        {
+            "id": "d58d6620-d367-4460-ab0f-ad3c69fffe37",
+            "Conductivity": 0.35,
+            "SpecificHeat": 500.0
+        }
+    ],
+    "MaterialLayer": [
+        {
+            "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8",
+            "Thickness": 0.1,
+            "Material": {
+                "id": "ffa7f945-1f9b-4df9-b59d-5bd834eae043"
+            }
+        },
+        {
+            "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a",
+            "Thickness": 0.05,
+            "Material": {
+                "id": "92a07aad-afc5-4385-87fb-64d679ccfebd"
+            }
+        },
+        {
+            "id": "d4214a94-4f17-4cdd-a155-fe509bf42499",
+            "Thickness": 0.5,
+            "Material": {
+                "id": "92a07aad-afc5-4385-87fb-64d679ccfebd"
+            }
+        },
+        {
+            "id": "632c9f4b-4735-4daa-9d58-31285bf2f799",
+            "Thickness": 0.5,
+            "Material": {
+                "id": "d58d6620-d367-4460-ab0f-ad3c69fffe37"
+            }
+        }
+    ],
+    "UmiList[MaterialLayer]": [
+        {
+            "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83",
+            "objects": [
+                {
+                    "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8"
+                },
+                {
+                    "id": "db648fd9-93fb-4739-b6d2-283eebd48c6a"
+                },
+                {
+                    "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8"
+                }
+            ]
+        },
+        {
+            "id": "c35ec581-b6f5-4c74-8f30-c1b467eb1bb5",
+            "objects": [
+                {
+                    "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8"
+                },
+                {
+                    "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8"
+                },
+                {
+                    "id": "da6c0b67-9e5b-4fea-9c58-8355a608faf8"
+                },
+                {
+                    "id": "d4214a94-4f17-4cdd-a155-fe509bf42499"
+                },
+                {
+                    "id": "632c9f4b-4735-4daa-9d58-31285bf2f799"
+                }
+            ]
+        }
+    ],
+    "Construction": [
+        {
+            "id": "76479242-04c2-4927-950e-a4fbd88fb5bf",
+            "Layers": {
+                "id": "8150fb27-2c4d-4818-8c52-8419e86a1b83"
+            }
+        },
+        {
+            "id": "68b5939a-9277-4767-86dd-d2205c0638c6",
+            "Layers": {
+                "id": "c35ec581-b6f5-4c74-8f30-c1b467eb1bb5"
+            }
+        }
+    ],
+    "ConstructionSet": [
+        {
+            "id": "b8702e3b-3c8e-4385-b81e-e26f1470b803",
+            "Partition": {
+                "id": "76479242-04c2-4927-950e-a4fbd88fb5bf"
+            },
+            "Roof": {
+                "id": "76479242-04c2-4927-950e-a4fbd88fb5bf"
+            },
+            "Ground": {
+                "id": "76479242-04c2-4927-950e-a4fbd88fb5bf"
+            },
+            "Slab": {
+                "id": "68b5939a-9277-4767-86dd-d2205c0638c6"
+            },
+            "Wall": {
+                "id": "76479242-04c2-4927-950e-a4fbd88fb5bf"
+            }
+        }
+    ],
+    "Zone": [
+        {
+            "id": "9043cbf0-3f82-44e9-9394-7fffcbc2ad80",
+            "DaylightWorkplaneHeight": 1.0,
+            "Constructions": {
+                "id": "b8702e3b-3c8e-4385-b81e-e26f1470b803"
+            }
+        },
+        {
+            "id": "4a16bd00-1eba-4b08-98d9-ac897058e212",
+            "DaylightWorkplaneHeight": 1.0,
+            "Constructions": {
+                "id": "b8702e3b-3c8e-4385-b81e-e26f1470b803"
+            }
+        }
+    ],
+    "Template": [
+        {
+            "id": "cd69afa7-e470-43a6-ad02-b3342d26ea51",
+            "Perimeter": {
+                "id": "9043cbf0-3f82-44e9-9394-7fffcbc2ad80"
+            },
+            "Core": {
+                "id": "4a16bd00-1eba-4b08-98d9-ac897058e212"
+            },
+            "YearFrom": 2000,
+            "YearTo": 2001,
+            "Country": "USA"
+        }
+    ],
+    "UmiList[Template]": [
+        {
+            "id": "b28d2d11-005e-4e67-be69-2147dccab1d8",
+            "objects": [
+                {
+                    "id": "cd69afa7-e470-43a6-ad02-b3342d26ea51"
+                }
+            ]
+        }
+    ],
+    "Library": [
+        {
+            "id": "ae42b5e3-505f-46d3-809a-adb176eb76fe",
+            "Templates": {
+                "id": "b28d2d11-005e-4e67-be69-2147dccab1d8"
+            }
+        }
+    ]
+}

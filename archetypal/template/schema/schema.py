@@ -1,21 +1,22 @@
 import json
 from enum import Enum
-from typing import Any, Union, ClassVar
+from typing import Any, Union, ClassVar, TypeVar, Generic
 from pydantic import (
     BaseModel,
     Field,
     ConfigDict,
     UUID4,
     model_validator,
+    field_validator,
     ValidationInfo,
     field_serializer,
 )
 from uuid import uuid4
 import networkx as nx
 
-class UmiBase(BaseModel):
 
-    all: ClassVar[dict[int, 'UmiBase']] = {}
+class UmiBase(BaseModel, validate_assignment=True):
+    all: ClassVar[dict[int, "UmiBase"]] = {}
     graph: ClassVar[nx.MultiDiGraph] = nx.MultiDiGraph()
 
     id: UUID4 = Field(..., default_factory=uuid4, title="Object ID")
@@ -34,27 +35,37 @@ class UmiBase(BaseModel):
         if the ID exists already, otherwise they are added to the cache
         """
 
+        node = self
         if self.id.int not in UmiBase.all:
             UmiBase.all[self.id.int] = self
             UmiBase.graph.add_node(self)
-            return self
         else:
-            return UmiBase.all[self.id.int]
-    
-    
+            node = UmiBase.all[self.id.int]
+        
+        children = list(UmiBase.graph.successors(self))
+        for child in children:
+            UmiBase.graph.remove_edge(u=self,v=child)
+        nodedict = node.model_dump()
+        for field in nodedict.keys():
+            other = getattr(node,field) 
+            if isinstance(other, UmiBase):
+                UmiBase.graph.add_edge(u_for_edge=node, v_for_edge=other, key=field)
+        
+        return node
+
     @classmethod
     def classes(cls):
         """
         Return a key/class dict of all UmiBase classes.
         """
-        umiclasses  = {}
+        umiclasses = {}
         for umiclass in cls.__subclasses__():
             umiclasses[umiclass.__name__] = umiclass
 
         return umiclasses
 
     @classmethod
-    def flat_serialization(cls, as_json: bool=False):
+    def flat_serialization(cls, as_json: bool = False):
         """
         This generates a dictionary similarly to the old style of archetypal objects,
         i.e. each object type is its own key, and other UMI Objects are stored by reference.
@@ -64,12 +75,11 @@ class UmiBase(BaseModel):
         all_objects = {}
 
         for item in cls.all.values():
-
             # If the particular item's class has not yet been registered
             # in the dictionary, register it
             if item.__class__.__name__ not in all_objects:
                 all_objects[item.__class__.__name__] = []
-            
+
             # Generate a dictionary of this particular object
             # it will be deeply nested non-referentially,
             # but it will have pydantic objects as keys when they are
@@ -79,12 +89,11 @@ class UmiBase(BaseModel):
             # For each key, if it is storing an UMI base object
             # replace it with the id, otherwise leave it alone
             for key in item_dict.keys():
-
                 # get the value associated with a key
                 val = getattr(item, key)
 
                 if isinstance(val, UmiBase):
-                    # the value is an UmiBase object, so it should be conveted to a 
+                    # the value is an UmiBase object, so it should be conveted to a
                     # reference dictionary which only contains the id
                     item_dict[key] = val.model_dump(include="id")
 
@@ -93,12 +102,11 @@ class UmiBase(BaseModel):
                 ):
                     # the value is a list of UmiBase objects which should be converted
                     item_dict[key] = [item.model_dump(include="id") for item in val]
-                
+
             # Store the trimmed dictionary
             all_objects[item.__class__.__name__].append(item_dict)
 
         return all_objects if not as_json else json.dumps(all_objects, indent=4)
-
 
     def model_copy(
         self: "UmiBase",
@@ -114,8 +122,43 @@ class UmiBase(BaseModel):
 
         update["id"] = uuid4()
 
-        return super().model_copy(update=update, deep=deep)
+        copied = super().model_copy(update=update, deep=deep)
+        copied = copied.model_validate(copied)
+        return copied
+
+ListT = TypeVar("ListT",bound=UmiBase)
+class UmiList(UmiBase, Generic[ListT]):
+    objects: list[ListT] = []
+
+    @model_validator(mode="after",)
+    def add_nodes(self, v):
+        """Whenever the list changes, we need to update parent/child relationships."""
+        children = UmiBase.graph.successors(self)
+        for i,child in enumerate(list(children)):
+            UmiBase.graph.remove_edge(u=self,v=child)
+        for i, child in enumerate(self.objects):
+            UmiBase.graph.add_edge(u_for_edge=self, v_for_edge=child, key=i)
+        return self
+
+    def clear(self):
+        children = list(UmiBase.graph.successors(self))
+        for child in children:
+            UmiBase.graph.remove_edge(u=self, v=child)
+        self.objects = []
+
+    def append(self, obj: ListT):
+        self.objects.append(obj)
+        UmiBase.graph.add_edge(u_for_edge=self, v_for_edge=obj, key=len(self.objects-1))
     
+    def __getitem__(self, ix: int):
+        return self.objects[ix]
+    
+    def __setitem__(self, ix: int, obj: ListT):
+        old = self.objects[ix]
+        self.objects[ix] = obj
+        UmiBase.graph.remove_edge(u=self,v=old, key=ix)
+        UmiBase.graph.add_edge(u_for_edge=self,v_for_edge=obj, key=ix)
+
 
 class NumericSchemaExtra(BaseModel):
     units: str  # This could be an enum of SI or IP units
@@ -177,7 +220,7 @@ class Construction(UmiBase):
 
     model_config = ConfigDict(title="Construction")
 
-    Layers: list[MaterialLayer] = Field(
+    Layers: UmiList[MaterialLayer] = Field(
         ...,
         title="Material Layers",
         description="The list of Material Layers which define this construction",
@@ -303,7 +346,7 @@ class Library(UmiBase):
         title="UMI Template Library",
     )
 
-    Templates: list[Template] = Field(
+    Templates: UmiList[Template] = Field(
         ...,
         title="UMI Templates",
         description="A list of UMI Templates in the library",

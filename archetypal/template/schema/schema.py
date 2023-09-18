@@ -1,19 +1,20 @@
 import json
 from enum import Enum
-from typing import Any, Union, ClassVar, TypeVar, Generic
-from pydantic import (
-    BaseModel,
-    Field,
-    ConfigDict,
-    UUID4,
-    model_validator,
-    field_validator,
-    ValidationInfo,
-    field_serializer,
-    computed_field
-)
+from typing import Any, ClassVar, Generic, TypeVar, Union
 from uuid import uuid4
+
 import networkx as nx
+from pydantic import (
+    UUID4,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    computed_field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 
 class UmiBase(BaseModel, validate_assignment=True):
@@ -42,16 +43,16 @@ class UmiBase(BaseModel, validate_assignment=True):
             UmiBase.graph.add_node(self)
         else:
             node = UmiBase.all[self.id.int]
-        
+
         children = list(UmiBase.graph.successors(self))
         for child in children:
-            UmiBase.graph.remove_edge(u=self,v=child)
+            UmiBase.graph.remove_edge(u=self, v=child)
         nodedict = node.model_dump()
         for field in nodedict.keys():
-            other = getattr(node,field) 
+            other = getattr(node, field)
             if isinstance(other, UmiBase):
                 UmiBase.graph.add_edge(u_for_edge=node, v_for_edge=other, key=field)
-        
+
         return node
 
     @classmethod
@@ -127,16 +128,21 @@ class UmiBase(BaseModel, validate_assignment=True):
         copied = copied.model_validate(copied)
         return copied
 
-ListT = TypeVar("ListT",bound=UmiBase)
+
+ListT = TypeVar("ListT", bound=UmiBase)
+
+
 class UmiList(UmiBase, Generic[ListT]):
     objects: list[ListT] = []
 
-    @model_validator(mode="after",)
+    @model_validator(
+        mode="after",
+    )
     def add_nodes(self, v):
         """Whenever the list changes, we need to update parent/child relationships."""
         children = UmiBase.graph.successors(self)
-        for i,child in enumerate(list(children)):
-            UmiBase.graph.remove_edge(u=self,v=child)
+        for i, child in enumerate(list(children)):
+            UmiBase.graph.remove_edge(u=self, v=child)
         for i, child in enumerate(self.objects):
             UmiBase.graph.add_edge(u_for_edge=self, v_for_edge=child, key=i)
         return self
@@ -149,16 +155,18 @@ class UmiList(UmiBase, Generic[ListT]):
 
     def append(self, obj: ListT):
         self.objects.append(obj)
-        UmiBase.graph.add_edge(u_for_edge=self, v_for_edge=obj, key=len(self.objects-1))
-    
+        UmiBase.graph.add_edge(
+            u_for_edge=self, v_for_edge=obj, key=len(self.objects - 1)
+        )
+
     def __getitem__(self, ix: int):
         return self.objects[ix]
-    
+
     def __setitem__(self, ix: int, obj: ListT):
         old = self.objects[ix]
         self.objects[ix] = obj
-        UmiBase.graph.remove_edge(u=self,v=old, key=ix)
-        UmiBase.graph.add_edge(u_for_edge=self,v_for_edge=obj, key=ix)
+        UmiBase.graph.remove_edge(u=self, v=old, key=ix)
+        UmiBase.graph.add_edge(u_for_edge=self, v_for_edge=obj, key=ix)
 
 
 class NumericSchemaExtra(BaseModel):

@@ -175,6 +175,55 @@ class UmiBase(BaseModel, validate_assignment=True):
                         key="index",
                     )
         return g
+    
+    @classmethod
+    def load_flat(cls, file: str) -> list['Library']:
+        """
+        Deserialize a flat file into memory
+
+        Args:
+            file: str
+        
+        Returns:
+            libraries (list[Library]): A list of libraries present in the file, reprsented as deeply nested pydantic objects!
+        """
+        # TODO: better typing for file input
+        with open(file, 'r') as f:
+            data = json.load(f)
+        
+        return cls.flat_deserialization(data)
+
+    @classmethod
+    def flat_deserialization(cls, data: dict[str, Any]) -> list['Library']:
+        """
+        Deserializes a flat/tabular representation of Umi Objects
+        into memory, preserving shared relationships etc
+
+        The key insight is to start with leaf classes, and then work our way up the tree.
+
+        Returns:
+            libraries (list[Library]): A list of libraries present in the file, represnted as deep nests of pydantic objects!
+
+        """
+
+        schema_graph = cls.schema_graph()
+        
+        libraries = []
+        for umiclass in nx.topological_sort(schema_graph.reverse()):
+            umiclass: UmiBase
+            obj_def = data[umiclass.__name__]
+            for obj_def in obj_def:
+                obj = umiclass.model_validate(obj_def)
+                if umiclass is Library:
+                    libraries.append(obj)
+
+        return libraries
+        
+        
+
+        
+
+        
 
     @classmethod
     def flat_serialization(cls, as_json: bool = False):
@@ -488,6 +537,11 @@ class ZoneConditioning(UmiBase):
         """
         Validate that the heating setpoint is below the cooling setpoint.
         """
+        if len(v) == 1 and "id" in v:
+            # Skip this check when dereferencing
+            # TODO: use wrap mode perhaps to better control when this executes 
+            # in relation to dereferencer?
+            return v
         if v["HeatingSetpoint"] >= v["CoolingSetpoint"]:
             raise ValueError(
                 f"The Heating Setpoint {v['HeatingSetpoint']} deg.C is greater than "

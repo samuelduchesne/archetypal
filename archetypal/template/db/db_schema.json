@@ -1,0 +1,216 @@
+{
+    "construction": {
+        "id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        }
+    },
+    "genericmaterial": {
+        "Conductivity": {
+            "type": "FLOAT",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "SpecificHeat": {
+            "type": "FLOAT",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        }
+    },
+    "library": {
+        "Creator": {
+            "type": "VARCHAR",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        }
+    },
+    "constructionset": {
+        "id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "Partition_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('construction.id')"
+        },
+        "Roof_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('construction.id')"
+        },
+        "Ground_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('construction.id')"
+        },
+        "Slab_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('construction.id')"
+        },
+        "Wall_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('construction.id')"
+        }
+    },
+    "materiallayer": {
+        "Thickness": {
+            "type": "FLOAT",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "Material_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('genericmaterial.id')"
+        }
+    },
+    "materiallayerconstructionlink": {
+        "MaterialLayer_id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('materiallayer.id')"
+        },
+        "Construction_id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('construction.id')"
+        }
+    },
+    "zone": {
+        "DaylightWorkplaneHeight": {
+            "type": "FLOAT",
+            "primary_key": false,
+            "nullable": false,
+            "default": "ScalarElementColumnDefault(0.8)",
+            "foreign_key": null
+        },
+        "id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "Constructions_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('constructionset.id')"
+        }
+    },
+    "template": {
+        "YearFrom": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "YearTo": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "Country": {
+            "type": "VARCHAR",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": null
+        },
+        "Perimeter_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('zone.id')"
+        },
+        "Core_id": {
+            "type": "INTEGER",
+            "primary_key": false,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('zone.id')"
+        }
+    },
+    "templatelibrarylink": {
+        "Template_id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('template.id')"
+        },
+        "Library_id": {
+            "type": "INTEGER",
+            "primary_key": true,
+            "nullable": false,
+            "default": "None",
+            "foreign_key": "ForeignKey('library.id')"
+        }
+    }
+}

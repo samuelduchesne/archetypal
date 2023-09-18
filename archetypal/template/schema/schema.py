@@ -1,5 +1,5 @@
 import json
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Any, ClassVar, Generic, TypeVar, Union, get_args
 from uuid import UUID, uuid4
 
@@ -513,12 +513,52 @@ class DomesticHotWaterSetting(UmiBase):
     )
 
 
+class DimmingTypes(IntEnum):
+    """DimmingType class."""
+
+    # TODO: is this really the right order?
+    Continuous = 0
+    Off = 1
+    Stepped = 2
+    # NB: No longer need lt/gt fns since IntEnum implements it.
+
+
+class ZoneLoads(UmiBase):
+    """
+    Represents a zone's equipment usage, lighting, and occupancy related loads.
+    """
+
+    model_config = ConfigDict(title="Zone Loads")
+
+    DimmingType: DimmingTypes = Field(
+        DimmingTypes.Off,
+        title="Dimming Type",
+        description="Different types of dimming for the lighting system",
+    )
+
+    EquipmentPowerDensity: float = Field(
+        ...,
+        ge=0,
+        le=50,
+        title="Equipment Power Density",
+        description="Power density per unit flower area of equipment in zone.",
+        examples=[3, 5.3],
+        json_schema_extra=NumericSchemaExtra(units="W/m^2"),
+    )
+
+
 class Zone(UmiBase):
     """
     A Zone Definition represents a single zone within an Energy Model.
     """
 
     model_config = ConfigDict(title="Zone Definition")
+
+    Loads: ZoneLoads = Field(
+        ...,
+        title="Zone Loads",
+        description="Definition of the zone's lighting, equipment usage and occupancy loads.",
+    )
 
     Conditioning: ZoneConditioning = Field(
         ...,
@@ -528,7 +568,7 @@ class Zone(UmiBase):
     DHW: DomesticHotWaterSetting = Field(
         ...,
         title="Zone Domestic Hot Water",
-        description="Domestic hot water systems for the zone."
+        description="Domestic hot water systems for the zone.",
     )
 
     DaylightWorkplaneHeight: float = Field(

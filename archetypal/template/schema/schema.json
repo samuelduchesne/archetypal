@@ -90,6 +90,16 @@
             "title": "Zone Construction Set",
             "type": "object"
         },
+        "DimmingTypes": {
+            "description": "DimmingType class.",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "title": "DimmingTypes",
+            "type": "integer"
+        },
         "DomesticHotWaterSetting": {
             "description": "Represents the definition of the Domestic Hot Water system.",
             "properties": {
@@ -316,6 +326,14 @@
                     "title": "Object ID",
                     "type": "string"
                 },
+                "Loads": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/ZoneLoads"
+                        }
+                    ],
+                    "description": "Definition of the zone's lighting, equipment usage and occupancy loads."
+                },
                 "Conditioning": {
                     "allOf": [
                         {
@@ -354,6 +372,7 @@
             },
             "required": [
                 "id",
+                "Loads",
                 "Conditioning",
                 "DHW",
                 "DaylightWorkplaneHeight",
@@ -401,6 +420,44 @@
                 "CoolingSetpoint"
             ],
             "title": "Zone Conditioning",
+            "type": "object"
+        },
+        "ZoneLoads": {
+            "description": "Represents a zone's equipment usage, lighting, and occupancy related loads.",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "DimmingType": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/DimmingTypes"
+                        }
+                    ],
+                    "default": 1,
+                    "description": "Different types of dimming for the lighting system",
+                    "title": "Dimming Type"
+                },
+                "EquipmentPowerDensity": {
+                    "description": "Power density per unit flower area of equipment in zone.",
+                    "examples": [
+                        3,
+                        5.3
+                    ],
+                    "maximum": 50,
+                    "minimum": 0,
+                    "title": "Equipment Power Density",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "id",
+                "DimmingType",
+                "EquipmentPowerDensity"
+            ],
+            "title": "Zone Loads",
             "type": "object"
         }
     },

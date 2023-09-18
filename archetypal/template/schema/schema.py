@@ -228,6 +228,8 @@ class UmiBase(BaseModel, validate_assignment=True):
     ) -> "UmiBase":
         """
         When an object is copied, its id should change.
+        TODO: Deep copying does not trigger this on children, so the children
+        do not get new IDs, making the deep copy incorrect.
         """
         if update is None:
             update = {}
@@ -483,12 +485,32 @@ class ZoneConditioning(UmiBase):
 
     @model_validator(mode="before")
     def heating_setpoint_below_cooling_setpoint(cls, v: dict[str, Any], info):
+        """
+        Validate that the heating setpoint is below the cooling setpoint.
+        """
         if v["HeatingSetpoint"] >= v["CoolingSetpoint"]:
             raise ValueError(
                 f"The Heating Setpoint {v['HeatingSetpoint']} deg.C is greater than "
                 f"the Cooling Setpoint {v['CoolingSetpoint']} deg.C, which is invalid."
             )
         return v
+
+
+class DomesticHotWaterSetting(UmiBase):
+    """
+    Represents the definition of the Domestic Hot Water system.
+    """
+
+    model_config = ConfigDict(title="Zone Domestic Hot Water")
+
+    WaterSupplyTemperature: float = Field(
+        65,
+        ge=0,
+        title="Water Supply Temperature",
+        description="Supply temperature for the water systems.",
+        examples=[52, 60],
+        json_schema_extra=NumericSchemaExtra(units="deg.C"),
+    )
 
 
 class Zone(UmiBase):
@@ -502,6 +524,11 @@ class Zone(UmiBase):
         ...,
         title="Zone Conditioning",
         description="Definition of the zone's conditioning systems.",
+    )
+    DHW: DomesticHotWaterSetting = Field(
+        ...,
+        title="Zone Domestic Hot Water",
+        description="Domestic hot water systems for the zone."
     )
 
     DaylightWorkplaneHeight: float = Field(

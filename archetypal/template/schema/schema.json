@@ -90,6 +90,33 @@
             "title": "Zone Construction Set",
             "type": "object"
         },
+        "DomesticHotWaterSetting": {
+            "description": "Represents the definition of the Domestic Hot Water system.",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "WaterSupplyTemperature": {
+                    "default": 65,
+                    "description": "Supply temperature for the water systems.",
+                    "examples": [
+                        52,
+                        60
+                    ],
+                    "minimum": 0,
+                    "title": "Water Supply Temperature",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "id",
+                "WaterSupplyTemperature"
+            ],
+            "title": "Zone Domestic Hot Water",
+            "type": "object"
+        },
         "MaterialBase": {
             "description": "Material Definition used in construction assemblies and windows",
             "properties": {
@@ -297,6 +324,14 @@
                     ],
                     "description": "Definition of the zone's conditioning systems."
                 },
+                "DHW": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/DomesticHotWaterSetting"
+                        }
+                    ],
+                    "description": "Domestic hot water systems for the zone."
+                },
                 "DaylightWorkplaneHeight": {
                     "default": 0.8,
                     "description": "Offset for workplane height in daylight simulations",
@@ -320,6 +355,7 @@
             "required": [
                 "id",
                 "Conditioning",
+                "DHW",
                 "DaylightWorkplaneHeight",
                 "Constructions"
             ],

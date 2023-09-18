@@ -1,21 +1,21 @@
 {
     "MaterialBase": [
         {
-            "id": "614e5700-4b40-41d0-8bef-c066ba0291c7",
+            "id": "bafd2de4-1132-4998-9128-cea1e30a91f6",
             "Conductivity": 2.0,
             "SpecificHeat": 800.0,
             "Density": 200.0,
             "DiffusionCoefficient": 1.25e-05
         },
         {
-            "id": "c35cadfc-4f1c-4271-b40f-7197a7db83b7",
+            "id": "25c2d9b1-9884-4b44-847c-422fa2319c6b",
             "Conductivity": 2.0,
             "SpecificHeat": 1000.0,
             "Density": 300.0,
             "DiffusionCoefficient": 6.666666666666667e-06
         },
         {
-            "id": "9b4c9cad-399d-4f6c-adca-fcbb5b883c34",
+            "id": "951f0ff3-5a23-48a4-98d2-8ab0176fa613",
             "Conductivity": 0.35,
             "SpecificHeat": 500.0,
             "Density": 100.0,
@@ -24,141 +24,165 @@
     ],
     "MaterialLayer": [
         {
-            "id": "3e921042-6a84-4c71-ace6-1deb71286ee0",
+            "id": "1703a557-2156-4e31-a936-7ab8b580a88c",
             "Thickness": 0.1,
             "Material": {
-                "id": "614e5700-4b40-41d0-8bef-c066ba0291c7"
+                "id": "bafd2de4-1132-4998-9128-cea1e30a91f6"
             }
         },
         {
-            "id": "ba4a22e3-b6bc-4128-ab4c-4c71549ba204",
+            "id": "9e797536-3a1e-4573-a8df-de183a2a6f56",
             "Thickness": 0.05,
             "Material": {
-                "id": "c35cadfc-4f1c-4271-b40f-7197a7db83b7"
+                "id": "25c2d9b1-9884-4b44-847c-422fa2319c6b"
             }
         },
         {
-            "id": "fcee0044-2749-499d-a010-a3d8124dcfcc",
+            "id": "0f6e4bf4-1fc9-4123-8250-f57e9f47d527",
             "Thickness": 0.5,
             "Material": {
-                "id": "c35cadfc-4f1c-4271-b40f-7197a7db83b7"
+                "id": "25c2d9b1-9884-4b44-847c-422fa2319c6b"
             }
         },
         {
-            "id": "17504bb9-8156-4ad9-93d9-aae74d474d0b",
+            "id": "c4755cd7-3b36-4ef1-862c-0173fce05c6d",
             "Thickness": 0.5,
             "Material": {
-                "id": "9b4c9cad-399d-4f6c-adca-fcbb5b883c34"
+                "id": "951f0ff3-5a23-48a4-98d2-8ab0176fa613"
             }
         }
     ],
     "UmiList[MaterialLayer]": [
         {
-            "id": "b6e29168-ffad-4559-8b1f-39f114342917",
+            "id": "031da29c-f13f-4a51-a20a-1c44d9b936a1",
             "objects": [
                 {
-                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
+                    "id": "1703a557-2156-4e31-a936-7ab8b580a88c"
                 },
                 {
-                    "id": "ba4a22e3-b6bc-4128-ab4c-4c71549ba204"
+                    "id": "9e797536-3a1e-4573-a8df-de183a2a6f56"
                 },
                 {
-                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
+                    "id": "1703a557-2156-4e31-a936-7ab8b580a88c"
                 }
             ]
         },
         {
-            "id": "bbe44dbe-c767-483b-8350-dbfb6e45ec8f",
+            "id": "f0977fde-d5b9-4ba9-ab2b-4894503a23a8",
             "objects": [
                 {
-                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
+                    "id": "1703a557-2156-4e31-a936-7ab8b580a88c"
                 },
                 {
-                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
+                    "id": "1703a557-2156-4e31-a936-7ab8b580a88c"
                 },
                 {
-                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
+                    "id": "1703a557-2156-4e31-a936-7ab8b580a88c"
                 },
                 {
-                    "id": "fcee0044-2749-499d-a010-a3d8124dcfcc"
+                    "id": "0f6e4bf4-1fc9-4123-8250-f57e9f47d527"
                 },
                 {
-                    "id": "17504bb9-8156-4ad9-93d9-aae74d474d0b"
+                    "id": "c4755cd7-3b36-4ef1-862c-0173fce05c6d"
                 }
             ]
         }
     ],
     "Construction": [
         {
-            "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4",
+            "id": "9465572f-4297-4614-9e8a-54a55e68425e",
             "Layers": {
-                "id": "b6e29168-ffad-4559-8b1f-39f114342917"
+                "id": "031da29c-f13f-4a51-a20a-1c44d9b936a1"
             }
         },
         {
-            "id": "5f7a6d7f-d3a9-4531-a389-500da5f1ba5c",
+            "id": "bb78642f-ea84-43d4-a969-7260a3c22415",
             "Layers": {
-                "id": "bbe44dbe-c767-483b-8350-dbfb6e45ec8f"
+                "id": "f0977fde-d5b9-4ba9-ab2b-4894503a23a8"
             }
         }
     ],
     "ZoneConditioning": [
         {
-            "id": "3e3920e0-f1c0-4bbb-a63f-e94bd666f7e2",
+            "id": "7cd56e86-37a0-4c23-a1db-8be196c7cac6",
             "HeatingSetpoint": 60.0,
             "CoolingSetpoint": 70.0
         }
     ],
+    "DomesticHotWaterSetting": [
+        {
+            "id": "28dc062c-9b3e-4c0d-acf0-23fc29470715",
+            "WaterSupplyTemperature": 65
+        }
+    ],
     "ConstructionSet": [
         {
-            "id": "190fa6dd-3517-4564-809a-be6029980747",
+            "id": "fce3dc40-e736-4812-9444-456377eaf9bf",
             "Partition": {
-                "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4"
+                "id": "9465572f-4297-4614-9e8a-54a55e68425e"
             },
             "Roof": {
-                "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4"
+                "id": "9465572f-4297-4614-9e8a-54a55e68425e"
             },
             "Ground": {
-                "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4"
+                "id": "9465572f-4297-4614-9e8a-54a55e68425e"
             },
             "Slab": {
-                "id": "5f7a6d7f-d3a9-4531-a389-500da5f1ba5c"
+                "id": "bb78642f-ea84-43d4-a969-7260a3c22415"
             },
             "Wall": {
-                "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4"
+                "id": "9465572f-4297-4614-9e8a-54a55e68425e"
             }
         }
     ],
     "Zone": [
         {
-            "id": "f7a7d9ab-6642-4367-81a8-c9de367183cf",
+            "id": "e153242c-bdee-4204-bde8-3389586837d4",
             "Conditioning": {
-                "id": "3e3920e0-f1c0-4bbb-a63f-e94bd666f7e2"
+                "id": "7cd56e86-37a0-4c23-a1db-8be196c7cac6"
+            },
+            "DHW": {
+                "id": "28dc062c-9b3e-4c0d-acf0-23fc29470715"
             },
             "DaylightWorkplaneHeight": 1.0,
             "Constructions": {
-                "id": "190fa6dd-3517-4564-809a-be6029980747"
+                "id": "fce3dc40-e736-4812-9444-456377eaf9bf"
             }
         },
         {
-            "id": "dda2c7e4-eff9-459a-b034-f9ca868d4ada",
+            "id": "4c1fe92e-6c18-42d0-9df4-012cd5dac4b0",
             "Conditioning": {
-                "id": "3e3920e0-f1c0-4bbb-a63f-e94bd666f7e2"
+                "id": "7cd56e86-37a0-4c23-a1db-8be196c7cac6"
+            },
+            "DHW": {
+                "id": "28dc062c-9b3e-4c0d-acf0-23fc29470715"
             },
             "DaylightWorkplaneHeight": 2.0,
             "Constructions": {
-                "id": "190fa6dd-3517-4564-809a-be6029980747"
+                "id": "fce3dc40-e736-4812-9444-456377eaf9bf"
             }
         }
     ],
     "Template": [
         {
-            "id": "2437fecf-7b9e-49b7-9fe0-a4a218ef52f4",
+            "id": "5afa8f19-8888-476c-aafe-146178695dab",
             "Perimeter": {
-                "id": "f7a7d9ab-6642-4367-81a8-c9de367183cf"
+                "id": "e153242c-bdee-4204-bde8-3389586837d4"
             },
             "Core": {
-                "id": "dda2c7e4-eff9-459a-b034-f9ca868d4ada"
+                "id": "4c1fe92e-6c18-42d0-9df4-012cd5dac4b0"
+            },
+            "YearFrom": 2000,
+            "YearTo": 2001,
+            "Country": "USA"
+        },
+        {
+            "id": "819447a9-2e8c-46ea-aa3e-856873e2aaba",
+            "Perimeter": {
+                "id": "e153242c-bdee-4204-bde8-3389586837d4"
+            },
+            "Core": {
+                "id": "4c1fe92e-6c18-42d0-9df4-012cd5dac4b0"
             },
             "YearFrom": 2000,
             "YearTo": 2001,
@@ -167,19 +191,22 @@
     ],
     "UmiList[Template]": [
         {
-            "id": "3dc92be7-ff68-47bc-a7f5-973f282cae4d",
+            "id": "bdfccfc9-ae28-44a2-bda5-304b6b9dcf74",
             "objects": [
                 {
-                    "id": "2437fecf-7b9e-49b7-9fe0-a4a218ef52f4"
+                    "id": "5afa8f19-8888-476c-aafe-146178695dab"
+                },
+                {
+                    "id": "819447a9-2e8c-46ea-aa3e-856873e2aaba"
                 }
             ]
         }
     ],
     "Library": [
         {
-            "id": "ee09d1ee-eaf9-4692-9dbf-354cc0028ba4",
+            "id": "99ff858a-7099-4a4b-9337-3ddee47168ce",
             "Templates": {
-                "id": "3dc92be7-ff68-47bc-a7f5-973f282cae4d"
+                "id": "bdfccfc9-ae28-44a2-bda5-304b6b9dcf74"
             }
         }
     ]

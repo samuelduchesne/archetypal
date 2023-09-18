@@ -1,21 +1,21 @@
 {
     "MaterialBase": [
         {
-            "id": "fb054d56-0068-4ef7-b044-efbec065aa6d",
+            "id": "614e5700-4b40-41d0-8bef-c066ba0291c7",
             "Conductivity": 2.0,
             "SpecificHeat": 800.0,
             "Density": 200.0,
             "DiffusionCoefficient": 1.25e-05
         },
         {
-            "id": "07fc7fb2-56eb-4379-be76-12adb4be3d7e",
+            "id": "c35cadfc-4f1c-4271-b40f-7197a7db83b7",
             "Conductivity": 2.0,
             "SpecificHeat": 1000.0,
             "Density": 300.0,
             "DiffusionCoefficient": 6.666666666666667e-06
         },
         {
-            "id": "200d7018-72e9-4d14-a386-0bb6cabfecda",
+            "id": "9b4c9cad-399d-4f6c-adca-fcbb5b883c34",
             "Conductivity": 0.35,
             "SpecificHeat": 500.0,
             "Density": 100.0,
@@ -24,128 +24,141 @@
     ],
     "MaterialLayer": [
         {
-            "id": "f8714f5d-13f5-4fe2-a676-923adb574547",
+            "id": "3e921042-6a84-4c71-ace6-1deb71286ee0",
             "Thickness": 0.1,
             "Material": {
-                "id": "fb054d56-0068-4ef7-b044-efbec065aa6d"
+                "id": "614e5700-4b40-41d0-8bef-c066ba0291c7"
             }
         },
         {
-            "id": "248c3ebc-2c96-490d-9d04-7c2650b64050",
+            "id": "ba4a22e3-b6bc-4128-ab4c-4c71549ba204",
             "Thickness": 0.05,
             "Material": {
-                "id": "07fc7fb2-56eb-4379-be76-12adb4be3d7e"
+                "id": "c35cadfc-4f1c-4271-b40f-7197a7db83b7"
             }
         },
         {
-            "id": "8406710f-53b0-4460-bbc7-f7bc9b7bbac0",
+            "id": "fcee0044-2749-499d-a010-a3d8124dcfcc",
             "Thickness": 0.5,
             "Material": {
-                "id": "07fc7fb2-56eb-4379-be76-12adb4be3d7e"
+                "id": "c35cadfc-4f1c-4271-b40f-7197a7db83b7"
             }
         },
         {
-            "id": "be183984-8cce-4efd-a0cb-ea44041bb40a",
+            "id": "17504bb9-8156-4ad9-93d9-aae74d474d0b",
             "Thickness": 0.5,
             "Material": {
-                "id": "200d7018-72e9-4d14-a386-0bb6cabfecda"
+                "id": "9b4c9cad-399d-4f6c-adca-fcbb5b883c34"
             }
         }
     ],
     "UmiList[MaterialLayer]": [
         {
-            "id": "449ed66c-feb9-4d9f-935f-be0702f9e776",
+            "id": "b6e29168-ffad-4559-8b1f-39f114342917",
             "objects": [
                 {
-                    "id": "f8714f5d-13f5-4fe2-a676-923adb574547"
+                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
                 },
                 {
-                    "id": "248c3ebc-2c96-490d-9d04-7c2650b64050"
+                    "id": "ba4a22e3-b6bc-4128-ab4c-4c71549ba204"
                 },
                 {
-                    "id": "f8714f5d-13f5-4fe2-a676-923adb574547"
+                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
                 }
             ]
         },
         {
-            "id": "d73c3a15-8121-47dc-a043-105fcb86b194",
+            "id": "bbe44dbe-c767-483b-8350-dbfb6e45ec8f",
             "objects": [
                 {
-                    "id": "f8714f5d-13f5-4fe2-a676-923adb574547"
+                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
                 },
                 {
-                    "id": "f8714f5d-13f5-4fe2-a676-923adb574547"
+                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
                 },
                 {
-                    "id": "f8714f5d-13f5-4fe2-a676-923adb574547"
+                    "id": "3e921042-6a84-4c71-ace6-1deb71286ee0"
                 },
                 {
-                    "id": "8406710f-53b0-4460-bbc7-f7bc9b7bbac0"
+                    "id": "fcee0044-2749-499d-a010-a3d8124dcfcc"
                 },
                 {
-                    "id": "be183984-8cce-4efd-a0cb-ea44041bb40a"
+                    "id": "17504bb9-8156-4ad9-93d9-aae74d474d0b"
                 }
             ]
         }
     ],
     "Construction": [
         {
-            "id": "add450dc-bc74-4588-b675-dfac0ca09c18",
+            "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4",
             "Layers": {
-                "id": "449ed66c-feb9-4d9f-935f-be0702f9e776"
+                "id": "b6e29168-ffad-4559-8b1f-39f114342917"
             }
         },
         {
-            "id": "8b204f5d-b7b9-4ddd-92b0-443eb8189bbd",
+            "id": "5f7a6d7f-d3a9-4531-a389-500da5f1ba5c",
             "Layers": {
-                "id": "d73c3a15-8121-47dc-a043-105fcb86b194"
+                "id": "bbe44dbe-c767-483b-8350-dbfb6e45ec8f"
             }
+        }
+    ],
+    "ZoneConditioning": [
+        {
+            "id": "3e3920e0-f1c0-4bbb-a63f-e94bd666f7e2",
+            "HeatingSetpoint": 60.0,
+            "CoolingSetpoint": 70.0
         }
     ],
     "ConstructionSet": [
         {
-            "id": "06110cb5-f1bb-42b7-a701-4350d64861f7",
+            "id": "190fa6dd-3517-4564-809a-be6029980747",
             "Partition": {
-                "id": "add450dc-bc74-4588-b675-dfac0ca09c18"
+                "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4"
             },
             "Roof": {
-                "id": "add450dc-bc74-4588-b675-dfac0ca09c18"
+                "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4"
             },
             "Ground": {
-                "id": "add450dc-bc74-4588-b675-dfac0ca09c18"
+                "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4"
             },
             "Slab": {
-                "id": "8b204f5d-b7b9-4ddd-92b0-443eb8189bbd"
+                "id": "5f7a6d7f-d3a9-4531-a389-500da5f1ba5c"
             },
             "Wall": {
-                "id": "add450dc-bc74-4588-b675-dfac0ca09c18"
+                "id": "4c6635f5-2383-4d06-b62e-f9ec41c3b5c4"
             }
         }
     ],
     "Zone": [
         {
-            "id": "121669e2-66bb-4e63-9e85-8c8cc99243ba",
+            "id": "f7a7d9ab-6642-4367-81a8-c9de367183cf",
+            "Conditioning": {
+                "id": "3e3920e0-f1c0-4bbb-a63f-e94bd666f7e2"
+            },
             "DaylightWorkplaneHeight": 1.0,
             "Constructions": {
-                "id": "06110cb5-f1bb-42b7-a701-4350d64861f7"
+                "id": "190fa6dd-3517-4564-809a-be6029980747"
             }
         },
         {
-            "id": "65056c20-a62b-40c6-8a39-efee0a15956c",
+            "id": "dda2c7e4-eff9-459a-b034-f9ca868d4ada",
+            "Conditioning": {
+                "id": "3e3920e0-f1c0-4bbb-a63f-e94bd666f7e2"
+            },
             "DaylightWorkplaneHeight": 2.0,
             "Constructions": {
-                "id": "06110cb5-f1bb-42b7-a701-4350d64861f7"
+                "id": "190fa6dd-3517-4564-809a-be6029980747"
             }
         }
     ],
     "Template": [
         {
-            "id": "4196e08f-04ac-4a16-a58b-6230e77d186b",
+            "id": "2437fecf-7b9e-49b7-9fe0-a4a218ef52f4",
             "Perimeter": {
-                "id": "121669e2-66bb-4e63-9e85-8c8cc99243ba"
+                "id": "f7a7d9ab-6642-4367-81a8-c9de367183cf"
             },
             "Core": {
-                "id": "65056c20-a62b-40c6-8a39-efee0a15956c"
+                "id": "dda2c7e4-eff9-459a-b034-f9ca868d4ada"
             },
             "YearFrom": 2000,
             "YearTo": 2001,
@@ -154,19 +167,19 @@
     ],
     "UmiList[Template]": [
         {
-            "id": "8fbbbeaf-d387-4b4f-af78-8fb49f1c503f",
+            "id": "3dc92be7-ff68-47bc-a7f5-973f282cae4d",
             "objects": [
                 {
-                    "id": "4196e08f-04ac-4a16-a58b-6230e77d186b"
+                    "id": "2437fecf-7b9e-49b7-9fe0-a4a218ef52f4"
                 }
             ]
         }
     ],
     "Library": [
         {
-            "id": "3ef5bb84-3560-486a-acce-b355bc9c3622",
+            "id": "ee09d1ee-eaf9-4692-9dbf-354cc0028ba4",
             "Templates": {
-                "id": "8fbbbeaf-d387-4b4f-af78-8fb49f1c503f"
+                "id": "3dc92be7-ff68-47bc-a7f5-973f282cae4d"
             }
         }
     ]

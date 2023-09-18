@@ -289,6 +289,14 @@
                     "title": "Object ID",
                     "type": "string"
                 },
+                "Conditioning": {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/ZoneConditioning"
+                        }
+                    ],
+                    "description": "Definition of the zone's conditioning systems."
+                },
                 "DaylightWorkplaneHeight": {
                     "default": 0.8,
                     "description": "Offset for workplane height in daylight simulations",
@@ -311,10 +319,52 @@
             },
             "required": [
                 "id",
+                "Conditioning",
                 "DaylightWorkplaneHeight",
                 "Constructions"
             ],
             "title": "Zone Definition",
+            "type": "object"
+        },
+        "ZoneConditioning": {
+            "description": "Represents the definition of the Zone's conditioning system.",
+            "properties": {
+                "id": {
+                    "format": "uuid4",
+                    "title": "Object ID",
+                    "type": "string"
+                },
+                "HeatingSetpoint": {
+                    "default": 70,
+                    "description": "Heating Setpoint for HVAC Systems",
+                    "examples": [
+                        52,
+                        60
+                    ],
+                    "maximum": 84,
+                    "minimum": 40,
+                    "title": "Heating Setpoint",
+                    "type": "number"
+                },
+                "CoolingSetpoint": {
+                    "default": 76,
+                    "description": "Cooling Setpoint for HVAC Systems",
+                    "examples": [
+                        75,
+                        80
+                    ],
+                    "maximum": 90,
+                    "minimum": 60,
+                    "title": "Cooling Setpoint",
+                    "type": "number"
+                }
+            },
+            "required": [
+                "id",
+                "HeatingSetpoint",
+                "CoolingSetpoint"
+            ],
+            "title": "Zone Conditioning",
             "type": "object"
         }
     },

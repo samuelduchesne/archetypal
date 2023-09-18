@@ -1,7 +1,7 @@
 import json
 from enum import Enum
-from typing import Any, ClassVar, Generic, TypeVar, Union, Optional
-from uuid import uuid4, UUID
+from typing import Any, ClassVar, Generic, TypeVar, Union, get_args
+from uuid import UUID, uuid4
 
 import networkx as nx
 from pydantic import (
@@ -9,6 +9,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    InstanceOf,
     ValidationInfo,
     computed_field,
     field_serializer,
@@ -64,7 +65,7 @@ class UmiBase(BaseModel, validate_assignment=True):
                     f"The value provided for 'id' should be "
                     f"a str or UUID4, not {type(id)}."
                 )
-            
+
             # attempt to dereference
             if id.int in UmiBase.all:
                 deref = UmiBase.all[id.int]
@@ -131,11 +132,49 @@ class UmiBase(BaseModel, validate_assignment=True):
 
         This allows getting a list of all UmiClasses indexed by their name
         """
-        umiclasses = {}
+        umiclasses: dict[str, InstanceOf[UmiBase]] = {}
         for umiclass in cls.__subclasses__():
             umiclasses[umiclass.__name__] = umiclass
 
         return umiclasses
+
+    @classmethod
+    def schema_graph(cls):
+        """
+        Generate a multi di-graph of the schema where each node of the
+        graph is an UmiBase class, and each edge is a field of that
+        class  which connects it to another class.
+
+        For UmiList fields, the edge is labeled with "index".
+
+        Returns:
+            g (nx.MultiDiGraph): The meta-graph of the schema.
+        """
+        g = nx.MultiDiGraph()
+        for umiclass_name, umi_class in cls.classes().items():
+            for fieldname, field in umi_class.model_fields.items():
+                if field.annotation.__base__ is UmiBase:
+                    g.add_edge(
+                        u_for_edge=umi_class,
+                        v_for_edge=field.annotation,
+                        key=fieldname,
+                    )
+                elif field.annotation.__base__ is UmiList:
+                    list_cls = field.annotation
+                    target_cls = get_args(
+                        field.annotation.model_fields["objects"].annotation
+                    )[0]
+                    g.add_edge(
+                        u_for_edge=umi_class,
+                        v_for_edge=list_cls,
+                        key=fieldname,
+                    )
+                    g.add_edge(
+                        u_for_edge=list_cls,
+                        v_for_edge=target_cls,
+                        key="index",
+                    )
+        return g
 
     @classmethod
     def flat_serialization(cls, as_json: bool = False):
@@ -415,6 +454,43 @@ class ConstructionSet(UmiBase):
     )
 
 
+class ZoneConditioning(UmiBase):
+    """
+    Represents the definition of the Zone's conditioning system.
+    """
+
+    model_config = ConfigDict(title="Zone Conditioning")
+
+    HeatingSetpoint: float = Field(
+        70,
+        ge=40,
+        le=84,
+        title="Heating Setpoint",
+        description="Heating Setpoint for HVAC Systems",
+        examples=[52, 60],
+        json_schema_extra=NumericSchemaExtra(units="deg.C"),
+    )
+
+    CoolingSetpoint: float = Field(
+        76,
+        ge=60,
+        le=90,
+        title="Cooling Setpoint",
+        description="Cooling Setpoint for HVAC Systems",
+        examples=[75, 80],
+        json_schema_extra=NumericSchemaExtra(units="deg.C"),
+    )
+
+    @model_validator(mode="before")
+    def heating_setpoint_below_cooling_setpoint(cls, v: dict[str, Any], info):
+        if v["HeatingSetpoint"] >= v["CoolingSetpoint"]:
+            raise ValueError(
+                f"The Heating Setpoint {v['HeatingSetpoint']} deg.C is greater than "
+                f"the Cooling Setpoint {v['CoolingSetpoint']} deg.C, which is invalid."
+            )
+        return v
+
+
 class Zone(UmiBase):
     """
     A Zone Definition represents a single zone within an Energy Model.
@@ -422,12 +498,19 @@ class Zone(UmiBase):
 
     model_config = ConfigDict(title="Zone Definition")
 
+    Conditioning: ZoneConditioning = Field(
+        ...,
+        title="Zone Conditioning",
+        description="Definition of the zone's conditioning systems.",
+    )
+
     DaylightWorkplaneHeight: float = Field(
         0.8,
         ge=0,
         title="Daylight Workplane Height",
         description="Offset for workplane height in daylight simulations",
         examples=[0.8, 0.3],
+        json_schema_extra=NumericSchemaExtra(units="m"),
     )
 
     Constructions: ConstructionSet = Field(

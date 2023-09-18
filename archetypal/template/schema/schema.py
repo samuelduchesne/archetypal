@@ -1,7 +1,7 @@
 import json
 from enum import Enum
 from typing import Any, ClassVar, Generic, TypeVar, Union, Optional
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 import networkx as nx
 from pydantic import (
@@ -40,6 +40,48 @@ class UmiBase(BaseModel, validate_assignment=True):
 
     def __hash__(self):
         return self.id.int
+
+    @model_validator(mode="before")
+    def dereference(cls, data: dict[str, Any], info):
+        """
+        Dereferences an object from the cache if only an id is provided.
+
+        If the data dictionary only has a single key which is an ID
+        then we are trying to dereference an object.
+        """
+
+        if len(data) == 1 and "id" in data:
+            # get the ID
+            id = data["id"]
+
+            # Convert it to a UUID
+            if isinstance(id, str):
+                id = UUID(id)
+            elif isinstance(id, UUID):
+                pass
+            else:
+                raise ValueError(
+                    f"The value provided for 'id' should be "
+                    f"a str or UUID4, not {type(id)}."
+                )
+            
+            # attempt to dereference
+            if id.int in UmiBase.all:
+                deref = UmiBase.all[id.int]
+                if not isinstance(deref, cls):
+                    raise ValueError(
+                        f"Attempting to derefence {id} as {cls.__name__}, "
+                        f"but found a {deref.__class__.__name__}."
+                    )
+                data = deref.model_dump()
+            else:
+                raise ValueError(
+                    f"The object was only initialized "
+                    f"with an ID so dereferencing was attempted, "
+                    f"but the ID provided was not found in the "
+                    f"existing object list: ID:{id}"
+                )
+        return data
 
     @model_validator(mode="after")
     def cache_item(self, v: ValidationInfo):

@@ -361,6 +361,9 @@ class UmiList(UmiBase, Generic[ListT]):
     def count(self, obj: ListT) -> int:
         return self.objects.count(obj)
 
+    def __iter__(self):
+        return iter(self.objects)
+
     def __len__(self):
         return len(self.objects)
 
@@ -513,7 +516,7 @@ class ZoneConditioning(UmiBase):
         title="Heating Setpoint",
         description="Heating Setpoint for HVAC Systems",
         examples=[52, 60],
-        json_schema_extra=NumericSchemaExtra(units="deg.C"),
+        json_schema_extra=NumericSchemaExtra(units="deg.C").model_dump(),
     )
 
     CoolingSetpoint: float = Field(
@@ -523,7 +526,7 @@ class ZoneConditioning(UmiBase):
         title="Cooling Setpoint",
         description="Cooling Setpoint for HVAC Systems",
         examples=[75, 80],
-        json_schema_extra=NumericSchemaExtra(units="deg.C"),
+        json_schema_extra=NumericSchemaExtra(units="deg.C").model_dump(),
     )
 
     @model_validator(mode="before")
@@ -557,7 +560,7 @@ class DomesticHotWaterSetting(UmiBase):
         title="Water Supply Temperature",
         description="Supply temperature for the water systems.",
         examples=[52, 60],
-        json_schema_extra=NumericSchemaExtra(units="deg.C"),
+        json_schema_extra=NumericSchemaExtra(units="deg.C").model_dump(),
     )
 
 
@@ -591,7 +594,7 @@ class ZoneLoads(UmiBase):
         title="Equipment Power Density",
         description="Power density per unit flower area of equipment in zone.",
         examples=[3, 5.3],
-        json_schema_extra=NumericSchemaExtra(units="W/m^2"),
+        json_schema_extra=NumericSchemaExtra(units="W/m^2").model_dump(),
     )
 
 
@@ -625,7 +628,7 @@ class Zone(UmiBase):
         title="Daylight Workplane Height",
         description="Offset for workplane height in daylight simulations",
         examples=[0.8, 0.3],
-        json_schema_extra=NumericSchemaExtra(units="m"),
+        json_schema_extra=NumericSchemaExtra(units="m").model_dump(),
     )
 
     Constructions: ConstructionSet = Field(

@@ -49,7 +49,7 @@ dev_requires = [r.strip() for r in requirements_lines]
 setup(
     name="archetypal",
     use_scm_version=True,
-    setup_requires=["setuptools_scm"],
+    setup_requires=["setuptools_scm==7.1.0"],
     packages=find_namespace_packages(
         include=["archetypal", "archetypal.*"], exclude=["tests"]
     ),

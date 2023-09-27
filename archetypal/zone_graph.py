@@ -459,7 +459,7 @@ class ZoneGraph(networkx.Graph):
             G = networkx.convert_node_labels_to_integers(G, label_attribute="name")
         tree = networkx.dfs_tree(G)
         pos = layout_function(tree, *func_args)
-        with plt.style.context((plt_style)):
+        with plt.style.context(plt_style):
             if ax:
                 fig = plt.gcf()
             else:

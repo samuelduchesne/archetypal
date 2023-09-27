@@ -88,7 +88,7 @@ class TestZoneGraph:
             font_size=8,
             color_nodes="core",
             node_labels_to_integers=True,
-            plt_style="seaborn",
+            plt_style="ggplot",
             save=False,
             show=False,
             filename="test",

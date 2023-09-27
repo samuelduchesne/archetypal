@@ -20,7 +20,6 @@ from concurrent.futures._base import as_completed
 
 import numpy as np
 import pandas as pd
-from pandas.io.json import json_normalize
 from path import Path
 from tqdm.auto import tqdm
 
@@ -366,7 +365,7 @@ def load_umi_template(json_template):
         with open(json_template) as f:
             dicts = json.load(f, object_pairs_hook=OrderedDict)
 
-            return [{key: json_normalize(value)} for key, value in dicts.items()]
+            return [{key: pd.json_normalize(value)} for key, value in dicts.items()]
     else:
         raise ValueError("File {} does not exist".format(json_template))
 

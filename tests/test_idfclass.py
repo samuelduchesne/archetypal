@@ -39,7 +39,7 @@ class TestIDF:
         yield IDF(
             "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
             epw=w,
-            as_version="9-2-0",
+            as_version=settings.ep_version,
         )
 
     @pytest.fixture()
@@ -192,8 +192,8 @@ class TestIDF:
         assert not any(isinstance(a, Exception) for a in idfs.values())
 
     def test_load_old(self, config, natvent, FiveZoneNightVent1):
-        assert natvent.idd_version == (9, 2, 0)
-        assert FiveZoneNightVent1.idd_version == (9, 2, 0)
+        assert natvent.idd_version == EnergyPlusVersion.current().tuple
+        assert FiveZoneNightVent1.idd_version == EnergyPlusVersion.current().tuple
 
     @pytest.mark.parametrize(
         "archetype, area",

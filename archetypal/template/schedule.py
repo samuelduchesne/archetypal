@@ -17,6 +17,7 @@ from archetypal.utils import log
 
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
+
     _CREATED_OBJECTS = []
 
     __slots__ = ("_quantity",)

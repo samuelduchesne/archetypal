@@ -17,6 +17,7 @@ class GlazingMaterial(MaterialBase):
     .. image:: ../images/template/materials-glazing.png
 
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (

@@ -22,7 +22,7 @@ class TestOutput:
         outputs.add_umi_template_outputs()
         assert len(outputs.output_variables) > 1
         assert len(outputs.output_meters) > 1
-        assert outputs.reporting_frequency == "Hourly"
+        assert outputs.reporting_frequency == "Monthly"
         assert outputs.include_sqlite
         assert outputs.include_html
 
@@ -32,7 +32,7 @@ class TestOutput:
 
         outputs.output_variables = ["Air System Outdoor Air Minimum Flow Fraction"]
         assert outputs.output_variables == (
-            "Air System Outdoor Air Minimum Flow Fraction",
+            ("Air System Outdoor Air Minimum Flow Fraction", "Monthly"),
         )
         outputs.reporting_frequency = "daily"  # lower case
         assert outputs.reporting_frequency == "Daily"  # should be upper case

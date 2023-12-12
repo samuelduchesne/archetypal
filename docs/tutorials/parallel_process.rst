@@ -16,16 +16,7 @@ show logs in the console.
     >>> from path import Path
     >>> from archetypal import IDF, config, settings, parallel_process
     >>> import pandas as pd
-    >>> config(use_cache=True, log_console=True)
-
-Then, use
-
-.. code-block:: python
-
-    >>> from archetypal import IDF, config, settings
-    >>> from archetypal import parallel_process
-    >>> import pandas as pd
-    >>> config(use_cache=True, log_console=True)
+    >>> config(log_console=True)
 
 Then, use `glob` to make a list of NECB idf files in the input_data directory (relative to this package). The weather
 file path is also created:
@@ -34,7 +25,7 @@ file path is also created:
 
     >>> necb_basedir = Path("tests/input_data/necb")
     >>> files = necb_basedir.glob("*.idf")
-    >>> epw = Path("data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw")
+    >>> epw = Path("tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw")
 
 For good measure, load the files in a DataFrame, which we will use to create the rundict in the next step.
 
@@ -51,7 +42,7 @@ The rundict, is the list of tasks we wish to do in parallel. This dictionary is 
     >>>     k: dict(
     >>>         idfname=str(file),
     >>>         prep_outputs=True,
-    >>>         weather_file=str(epw),
+    >>>         epw=str(epw),
     >>>         expandobjects=True,
     >>>         verbose=True,
     >>>         design_day=True,
@@ -60,13 +51,22 @@ The rundict, is the list of tasks we wish to do in parallel. This dictionary is 
     >>>     for k, file in idfs.file.to_dict().items()
     >>> }
 
+We also define a generic function that takes the keyword arguments defined previously and loads, simulates and
+returns the SQL file path of the model.
+
+.. code-block:: python
+
+    def load_and_simulate(**kwargs):
+        """Load IDF model, simulate, and return sql_file path."""
+        return IDF(**kwargs).simulate().sql_file
+
 Finally, execute :meth:`~archetypal.utils.parallel_process`. The resulting sql_file paths, which we defined as the
-type of output_report attribute for :meth:`~archetypal.idfclass.run_eplus` is returned as a dictionary with the same
+type of :meth:`load_and_simulate` is returned as a dictionary with the same
 keys as the index of the DataFrame.
 
 .. code-block:: python
 
-    >>> sql_files =  parallel_process(rundict, run_eplus, use_kwargs=True, processors=-1)
+    >>> sql_files =  parallel_process(rundict, load_and_simulate, use_kwargs=True, processors=-1)
     >>> sql_files
     {0: Path('cache/06e92da0247c71762d64aed4bcf3cdb2/output_data/06e92da0247c71762d64aed4bcf3cdb2out.sql'),
      1: Path('cache/aee8caf562b3519942ef88f533800dd0/output_data/aee8caf562b3519942ef88f533800dd0out.sql'),

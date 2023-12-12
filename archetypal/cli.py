@@ -12,7 +12,6 @@ from path import Path
 
 from archetypal import __version__, settings
 from archetypal.idfclass import IDF
-from archetypal.settings import ep_version
 from archetypal.umi_template import UmiTemplateLibrary
 from archetypal.utils import config, docstring_parameter, log, parallel_process, timeit
 
@@ -28,14 +27,13 @@ class CliConfig(object):
         self.logs_folder = settings.logs_folder
         self.imgs_folder = settings.imgs_folder
         self.cache_folder = settings.cache_folder
-        self.use_cache = settings.use_cache
+        self.cache_responses = settings.cache_responses
         self.log_file = settings.log_file
         self.log_console = settings.log_console
         self.log_level = settings.log_level
         self.log_name = settings.log_name
         self.log_filename = settings.log_filename
         self.useful_idf_objects = settings.useful_idf_objects
-        self.umitemplate = settings.umitemplate
         self.ep_version = settings.ep_version
 
 
@@ -69,7 +67,7 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
 )
 @click.option(
     "-c",
-    "--use-cache",
+    "--cache-responses",
     is_flag=True,
     default=False,
     help="Use a local cache to save/retrieve DataPortal API calls for the same "
@@ -121,7 +119,7 @@ def cli(
     logs_folder,
     imgs_folder,
     cache_folder,
-    use_cache,
+    cache_responses,
     log_file,
     log_console,
     log_level,
@@ -140,7 +138,7 @@ def cli(
     cli_config.logs_folder = logs_folder
     cli_config.imgs_folder = imgs_folder
     cli_config.cache_folder = cache_folder
-    cli_config.use_cache = use_cache
+    cli_config.cache_responses = cache_responses
     cli_config.log_file = log_file
     cli_config.log_console = log_console
     cli_config.log_level = log_level
@@ -279,7 +277,7 @@ def validate_paths(ctx, param, value):
     is_flag=True,
     help="Suppress confirmation prompt, when overwriting files.",
 )
-@docstring_parameter(arversion=__version__, ep_version=ep_version)
+@docstring_parameter(arversion=__version__, ep_version=settings.ep_version)
 def transition(idf, to_version, cores, yes):
     """Upgrade an IDF file to a newer version.
 

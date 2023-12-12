@@ -1,14 +1,13 @@
 """IdfClass utilities."""
 
 import hashlib
+import io
 import os
 from collections import OrderedDict
 from io import StringIO
+from typing import List, Union
 
-import eppy
-from eppy.EPlusInterfaceFunctions import parse_idd
-
-from archetypal.utils import log
+from packaging.version import Version
 
 
 def hash_model(idfname, **kwargs):
@@ -72,7 +71,7 @@ def hash_model(idfname, **kwargs):
     return hasher.hexdigest()
 
 
-def get_idf_version(file, doted=True):
+def get_idf_version(file: Union[str, io.StringIO], doted=True):
     """Get idf version quickly by reading first few lines of idf file containing
     the 'VERSION' identifier
 
@@ -83,35 +82,21 @@ def get_idf_version(file, doted=True):
     Returns:
         str: the version id
     """
-    if isinstance(file, StringIO):
+    import re
+
+    if isinstance(file, io.StringIO):
         file.seek(0)
         txt = file.read()
     else:
-        with open(os.path.abspath(file), "r", encoding="latin-1") as fhandle:
-            txt = fhandle.read()
-    try:
-        ntxt = parse_idd.nocomment(txt, "!")
-        blocks = ntxt.split(";")
-        blocks = [block.strip() for block in blocks]
-        bblocks = [block.split(",") for block in blocks]
-        bblocks1 = [[item.strip() for item in block] for block in bblocks]
-        ver_blocks = [block for block in bblocks1 if block[0].upper() == "VERSION"]
-        ver_block = ver_blocks[0]
+        with open(file) as f:
+            txt = f.read()
+
+    versions: List = re.findall(r"(?s)(?<=Version,).*?(?=;)", txt, re.IGNORECASE)
+    for v in versions:
+        version = Version(v.strip())
         if doted:
-            versionid = ver_block[1]
-        else:
-            versionid = ver_block[1].replace(".", "-") + "-0"
-    except IndexError:
-        raise Exception(
-            "The IDF model does not contain a 'Version' object. "
-            "Specify file_version=<version> in the IDF() constructor."
-        )
-    except Exception as e:
-        log('Version id for file "{}" cannot be found'.format(file))
-        log("{}".format(e))
-        raise
-    else:
-        return versionid
+            return f"{version.major}.{version.minor}.{version.micro}"
+        return f"{version.major}-{version.minor}-{version.micro}"
 
 
 def getoldiddfile(versionid):
@@ -121,6 +106,8 @@ def getoldiddfile(versionid):
     Args:
         versionid:
     """
+    import eppy
+
     vlist = versionid.split(".")
     if len(vlist) == 1:
         vlist = vlist + ["0", "0"]

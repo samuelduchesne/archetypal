@@ -100,10 +100,10 @@ class Outputs:
     def __init__(
         self,
         idf,
-        variables=None,
-        meters=None,
+        variables=(),
+        meters=(),
         outputs=None,
-        reporting_frequency="Hourly",
+        reporting_frequency="Monthly",
         include_sqlite=True,
         include_html=True,
         unit_conversion=None,
@@ -114,17 +114,19 @@ class Outputs:
             idf (IDF): the IDF object for wich this outputs object is created.
         """
         self.idf = idf
+        self.reporting_frequency = reporting_frequency
         self.output_variables = set(
             a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]
         )
         self.output_meters = set(
-            get_name_attribute(a) for a in idf.idfobjects["Output:Meter".upper()]
+            (get_name_attribute(a), a.Reporting_Frequency)
+            for a in idf.idfobjects["Output:Meter".upper()]
         )
         self.other_outputs = outputs
-        self.output_variables += tuple(variables or ())
-        self.output_meters += tuple(meters or ())
+
+        self.output_variables += tuple((v, reporting_frequency) for v in variables)
+        self.output_meters += tuple((m, reporting_frequency) for m in meters)
         self.other_outputs += tuple(outputs or ())
-        self.reporting_frequency = reporting_frequency
         self.include_sqlite = include_sqlite
         self.include_html = include_html
         self.unit_conversion = unit_conversion
@@ -186,11 +188,15 @@ class Outputs:
                 value, (str, bytes)
             ), f"Expected list or tuple. Got {type(value)}."
             values = []
+            # for each element
             for output in value:
-                values.append(str(output))
+                if isinstance(output, tuple):
+                    values.append(output)
+                else:
+                    values.append((output, self.reporting_frequency))
             value = set(values)
         else:
-            value = set()
+            value = ()
         self._output_variables = value
 
     @property
@@ -206,7 +212,10 @@ class Outputs:
             ), f"Expected list or tuple. Got {type(value)}."
             values = []
             for output in value:
-                values.append(str(output))
+                if isinstance(output, tuple):
+                    values.append(output)
+                else:
+                    values.append((output, self.reporting_frequency))
             value = set(values)
         else:
             value = set()
@@ -276,9 +285,13 @@ class Outputs:
         assert isinstance(outputs, Iterable), "outputs must be some sort of iterable"
         for output in outputs:
             if "meter" in output["key"].lower():
-                self._output_meters.add(output["Key_Name"])
+                self._output_meters.add(
+                    (output["Key_Name"], output["Reporting_Frequency"].title())
+                )
             elif "variable" in output["key"].lower():
-                self._output_variables.add(output["Variable_Name"])
+                self._output_variables.add(
+                    (output["Variable_Name"], output["Reporting_Frequency"].title())
+                )
             else:
                 self._other_outputs.append(output)
         return self
@@ -422,7 +435,7 @@ class Outputs:
             "Zone Thermostat Heating Setpoint Temperature",
         ]
         for output in variables:
-            self._output_variables.add(output)
+            self._output_variables.add((output, self.reporting_frequency))
 
         meters = [
             "Baseboard:EnergyTransfer",
@@ -446,7 +459,7 @@ class Outputs:
             "WaterSystems:EnergyTransfer",
         ]
         for meter in meters:
-            self._output_meters.add(meter)
+            self._output_meters.add((meter, self.reporting_frequency))
         return self
 
     def add_dxf(self):
@@ -473,7 +486,7 @@ class Outputs:
             "Water Heater Heating Energy",
         ]
         for output in outputs:
-            self._output_variables.add(output)
+            self._output_variables.add((output, self.reporting_frequency))
         return self
 
     def add_sensible_heat_gain_summary_components(self):
@@ -524,33 +537,76 @@ class Outputs:
             "Zone Air Heat Balance Outdoor Air Transfer Rate"
         ]
 
-        tuple(map(self._output_variables.add, hvac_input_sensible_air_heating))
-        tuple(map(self._output_variables.add, hvac_input_sensible_air_cooling))
-        tuple(map(self._output_variables.add, hvac_input_heated_surface_heating))
-        tuple(map(self._output_variables.add, hvac_input_cooled_surface_cooling))
-        tuple(map(self._output_variables.add, people_sensible_heat_addition))
-        tuple(map(self._output_variables.add, lights_sensible_heat_addition))
         tuple(
             map(
                 self._output_variables.add,
-                equipment_sensible_heat_addition_and_equipment_sensible_heat_removal,
-            )
-        )
-        tuple(
-            map(
-                self._output_variables.add, window_heat_addition_and_window_heat_removal
+                zip(hvac_input_sensible_air_heating, (self.reporting_frequency,)),
             )
         )
         tuple(
             map(
                 self._output_variables.add,
-                interzone_air_transfer_heat_addition_and_interzone_air_transfer_heat_removal,
+                zip(hvac_input_sensible_air_cooling, (self.reporting_frequency,)),
             )
         )
         tuple(
             map(
                 self._output_variables.add,
-                infiltration_heat_addition_and_infiltration_heat_removal,
+                zip(hvac_input_heated_surface_heating, (self.reporting_frequency,)),
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                zip(hvac_input_cooled_surface_cooling, (self.reporting_frequency,)),
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                zip(people_sensible_heat_addition, (self.reporting_frequency,)),
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                zip(lights_sensible_heat_addition, (self.reporting_frequency,)),
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                zip(
+                    equipment_sensible_heat_addition_and_equipment_sensible_heat_removal,
+                    (self.reporting_frequency,),
+                ),
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                zip(
+                    window_heat_addition_and_window_heat_removal,
+                    (self.reporting_frequency,),
+                ),
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                zip(
+                    interzone_air_transfer_heat_addition_and_interzone_air_transfer_heat_removal,
+                    (self.reporting_frequency,),
+                ),
+            )
+        )
+        tuple(
+            map(
+                self._output_variables.add,
+                zip(
+                    infiltration_heat_addition_and_infiltration_heat_removal,
+                    (self.reporting_frequency,),
+                ),
             )
         )
 
@@ -583,7 +639,7 @@ class Outputs:
             EndUseBalance.AIR_SYSTEM,
         ]:
             for item in group:
-                self._output_variables.add(item)
+                self._output_variables.add((item, "Hourly"))
         return self
 
     def add_load_balance_components(self):
@@ -608,7 +664,7 @@ class Outputs:
             self.WINDOW_GAIN,
         ]:
             for item in group:
-                self._output_variables.add(item)
+                self._output_variables.add((item, "Hourly"))
 
     def add_profile_gas_elect_outputs(self):
         """Adds the following meters: Electricity:Facility, Gas:Facility,
@@ -623,7 +679,7 @@ class Outputs:
             "Cooling:Electricity",
         ]
         for output in outputs:
-            self._output_meters.add(output)
+            self._output_meters.add((output, self.reporting_frequency))
         return self
 
     def add_hvac_energy_use(self):
@@ -659,22 +715,20 @@ class Outputs:
             "Zone VRF Air Terminal Heating Electricity Energy",
         ]
         for output in outputs:
-            self._output_variables.add(output)
+            self._output_variables.add((output, self.reporting_frequency))
 
     def apply(self):
         """Applies the outputs to the idf model. Modifies the model by calling
         :meth:`~archetypal.idfclass.idf.IDF.newidfobject`"""
-        for output in self.output_variables:
+        for (variable, reporting_frequency) in self.output_variables:
             self.idf.newidfobject(
                 key="Output:Variable".upper(),
-                **dict(
-                    Variable_Name=output, Reporting_Frequency=self.reporting_frequency
-                ),
+                **dict(Variable_Name=variable, Reporting_Frequency=reporting_frequency),
             )
-        for meter in self.output_meters:
+        for (meter, reporting_frequency) in self.output_meters:
             self.idf.newidfobject(
                 key="Output:Meter".upper(),
-                **dict(Key_Name=meter, Reporting_Frequency=self.reporting_frequency),
+                **dict(Key_Name=meter, Reporting_Frequency=reporting_frequency),
             )
         for output in self.other_outputs:
             key = output.pop("key", None)
@@ -684,8 +738,10 @@ class Outputs:
         return self
 
     def __repr__(self):
-        variables = "OutputVariables:\n {}".format("\n ".join(self.output_variables))
-        meters = "OutputMeters:\n {}".format("\n ".join(self.output_meters))
+        variables = "OutputVariables:\n {}".format(
+            "\n ".join(map(str, self.output_variables))
+        )
+        meters = "OutputMeters:\n {}".format("\n ".join(map(str, self.output_meters)))
         outputs = "Outputs:\n {}".format(
             "\n ".join((a["key"] for a in self.other_outputs))
         )

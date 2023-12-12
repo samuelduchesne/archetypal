@@ -31,6 +31,7 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (

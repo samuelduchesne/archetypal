@@ -355,7 +355,7 @@ def get_from_cache(url):
         url:
     """
     # if the tool is configured to use the cache
-    if settings.use_cache:
+    if settings.cache_responses:
         # determine the filename by hashing the url
         filename = hashlib.md5(str(url).encode("utf-8")).hexdigest()
 
@@ -381,7 +381,7 @@ def save_to_cache(url, response_json):
         url:
         response_json:
     """
-    if settings.use_cache:
+    if settings.cache_responses:
         if response_json is None:
             log("Saved nothing to cache because response_json is None")
         else:

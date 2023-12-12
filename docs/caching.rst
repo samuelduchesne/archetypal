@@ -16,20 +16,7 @@ whether an annual or design day simulation is executed, etc. This means that if 
 say after restarting a Jupyter Notebook kernel), the simulate will bypass the EnergyPlus executable and retrieve the
 cached simulation results instead. This has two advantages, the first one being a quicker workflow and the second one
 making sure that whatever `IDF.simulation_files` returns fits the parameters used with the executable. Let us use this
-in a real world example. First, caching is enabled using the `config` method:
-
-Enabling caching
-----------------
-
-Caching is enabled by passing the `use_cache=True` attribute to the :func:`archetypal.utils.config` method. The
-configuration of archetypal settings are not persistent and must be called whenever a python session is started. It is
-recommended to put the `config` method at the beginning of a script or in the first cells of a Jupyter Notebook
-(after the import statements).
-
-.. code-block:: python
-
-    from archetypal import IDF, config, EnergyPlusVersion
-    config(use_cache=True, log_console=True)
+in a real world example.
 
 Example
 -------
@@ -115,10 +102,13 @@ b07dbcb49b54298c5f64fe5ee730431b to 1cc202748b6c3c2431d203ce90e4d081; *these ids
     Path('cache\\b0b749f1c11f28b3d24d1d8978d1140e\\1cc202748b6c3c2431d203ce90e4d081\\USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw')]
 
 If we were to rerun the first code block (annual simulation) then it would return the cached results instantly from
-the cache:
+the cache.
 
-.. code-block:: shell
+Clearing the cache
+------------------
 
-    Successfully parsed cached idf run in 0.00 seconds
+To clear the cache, invoke `clear_cache`:
 
-Profiling this simple script shows an 8x speedup.
+.. code-block:: python
+    >>> from archetypal import clear_cache
+    >>> clear_cache()

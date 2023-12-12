@@ -64,6 +64,9 @@ setup(
     python_requires=">=3.7",
     install_requires=install_requires,
     extras_require={"dev": dev_requires},
+    dependency_links=[
+        "https://github.com/samuelduchesne/geomeppy.git@v0.13#egg=geomeppy"
+    ],
     test_suite="tests",
     entry_points="""
         [console_scripts]

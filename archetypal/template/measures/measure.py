@@ -149,7 +149,7 @@ class MeasureAction:
 
     @property
     def Transformer(self):
-        """Get or set a measure action transformer """
+        """Get or set a measure action transformer"""
 
         return self._transformer
 
@@ -402,7 +402,7 @@ class MeasureProperty:
 
     @property
     def Validator(self):
-        """Get or set a measure property validator """
+        """Get or set a measure property validator"""
         return self._validator
 
     @Validator.setter
@@ -1023,7 +1023,6 @@ class SetElectricLoadsEfficiency(Measure):
 
 
 class SetFacadeInsulationThermalResistance(Measure):
-
     _name = "Facade Upgrade (Insulation Only)"
     _description = "Upgrade roof and facade insulation by specifying R-Values for the Insulation Layers."
 
@@ -1116,12 +1115,10 @@ class SetFacadeInsulationThermalResistance(Measure):
 
 
 class SetFacadeThermalResistance(Measure):
-
     _name = "Facade Upgrade"
     _description = "Upgrade roof and facade insulation by specifying R-Values for entire assemblies."
 
-    def __init__(self, RoofRValue=1/2.37, FacadeRValue=1/1.66, **kwargs):
-
+    def __init__(self, RoofRValue=1 / 2.37, FacadeRValue=1 / 1.66, **kwargs):
         super(SetFacadeThermalResistance, self).__init__(**kwargs)
         roof_property = MeasureProperty(
             Name="Roof R-Value",
@@ -1189,7 +1186,6 @@ class SetFacadeThermalResistance(Measure):
 
 
 class SetInfiltration(Measure):
-
     _name = "Set Infiltration"
     _description = "This measure sets the infiltration ACH of the perimeter zone."
 
@@ -1223,71 +1219,75 @@ class SetInfiltration(Measure):
 
 
 class InstallDoublePaneWindowsWithFixedUValueAndCoating(Measure):
-
     _name = "Install Double Pane Windows With Fixed UValue"
     _description = "Upgrade windows to fixed double pane window"
 
     def __init__(self, AirGapThickness=0.080, IsLowE=True, Gas="AIR", **kwargs):
-        super(InstallDoublePaneWindowsWithFixedUValueAndCoating, self).__init__(**kwargs)
+        super(InstallDoublePaneWindowsWithFixedUValueAndCoating, self).__init__(
+            **kwargs
+        )
 
-        def create_double_pane_window( AirGapThickness, IsLowE, Gas):
-            location = os.path.join(os.path.dirname(os.path.abspath(__file__)), "boston_default_windows.json")
+        def create_double_pane_window(AirGapThickness, IsLowE, Gas):
+            location = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "boston_default_windows.json",
+            )
             window_lib = UmiTemplateLibrary.open(location)
             gasOffset = 0
-            if (Gas.lower() == "air"):
+            if Gas.lower() == "air":
                 pass
-            elif (Gas.lower() == "argon"):
+            elif Gas.lower() == "argon":
                 gasOffset = 2
             else:
                 raise ValueError("Unsupported gas specified.")
             lowEOffset = 0
-            if (not IsLowE):
+            if not IsLowE:
                 pass
-            elif (IsLowE):
+            elif IsLowE:
                 lowEOffset = 1
 
-            window = window_lib.WindowConstructions[gasOffset+lowEOffset]
+            window = window_lib.WindowConstructions[gasOffset + lowEOffset]
 
             window.Layers[1].Thickness = AirGapThickness
             return window
-            
-        
+
         def WindowReplacer(original_value, proposed_transformer_value, *args, **kwargs):
-            return create_double_pane_window(self.AirGapThickness, self.IsLowE, self.Gas)
+            return create_double_pane_window(
+                self.AirGapThickness, self.IsLowE, self.Gas
+            )
 
         window_replacement_action = MeasureAction(
             Name="Replace Window",
             Lookup=["Windows", "Construction"],
             Transformer=WindowReplacer,
         )
-        
         window_replacement_property = MeasureProperty(
             Name="Window Replacer",
             AttrName="WindowReplacer",
             Description="Replaces the window construction",
             Default=None,
-            Actions=[window_replacement_action]
+            Actions=[window_replacement_action],
         )
         window_gas_prop = MeasureProperty(
             Name="Gas",
             AttrName="Gas",
             Description="Select the gas layer",
             Default=Gas,
-            Actions=[]
+            Actions=[],
         )
         window_lowe_prop = MeasureProperty(
             Name="Is LowE",
             AttrName="IsLowE",
             Description="Adds a low-e coating",
             Default=IsLowE,
-            Actions=[]
+            Actions=[],
         )
         window_airgap_property = MeasureProperty(
             Name="Air Gap Thickness",
             AttrName="AirGapThickness",
             Description="Change the airgap thickness",
             Default=AirGapThickness,
-            Actions=[]
+            Actions=[],
         )
         self.add_property(window_replacement_property)
         self.add_property(window_gas_prop)
@@ -1296,7 +1296,6 @@ class InstallDoublePaneWindowsWithFixedUValueAndCoating(Measure):
 
 
 class AddInsulationIfItDoesNotExistOrUpgrade(Measure):
-
     _name = "Install Double Pane Windows With Fixed UValue"
     _description = "Upgrade windows to fixed double pane window"
 
@@ -1304,15 +1303,20 @@ class AddInsulationIfItDoesNotExistOrUpgrade(Measure):
         super(AddInsulationIfItDoesNotExistOrUpgrade, self).__init__(**kwargs)
 
         def create_insulation_material():
-            location = os.path.join(os.path.dirname(os.path.abspath(__file__)), "default_insulation.json")
+            location = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "default_insulation.json"
+            )
             data = {}
             with open(location) as f:
                 data = json.load(f)
             insulation_material = OpaqueMaterial.from_dict(data)
             return insulation_material
 
-        def AddInsulationLayerAndSetRValue(original_value, proposed_transformer_value, *args, **kwargs):
+        def AddInsulationLayerAndSetRValue(
+            original_value, proposed_transformer_value, *args, **kwargs
+        ):
             from archetypal.template.materials.material_layer import MaterialLayer
+
             mat = create_insulation_material()
             layer = MaterialLayer(mat, 0.060)
             new = original_value.duplicate()
@@ -1325,13 +1329,13 @@ class AddInsulationIfItDoesNotExistOrUpgrade(Measure):
             Lookup=["Perimeter", "Constructions", "Facade"],
             Transformer=AddInsulationLayerAndSetRValue,
         )
-        
-        facade_insulation_creation_prop= MeasureProperty(
+
+        facade_insulation_creation_prop = MeasureProperty(
             Name="Facade R-Value",
             AttrName="FacadeRValue",
             Description="Adds an insulation layer if none exists, then set r-value of entire assembly.",
             Default=FacadeRValue,
-            Actions=[facade_insulation_addition]
+            Actions=[facade_insulation_addition],
         )
         self.add_property(facade_insulation_creation_prop)
 
@@ -1340,12 +1344,12 @@ class AddInsulationIfItDoesNotExistOrUpgrade(Measure):
             Lookup=["Perimeter", "Constructions", "Roof"],
             Transformer=AddInsulationLayerAndSetRValue,
         )
-        
-        roof_insulation_creation_prop= MeasureProperty(
+
+        roof_insulation_creation_prop = MeasureProperty(
             Name="Roof R-Value",
             AttrName="RoofRValue",
             Description="Adds an insulation layer if none exists, then set r-value of entire assembly.",
             Default=RoofRValue,
-            Actions=[roof_insulation_addition]
+            Actions=[roof_insulation_addition],
         )
         self.add_property(roof_insulation_creation_prop)

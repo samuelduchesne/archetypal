@@ -4,7 +4,7 @@ eppy==0.5.56  # for stability
 matplotlib~=3.4  # because of TwoSlopesNorm
 pycountry~=20.7.3
 scikit-learn~=1.0.2
-pandas>=1.2.0
+pandas<2
 numpy>=1.17
 tqdm~=4.61.2
 tabulate~=0.8.9
@@ -17,7 +17,7 @@ requests~=2.25.1
 packaging~=21.0
 pytest~=6.2.4
 setuptools~=56.2.0
-sklearn~=0.0
+# sklearn~=0.0
 CoolProp~=6.4.1
 energy-pandas~=0.3.3
 validator_collection~=1.5.0

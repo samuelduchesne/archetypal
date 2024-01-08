@@ -191,10 +191,10 @@ class ScheduleTypeLimits:
         return idf.newidfobject(
             key="SCHEDULETYPELIMITS",
             Name=self.Name,
-            Lower_Limit_Value=self.LowerLimit,
-            Upper_Limit_Value=self.UpperLimit,
-            Numeric_Type=self.NumericType,
-            Unit_Type=self.UnitType,
+            Lower_Limit_Value="" if self.LowerLimit is None else self.LowerLimit,
+            Upper_Limit_Value="" if self.UpperLimit is None else self.UpperLimit,
+            Numeric_Type="" if self.NumericType is None else self.NumericType,
+            Unit_Type="" if self.UnitType is None else self.UnitType,
         )
 
     def duplicate(self):
@@ -209,11 +209,7 @@ class ScheduleTypeLimits:
 
     def __repr__(self):
         """Return the string representation of self."""
-        return (
-            self.Name
-            + f" {self.LowerLimit} < values < {self.UpperLimit}"
-            + f"Units: {self.UnitType}"
-        )
+        return f"{self.Name}: {self.LowerLimit} < values < {self.UpperLimit}, Units: {self.UnitType}"
 
     def __keys__(self):
         """Get keys of self. Useful for hashing."""

@@ -2123,7 +2123,7 @@ class IDF(GeomIDF):
             namebunch(abunch, aname)
         for k, v in kwargs.items():
             try:
-                abunch[k] = v
+                abunch[k] = "" if v is None else v
             except BadEPFieldError as e:
                 # Backwards compatibility
                 if str(e) == "unknown field Key_Name":

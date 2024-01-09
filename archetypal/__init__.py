@@ -12,13 +12,17 @@ from energy_pandas.units import unit_registry
 
 # Version of the package
 from pkg_resources import get_distribution, DistributionNotFound
-from pydantic_settings import BaseSettings
-from pydantic import (
-    Field,
-    DirectoryPath,
-    field_validator,
-    ConfigDict,
-)
+
+try:
+    from pydantic_settings import BaseSettings
+except ImportError:
+    from pydantic_settings import BaseSettingsModel as BaseSettings
+from pydantic import Field, DirectoryPath
+
+try:
+    from pydantic import field_validator
+except ImportError:
+    from pydantic import validate as field_validator
 
 
 class ZoneWeight(object):
@@ -42,9 +46,7 @@ class ZoneWeight(object):
         self._weight_attr = weight
 
 
-class Settings(BaseSettings):
-    model_config = ConfigDict(arbitrary_types_allowed=True, validate_assignment=True)
-
+class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=True):
     data_folder: Path = Field("data", validation_alias="ARCHETYPAL_DATA")
     logs_folder: Path = Field("logs", validation_alias="ARCHETYPAL_LOGS")
     imgs_folder: Path = Field("images", validation_alias="ARCHETYPAL_IMAGES")

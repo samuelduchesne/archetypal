@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from itertools import groupby
 from typing import FrozenSet, List, Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
@@ -1571,7 +1572,8 @@ class Schedule:
         )
         f = io.BytesIO()
         fig.savefig(f, format="svg")
-        return f.getvalue()
+        plt.close(fig)
+        return f.getvalue().decode()
 
     def combine(self, other, weights=None, quantity=None):
         """Combine two schedule objects together.

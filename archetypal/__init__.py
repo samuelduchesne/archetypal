@@ -22,7 +22,7 @@ from pydantic import Field, DirectoryPath
 try:
     from pydantic import field_validator
 except ImportError:
-    from pydantic import validate as field_validator
+    from pydantic import validator as field_validator
 
 
 class ZoneWeight(object):

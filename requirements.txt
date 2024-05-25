@@ -15,7 +15,7 @@ sigfig
 requests
 packaging
 setuptools
-CoolProp~=6.4.1
+coolprop
 energy-pandas
 validator_collection
 pint<=0.19

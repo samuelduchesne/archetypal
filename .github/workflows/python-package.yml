@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    
+
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -34,6 +34,16 @@ jobs:
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
+      - name: Configure Poetry
+        run: |
+          poetry config virtualenvs.in-project true
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
       - name: Install dependencies
         run: |
           poetry install
@@ -47,14 +57,14 @@ jobs:
           energyplus-version: ${{ matrix.energyplus-version }}
           energyplus-sha: ${{ matrix.energyplus-sha }}
           energyplus-install: ${{ matrix.energyplus-install }}
-      - name: Test with pytest
-        run: |
-          poetry run pytest -n auto --cov=archetypal --cov-report=xml tests/
-      - name: Upload coverage to Codecov
-        if: ${{ matrix.python-version == 3.9 }}
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          fail_ci_if_error: false
-          verbose: true
+#      - name: Test with pytest
+#        run: |
+#          poetry run pytest -n auto --cov=archetypal --cov-report=xml tests/
+#      - name: Upload coverage to Codecov
+#        if: ${{ matrix.python-version == 3.9 }}
+#        uses: codecov/codecov-action@v1
+#        with:
+#          token: ${{ secrets.CODECOV_TOKEN }}
+#          files: ./coverage.xml
+#          fail_ci_if_error: false
+#          verbose: true

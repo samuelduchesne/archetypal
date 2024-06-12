@@ -471,7 +471,7 @@ class OpaqueMaterial(MaterialBase):
             idf (IDF): An IDF model.
             thickness (float): the thickness of the material.
 
-        .. code-block:: python
+        .. code-block::
 
             MATERIAL,
                 ,                         !- Name

@@ -316,7 +316,7 @@ class WindowConstruction(LayeredConstruction):
         Args:
             idf (IDF): The idf model in which the EpBunch is created.
 
-        .. code-block:: python
+        .. code-block::
 
             Construction,
                 B_Dbl_Air_Cl,                           !- Name
@@ -417,16 +417,8 @@ class WindowConstruction(LayeredConstruction):
                 Default is 101325 Pa for standard pressure at sea level.
         Returns:
             A tuple with two elements
-            -   temperatures: A list of temperature values [C].
-                The first value will always be the outside temperature and the
-                second will be the exterior surface temperature.
-                The last value will always be the inside temperature and the second
-                to last will be the interior surface temperature.
-            -   r_values: A list of R-values for each of the material layers [m2-K/W].
-                The first value will always be the resistance of the exterior air
-                and the last value is the resistance of the interior air.
-                The sum of this list is the R-factor for this construction given
-                the input parameters.
+            - temperatures: A list of temperature values [C]. The first value will always be the outside temperature and the second will be the exterior surface temperature. The last value will always be the inside temperature and the second to last will be the interior surface temperature.
+            - r_values: A list of R-values for each of the material layers [m2-K/W]. The first value will always be the resistance of the exterior air and the last value is the resistance of the interior air. The sum of this list is the R-factor for this construction given the input parameters.
         """
         # reverse the angle if the outside temperature is greater than the inside one
         if angle != 90 and outside_temperature > inside_temperature:

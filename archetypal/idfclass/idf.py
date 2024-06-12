@@ -378,7 +378,7 @@ class IDF(GeomIDF):
             **kwargs: keyword arguments passed to the IDF constructor.
 
         Returns:
-            (IDF): An IDF model.
+            IDF: An IDF model.
         """
         from pathlib import Path as Pathlib
 
@@ -1350,11 +1350,12 @@ class IDF(GeomIDF):
                 True)
             readvars (bool): Run ReadVarsESO after simulation (default: False)
             output_prefix (str, optional): Prefix for output file names.
-            output_suffix (str, optional): Suffix style for output file names
-                (default: L) Choices are:
-                    - L: Legacy (e.g., eplustbl.csv)
-                    - C: Capital (e.g., eplusTable.csv)
-                    - D: Dash (e.g., eplus-table.csv)
+            output_suffix (str, optional): Suffix style for output file names (
+                default: L). Choices are:
+
+                - L: Legacy (e.g., eplustbl.csv)
+                - C: Capital (e.g., eplusTable.csv)
+                - D: Dash (e.g., eplus-table.csv)
             version (bool, optional): Display version information (default: False)
             verbose (str): Set verbosity of runtime messages (default: v) v: verbose
                 q: quiet

@@ -674,7 +674,7 @@ class DaySchedule(UmiSchedule):
         Args:
             idf (IDF): An IDF model.
 
-        .. code-block:: python
+        .. code-block::
 
             SCHEDULE:DAY:HOURLY,
                 ,                         !- Name

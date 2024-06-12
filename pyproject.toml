@@ -43,7 +43,11 @@ sphinx-rtd-theme = "^2.0.0"
 recommonmark = "^0.7.1"
 sphinx-click = "^6.0.0"
 autodoc-pydantic = "^2.2.0"
+sphinx-autobuild = "^2024.4.16"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+archetypal = "archetypal.cli:cli"

@@ -34,12 +34,6 @@ jobs:
       - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
-      - name: Install EnergyPlus
-        uses: Elementa-Engineering/install-energyplus@v1
-        with:
-          energyplus-version: ${{ matrix.energyplus-version }}
-          energyplus-sha: ${{ matrix.energyplus-sha }}
-          energyplus-install: ${{ matrix.energyplus-install }}
       - name: Install dependencies
         run: |
           poetry install
@@ -47,6 +41,12 @@ jobs:
         run: |
           poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Install EnergyPlus
+        uses: Elementa-Engineering/install-energyplus@v1
+        with:
+          energyplus-version: ${{ matrix.energyplus-version }}
+          energyplus-sha: ${{ matrix.energyplus-sha }}
+          energyplus-install: ${{ matrix.energyplus-install }}
       - name: Test with pytest
         run: |
           poetry run pytest -n auto --cov=archetypal --cov-report=xml tests/

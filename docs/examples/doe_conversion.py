@@ -7,7 +7,6 @@ from path import Path
 from archetypal.umi_template import UmiTemplateLibrary
 
 if __name__ == "__main__":
-
     basepath = Path(
         r"C:\Users\samueld\Dropbox (Personal)\MIT\PostDoc\research\umiverse\template library\usa"
     )

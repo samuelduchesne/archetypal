@@ -8,7 +8,6 @@ config(cache_folder="../../tests/.temp/cache", log_console=True)
 
 
 def main():
-
     # setup directories and input files
     necb_basedir = Path("../../tests/input_data/necb")
     files = necb_basedir.glob("Ref*.idf")

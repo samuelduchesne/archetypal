@@ -135,11 +135,11 @@ class EndUseBalance:
             f"freq='{freq}': A reporting frequency other than H is not yet "
             f"supported."
         )
-        freq_to_unit = {"H": "hr"}
+        freq_to_unit = {"h": "hr"}
         _hvac_input = _hvac_input.apply(
             lambda row: unit_registry.Quantity(
                 row.values,
-                unit_registry(power_units) * unit_registry(freq_to_unit[freq]),
+                unit_registry(power_units) * unit_registry(freq_to_unit[freq.lower()]),
             )
             .to(units)
             .m

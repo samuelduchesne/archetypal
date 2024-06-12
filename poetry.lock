@@ -515,13 +515,13 @@ files = [
 
 [[package]]
 name = "energy-pandas"
-version = "0.3.4"
+version = "0.3.5"
 description = "Building Energy pandas extension"
 optional = false
 python-versions = "*"
 files = [
-    {file = "energy-pandas-0.3.4.tar.gz", hash = "sha256:ac885c70903875b0f73b83de10fd6d1de5b8f7d46dd5647e4a0e178915a6b3e2"},
-    {file = "energy_pandas-0.3.4-py3-none-any.whl", hash = "sha256:8ccbc572855f9260c96a287d34c2cd9cf5936db60c9d830c5ec41f55a826f268"},
+    {file = "energy_pandas-0.3.5-py3-none-any.whl", hash = "sha256:6664bea2bf4786997a652b49fe6b459636774bbd82b8cb82a34d75e60cc223db"},
+    {file = "energy_pandas-0.3.5.tar.gz", hash = "sha256:deb9a9ce35af1c64f1c92030149e767e2db690f5f2875d96b3f29d79cae1330b"},
 ]
 
 [package.dependencies]
@@ -2997,4 +2997,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "62f1ef14464efe72f0bfaaaec668c970ef286d85dfb6ba8541df83cf00cdd84e"
+content-hash = "9afee6caeb88c2bc5bae35f0bb4adf6e283cd55df95f19281d27e111f6889d99"

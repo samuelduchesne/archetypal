@@ -14,6 +14,7 @@ class GasMaterial(MaterialBase):
 
     .. image:: ../images/template/materials-gas.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = ("_type", "_conductivity", "_density")
@@ -161,7 +162,7 @@ class GasMaterial(MaterialBase):
             idf (IDF): An IDF model.
             thickness (float): the thickness of the material.
 
-        .. code-block:: python
+        .. code-block::
 
             WindowMaterial:Gas,
                 AIR_0.006_B_Dbl_Air_Cl,    !- Name

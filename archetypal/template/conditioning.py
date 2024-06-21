@@ -88,6 +88,7 @@ class ZoneConditioning(UmiBase):
 
     .. image:: ../images/template/zoninfo-conditioning.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -638,7 +639,7 @@ class ZoneConditioning(UmiBase):
             schedules (dict): A dictionary of UmiSchedules with their id as keys.
             **kwargs: keywords passed to parent constructor.
 
-        .. code-block:: python
+        .. code-block::
 
             {
                 "$id": "165",
@@ -1259,7 +1260,6 @@ class ZoneConditioning(UmiBase):
 
         # iterate over those objects. If the list is empty, it will simply pass.
         for object in heat_recovery_in_idf:
-
             if object.key.upper() == "HeatExchanger:AirToAir:FlatPlate".upper():
                 # Do HeatExchanger:AirToAir:FlatPlate
 

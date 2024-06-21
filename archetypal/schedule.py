@@ -177,7 +177,7 @@ class ScheduleTypeLimits:
         Args:
             idf (IDF): An IDF model.
 
-        .. code-block:: python
+        .. code-block::
 
             SCHEDULETYPELIMITS,
                 ,                         !- Name

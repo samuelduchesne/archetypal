@@ -17,6 +17,7 @@ class GlazingMaterial(MaterialBase):
     .. image:: ../images/template/materials-glazing.png
 
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -324,7 +325,7 @@ class GlazingMaterial(MaterialBase):
             idf (IDF): An IDF model.
             thickness (float): the thickness of the material.
 
-        .. code-block:: python
+        .. code-block::
 
             WindowMaterial:Glazing,
                 B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,    !- Name

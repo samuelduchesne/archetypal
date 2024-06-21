@@ -131,12 +131,15 @@ class EndUseBalance:
         ).to_units(units)
         # convert power to energy assuming the reporting frequency
         freq = pd.infer_freq(_hvac_input.index)
-        assert freq == "H", "A reporting frequency other than H is not yet supported."
-        freq_to_unit = {"H": "hr"}
+        assert freq.lower() == "h", (
+            f"freq='{freq}': A reporting frequency other than H is not yet "
+            f"supported."
+        )
+        freq_to_unit = {"h": "hr"}
         _hvac_input = _hvac_input.apply(
             lambda row: unit_registry.Quantity(
                 row.values,
-                unit_registry(power_units) * unit_registry(freq_to_unit[freq]),
+                unit_registry(power_units) * unit_registry(freq_to_unit[freq.lower()]),
             )
             .to(units)
             .m

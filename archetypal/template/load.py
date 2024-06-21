@@ -42,6 +42,7 @@ class ZoneLoad(UmiBase):
 
     .. image:: ../images/template/zoneinfo-loads.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -83,18 +84,19 @@ class ZoneLoad(UmiBase):
         Args:
             DimmingType (int): Different types to dim the lighting to respect the
                 IlluminanceTarget and taking into account the daylight illuminance:
-                    - Continuous = 0, the overhead lights dim continuously and
-                      linearly from (maximum electric power, maximum light output) to (
-                      minimum electric power, minimum light output) as the daylight
-                      illuminance increases. The lights stay on at the minimum point
-                      with further increase in the daylight illuminance.
-                    - Off = 1, Lights switch off completely when the minimum
-                      dimming point is reached.
-                    - Stepped = 2, the electric power input and light output vary
-                      in discrete, equally spaced steps.
-            EquipmentAvailabilitySchedule (UmiSchedule): The name of
-                the schedule (Day | Week | Year) that modifies the design level
-                parameter for electric equipment.
+
+                - Continuous = 0, the overhead lights dim continuously and
+                  linearly from (maximum electric power, maximum light output) to (
+                  minimum electric power, minimum light output) as the daylight
+                  illuminance increases. The lights stay on at the minimum point
+                  with further increase in the daylight illuminance.
+                - Off = 1, Lights switch off completely when the minimum
+                  dimming point is reached.
+                - Stepped = 2, the electric power input and light output vary
+                  in discrete, equally spaced steps.
+            EquipmentAvailabilitySchedule (UmiSchedule): The name of the schedule (
+                Day | Week | Year) that modifies the design level parameter for
+                electric equipment.
             EquipmentPowerDensity (float): Equipment Power Density in the zone
                 (W/m²).
             IlluminanceTarget (float): Number of lux to be respected in the zone
@@ -697,7 +699,7 @@ class ZoneLoad(UmiBase):
             idf (IDF): The idf model. epbunches will be added to this model.
             zone_name (str): The name of the zone in the idf model.
 
-        .. code-block:: python
+        .. code-block::
 
             People,
                 People Perim,             !- Name

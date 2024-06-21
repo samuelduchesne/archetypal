@@ -2708,13 +2708,17 @@ telegram = ["requests"]
 
 [[package]]
 name = "transforms3d"
-version = "0.4.1"
+version = "0.4.2"
 description = "Functions for 3D coordinate transformations"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "transforms3d-0.4.1.tar.gz", hash = "sha256:31c755266a0b0a222488b8d039f6f325cf486c52728c03e307ce047b2fad1179"},
+    {file = "transforms3d-0.4.2-py3-none-any.whl", hash = "sha256:1c70399d9e9473ecc23311fd947f727f7c69ed0b063244828c383aa1aefa5941"},
+    {file = "transforms3d-0.4.2.tar.gz", hash = "sha256:e8b5df30eaedbee556e81c6938e55aab5365894e47d0a17615d7db7fd2393680"},
 ]
+
+[package.dependencies]
+numpy = ">=1.15"
 
 [[package]]
 name = "tsam"
@@ -2997,4 +3001,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "9afee6caeb88c2bc5bae35f0bb4adf6e283cd55df95f19281d27e111f6889d99"
+content-hash = "e909ab54f125b1347ab2ffd4207ce88623335f383711f38009d05a1ae166cbf6"

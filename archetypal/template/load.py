@@ -43,6 +43,8 @@ class ZoneLoad(UmiBase):
     .. image:: ../images/template/zoneinfo-loads.png
     """
 
+    _CREATED_OBJECTS = []
+
     __slots__ = (
         "_dimming_type",
         "_equipment_availability_schedule",
@@ -82,18 +84,19 @@ class ZoneLoad(UmiBase):
         Args:
             DimmingType (int): Different types to dim the lighting to respect the
                 IlluminanceTarget and taking into account the daylight illuminance:
-                    - Continuous = 0, the overhead lights dim continuously and
-                      linearly from (maximum electric power, maximum light output) to (
-                      minimum electric power, minimum light output) as the daylight
-                      illuminance increases. The lights stay on at the minimum point
-                      with further increase in the daylight illuminance.
-                    - Off = 1, Lights switch off completely when the minimum
-                      dimming point is reached.
-                    - Stepped = 2, the electric power input and light output vary
-                      in discrete, equally spaced steps.
-            EquipmentAvailabilitySchedule (UmiSchedule): The name of
-                the schedule (Day | Week | Year) that modifies the design level
-                parameter for electric equipment.
+
+                - Continuous = 0, the overhead lights dim continuously and
+                  linearly from (maximum electric power, maximum light output) to (
+                  minimum electric power, minimum light output) as the daylight
+                  illuminance increases. The lights stay on at the minimum point
+                  with further increase in the daylight illuminance.
+                - Off = 1, Lights switch off completely when the minimum
+                  dimming point is reached.
+                - Stepped = 2, the electric power input and light output vary
+                  in discrete, equally spaced steps.
+            EquipmentAvailabilitySchedule (UmiSchedule): The name of the schedule (
+                Day | Week | Year) that modifies the design level parameter for
+                electric equipment.
             EquipmentPowerDensity (float): Equipment Power Density in the zone
                 (W/m²).
             IlluminanceTarget (float): Number of lux to be respected in the zone
@@ -126,10 +129,13 @@ class ZoneLoad(UmiBase):
         self.IsEquipmentOn = IsEquipmentOn
         self.IsLightingOn = IsLightingOn
         self.IsPeopleOn = IsPeopleOn
-        self.DimmingType = DimmingTypes(DimmingType)
+        self.DimmingType = DimmingType
         self.IlluminanceTarget = IlluminanceTarget
         self.area = area
         self.volume = volume
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def DimmingType(self):
@@ -151,7 +157,7 @@ class ZoneLoad(UmiBase):
             )
             self._dimming_type = DimmingTypes[value]
         elif checkers.is_numeric(value):
-            assert DimmingTypes[value], (
+            assert DimmingTypes(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in DimmingTypes)}"
             )
@@ -595,31 +601,31 @@ class ZoneLoad(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.DimmingType:
+        if self.DimmingType is None:
             self.DimmingType = DimmingTypes.Continuous
-        if not self.EquipmentAvailabilitySchedule:
+        if self.EquipmentAvailabilitySchedule is None:
             self.EquipmentAvailabilitySchedule = UmiSchedule.constant_schedule()
-        if not self.EquipmentPowerDensity:
+        if self.EquipmentPowerDensity is None:
             self.EquipmentPowerDensity = 0
-        if not self.IlluminanceTarget:
+        if self.IlluminanceTarget is None:
             self.IlluminanceTarget = 500
-        if not self.LightingPowerDensity:
+        if self.LightingPowerDensity is None:
             self.LightingPowerDensity = 0
-        if not self.LightsAvailabilitySchedule:
+        if self.LightsAvailabilitySchedule is None:
             self.LightsAvailabilitySchedule = UmiSchedule.constant_schedule()
-        if not self.OccupancySchedule:
+        if self.OccupancySchedule is None:
             self.OccupancySchedule = UmiSchedule.constant_schedule()
-        if not self.IsEquipmentOn:
+        if self.IsEquipmentOn is None:
             self.IsEquipmentOn = False
-        if not self.IsLightingOn:
+        if self.IsLightingOn is None:
             self.IsLightingOn = False
-        if not self.IsPeopleOn:
+        if self.IsPeopleOn is None:
             self.IsPeopleOn = False
-        if not self.PeopleDensity:
+        if self.PeopleDensity is None:
             self.PeopleDensity = 0
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -693,7 +699,7 @@ class ZoneLoad(UmiBase):
             idf (IDF): The idf model. epbunches will be added to this model.
             zone_name (str): The name of the zone in the idf model.
 
-        .. code-block:: python
+        .. code-block::
 
             People,
                 People Perim,             !- Name
@@ -808,9 +814,7 @@ class ZoneLoad(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""
@@ -834,6 +838,14 @@ class ZoneLoad(UmiBase):
             return NotImplemented
         else:
             return self.__key__() == other.__key__()
+
+    @property
+    def children(self):
+        return (
+            self.EquipmentAvailabilitySchedule,
+            self.LightsAvailabilitySchedule,
+            self.OccupancySchedule,
+        )
 
 
 def _resolve_dimming_type(zone, zone_ep):

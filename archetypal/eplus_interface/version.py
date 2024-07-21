@@ -10,6 +10,7 @@ from path import Path
 
 from archetypal import settings
 from archetypal.eplus_interface.exceptions import (
+    EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
 )
 
@@ -82,7 +83,11 @@ class EnergyPlusVersion(Version):
             iter(
                 sorted(
                     (
-                        re.search(r"([\d])-([\d])-([\d])", home.stem).group()
+                        Version(
+                            re.search(r"\d+(-\d+)+", home.stem)
+                            .group()
+                            .replace("-", ".")
+                        )
                         for home in eplus_homes
                     ),
                     reverse=True,
@@ -109,7 +114,12 @@ class EnergyPlusVersion(Version):
     @property
     def current_install_dir(self):
         """Get the current installation directory for this EnergyPlus version."""
-        return self.install_locations[self.dash]
+        try:
+            return self.install_locations[self.dash]
+        except KeyError:
+            raise EnergyPlusVersionError(
+                f"EnergyPlusVersion {self.dash} is not installed."
+            )
 
     @property
     def tuple(self) -> tuple:
@@ -121,7 +131,9 @@ class EnergyPlusVersion(Version):
         """List the idd file version found on this machine."""
         if not self.valid_idd_paths:
             # Little hack in case E+ is not installed
-            _choices = {settings.ep_version,}
+            _choices = {
+                settings.ep_version,
+            }
         else:
             _choices = set(self.valid_idd_paths.keys())
 
@@ -142,8 +154,8 @@ class EnergyPlusVersion(Version):
             value = {}
             for basedir in get_eplus_basedirs():
                 # match the Idd file contained in basedir
-                match = re.search(r"([\d]-[\d]-[\d])", basedir)
-                version = match.group(1)
+                match = re.search(r"\d+(-\d+)+", basedir)
+                version = match.group()
                 value[version] = basedir.expand()
         self._install_locations = value
 
@@ -169,20 +181,21 @@ class EnergyPlusVersion(Version):
                         basedirs_.append(basedir.files("*.idd"))
                 iddnames = set(chain.from_iterable(basedirs_))
             except FileNotFoundError:
-                _valid_paths = {}
+                value = {}
             else:
-                _valid_paths = {}
+                value = {}
                 for iddname in iddnames:
-                    match = re.search(".+V(\d-\d-\d)", str(iddname))
+                    match = re.search(r"\d+(-\d+)+", iddname.stem)
                     if match is None:
                         # match the Idd file contained in basedir
-                        match = re.search(r"([\d]-[\d]-[\d])", iddname)
-                        version = match.group(1)
-                    else:
-                        version = match.group(1)
+                        match = re.search(r"\d+(-\d+)+", iddname.stem)
+                        if match is None:
+                            # Match the version in the whole path
+                            match = re.search(r"\d+(-\d+)+", iddname)
+                    version = match.group()
 
-                    _valid_paths[version] = iddname
-        self._valid_paths = dict(sorted(_valid_paths.items()))
+                    value[version] = iddname
+        self._valid_paths = dict(sorted(value.items()))
 
     @classmethod
     def current(cls):
@@ -214,15 +227,14 @@ class EnergyPlusVersion(Version):
 
 def get_eplus_basedirs():
     """Return a list of possible E+ install paths."""
-    if platform.system() == "Windows":
-        eplus_homes = Path("C:\\").dirs("EnergyPlus*")
-        return eplus_homes
+    if settings.energyplus_location is not None:
+        return [Path(settings.energyplus_location)]
+    elif platform.system() == "Windows":
+        return Path("C:\\").dirs("EnergyPlus*")
     elif platform.system() == "Linux":
-        eplus_homes = Path("/usr/local/").dirs("EnergyPlus*")
-        return eplus_homes
+        return Path("/usr/local/").dirs("EnergyPlus*")
     elif platform.system() == "Darwin":
-        eplus_homes = Path("/Applications").dirs("EnergyPlus*")
-        return eplus_homes
+        return Path("/Applications").dirs("EnergyPlus*")
     else:
         warnings.warn(
             "Archetypal is not compatible with %s. It is only compatible "

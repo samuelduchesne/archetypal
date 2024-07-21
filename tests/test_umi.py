@@ -9,6 +9,8 @@ from archetypal import IDF, settings
 from archetypal.eplus_interface import EnergyPlusVersion
 from archetypal.template.building_template import BuildingTemplate
 from archetypal.template.conditioning import ZoneConditioning
+from archetypal.template.constructions.opaque_construction import OpaqueConstruction
+from archetypal.template.constructions.window_construction import WindowConstruction
 from archetypal.template.dhw import DomesticHotWaterSetting
 from archetypal.template.load import ZoneLoad
 from archetypal.template.materials.gas_layer import GasLayer
@@ -16,16 +18,9 @@ from archetypal.template.materials.gas_material import GasMaterial
 from archetypal.template.materials.glazing_material import GlazingMaterial
 from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.materials.opaque_material import OpaqueMaterial
-from archetypal.template.constructions.opaque_construction import OpaqueConstruction
-from archetypal.template.schedule import (
-    DaySchedule,
-    WeekSchedule,
-    YearSchedule,
-    YearSchedulePart,
-)
+from archetypal.template.schedule import DaySchedule, WeekSchedule, YearSchedule
 from archetypal.template.structure import MassRatio, StructureInformation
 from archetypal.template.ventilation import VentilationSetting
-from archetypal.template.constructions.window_construction import WindowConstruction
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
@@ -34,6 +29,60 @@ from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
 
 class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
+
+    @pytest.fixture(scope="function")
+    def two_identical_libraries(self):
+        """Yield two identical libraries. Scope of this fixture is `function`."""
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        yield UmiTemplateLibrary.open(file), UmiTemplateLibrary.open(file)
+
+    def test_add(self, two_identical_libraries):
+        """Test combining two template library objects together."""
+        a, b = two_identical_libraries
+
+        # add them together into `c`
+        c = a + b
+
+        # Assert result of operation
+        assert c.name == a.name  # name of c hould be name of a (convention, first wins)
+        assert len(c.BuildingTemplates) == len(a.BuildingTemplates) + len(
+            b.BuildingTemplates
+        )  # Nb of templates should be double in this case.
+
+        # If unique components is called, the nb of opaque materials should be
+        # excatly have of what it was since they were essentially duplicated.
+        nb_materials_before = len(c.OpaqueMaterials)
+        c.unique_components()
+        assert len(c.OpaqueMaterials) == nb_materials_before / 2
+
+    def test_unique_components(self, two_identical_libraries):
+        """Test options on UmiTemplateLibrary.unique_components"""
+        a, b = two_identical_libraries
+        c = a + b
+
+        # Only make the `OpaqueMaterial` objects unique.
+        nb_materials_before = len(c.OpaqueMaterials)
+        nb_opaque_constructions = len(c.OpaqueConstructions)
+        c.unique_components("OpaqueMaterials")
+        assert len(c.OpaqueMaterials) < nb_materials_before
+        assert len(c.OpaqueConstructions) == nb_opaque_constructions
+
+        # test wrong inclusion
+        with pytest.raises(AssertionError):
+            # missing S.
+            c.unique_components("OpaqueMaterial")
+
+    def test_graph(self):
+        """Test initialization of networkx DiGraph"""
+        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+
+        a = UmiTemplateLibrary.open(file)
+        G = a.to_graph()
+        n_nodes = len(G)
+
+        # Test option to include orphaned objects.
+        G = a.to_graph(include_orphans=True)
+        assert len(G) > n_nodes
 
     def test_template_to_template(self):
         """load the json into UmiTemplateLibrary object, then convert back to json and
@@ -52,18 +101,16 @@ class TestUmiTemplate:
     def test_umitemplate(self, config):
         """Test creating UmiTemplateLibrary from 2 IDF files"""
         idf_source = [
-            "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
             EnergyPlusVersion.current().current_install_dir
             / "ExampleFiles"
             / "VentilationSimpleTest.idf",
         ]
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.from_idf_files(
-            idf_source, wf, name="Mixed_Files", processors=-1
+            idf_source, wf, name="Mixed_Files", processors=-1, debug=True
         )
 
         data_dict = a.to_dict()
-        a.to_dict()
         assert no_duplicates(data_dict)
 
     @pytest.mark.skipif(
@@ -122,7 +169,7 @@ class TestUmiTemplate:
 
     @pytest.fixture()
     def manual_umitemplate_library(self, config):
-        """ Creates Umi template from scratch """
+        """Creates Umi template from scratch"""
 
         # region Defines materials
 

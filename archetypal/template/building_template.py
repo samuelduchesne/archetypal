@@ -13,7 +13,7 @@ from itertools import chain, repeat
 import networkx
 from path import Path
 from sigfig import round
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from validator_collection import validators
 
 from archetypal.template.dhw import DomesticHotWaterSetting
@@ -31,6 +31,8 @@ class BuildingTemplate(UmiBase):
 
     .. image:: ../images/template/buildingtemplate.png
     """
+
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_partition_ratio",
@@ -113,6 +115,9 @@ class BuildingTemplate(UmiBase):
         self.Authors = Authors if Authors else []
         self.AuthorEmails = AuthorEmails if AuthorEmails else []
         self.Version = Version
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Perimeter(self):
@@ -353,7 +358,7 @@ class BuildingTemplate(UmiBase):
             **kwargs:
         """
         # initialize empty BuildingTemplate
-        name = kwargs.pop("Name", Path(idf.idfname).basename().splitext()[0])
+        name = kwargs.pop("Name", Path(idf.name).stem)
 
         epbunch_zones = idf.idfobjects["ZONE"]
         zones = [
@@ -363,11 +368,11 @@ class BuildingTemplate(UmiBase):
         # do core and Perim zone reduction
         bt = cls.reduced_model(name, zones, **kwargs)
 
-        if not bt.Core.DomesticHotWater or not bt.Perimeter.DomesticHotWater:
+        if bt.Core.DomesticHotWater is None or bt.Perimeter.DomesticHotWater is None:
             dhw = DomesticHotWaterSetting.whole_building(idf)
-            if not bt.Core.DomesticHotWater:
+            if bt.Core.DomesticHotWater is None:
                 bt.Core.DomesticHotWater = dhw
-            if not bt.Perimeter.DomesticHotWater:
+            if bt.Perimeter.DomesticHotWater is None:
                 bt.Perimeter.DomesticHotWater = dhw
 
         bt.Comments = "\n".join(
@@ -539,6 +544,7 @@ class BuildingTemplate(UmiBase):
         data_dict["Perimeter"] = self.Perimeter.to_ref()
         data_dict["Structure"] = self.Structure.to_ref()
         data_dict["Windows"] = self.Windows.to_ref()
+        data_dict["DefaultWindowToWallRatio"] = self.DefaultWindowToWallRatio
         data_dict["Category"] = validators.string(self.Category, allow_empty=True)
         data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
@@ -561,7 +567,7 @@ class BuildingTemplate(UmiBase):
         """Replace recursively every objects with the first equivalent object."""
 
         def recursive_replace(umibase):
-            for key, obj in umibase.mapping().items():
+            for key, obj in umibase.mapping(validate=False).items():
                 if isinstance(
                     obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
                 ):
@@ -579,7 +585,7 @@ class BuildingTemplate(UmiBase):
         recursive_replace(self)
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -628,9 +634,7 @@ class BuildingTemplate(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -655,3 +659,7 @@ class BuildingTemplate(UmiBase):
                     self.Version == other.Version,
                 ]
             )
+
+    @property
+    def children(self):
+        return self.Core, self.Perimeter, self.Structure, self.Windows

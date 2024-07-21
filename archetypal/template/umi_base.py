@@ -55,7 +55,6 @@ class UmiBase(object):
         "_allow_duplicates",
         "_unit_number",
     )
-    CREATED_OBJECTS = []
     _ids = itertools.count(0)  # unique id for each class instance
 
     def __init__(
@@ -91,8 +90,6 @@ class UmiBase(object):
         self.allow_duplicates = allow_duplicates
         self.unit_number = next(self._ids)
         self.predecessors = None
-
-        UmiBase.CREATED_OBJECTS.append(self)
 
     @property
     def Name(self):
@@ -180,6 +177,10 @@ class UmiBase(object):
     def predecessors(self, value):
         self._predecessors = value
 
+    @property
+    def children(self):
+        return ()
+
     def duplicate(self):
         """Get copy of self."""
         return self.__copy__()
@@ -237,21 +238,12 @@ class UmiBase(object):
         """Return UmiBase dictionary representation."""
         return {"$id": "{}".format(self.id), "Name": "{}".format(self.Name)}
 
-    @classmethod
-    def get_classref(cls, ref):
-        return next(
-            iter(
-                [value for value in UmiBase.CREATED_OBJECTS if value.id == ref["$ref"]]
-            ),
-            None,
-        )
-
     def get_ref(self, ref):
         pass
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.mro()[0].__name__, self.Name))
+        return hash(self.id)
 
     def __repr__(self):
         """Return a representation of self."""
@@ -265,6 +257,12 @@ class UmiBase(object):
         """Iterate over attributes. Yields tuple of (keys, value)."""
         for attr, value in self.mapping().items():
             yield attr, value
+
+    def __getitem__(self, item):
+        return getattr(self, item)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
 
     def __copy__(self):
         """Create a copy of self."""
@@ -372,7 +370,7 @@ class UmiBase(object):
             return other
         if other is None:
             return self
-        self.CREATED_OBJECTS.remove(self)
+        self._CREATED_OBJECTS.remove(self)
         id = self.id
         new_obj = self.combine(other, allow_duplicates=allow_duplicates)
         new_obj.id = id
@@ -384,7 +382,7 @@ class UmiBase(object):
         """Validate UmiObjects and fills in missing values."""
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -395,7 +393,7 @@ class UmiBase(object):
             self.validate()
 
         return dict(
-            id=self.id,
+            # id=self.id,
             Name=self.Name,
             Category=self.Category,
             Comments=self.Comments,
@@ -411,10 +409,9 @@ class UmiBase(object):
                     sorted(
                         (
                             x
-                            for x in UmiBase.CREATED_OBJECTS
+                            for x in self._CREATED_OBJECTS
                             if x == self
                             and x.Name == self.Name
-                            and type(x) == type(self)
                         ),
                         key=lambda x: x.unit_number,
                     )
@@ -429,8 +426,8 @@ class UmiBase(object):
                     sorted(
                         (
                             x
-                            for x in UmiBase.CREATED_OBJECTS
-                            if x == self and type(x) == type(self)
+                            for x in self._CREATED_OBJECTS
+                            if x == self
                         ),
                         key=lambda x: x.unit_number,
                     )
@@ -504,7 +501,7 @@ class MetaData(UserSet):
 class UniqueName(str):
     """Attribute unique user-defined names for :class:`UmiBase`."""
 
-    existing = set()
+    existing = {}
 
     def __new__(cls, content):
         """Pick a name. Will increment the name if already used."""
@@ -522,17 +519,11 @@ class UniqueName(str):
         if not name:
             return None
         if name not in cls.existing:
-            cls.existing.add(name)
+            cls.existing[name] = 0
             return name
         else:
-            match = re.match(r"^(.*?)(\D*)(\d+)$", name)
-            if match:
-                groups = list(match.groups())
-                pad = len(groups[-1])
-                groups[-1] = int(groups[-1])
-                groups[-1] += 1
-                groups[-1] = str(groups[-1]).zfill(pad)
-                name = "".join(map(str, groups))
-                return cls.create_unique(name)
-            else:
-                return cls.create_unique(name + "_1")
+            current_count = cls.existing[name]
+            new_count = current_count + 1
+            new_name = f"{name}_{str(new_count)}"
+            cls.existing[name] = new_count
+            return new_name

@@ -31,6 +31,8 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
+    _CREATED_OBJECTS = []
+
     __slots__ = ("area",)
 
     def __init__(self, Name, Layers, **kwargs):
@@ -44,6 +46,9 @@ class OpaqueConstruction(LayeredConstruction):
         """
         super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
         self.area = 1
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def r_value(self):
@@ -403,7 +408,7 @@ class OpaqueConstruction(LayeredConstruction):
         return OpaqueConstruction(
             Name="InternalMass",
             Layers=[MaterialLayer(Material=mat, Thickness=0.15)],
-            Category="InternalMass",
+            Category="Internal Mass",
             **kwargs,
         )
 
@@ -417,8 +422,13 @@ class OpaqueConstruction(LayeredConstruction):
             epbunch (EpBunch): The epbunch object.
             **kwargs: keywords passed to the LayeredConstruction constructor.
         """
-        assert epbunch.key.lower() in ("internalmass", "construction", 'construction:internalsource'), (
-            f"Expected ('Internalmass', 'Construction', 'construction:internalsource')." f"Got '{epbunch.key}'."
+        assert epbunch.key.lower() in (
+            "internalmass",
+            "construction",
+            "construction:internalsource",
+        ), (
+            f"Expected ('Internalmass', 'Construction', 'construction:internalsource')."
+            f"Got '{epbunch.key}'."
         )
         name = epbunch.Name
 
@@ -426,7 +436,10 @@ class OpaqueConstruction(LayeredConstruction):
         if epbunch.key.lower() == "internalmass":
             layers = cls._internalmass_layer(epbunch)
             return cls(Name=name, Layers=layers, **kwargs)
-        elif epbunch.key.lower() in ("construction", 'construction:internalsource',):
+        elif epbunch.key.lower() in (
+            "construction",
+            "construction:internalsource",
+        ):
             layers = cls._surface_layers(epbunch)
             return cls(Name=name, Layers=layers, **kwargs)
 
@@ -452,7 +465,7 @@ class OpaqueConstruction(LayeredConstruction):
             # Iterate over the construction's layers
             material = epbunch.get_referenced_object(layer)
             if material:
-                o = OpaqueMaterial.from_epbunch(material, allow_duplicates=True)
+                o = OpaqueMaterial.from_epbunch(material, allow_duplicates=False)
                 try:
                     thickness = material.Thickness
                 except BadEPFieldError:
@@ -480,7 +493,7 @@ class OpaqueConstruction(LayeredConstruction):
 
         return data_dict
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -527,7 +540,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

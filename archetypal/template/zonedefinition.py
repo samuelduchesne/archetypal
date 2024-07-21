@@ -25,6 +25,7 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_internal_mass_exposed_per_floor_area",
@@ -119,6 +120,9 @@ class ZoneDefinition(UmiBase):
         self.is_part_of_total_floor_area = is_part_of_total_floor_area
         self.multiplier = multiplier
         self.is_core = is_core
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Constructions(self):
@@ -465,7 +469,7 @@ class ZoneDefinition(UmiBase):
             """Get zone volume from simulation sql file."""
             with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
                 sql_query = (
-                    "SELECT t.Value FROM TabularDataWithStrings t "
+                    "SELECT CAST(t.Value AS float) FROM TabularDataWithStrings t "
                     "WHERE TableName='Zone Summary' and ColumnName='Volume' and "
                     "RowName=?"
                 )
@@ -476,13 +480,13 @@ class ZoneDefinition(UmiBase):
             """Get zone occupants from simulation sql file."""
             with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
                 sql_query = (
-                    "SELECT t.Value FROM TabularDataWithStrings t "
+                    "SELECT CAST(t.Value AS float) FROM TabularDataWithStrings t "
                     "WHERE TableName='Average Outdoor Air During Occupied Hours' and ColumnName='Nominal Number of Occupants' and RowName=?"
                 )
 
                 fetchone = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
                 (res,) = fetchone or (0,)
-            return float(res)
+            return res
 
         def calc_is_part_of_conditioned_floor_area(zone_ep):
             """Return True if zone is part of the conditioned floor area."""
@@ -670,7 +674,7 @@ class ZoneDefinition(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.InternalMassConstruction:
+        if self.InternalMassConstruction is None:
             internal_mass = InternalMass.generic_internalmass_from_zone(self)
             self.InternalMassConstruction = internal_mass.construction
             self.InternalMassExposedPerFloorArea = (
@@ -689,7 +693,7 @@ class ZoneDefinition(UmiBase):
 
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -730,9 +734,7 @@ class ZoneDefinition(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -758,6 +760,17 @@ class ZoneDefinition(UmiBase):
     def __copy__(self):
         """Return a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return (
+            self.Conditioning,
+            self.Constructions,
+            self.DomesticHotWater,
+            self.InternalMassConstruction,
+            self.Loads,
+            self.Ventilation,
+        )
 
 
 def resolve_obco(ep_bunch):

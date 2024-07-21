@@ -18,6 +18,8 @@ class GlazingMaterial(MaterialBase):
 
     """
 
+    _CREATED_OBJECTS = []
+
     __slots__ = (
         "_ir_emissivity_back",
         "_ir_emissivity_front",
@@ -103,6 +105,9 @@ class GlazingMaterial(MaterialBase):
         self.SolarReflectanceBack = SolarReflectanceBack
         self.SolarReflectanceFront = SolarReflectanceFront
         self.SolarTransmittance = SolarTransmittance
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Conductivity(self):
@@ -320,7 +325,7 @@ class GlazingMaterial(MaterialBase):
             idf (IDF): An IDF model.
             thickness (float): the thickness of the material.
 
-        .. code-block:: python
+        .. code-block::
 
             WindowMaterial:Glazing,
                 B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,    !- Name
@@ -361,7 +366,7 @@ class GlazingMaterial(MaterialBase):
             Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance=self.DirtFactor,
         )
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -442,7 +447,7 @@ class GlazingMaterial(MaterialBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

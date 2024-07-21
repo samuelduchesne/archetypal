@@ -36,6 +36,7 @@ class WindowSetting(UmiBase):
 
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_operable_area",
@@ -123,13 +124,16 @@ class WindowSetting(UmiBase):
         self.OperableArea = OperableArea
         self.ShadingSystemSetpoint = ShadingSystemSetpoint
         self.ShadingSystemTransmittance = ShadingSystemTransmittance
-        self.ShadingSystemType = ShadingType(ShadingSystemType)
-        self.Type = WindowType(Type)
+        self.ShadingSystemType = ShadingSystemType
+        self.Type = Type
         self.ZoneMixingDeltaTemperature = ZoneMixingDeltaTemperature
         self.ZoneMixingFlowRate = ZoneMixingFlowRate
         self.ZoneMixingAvailabilitySchedule = ZoneMixingAvailabilitySchedule
 
         self.area = area
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def area(self):
@@ -195,7 +199,7 @@ class WindowSetting(UmiBase):
             )
             self._shading_system_type = ShadingType[value]
         elif checkers.is_numeric(value):
-            assert ShadingType[value], (
+            assert ShadingType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in ShadingType)}"
             )
@@ -336,7 +340,7 @@ class WindowSetting(UmiBase):
             )
             self._type = WindowType[value]
         elif checkers.is_numeric(value):
-            assert WindowType[value], (
+            assert WindowType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in WindowType)}"
             )
@@ -358,9 +362,7 @@ class WindowSetting(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -866,22 +868,22 @@ class WindowSetting(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.AfnWindowAvailability:
+        if self.AfnWindowAvailability is None:
             self.AfnWindowAvailability = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff"
             )
-        if not self.ShadingSystemAvailabilitySchedule:
+        if self.ShadingSystemAvailabilitySchedule is None:
             self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff"
             )
-        if not self.ZoneMixingAvailabilitySchedule:
+        if self.ZoneMixingAvailabilitySchedule is None:
             self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff"
             )
 
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -912,4 +914,13 @@ class WindowSetting(UmiBase):
             Comments=self.Comments,
             DataSource=self.DataSource,
             Name=self.Name,
+        )
+
+    @property
+    def children(self):
+        return (
+            self.AfnWindowAvailability,
+            self.Construction,
+            self.ShadingSystemAvailabilitySchedule,
+            self.ZoneMixingAvailabilitySchedule,
         )

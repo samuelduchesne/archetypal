@@ -14,6 +14,8 @@ from archetypal.utils import log
 class NoMassMaterial(MaterialBase):
     """Use this component to create a custom no mass material."""
 
+    _CREATED_OBJECTS = []
+
     _ROUGHNESS_TYPES = (
         "VeryRough",
         "Rough",
@@ -76,6 +78,9 @@ class NoMassMaterial(MaterialBase):
         self.ThermalEmittance = ThermalEmittance
         self.VisibleAbsorptance = VisibleAbsorptance
         self.MoistureDiffusionResistance = MoistureDiffusionResistance
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def r_value(self):
@@ -385,7 +390,7 @@ class NoMassMaterial(MaterialBase):
             setattr(self, "VisibleAbsorptance", 0.7)
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -430,7 +435,7 @@ class NoMassMaterial(MaterialBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -442,21 +447,21 @@ class NoMassMaterial(MaterialBase):
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""
         return (
-                self.r_value,
-                self.SolarAbsorptance,
-                self.ThermalEmittance,
-                self.VisibleAbsorptance,
-                self.Roughness,
-                self.Cost,
-                self.MoistureDiffusionResistance,
-                self.EmbodiedCarbon,
-                self.EmbodiedEnergy,
-                self.TransportCarbon,
-                self.TransportDistance,
-                self.TransportEnergy,
-                self.SubstitutionRatePattern,
-                self.SubstitutionTimestep,
-            )
+            self.r_value,
+            self.SolarAbsorptance,
+            self.ThermalEmittance,
+            self.VisibleAbsorptance,
+            self.Roughness,
+            self.Cost,
+            self.MoistureDiffusionResistance,
+            self.EmbodiedCarbon,
+            self.EmbodiedEnergy,
+            self.TransportCarbon,
+            self.TransportDistance,
+            self.TransportEnergy,
+            self.SubstitutionRatePattern,
+            self.SubstitutionTimestep,
+        )
 
     def __copy__(self):
         """Create a copy of self."""

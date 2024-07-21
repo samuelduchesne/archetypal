@@ -1,5 +1,4 @@
 """ExpandObjects module"""
-
 import logging as lg
 import shutil
 import subprocess
@@ -8,27 +7,28 @@ from io import StringIO
 from subprocess import CalledProcessError
 from threading import Thread
 
-from eppy.runner.run_functions import paths_from_version
+from packaging.version import Version
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
-from archetypal.eplus_interface.exceptions import EnergyPlusVersionError
-from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
 
 
 class ExpandObjectsExe(EnergyPlusProgram):
     """ExpandObject Wrapper"""
 
-    def __init__(self, idf):
+    def __init__(self, idf, tmp_dir):
         """Constructor."""
         super().__init__(idf)
+        self.running_directory = tmp_dir
 
     @property
     def cmd(self):
         """Get the command."""
-        return ["ExpandObjects"]
+        cmd_path = Path(shutil.which("ExpandObjects", path=self.eplus_home))
+        return [cmd_path]
 
 
 class ExpandObjectsThread(Thread):
@@ -56,55 +56,55 @@ class ExpandObjectsThread(Thread):
 
             # Move files into place
             tmp = self.tmp
-            self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
+            if self.idf.epw is not None:
+                self.epw = self.idf.epw.copy(tmp / "in.epw").expand()
             self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
             self.idd = self.idf.iddname.copy(tmp / "Energy+.idd").expand()
-            self.expandobjectsexe = Path(
-                shutil.which("ExpandObjects", path=self.eplus_home.expand())
-            ).copy2(tmp)
+            expand_object_exe = shutil.which("ExpandObjects", path=self.eplus_home)
+            self.expandobjectsexe = Path(expand_object_exe).copy2(tmp)
             self.run_dir = Path(tmp).expand()
 
             # Run ExpandObjects Program
-            self.cmd = ExpandObjectsExe(self.idf).cmd
-            with tqdm(
-                unit_scale=True,
-                miniters=1,
-                desc=f"ExpandObjects #{self.idf.position}-{self.idf.name}",
-                position=self.idf.position,
-            ) as progress:
+            with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+                self.cmd = ExpandObjectsExe(self.idf, self.run_dir).cmd
+                with tqdm(
+                    unit_scale=True,
+                    miniters=1,
+                    desc=f"{expand_object_exe} #{self.idf.position}-{self.idf.name}",
+                    position=self.idf.position,
+                ) as progress:
+                    self.p = subprocess.Popen(
+                        self.cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        shell=True,  # can use shell
+                        cwd=self.run_dir.abspath(),
+                    )
+                    start_time = time.time()
+                    # self.msg_callback("ExpandObjects started")
+                    for line in self.p.stdout:
+                        self.msg_callback(line.decode("utf-8").strip("\n"))
+                        progress.update()
 
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=True,  # can use shell
-                    cwd=self.run_dir.abspath(),
-                )
-                start_time = time.time()
-                # self.msg_callback("ExpandObjects started")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8"))
-                    progress.update()
+                    # We explicitly close stdout
+                    self.p.stdout.close()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+                    # Wait for process to complete
+                    self.p.wait()
 
-                # Wait for process to complete
-                self.p.wait()
-
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("ExpandObjects cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            f"ExpandObjects completed in "
-                            f"{time.time() - start_time:,.2f} seconds"
-                        )
-                        self.success_callback()
+                    # Communicate callbacks
+                    if self.cancelled:
+                        self.msg_callback("ExpandObjects cancelled")
+                        # self.cancelled_callback(self.std_out, self.std_err)
                     else:
-                        self.failure_callback()
+                        if self.p.returncode == 0:
+                            self.msg_callback(
+                                f"ExpandObjects completed in "
+                                f"{time.time() - start_time:,.2f} seconds"
+                            )
+                            self.success_callback()
+                        else:
+                            self.failure_callback()
         except Exception as e:
             self.exception = e
             if self.p is not None:
@@ -151,14 +151,12 @@ class ExpandObjectsThread(Thread):
 
     @property
     def eplus_home(self):
-        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
-        if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
-            )
+        """Get the version-dependant directory where executables are installed."""
+        if self.idf.file_version <= Version("7.2"):
+            install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            return Path(eplus_home)
+            install_dir = self.idf.file_version.current_install_dir
+        return install_dir
 
     def stop(self):
         if self.p.poll() is None:

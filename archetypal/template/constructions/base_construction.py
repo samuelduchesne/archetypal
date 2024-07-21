@@ -139,12 +139,7 @@ class ConstructionBase(UmiBase):
 
 
 class LayeredConstruction(ConstructionBase):
-    """Defines the layers of an :class:`OpaqueConstruction`.
-
-    Attributes:
-        Layers (list of archetypal.MaterialLayer): List of MaterialLayer objects from
-            outside to inside.
-    """
+    """Defines the layers of an :class:`OpaqueConstruction`."""
 
     __slots__ = ("_layers",)
 
@@ -152,6 +147,7 @@ class LayeredConstruction(ConstructionBase):
         """Initialize Layered Construction.
 
         Args:
+            Name: str: The name of the construction.
             Layers (list of (MaterialLayer or GasLayer)): A list of
                 :class:`MaterialLayer` or :class:`GasLayer` objects.
             **kwargs: Keywords passed to the :class:`ConstructionBase`
@@ -223,7 +219,7 @@ class LayeredConstruction(ConstructionBase):
                 transfer. Default is 273.15K (0C).
         """
         _conv_h = 4 + (4 * wind_speed)
-        _rad_h = 4 * 5.6697e-8 * self.outside_emissivity * (t_kelvin ** 3)
+        _rad_h = 4 * 5.6697e-8 * self.outside_emissivity * (t_kelvin**3)
         return _conv_h + _rad_h
 
     def in_h(self, t_kelvin=293.15, delta_t=15, height=1.0, angle=90, pressure=101325):
@@ -247,7 +243,7 @@ class LayeredConstruction(ConstructionBase):
                 Default is 101325 Pa for standard pressure at sea level.
         """
         _conv_h = self.in_h_c(t_kelvin, delta_t, height, angle, pressure)
-        _rad_h = 4 * 5.6697e-8 * self.inside_emissivity * (t_kelvin ** 3)
+        _rad_h = 4 * 5.6697e-8 * self.inside_emissivity * (t_kelvin**3)
         return _conv_h + _rad_h
 
     def in_h_c(
@@ -275,7 +271,7 @@ class LayeredConstruction(ConstructionBase):
         gas_material = GasMaterial("AIR")
         _ray_numerator = (
             (gas_material.density_at_temperature(t_kelvin, pressure) ** 2)
-            * (height ** 3)
+            * (height**3)
             * 9.81
             * gas_material.specific_heat_at_temperature(t_kelvin, pressure)
             * delta_t
@@ -331,3 +327,7 @@ class LayeredConstruction(ConstructionBase):
         return isinstance(other, LayeredConstruction) and all(
             [self.Layers == other.Layers]
         )
+
+    @property
+    def children(self):
+        return tuple(l.Material for l in self.Layers)

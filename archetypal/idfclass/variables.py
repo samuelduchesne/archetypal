@@ -1,12 +1,14 @@
 """EnergyPlus variables module."""
 import logging
+from typing import Iterable
 
 import pandas as pd
-from energy_pandas import EnergyDataFrame, EnergySeries
+from energy_pandas import EnergyDataFrame
 from geomeppy.patches import EpBunch
 
 from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
+from archetypal.utils import log
 
 
 class Variable:
@@ -74,8 +76,10 @@ class Variable:
                 # the environment_type is specified by the simulationcontrol.
                 try:
                     for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() \
-                                == "yes":
+                        if (
+                            ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower()
+                            == "yes"
+                        ):
                             environment_type = 3
                         else:
                             environment_type = 1
@@ -88,10 +92,11 @@ class Variable:
             reporting_frequency=bunch2db[reporting_frequency],
         )
         if report.empty:
-            logging.error(
+            log(
                 f"The variable is empty for environment_type `{environment_type}`. "
                 f"Try another environment_type (1, 2 or 3) or specify IDF.annual=True "
-                f"and rerun the simulation."
+                f"and rerun the simulation.",
+                level=logging.WARNING,
             )
         return EnergyDataFrame.from_reportdata(
             report,
@@ -111,15 +116,70 @@ class VariableGroup:
         self._properties = {}
 
         for i, variable in variables_dict.items():
-            variable_name = (
-                variable["Variable_Name"].replace(":", "__").replace(" ", "_")
-            )
+            variable_name = self.normalize_output_name(variable["Variable_Name"])
             self._properties[variable_name] = Variable(idf, variable)
             setattr(self, variable_name, self._properties[variable_name])
+
+    def normalize_output_name(self, variable):
+        return variable.replace(":", "__").replace(" ", "_")
 
     def __getitem__(self, variable_name):
         """Get item by key."""
         return self._properties[variable_name]
+
+    def collect_by_output_name(
+        self,
+        output_name,
+        reporting_frequency="Hourly",
+        units=None,
+        environment_type=None,
+        normalize=False,
+        sort_values=False,
+    ):
+        """
+
+        Args:
+            output_name: The name of an EnergyPlus output to be retrieved from the SQLite result file. This can also
+                be an array of output names for which all data collections should be retrieved.
+
+        Returns:
+
+        """
+        if isinstance(output_name, str):  # assume one output
+            output_name = self.normalize_output_name(output_name)
+            try:
+                out = self[output_name].values(
+                    units=units,
+                    reporting_frequency=reporting_frequency,
+                    environment_type=environment_type,
+                    normalize=normalize,
+                    sort_values=sort_values,
+                )
+            except KeyError:
+                log(f"{output_name} not available as an output for this model.")
+                out = EnergyDataFrame([])
+            return out
+        elif isinstance(output_name, Iterable):
+            output_values = {}
+            for an_output_name in output_name:
+                try:
+                    out = self[self.normalize_output_name(an_output_name)].values(
+                        units=units,
+                        reporting_frequency=reporting_frequency,
+                        environment_type=environment_type,
+                        normalize=normalize,
+                        sort_values=sort_values,
+                    )
+                except KeyError:
+                    log(f"{output_name} not available as an output for this model.")
+                else:
+                    output_values[an_output_name] = out
+            if not output_values:
+                return EnergyDataFrame([])
+            else:
+                return pd.concat(
+                    output_values, axis=1, names=["OutputVariable", "Key_Name"]
+                )
 
 
 class Variables:
@@ -158,7 +218,7 @@ class Variables:
             names=["key", "Key_Value", "Variable_Name", "Reporting_Frequency"],
         )
         variables.Reporting_Frequency = variables.Reporting_Frequency.str.replace(
-            r"\;.*", ""
+            r"\;.*", "", regex=True
         )
         for key, group in variables.groupby("key"):
             variable_dict = group.T.to_dict()

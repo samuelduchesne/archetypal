@@ -12,6 +12,7 @@ from archetypal.utils import log, reduce, timeit
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_facade",
@@ -79,6 +80,9 @@ class ZoneConstructionSet(UmiBase):
         self.IsFacadeAdiabatic = IsFacadeAdiabatic
         self.area = area
         self.volume = volume
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Facade(self):
@@ -460,7 +464,7 @@ class ZoneConstructionSet(UmiBase):
                     iter(
                         filter(
                             lambda x: getattr(x, attr, None) is not None,
-                            UmiBase.CREATED_OBJECTS,
+                            ZoneConstructionSet._CREATED_OBJECTS,
                         )
                     ),
                     None,
@@ -478,7 +482,7 @@ class ZoneConstructionSet(UmiBase):
                 )
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -534,9 +538,7 @@ class ZoneConstructionSet(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -548,6 +550,10 @@ class ZoneConstructionSet(UmiBase):
     def __copy__(self):
         """Get copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return self.Facade, self.Ground, self.Partition, self.Roof, self.Slab
 
 
 class SurfaceDispatcher:

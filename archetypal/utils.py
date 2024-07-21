@@ -4,35 +4,26 @@
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
-# OSMnx
-#
-# Copyright (c) 2019 Geoff Boeing https://geoffboeing.com/
-#
-# Part of the following code is a derivative work of the code from the OSMnx
-# project, which is licensed MIT License. This code therefore is also
-# licensed under the terms of the The MIT License (MIT).
-################################################################################
+
 import contextlib
 import datetime as dt
 import json
+import logging
 import logging as lg
+import math
 import multiprocessing
 import os
 import sys
 import time
-import unicodedata
-import warnings
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
 
 import numpy as np
 import pandas as pd
-from pandas.io.json import json_normalize
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
-from archetypal import __version__, settings
-from archetypal.eplus_interface.version import EnergyPlusVersion
+from archetypal import settings
 
 
 def config(
@@ -40,14 +31,13 @@ def config(
     logs_folder=settings.logs_folder,
     imgs_folder=settings.imgs_folder,
     cache_folder=settings.cache_folder,
-    use_cache=settings.use_cache,
+    cache_responses=settings.cache_responses,
     log_file=settings.log_file,
     log_console=settings.log_console,
     log_level=settings.log_level,
     log_name=settings.log_name,
     log_filename=settings.log_filename,
     useful_idf_objects=settings.useful_idf_objects,
-    umitemplate=settings.umitemplate,
     default_weight_factor="area",
     ep_version=settings.ep_version,
     debug=settings.debug,
@@ -60,7 +50,8 @@ def config(
         logs_folder (str): where to write the log files.
         imgs_folder (str): where to save figures.
         cache_folder (str): where to save the simulation results.
-        use_cache (bool): if True, use a local cache to save/retrieve DataPortal API
+        cache_responses (bool): if True, use a local cache to save/retrieve
+        DataPortal API
             calls for the same requests.
         log_file (bool): if true, save log output to a log file in logs_folder.
         log_console (bool): if true, print log output to the console.
@@ -77,7 +68,7 @@ def config(
         None
     """
     # set each global variable to the passed-in parameter value
-    settings.use_cache = use_cache
+    settings.cache_responses = cache_responses
     settings.cache_folder = Path(cache_folder).expand().makedirs_p()
     settings.data_folder = Path(data_folder).expand().makedirs_p()
     settings.imgs_folder = Path(imgs_folder).expand().makedirs_p()
@@ -88,13 +79,13 @@ def config(
     settings.log_name = log_name
     settings.log_filename = log_filename
     settings.useful_idf_objects = useful_idf_objects
-    settings.umitemplate = umitemplate
     settings.zone_weight.set_weigth_attr(default_weight_factor)
     settings.ep_version = ep_version
     settings.debug = debug
 
     # if logging is turned on, log that we are configured
     if settings.log_file or settings.log_console:
+        get_logger(name="archetypal")
         log("Configured archetypal")
 
 
@@ -103,9 +94,7 @@ def log(
     level=None,
     name=None,
     filename=None,
-    avoid_console=False,
     log_dir=None,
-    verbose=False,
 ):
     """Write a message to the log file and/or print to the the console.
 
@@ -124,44 +113,22 @@ def log(
         level = settings.log_level
     if name is None:
         name = settings.log_name
-    if filename is None:
+    if filename is None and settings.log_file:
         filename = settings.log_filename
-    logger = None
-    # if logging to file is turned on
-    if settings.log_file:
-        # get the current logger (or create a new one, if none), then log
-        # message at requested level
-        logger = get_logger(level=level, name=name, filename=filename, log_dir=log_dir)
-        if level == lg.DEBUG:
-            logger.debug(message)
-        elif level == lg.INFO:
-            logger.info(message)
-        elif level == lg.WARNING:
-            logger.warning(message)
-        elif level == lg.ERROR:
-            logger.error(message)
-
-    # if logging to console is turned on, convert message to ascii and print to
-    # the console
-    if settings.log_console or verbose or level == lg.ERROR and not avoid_console:
-        # capture current stdout, then switch it to the console, print the
-        # message, then switch back to what had been the stdout. this prevents
-        # logging to notebook - instead, it goes to console
-        standard_out = sys.stdout
-        sys.stdout = sys.__stdout__
-
-        # convert message to ascii for console display so it doesn't break
-        # windows terminals
-        message = (
-            unicodedata.normalize("NFKD", str(message))
-            .encode("ascii", errors="replace")
-            .decode()
-        )
-        tqdm.write(message)
-        sys.stdout = standard_out
-
-        if level == lg.WARNING:
-            warnings.warn(message)
+    # get the current logger (or create a new one, if none), then log
+    # message at requested level
+    if settings.log_file or settings.log_console:
+        logger = get_logger(name=name, filename=filename, log_dir=log_dir)
+    else:
+        logger = logging.getLogger(name)
+    if level == lg.DEBUG:
+        logger.debug(message)
+    elif level == lg.INFO:
+        logger.info(message)
+    elif level == lg.WARNING:
+        logger.warning(message)
+    elif level == lg.ERROR:
+        logger.error(message)
 
     return logger
 
@@ -191,8 +158,7 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
     logger = lg.getLogger(name)
 
     # if a logger with this name is not already set up
-    if not getattr(logger, "handler_set", None):
-
+    if len(logger.handlers) == 0:
         # get today's date and construct a log filename
         todays_date = dt.datetime.today().strftime("%Y_%m_%d")
 
@@ -205,17 +171,18 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         if not log_dir.exists():
             log_dir.makedirs_p()
         # create file handler and log formatter and set them up
-        try:
-            handler = lg.FileHandler(log_filename, encoding="utf-8")
-        except:
-            handler = lg.StreamHandler()
         formatter = lg.Formatter(
             "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"
         )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        if settings.log_file:
+            handler = lg.FileHandler(log_filename, encoding="utf-8")
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+        if settings.log_console:
+            handler = lg.StreamHandler(sys.stdout)
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
         logger.setLevel(level)
-        logger.handler_set = True
 
     return logger
 
@@ -397,7 +364,7 @@ def load_umi_template(json_template):
         with open(json_template) as f:
             dicts = json.load(f, object_pairs_hook=OrderedDict)
 
-            return [{key: json_normalize(value)} for key, value in dicts.items()]
+            return [{key: pd.json_normalize(value)} for key, value in dicts.items()]
     else:
         raise ValueError("File {} does not exist".format(json_template))
 
@@ -587,7 +554,7 @@ def parallel_process(
     position=0,
     debug=False,
     executor=None,
-):
+) -> dict:
     """A parallel version of the map function with a progress b
 
     Examples:
@@ -625,8 +592,6 @@ def parallel_process(
     else:
         _executor_factory = executor
 
-    from tqdm import tqdm
-
     if processors == -1:
         processors = min(len(in_dict), multiprocessing.cpu_count())
 
@@ -640,15 +605,16 @@ def parallel_process(
     }
 
     if processors == 1:
-        futures = []
-        out = []
-        for a in tqdm(in_dict, **kwargs):
-            if use_kwargs:
-                futures.append(submit(function, **in_dict[a]))
-            else:
-                futures.append(submit(function, in_dict[a]))
-        for job in futures:
-            out.append(job)
+        if use_kwargs:
+            out = {
+                filename: submit(function, **in_dict[filename])
+                for filename in tqdm(in_dict, **kwargs)
+            }
+        else:
+            out = {
+                filename: submit(function, in_dict[filename])
+                for filename in tqdm(in_dict, **kwargs)
+            }
     else:
         with _executor_factory(
             max_workers=processors,
@@ -658,43 +624,44 @@ def parallel_process(
                 settings.logs_folder,
                 settings.imgs_folder,
                 settings.cache_folder,
-                settings.use_cache,
+                settings.cache_responses,
                 settings.log_file,
                 settings.log_console,
                 settings.log_level,
                 settings.log_name,
                 settings.log_filename,
                 settings.useful_idf_objects,
-                settings.umitemplate,
                 "area",
                 settings.ep_version,
                 settings.debug,
             ),
         ) as executor:
-            out = []
-            futures = []
+            out = {}
 
             if use_kwargs:
-                for a in in_dict:
-                    future = executor.submit(function, **in_dict[a])
-                    futures.append(future)
+                futures = {
+                    executor.submit(function, **in_dict[filename]): filename
+                    for filename in in_dict
+                }
             else:
-                for a in in_dict:
-                    future = executor.submit(function, in_dict[a])
-                    futures.append(future)
+                futures = {
+                    executor.submit(function, in_dict[filename]): filename
+                    for filename in in_dict
+                }
 
             # Print out the progress as tasks complete
-            for job in tqdm(as_completed(futures), **kwargs):
+            for future in tqdm(as_completed(futures), **kwargs):
                 # Read result from future
+                filename = futures[future]
                 try:
-                    result_done = job.result()
+                    result_done = future.result()
                 except Exception as e:
                     if debug:
                         lg.warning(str(e))
                         raise e
                     result_done = e
                 # Append to the list of results
-                out.append(result_done)
+                out[filename] = result_done
     return out
 
 
@@ -716,6 +683,8 @@ def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
     elif refobj.key.upper() == "ZONE":
         return name in refobj.Name
     elif refobj.key.upper() == "ZONELIST":
+        from archetypal import settings, __version__
+
         raise NotImplementedError(
             f"Checking against a ZoneList is "
             f"not yet supported in archetypal "
@@ -796,3 +765,18 @@ class CustomJSONEncoder(json.JSONEncoder):
             return bool(obj)
 
         return obj
+
+
+def signif(x, digits=4):
+    """Return number rounded to significant digits."""
+    if x == 0 or not math.isfinite(x):
+        return x
+    digits -= math.ceil(math.log10(abs(x)))
+    return round(x, digits)
+
+
+def clear_cache():
+    """Clear the cache."""
+    import shutil
+
+    shutil.rmtree(settings.cache_folder)

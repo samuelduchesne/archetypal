@@ -11,6 +11,7 @@ from tabulate import tabulate
 
 from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
+from archetypal.utils import log
 
 
 class Meter:
@@ -66,6 +67,20 @@ class Meter:
         Returns:
             EnergySeries: The time-series object.
         """
+        assert reporting_frequency in [
+            "Timestep",
+            "Hourly",
+            "Daily",
+            "Monthly",
+            "RunPeriod",
+            "Environment",
+            "Annual",
+            "Detailed",
+        ], (
+            "reporting_frequency is case sensitive and must be one of 'Timestep', "
+            "'Hourly', 'Daily', 'Monthly', 'RunPeriod', 'Environment', 'Annual' or "
+            "'Detailed'"
+        )
         self._epobject.Reporting_Frequency = reporting_frequency.lower()
         if self._epobject not in self._idf.idfobjects[self._epobject.key]:
             self._idf.addidfobject(self._epobject)
@@ -83,7 +98,10 @@ class Meter:
                 # the environment_type is specified by the simulationcontrol.
                 try:
                     for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes":
+                        if (
+                            ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower()
+                            == "yes"
+                        ):
                             environment_type = 3
                         else:
                             environment_type = 1
@@ -96,10 +114,11 @@ class Meter:
             reporting_frequency=bunch2db[reporting_frequency],
         )
         if report.empty:
-            logging.error(
+            log(
                 f"The variable is empty for environment_type `{environment_type}`. "
                 f"Try another environment_type (1, 2 or 3) or specify IDF.annual=True "
-                f"and rerun the simulation."
+                f"and rerun the simulation.",
+                level=logging.ERROR,
             )
         return EnergySeries.from_reportdata(
             report,
@@ -135,11 +154,9 @@ class MeterGroup:
         # members of an object
         members = []
         for i in inspect.getmembers(self):
-
             # to remove private and protected
             # functions
             if not i[0].startswith("_"):
-
                 # To remove other methods that
                 # do not start with an underscore
                 if not inspect.ismethod(i[1]):
@@ -183,7 +200,9 @@ class Meters:
         meters = pd.read_csv(
             mdd, skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"]
         )
-        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace(r"\;.*", "")
+        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace(
+            r"\;.*", "", regex=True
+        )
         for key, group in meters.groupby("key"):
             meters_dict = group.T.to_dict()
             setattr(
@@ -198,11 +217,9 @@ class Meters:
         # members of an object
         members = []
         for i in inspect.getmembers(self):
-
             # to remove private and protected
             # functions
             if not i[0].startswith("_"):
-
                 # To remove other methods that
                 # do not start with an underscore
                 if not inspect.ismethod(i[1]):

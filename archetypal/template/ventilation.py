@@ -62,6 +62,7 @@ class VentilationSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
+    _CREATED_OBJECTS = []
 
     __slots__ = (
         "_infiltration",
@@ -198,6 +199,9 @@ class VentilationSetting(UmiBase):
         self.area = area
         self.volume = volume
 
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
+
     @property
     def NatVentSchedule(self):
         """Get or set the natural ventilation schedule.
@@ -297,7 +301,7 @@ class VentilationSetting(UmiBase):
         )
         if value:
             assert (
-                self.ScheduledVentilationAch > 0
+                self.ScheduledVentilationAch >= 0
                 and self.ScheduledVentilationSchedule is not None
             ), (
                 f"IsScheduledVentilationOn cannot be 'True' if ScheduledVentilationAch "
@@ -404,12 +408,13 @@ class VentilationSetting(UmiBase):
             )
             self._ventilation_type = VentilationType[value]
         elif checkers.is_numeric(value):
-            assert VentilationType[value], (
+            assert VentilationType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in VentilationType)}"
             )
             self._ventilation_type = VentilationType(value)
-        self._ventilation_type = value
+        elif isinstance(value, VentilationType):
+            self._ventilation_type = value
 
     @property
     def Afn(self):
@@ -566,7 +571,7 @@ class VentilationSetting(UmiBase):
             IsScheduledVentilationOn,
             ScheduledVentilationAch,
             ScheduledVentilationSetpoint,
-        ) = do_scheduled_ventilation(index, sched_df, zone)
+        ) = do_scheduled_ventilation(index, sched_df, zone, zone_ep)
 
         z_vent = cls(
             Name=name,
@@ -677,24 +682,25 @@ class VentilationSetting(UmiBase):
 
     def validate(self):
         """Validate object and fill in missing values."""
-        if not self.NatVentSchedule:
+        if self.NatVentSchedule is None:
             self.NatVentSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
-        if not self.ScheduledVentilationSchedule:
+        if self.ScheduledVentilationSchedule is None:
             self.ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
             )
 
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
             validate:
         """
-        self.validate()
+        if validate:
+            self.validate()
 
         return dict(
             Afn=self.Afn,
@@ -728,9 +734,7 @@ class VentilationSetting(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __key__(self):
         """Get a tuple of attributes. Useful for hashing and comparing."""
@@ -864,16 +868,16 @@ class VentilationSetting(UmiBase):
             )
         else:
             infiltration_epbunch = None
-            log("No epbunch created since IsInfiltrationOn == False.")
+            log("No 'ZONEINFILTRATION:DESIGNFLOWRATE' created since IsInfiltrationOn == False.")
 
         if self.IsScheduledVentilationOn:
             ventilation_epbunch = idf.newidfobject(
                 key="ZONEVENTILATION:DESIGNFLOWRATE",
                 Name=f"{zone_name} Ventilation",
                 Zone_or_ZoneList_Name=zone_name,
-                Schedule_Name=self.ScheduledVentilationSchedule.to_year_week_day()[
-                    0
-                ].to_epbunch(idf).Name,  # take the YearSchedule and get the name.
+                Schedule_Name=self.ScheduledVentilationSchedule.to_year_week_day()[0]
+                .to_epbunch(idf)
+                .Name,  # take the YearSchedule and get the name.
                 Design_Flow_Rate_Calculation_Method="AirChanges/Hour",
                 Design_Flow_Rate="",
                 Flow_Rate_per_Zone_Floor_Area="",
@@ -900,7 +904,7 @@ class VentilationSetting(UmiBase):
             )
         else:
             ventilation_epbunch = None
-            log("No epbunch created since IsScheduledVentilationOn == False.")
+            log("No 'ZONEVENTILATION:DESIGNFLOWRATE' created since IsScheduledVentilationOn == False.")
 
         if self.IsNatVentOn:
             natural_epbunch = idf.newidfobject(
@@ -927,9 +931,13 @@ class VentilationSetting(UmiBase):
             )
         else:
             natural_epbunch = None
-            log("No epbunch created since IsNatVentOn == False.")
+            log("No 'ZONEVENTILATION:WINDANDSTACKOPENAREA' created since IsNatVentOn == False.")
 
         return infiltration_epbunch, ventilation_epbunch, natural_epbunch
+
+    @property
+    def children(self):
+        return self.NatVentSchedule, self.ScheduledVentilationSchedule
 
 
 def do_infiltration(index, inf_df):
@@ -1034,7 +1042,7 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
     )
 
 
-def do_scheduled_ventilation(index, scd_df, zone):
+def do_scheduled_ventilation(index, scd_df, zone, zone_ep):
     """Get schedule ventilation information of the zone.
 
     Args:
@@ -1046,12 +1054,12 @@ def do_scheduled_ventilation(index, scd_df, zone):
         try:
             IsScheduledVentilationOn = any(scd_df.loc[index, "Name"])
             schedule_name_ = scd_df.loc[index, "Schedule Name"]
-            epbunch = zone.idf.schedules_dict[schedule_name_.upper()]
+            epbunch = zone_ep.theidf.schedules_dict[schedule_name_.upper()]
             ScheduledVentilationSchedule = UmiSchedule.from_epbunch(epbunch)
             ScheduledVentilationAch = scd_df.loc[index, "ACH - Air Changes per Hour"]
             ScheduledVentilationSetpoint = resolve_temp(
                 scd_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
-                zone.idf,
+                zone_ep.theidf,
             )
         except Exception:
             ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
@@ -1178,7 +1186,10 @@ def nominal_ventilation(df):
     )
     tbpiv = (
         tbpiv.reset_index()
-        .groupby(["Archetype", "Zone Name", "Fan Type {Exhaust;Intake;Natural}"])
+        .groupby(
+            ["Archetype", "Zone Name", "Fan Type {Exhaust;Intake;Natural}"],
+            as_index=False,
+        )
         .apply(nominal_ventilation_aggregation)
     )
     return tbpiv
@@ -1200,8 +1211,13 @@ def nominal_ventilation_aggregation(x):
         aggregated accordingly.
     """
     how_dict = {
+        "Archetype": x["Archetype"].iloc[0],
+        "Zone Name": x["Zone Name"].iloc[0],
         "Name": top(x["Name"], x, "Zone Floor Area {m2}"),
         "Schedule Name": top(x["Schedule Name"], x, "Zone Floor Area {m2}"),
+        "Fan Type {Exhaust;Intake;Natural}": top(
+            x["Fan Type {Exhaust;Intake;Natural}"], x, "Zone Floor Area {m2}"
+        ),
         "Zone Floor Area {m2}": top(
             x["Zone Floor Area {m2}"], x, "Zone Floor Area {m2}"
         ),
@@ -1217,7 +1233,7 @@ def nominal_ventilation_aggregation(x):
         "Volume Flow Rate/person Area {m3/s/person}": weighted_mean(
             x.filter(like="Volume Flow Rate/person Area").squeeze(axis=1),
             x,
-            "Zone Floor " "Area {m2}",
+            "Zone Floor Area {m2}",
         ),
         "ACH - Air Changes per Hour": weighted_mean(
             x["ACH - Air Changes per Hour"], x, "Zone Floor Area {m2}"

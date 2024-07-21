@@ -5,6 +5,7 @@ different forms.
 """
 import io
 import itertools
+import logging
 import logging as lg
 import math
 import os
@@ -19,7 +20,9 @@ from collections import defaultdict
 from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
-from typing import IO, Iterable, Optional, Union
+from typing import IO, Iterable, Optional, Tuple, Union, Literal
+
+ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
 
 import eppy
 import pandas as pd
@@ -31,16 +34,12 @@ from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from geomeppy import IDF as GeomIDF
 from geomeppy.geom.polygons import Polygon3D
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
-from geomeppy.recipes import (
-    _has_correct_orientation,
-    _is_window,
-    window_vertices_given_wall,
-)
+from geomeppy.recipes import _is_window, window_vertices_given_wall
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
 from path import Path
 from tabulate import tabulate
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal.eplus_interface.basement import BasementThread
 from archetypal.eplus_interface.energy_plus import EnergyPlusThread
@@ -120,6 +119,7 @@ class IDF(GeomIDF):
             "design_day",
             "readvars",
             "as_version",
+            "reporting_frequency",
         ],
         "variables": [
             "idfobjects",
@@ -128,6 +128,7 @@ class IDF(GeomIDF):
             "design_day",
             "readvars",
             "as_version",
+            "reporting_frequency",
         ],
         "sim_id": [
             "idfobjects",
@@ -181,7 +182,7 @@ class IDF(GeomIDF):
         self,
         idfname: Optional[Union[str, IO, Path]] = None,
         epw=None,
-        as_version: Union[str, EnergyPlusVersion] = settings.ep_version,
+        as_version: Union[str, EnergyPlusVersion] = None,
         annual=False,
         design_day=False,
         expandobjects=False,
@@ -199,7 +200,9 @@ class IDF(GeomIDF):
         name=None,
         output_directory=None,
         outputtype="standard",
+        encoding=None,
         iddname: Optional[Union[str, IO, Path]] = None,
+        reporting_frequency: ReportingFrequency = "Monthly",
         **kwargs,
     ):
         """Initialize an IDF object.
@@ -222,6 +225,10 @@ class IDF(GeomIDF):
             convert (bool): If True, only convert IDF->epJSON or epJSON->IDF.
             outputtype (str): Specifies the idf string representation of the model.
                 Choices are: "standard", "nocomment1", "nocomment2", "compressed".
+            encoding (str): Specify the encoding of the idf file to be parsed.
+            reporting_frequency (str): Choice of "Annual", "Monthly", "Daily",
+                "Hourly", "Timestep". Defaults to "Monthly". Is used in the
+                initialization of the self.Outputs object.
 
         EnergyPlus args:
             tmp_dir=None,
@@ -230,15 +237,15 @@ class IDF(GeomIDF):
             include=None,
             keep_original=True,
         """
-        # Set independents to there original values
+        # Set independents to their original values
         if include is None:
             include = []
         self.idfname = idfname
         self.epw = epw
+        self.as_version = as_version
         self.file_version = kwargs.get("file_version", None)
-        self.as_version = as_version if as_version else settings.ep_version
         self._custom_processes = custom_processes
-        self._include = include
+        self.include = include
         self.keep_data_err = keep_data_err
         self._keep_data = keep_data
         self.output_suffix = output_suffix
@@ -251,6 +258,10 @@ class IDF(GeomIDF):
         self.annual = annual
         self.prep_outputs = prep_outputs
         self._position = position
+        self._translated = False
+        self._rotated = False
+        self._file_encoding = encoding
+        self._reporting_frequency = reporting_frequency
         self.output_prefix = None
         self.name = (
             name
@@ -296,27 +307,34 @@ class IDF(GeomIDF):
             raise e
         else:
             self._original_cache = hash_model(self)
-            if self.file_version < self.as_version:
-                self.upgrade(to_version=self.as_version, overwrite=False)
+            if self.as_version is not None:
+                if self.file_version < self.as_version:
+                    self.upgrade(to_version=self.as_version, overwrite=False)
         finally:
             # Set model outputs
-            self._outputs = Outputs(idf=self)
+            self._outputs = Outputs(
+                idf=self,
+                include_html=False,
+                include_sqlite=False,
+                reporting_frequency=reporting_frequency,
+            )
             if self.prep_outputs:
-                (
-                    self._outputs.add_basics()
-                    .add_umi_template_outputs()
-                    .add_custom(outputs=self.prep_outputs)
-                    .add_profile_gas_elect_ouputs()
-                    .apply()
-                )
+                self._outputs.include_html = True
+                self._outputs.include_sqlite = True
+                self._outputs.add_basics()
+                if isinstance(self.prep_outputs, list):
+                    self._outputs.add_custom(outputs=self.prep_outputs)
+                self._outputs.add_profile_gas_elect_outputs()
+                self._outputs.add_umi_template_outputs()
+                self._outputs.apply()
 
     @property
     def outputtype(self):
+        """Get or set the outputtype for the idf string representation of self."""
         return self._outputtype
 
     @outputtype.setter
     def outputtype(self, value):
-        """Get or set the outputtype for the idf string representation of self."""
         assert value in self.OUTPUTTYPES, (
             f'Invalid input "{value}" for output_type.'
             f"\nOutput type must be one of the following: {self.OUTPUTTYPES}"
@@ -360,30 +378,39 @@ class IDF(GeomIDF):
             **kwargs: keyword arguments passed to the IDF constructor.
 
         Returns:
-            (IDF): An IDF model.
+            IDF: An IDF model.
         """
         from pathlib import Path as Pathlib
 
         example_name = Path(example_name)
-        file = next(
-            iter(
-                Pathlib(
-                    EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
-                ).rglob(f"{example_name.stem}.idf")
-            )
+        example_files_dir: Path = (
+            EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
         )
+        try:
+            file = next(
+                iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf"))
+            )
+        except StopIteration:
+            full_list = list(
+                map(lambda x: str(x.name), example_files_dir.files("*.idf"))
+            )
+            raise ValueError(f"Choose from: {sorted(full_list)}")
         if epw is not None:
             epw = Path(epw)
+
             if not epw.exists():
-                epw = next(
-                    iter(
-                        Pathlib(
-                            EnergyPlusVersion.current().current_install_dir
-                            / "WeatherData"
-                        ).rglob(f"{epw.stem}.epw")
-                    ),
-                    epw,
+                dir_weather_data_ = (
+                    EnergyPlusVersion.current().current_install_dir / "WeatherData"
                 )
+                try:
+                    epw = next(
+                        iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw"))
+                    )
+                except StopIteration:
+                    full_list = list(
+                        map(lambda x: str(x.name), dir_weather_data_.files("*.epw"))
+                    )
+                    raise ValueError(f"Choose EPW from: {sorted(full_list)}")
         return cls(file, epw=epw, **kwargs)
 
     def setiddname(self, iddname, testing=False):
@@ -441,15 +468,15 @@ class IDF(GeomIDF):
 
     def _read_idf(self):
         """Read idf file and return bunches."""
-        self._idd_info = IDF.IDD.get(str(self.as_version), None)
-        self._idd_index = IDF.IDDINDEX.get(str(self.as_version), None)
-        self._block = IDF.BLOCK.get(str(self.as_version), None)
+        self._idd_info = IDF.IDD.get(str(self.file_version), None)
+        self._idd_index = IDF.IDDINDEX.get(str(self.file_version), None)
+        self._block = IDF.BLOCK.get(str(self.file_version), None)
         bunchdt, block, data, commdct, idd_index, versiontuple = idfreader1(
             self.idfname, self.iddname, self, commdct=self._idd_info, block=self._block
         )
-        self._block = IDF.BLOCK[str(self.as_version)] = block
-        self._idd_info = IDF.IDD[str(self.as_version)] = commdct
-        self._idd_index = IDF.IDDINDEX[str(self.as_version)] = idd_index
+        self._block = IDF.BLOCK[str(self.file_version)] = block
+        self._idd_info = IDF.IDD[str(self.file_version)] = commdct
+        self._idd_index = IDF.IDDINDEX[str(self.file_version)] = idd_index
         self._idfobjects = bunchdt
         self._model = data
         self._idd_version = versiontuple
@@ -500,11 +527,12 @@ class IDF(GeomIDF):
     def iddname(self) -> Path:
         """Get or set the iddname path used to parse the idf model."""
         if self._iddname is None:
-            if self.file_version > self.as_version:
-                raise EnergyPlusVersionError(
-                    f"{self.as_version} cannot be lower then "
-                    f"the version number set in the file: {self.file_version}"
-                )
+            if self.as_version is not None:
+                if self.file_version > self.as_version:
+                    raise EnergyPlusVersionError(
+                        f"{self.as_version} cannot be lower then "
+                        f"the version number set in the file: {self.file_version}"
+                    )
             self._iddname = self.file_version.current_idd_path
         return self._iddname
 
@@ -518,16 +546,17 @@ class IDF(GeomIDF):
     def file_version(self) -> EnergyPlusVersion:
         """Return the :class:`EnergyPlusVersion` of the idf text file."""
         if self._file_version is None:
-            return EnergyPlusVersion(get_idf_version(self.idfname))
+            return EnergyPlusVersion(
+                get_idf_version(self.idfname, encoding=self.encoding)
+            )
         else:
             return self._file_version
 
     @file_version.setter
     def file_version(self, value):
-        if value is None:
-            self._file_version = None
-        else:
-            self._file_version = EnergyPlusVersion(value)
+        if value is not None:
+            value = EnergyPlusVersion(value)
+        self._file_version = value
 
     @property
     def custom_processes(self) -> list:
@@ -538,6 +567,19 @@ class IDF(GeomIDF):
     def include(self) -> list:
         """Return list of external files attached to model."""
         return self._include
+
+    @include.setter
+    def include(self, value):
+        self._include = value
+
+    @property
+    def encoding(self) -> str:
+        """Get or set the file encoding."""
+        return self._file_encoding
+
+    @encoding.setter
+    def encoding(self, value):
+        self._file_encoding = value
 
     @property
     def keep_data_err(self) -> bool:
@@ -577,6 +619,8 @@ class IDF(GeomIDF):
     def idfname(self) -> Union[Path, StringIO]:
         """Path: The path of the active (parsed) idf model."""
         if self._idfname is None:
+            if self.as_version is None:
+                self.as_version = settings.ep_version
             idfname = StringIO(f"VERSION, {self.as_version};")
             self._idfname = idfname
             self._reset_dependant_vars("idfname")
@@ -710,19 +754,27 @@ class IDF(GeomIDF):
 
     @prep_outputs.setter
     def prep_outputs(self, value):
+        assert isinstance(value, (bool, list)), (
+            f"Expected bool or list of dict for "
+            f"SimulationOutput outputs. Got {type(value)}."
+        )
         self._prep_outputs = value
 
     @property
     def as_version(self):
         """Specify the desired :class:`EnergyPlusVersion` for the IDF model."""
-        if self._as_version is None:
-            self._as_version = EnergyPlusVersion.current()
-        return EnergyPlusVersion(self._as_version)
+        if self._as_version is not None:
+            return EnergyPlusVersion(self._as_version)
+        else:
+            return self._as_version
 
     @as_version.setter
     def as_version(self, value):
         # Parse value and check if above or bellow
-        self._as_version = EnergyPlusVersion(value)
+        if value is None:
+            self._as_version = None
+        else:
+            self._as_version = EnergyPlusVersion(value)
 
     @property
     def output_directory(self) -> Path:
@@ -735,8 +787,7 @@ class IDF(GeomIDF):
         """
         if self._output_directory is None:
             cache_filename = self._original_cache
-            output_directory = settings.cache_folder / cache_filename
-            self._output_directory = output_directory.expand()
+            self._output_directory = settings.cache_folder / cache_filename
         return Path(self._output_directory)
 
     @output_directory.setter
@@ -813,7 +864,7 @@ class IDF(GeomIDF):
         Uses the current module's ep_version.
         """
         return (
-            EnergyPlusVersion.current().current_install_dir
+            EnergyPlusVersion.latest().current_install_dir
             / "PreProcess"
             / "IDFVersionUpdater"
         ).expand()
@@ -1299,11 +1350,12 @@ class IDF(GeomIDF):
                 True)
             readvars (bool): Run ReadVarsESO after simulation (default: False)
             output_prefix (str, optional): Prefix for output file names.
-            output_suffix (str, optional): Suffix style for output file names
-                (default: L) Choices are:
-                    - L: Legacy (e.g., eplustbl.csv)
-                    - C: Capital (e.g., eplusTable.csv)
-                    - D: Dash (e.g., eplus-table.csv)
+            output_suffix (str, optional): Suffix style for output file names (
+                default: L). Choices are:
+
+                - L: Legacy (e.g., eplustbl.csv)
+                - C: Capital (e.g., eplusTable.csv)
+                - D: Dash (e.g., eplus-table.csv)
             version (bool, optional): Display version information (default: False)
             verbose (str): Set verbosity of runtime messages (default: v) v: verbose
                 q: quiet
@@ -1339,19 +1391,29 @@ class IDF(GeomIDF):
             outputs.
 
         """
-        if (
-            self.simulation_dir.exists() and not force
-        ):  # don't simulate if results exists
-            return self
         # First, update keys with new values
         for key, value in kwargs.items():
             if f"_{key}" in self.__dict__.keys():
                 setattr(self, key, value)
+            else:
+                log(
+                    f"IDF.simulate got invalid keyword '{key}'. Ignored",
+                    level=logging.WARNING,
+                )
 
-        if self.as_version != EnergyPlusVersion(self.idd_version):
-            raise EnergyPlusVersionError(
-                None, self.idfname, EnergyPlusVersion(self.idd_version), self.as_version
-            )
+        if (
+            self.simulation_dir.exists() and not force
+        ):  # don't simulate if results exists
+            return self
+
+        if self.as_version is not None:
+            if self.as_version != EnergyPlusVersion(self.idd_version):
+                raise EnergyPlusVersionError(
+                    None,
+                    self.idfname,
+                    EnergyPlusVersion(self.idd_version),
+                    self.as_version,
+                )
 
         include = self.include
         if isinstance(include, str):
@@ -1663,13 +1725,13 @@ class IDF(GeomIDF):
             tmp = (
                 self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]
             ).makedirs_p()
-            slab_thread = TransitionThread(self, tmp, overwrite=overwrite)
-            slab_thread.start()
-            slab_thread.join()
-            while slab_thread.is_alive():
+            transition_thread = TransitionThread(self, tmp, overwrite=overwrite)
+            transition_thread.start()
+            transition_thread.join()
+            while transition_thread.is_alive():
                 time.sleep(1)
             tmp.rmtree(ignore_errors=True)
-            e = slab_thread.exception
+            e = transition_thread.exception
             if e is not None:
                 raise e
 
@@ -1992,6 +2054,17 @@ class IDF(GeomIDF):
         self._reset_dependant_vars("idfobjects")
         return new_object
 
+    def addidfobjects(self, new_objects):
+        """Add multiple IDF objects to the model.
+
+        Resetting dependent variables will wait after all objects have been added.
+        """
+        for new_object in new_objects:
+            key = new_object.key.upper()
+            self.idfobjects[key].append(new_object)
+        self._reset_dependant_vars("idfobjects")
+        return new_objects
+
     def removeidfobject(self, idfobject):
         """Remove an IDF object from the model.
 
@@ -2004,6 +2077,8 @@ class IDF(GeomIDF):
 
     def removeidfobjects(self, idfobjects: Iterable[EpBunch]):
         """Remove an IDF object from the model.
+
+        Resetting dependent variables will wait after all objects have been removed.
 
         Args:
             idfobjects: The object to remove from the model.
@@ -2049,11 +2124,15 @@ class IDF(GeomIDF):
             namebunch(abunch, aname)
         for k, v in kwargs.items():
             try:
-                abunch[k] = v
+                abunch[k] = "" if v is None else v
             except BadEPFieldError as e:
                 # Backwards compatibility
                 if str(e) == "unknown field Key_Name":
                     abunch["Name"] = v
+                elif str(e) == "unknown field Zone_or_ZoneList_Name":
+                    abunch["Zone_or_ZoneList_or_Space_or_SpaceList_Name"] = v
+                elif str(e) == "unknown field People_per_Zone_Floor_Area":
+                    abunch["People_per_Floor_Area"] = v
                 else:
                     raise e
         abunch.theidf = self
@@ -2229,7 +2308,6 @@ class IDF(GeomIDF):
         construction: Optional[str] = None,
         force: bool = False,
         wwr_map: Optional[dict] = None,
-        orientation: Optional[str] = None,
         surfaces: Optional[Iterable] = None,
     ):
         """Set Window-to-Wall Ratio of external walls.
@@ -2250,8 +2328,6 @@ class IDF(GeomIDF):
             force: True to create windows on walls that don't have any.
             wwr_map: Mapping from wall orientation (azimuth) to WWR, e.g.
                 {180: 0.25, 90: 0.2}.
-            orientation: One of "north", "east", "south", "west". Walls within 45
-                degrees will be affected.
             surfaces: Iterable of surfaces to set the window to wall ratio of.
         """
         # Taken from `geomeppy.idf.IDF.set_wwr` since pull request is not being
@@ -2262,64 +2338,56 @@ class IDF(GeomIDF):
         except IndexError:
             ggr = None
 
-            # check orientation
-        orientations = {
-            "north": 0.0,
-            "east": 90.0,
-            "south": 180.0,
-            "west": 270.0,
-            None: None,
-        }
-        degrees = orientations.get(orientation, None)
-        external_walls = filter(
-            lambda x: x.Outside_Boundary_Condition.lower() == "outdoors",
-            surfaces or self.getsurfaces("wall"),
-        )
-        external_walls = filter(
-            lambda x: _has_correct_orientation(x, degrees), external_walls
-        )
-        subsurfaces = self.getsubsurfaces()
-        base_wwr = wwr
-        for wall in external_walls:
-            # get any subsurfaces on the wall
-            wall_subsurfaces = list(
-                filter(lambda x: x.Building_Surface_Name == wall.Name, subsurfaces)
-            )
+        wwr_map = wwr_map or {0: wwr, 90: wwr, 180: wwr, 270: wwr}
 
-            if wall_subsurfaces and not construction:
-                constructions = list(
-                    {
-                        wss.Construction_Name
-                        for wss in wall_subsurfaces
-                        if _is_window(wss)
-                    }
-                )
-                if len(constructions) > 1:
-                    raise ValueError(
-                        'Not all subsurfaces on wall "{name}" have the same construction'.format(
-                            name=wall.Name
-                        )
-                    )
-                construction = constructions[0]
-            wwr = (wwr_map or {}).get(round(wall.azimuth), base_wwr)
-            if not wwr:
-                continue
-            if len(wall_subsurfaces) == 0 and not force:
-                # Don't create windows on walls that don't have any windows already.
-                continue
-            # remove all subsurfaces
-            for ss in wall_subsurfaces:
-                self.removeidfobject(ss)
-            coords = window_vertices_given_wall(wall, wwr)
-            window = self.newidfobject(
-                "FENESTRATIONSURFACE:DETAILED",
-                Name="%s window" % wall.Name,
-                Surface_Type="Window",
-                Construction_Name=construction or "",
-                Building_Surface_Name=wall.Name,
-                View_Factor_to_Ground="autocalculate",  # from the surface angle
+        # check orientation
+        for degrees, wwr in wwr_map.items():
+            external_walls = filter(
+                lambda x: x.Outside_Boundary_Condition.lower() == "outdoors",
+                surfaces or self.getsurfaces("wall"),
             )
-            window.setcoords(coords, ggr)
+            external_walls = filter(
+                lambda x: closest_cardinal_angle(x.azimuth) == degrees, external_walls
+            )
+            subsurfaces = self.getsubsurfaces()
+            for wall in external_walls:
+                # get any subsurfaces on the wall
+                wall_subsurfaces = list(
+                    filter(lambda x: x.Building_Surface_Name == wall.Name, subsurfaces)
+                )
+
+                if wall_subsurfaces and not construction:
+                    constructions = list(
+                        {
+                            wss.Construction_Name
+                            for wss in wall_subsurfaces
+                            if _is_window(wss)
+                        }
+                    )
+                    if len(constructions) > 1:
+                        raise ValueError(
+                            'Not all subsurfaces on wall "{name}" have the same construction'.format(
+                                name=wall.Name
+                            )
+                        )
+                    construction = constructions[0]
+                if len(wall_subsurfaces) == 0 and not force:
+                    # Don't create windows on walls that don't have any windows already.
+                    continue
+                # remove all subsurfaces
+                for ss in wall_subsurfaces:
+                    self.rename(ss.key.upper(), ss.Name, "%s window" % wall.Name)
+                    self.removeidfobject(ss)
+                coords = window_vertices_given_wall(wall, wwr)
+                window = self.newidfobject(
+                    "FENESTRATIONSURFACE:DETAILED",
+                    Name="%s window" % wall.Name,
+                    Surface_Type="Window",
+                    Construction_Name=construction or "",
+                    Building_Surface_Name=wall.Name,
+                    View_Factor_to_Ground="autocalculate",  # from the surface angle
+                )
+                window.setcoords(coords, ggr)
 
     def _energy_series(
         self,
@@ -2350,7 +2418,7 @@ class IDF(GeomIDF):
     def _execute_transitions(self, idf_file, to_version, **kwargs):
         trans_exec = {
             EnergyPlusVersion(
-                re.search(r"to-V(([\d])-([\d])-([\d]))", executable).group(1)
+                re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", executable).group(1)
             ): executable
             for executable in self.idfversionupdater_dir.files("Transition-V*")
         }
@@ -2401,6 +2469,275 @@ class IDF(GeomIDF):
                             log_dir=self.idfversionupdater_dir,
                         )
 
+    def to_world(self):
+        """Translate surfaces and subsurfaces to 'World' coordinates.
+
+        Notes:
+            Shading surfaces are already specified in world coordinates. Daylighting
+            reference points are also translated in this method.
+        """
+        from geomeppy.geom.vectors import Vector3D
+        from geomeppy.recipes import translate, translate_coords
+
+        if (
+            "world"
+            in [
+                o.Coordinate_System.lower()
+                for o in self.idfobjects["GLOBALGEOMETRYRULES"]
+            ]
+            or self.translated
+        ):
+            log("Model already set as World coordinates", level=lg.WARNING)
+            return
+        zone_angles = set(
+            z.Direction_of_Relative_North or 0 for z in self.idfobjects["ZONE"]
+        )
+        # If Zones have Direction_of_Relative_North != 0, model needs to be rotated
+        # before translation.
+        if all(angle != 0 for angle in zone_angles):
+            self.rotate(None, (0, 0, 0))
+
+            from geomeppy.recipes import rotate
+
+            # Since we rotated the building and the site, we need to rotate the site
+            # back by angle
+            anchor = Vector3D(*(0, 0, 0))
+            shadingsurfaces = self.getsiteshadingsurfaces()
+            self.translate(-anchor)
+            rotate(shadingsurfaces, next(iter(zone_angles)))
+            self.translate(anchor)
+
+        zone_origin = {
+            zone.Name.upper(): Vector3D(
+                zone.X_Origin or 0, zone.Y_Origin or 0, zone.Z_Origin or 0
+            )
+            for zone in self.idfobjects["ZONE"]
+        }
+        surfaces = {s.Name.upper(): s for s in self.getsurfaces()}
+        subsurfaces = self.getsubsurfaces()
+        daylighting_refpoints = [
+            p for p in self.idfobjects["DAYLIGHTING:REFERENCEPOINT"]
+        ]
+        attached_shading_surf_names = []
+        for g in self.idd_index["ref2names"]["AttachedShadingSurfNames"]:
+            for item in self.idfobjects[g]:
+                attached_shading_surf_names.append(item)
+
+        # Translate surfaces in the direction of their zone's origin vector.
+        for subsurf in subsurfaces:
+            zone_name = surfaces[subsurf.Building_Surface_Name.upper()].Zone_Name
+            translate([subsurf], zone_origin[zone_name.upper()])
+        for surf_name, surf in surfaces.items():
+            translate([surf], zone_origin[surf.Zone_Name.upper()])
+        for day in daylighting_refpoints:
+            zone_name = day.Zone_or_Space_Name
+            coords = translate_coords(day.coords, zone_origin[zone_name.upper()])
+            (
+                day.XCoordinate_of_Reference_Point,
+                day.YCoordinate_of_Reference_Point,
+                day.ZCoordinate_of_Reference_Point,
+            ) = coords[0]
+        for attached_surf in attached_shading_surf_names:
+            parent_surface = attached_surf.get_referenced_object("Base_Surface_Name")
+            zone_name = parent_surface.Zone_Name
+            translate([attached_surf], zone_origin[zone_name.upper()])
+
+        # Edit the `GLOBALGEOMETRYRULES` to "World"
+        for obj in self.idfobjects["GLOBALGEOMETRYRULES"]:
+            obj.Coordinate_System = "World"
+            obj.Daylighting_Reference_Point_Coordinate_System = "World"
+            obj.Rectangular_Surface_Coordinate_System = "World"
+
+        # Set all zone origin vectors to (0,0,0)
+        for zone in self.idfobjects["ZONE"]:
+            zone.X_Origin, zone.Y_Origin, zone.Z_Origin = 0, 0, 0
+
+        self.translated = True
+        # Finally, rotate model if not already rotated.
+        if not self.rotated:
+            self.rotate(None, (0, 0, 0))
+
+    def view_model(
+        self,
+        title=None,
+        save=False,
+        show=True,
+        close=False,
+        ax=None,
+        axis_off=False,
+        dpi=300,
+        file_format="png",
+        filename="unnamed",
+    ):
+        """Show a zoomable, rotatable representation of the IDF."""
+        from matplotlib import pyplot as plt
+        from geomeppy.view_geometry import view_idf
+        from archetypal.plot import save_and_show
+
+        if (
+            "relative"
+            in [
+                o.Coordinate_System.lower()
+                for o in self.idfobjects["GLOBALGEOMETRYRULES"]
+            ]
+            and self.coords_are_truly_relative
+        ):
+            raise Exception(
+                "Model is in relative coordinates and must be translated to world using "
+                "IDF.to_world()."
+            )
+        view_idf(idf=self, test=~show)
+
+        fig = plt.gcf()
+        axes = fig.get_axes()
+
+        return save_and_show(
+            fig,
+            axes,
+            save=save,
+            show=show,
+            close=close,
+            filename=filename,
+            file_format=file_format,
+            dpi=dpi,
+            axis_off=axis_off,
+            extent=None,
+        )
+
+    @property
+    def coords_are_truly_relative(self):
+        """True if GlobalGeometryRules as `Relative` and Zone origins are not 0,0,0."""
+        ggr_asks_for_relative = "relative" in [
+            o.Coordinate_System.lower() for o in self.idfobjects["GLOBALGEOMETRYRULES"]
+        ]
+        all_zone_origin_at_0 = True
+        for z in self.idfobjects["ZONE"]:
+            xyz = (z.X_Origin, z.Y_Origin, z.Z_Origin)
+            coord = tuple(pd.to_numeric(pd.Series(xyz)).fillna(0))
+            if coord != (0, 0, 0):
+                all_zone_origin_at_0 = False
+        return ggr_asks_for_relative and not all_zone_origin_at_0
+
+    def rotate(
+        self, angle: Optional[float] = None, anchor: Tuple[float, float, float] = None
+    ):
+        """Rotate the IDF counterclockwise around `anchor` by the angle given (degrees).
+
+        IF angle is None, rotates to Direction_of_Relative_North specified in Zone
+        objects.
+        """
+        if not angle:
+            bldg_angle = self.idfobjects["BUILDING"][0].North_Axis or 0
+            log(f"Building North Axis = {bldg_angle}", level=lg.DEBUG)
+            zone_angles = set(
+                z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]
+            )
+            assert (
+                len(zone_angles) == 1
+            ), "Not all zone have the same Direction_of_Relative_North"
+            zone_angle, *_ = zone_angles
+            zone_angle = zone_angle or 0
+            log(f"Zone(s) North Axis = {zone_angle}", level=lg.DEBUG)
+            angle = -(bldg_angle + zone_angle)
+        if isinstance(anchor, tuple):
+            from geomeppy.geom.vectors import Vector3D
+
+            anchor = Vector3D(*anchor)
+        # Rotate the building
+        super(IDF, self).rotate(angle, anchor=anchor)
+        log(
+            f"Geometries rotated by {angle} degrees around "
+            f"{anchor or 'building centroid'}"
+        )
+
+        # after building is rotate, change the north axis and zone direction to zero.
+        self.idfobjects["BUILDING"][0].North_Axis = 0
+        for z in self.idfobjects["ZONE"]:
+            z.Direction_of_Relative_North = 0
+        # Mark the model as rotated
+        self.rotated = True
+
+    def translate(self, vector: Tuple[float, float, float]):
+        """Move the IDF in the direction given by a vector."""
+        if isinstance(vector, tuple):
+            from geomeppy.geom.vectors import Vector2D
+
+            vector = Vector2D(*vector)
+
+        super(IDF, self).translate(vector=vector)
+        self.translated = True
+
+    @property
+    def translated(self):
+        """Get or set if the model was translated (X, Y, Z)."""
+        return self._translated
+
+    @translated.setter
+    def translated(self, value):
+        self._translated = bool(value)
+
+    @property
+    def rotated(self):
+        """Get or set if the model was rotated."""
+        return self._rotated
+
+    @rotated.setter
+    def rotated(self, value):
+        self._rotated = bool(value)
+
+    @property
+    def reporting_frequency(self):
+        return self._reporting_frequency
+
+    @reporting_frequency.setter
+    def reporting_frequency(self, value):
+        self._reporting_frequency = value
+
+    def getsiteshadingsurfaces(self, surface_type=""):
+        site_shading_types = self.idd_index["ref2names"][
+            "AllShadingSurfNames"
+        ].difference(self.idd_index["ref2names"]["AttachedShadingSurfNames"])
+        surfaces = itertools.chain.from_iterable(
+            [self.idfobjects[key.upper()] for key in site_shading_types]
+        )
+        if surface_type:
+            surfaces = filter(
+                lambda x: x.Surface_Type.lower() == surface_type.lower(), surfaces
+            )
+        return list(surfaces)
+
+    @property
+    def total_envelope_area(self):
+        """Get the total gross envelope area including windows [m2].
+
+        Note:
+            The envelope is consisted of surfaces that have an outside boundary
+            condition different then `Adiabatic` or `Surface` or that participate in
+            the heat exchange with the exterior.
+
+        """
+        total_area = 0
+        area = 0
+        zones = self.idfobjects["ZONE"]
+        zone: EpBunch
+        for zone in zones:
+            for surface in zone.zonesurfaces:
+                if hasattr(surface, "tilt"):
+                    if surface.tilt == 180.0:
+                        multiplier = float(
+                            zone.Multiplier if zone.Multiplier != "" else 1
+                        )
+
+                        area += surface.area * multiplier
+        self._area_total = area
+        for surface in self.getsurfaces():
+            if surface.Outside_Boundary_Condition.lower() in ["adiabatic", "surface"]:
+                continue
+            zone = surface.get_referenced_object("Zone_Name")
+            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+            total_area += surface.area * multiplier
+        return total_area
+
 
 def _process_csv(file, working_dir, simulname):
     """Process csv file.
@@ -2424,3 +2761,10 @@ def _process_csv(file, working_dir, simulname):
     else:
         log("file %s stored" % file)
         return df
+
+
+def closest_cardinal_angle(azimuth):
+    """Returns the closest bearing angle to the given azimuth angle."""
+    dirs = [0, 90, 180, 270]
+    ix = int(round(azimuth / (360.0 / len(dirs))))
+    return dirs[ix % len(dirs)]

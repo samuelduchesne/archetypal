@@ -226,7 +226,7 @@ def tabula_building_details_sheet(
         df = df.data.apply(pd.Series)
 
         # remove html tags from labels
-        df.label = df.label.str.replace("<[^<]+?>", " ")
+        df.label = df.label.str.replace("<[^<]+?>", " ", regex=True)
         return df
     else:
         raise ValueError(
@@ -355,7 +355,7 @@ def get_from_cache(url):
         url:
     """
     # if the tool is configured to use the cache
-    if settings.use_cache:
+    if settings.cache_responses:
         # determine the filename by hashing the url
         filename = hashlib.md5(str(url).encode("utf-8")).hexdigest()
 
@@ -381,7 +381,7 @@ def save_to_cache(url, response_json):
         url:
         response_json:
     """
-    if settings.use_cache:
+    if settings.cache_responses:
         if response_json is None:
             log("Saved nothing to cache because response_json is None")
         else:
@@ -467,7 +467,7 @@ def nrel_api_cbr_request(data):
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
-        domain = re.findall(r"//(?s)(.*?)/", url)[0]
+        domain = re.findall(r"(?s)//(.*?)/", url)[0]
         log(
             "Downloaded {:,.1f}KB from {}"
             " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)
@@ -541,7 +541,7 @@ def nrel_bcl_api_request(data):
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
-        domain = re.findall(r"//(?s)(.*?)/", url)[0]
+        domain = re.findall(r"(?s)//(.*?)/", url)[0]
         log(
             "Downloaded {:,.1f}KB from {}"
             " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)

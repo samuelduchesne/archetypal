@@ -6,14 +6,14 @@ import subprocess
 import time
 from threading import Thread
 
-from eppy.runner.run_functions import paths_from_version
+from packaging.version import Version
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
-from archetypal.utils import log
+from ..utils import log
 
-from ..eplus_interface.exceptions import EnergyPlusProcessError, EnergyPlusVersionError
-from ..eplus_interface.version import EnergyPlusVersion
+from ..eplus_interface.exceptions import EnergyPlusProcessError
 
 
 class BasementThread(Thread):
@@ -42,7 +42,7 @@ class BasementThread(Thread):
     def cmd(self):
         """Get the command."""
         cmd_path = Path(shutil.which("Basement", path=self.run_dir))
-        return [cmd_path.relpath(self.run_dir)]
+        return [cmd_path]
 
     def run(self):
         """Wrapper around the Basement command line interface."""
@@ -57,20 +57,17 @@ class BasementThread(Thread):
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        basemenet_exe = shutil.which(
-            "Basement", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
-        )
+        basemenet_exe = shutil.which("Basement", path=self.eplus_home)
         if basemenet_exe is None:
             log(
-                f"The Basement program could not be found at "
-                f"'{self.eplus_home / 'PreProcess' / 'GrndTempCalc'}'",
+                f"The Basement program could not be found at " f"'{self.eplus_home}",
                 lg.WARNING,
             )
             return
+        else:
+            basemenet_exe = (self.eplus_home / Path(basemenet_exe)).expand()
         self.basement_exe = Path(basemenet_exe).copy(self.run_dir)
-        self.basement_idd = (
-            self.eplus_home / "PreProcess" / "GrndTempCalc" / "BasementGHT.idd"
-        ).copy(self.run_dir)
+        self.basement_idd = (self.eplus_home / "BasementGHT.idd").copy(self.run_dir)
         self.outfile = self.idf.name
 
         # The BasementGHTin.idf file is copied from the self.include list (
@@ -93,50 +90,52 @@ class BasementThread(Thread):
         self.msg_callback(f"Weather File: {self.epw}")
 
         # Run Slab Program
-        with tqdm(
-            unit_scale=True,
-            miniters=1,
-            desc=f"RunBasement #{self.idf.position}-{self.idf.name}",
-            position=self.idf.position,
-        ) as progress:
+        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+            with tqdm(
+                unit_scale=True,
+                miniters=1,
+                desc=f"RunBasement #{self.idf.position}-{self.idf.name}",
+                position=self.idf.position,
+            ) as progress:
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True,  # can use shell
+                    cwd=self.run_dir,
+                )
+                start_time = time.time()
+                self.msg_callback(
+                    "Begin Basement Temperature Calculation processing . . ."
+                )
 
-            self.p = subprocess.Popen(
-                self.cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,  # can use shell
-                cwd=self.run_dir,
-            )
-            start_time = time.time()
-            self.msg_callback("Begin Basement Temperature Calculation processing . . .")
+                for line in self.p.stdout:
+                    self.msg_callback(line.decode("utf-8").strip("\n"))
+                    progress.update()
 
-            for line in self.p.stdout:
-                self.msg_callback(line.decode("utf-8").strip("\n"))
-                progress.update()
+                # We explicitly close stdout
+                self.p.stdout.close()
 
-            # We explicitly close stdout
-            self.p.stdout.close()
+                # Wait for process to complete
+                self.p.wait()
 
-            # Wait for process to complete
-            self.p.wait()
-
-            # Communicate callbacks
-            if self.cancelled:
-                self.msg_callback("RunSlab cancelled")
-                # self.cancelled_callback(self.std_out, self.std_err)
-            else:
-                if self.p.returncode == 0:
-                    self.msg_callback(
-                        "RunSlab completed in {:,.2f} seconds".format(
-                            time.time() - start_time
-                        )
-                    )
-                    self.success_callback()
-                    for line in self.p.stderr:
-                        self.msg_callback(line.decode("utf-8"))
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("RunSlab cancelled")
+                    # self.cancelled_callback(self.std_out, self.std_err)
                 else:
-                    self.msg_callback("RunSlab failed")
-                    self.failure_callback()
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "RunSlab completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                        for line in self.p.stderr:
+                            self.msg_callback(line.decode("utf-8"))
+                    else:
+                        self.msg_callback("RunSlab failed")
+                        self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         """Pass message to logger."""
@@ -213,14 +212,16 @@ class BasementThread(Thread):
 
     @property
     def eplus_home(self):
-        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
-        if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
-            )
+        """Get the version-dependant directory where executables are installed."""
+        if self.idf.file_version <= Version("7.2"):
+            install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            return Path(eplus_home)
+            install_dir = (
+                self.idf.file_version.current_install_dir
+                / "PreProcess"
+                / "GrndTempCalc"
+            )
+        return install_dir.expand()
 
     def stop(self):
         if self.p.poll() is None:

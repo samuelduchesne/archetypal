@@ -6,14 +6,12 @@ import subprocess
 import time
 from threading import Thread
 
-from eppy.runner.run_functions import paths_from_version
+from packaging.version import Version
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
-from archetypal.eplus_interface.exceptions import (
-    EnergyPlusProcessError,
-    EnergyPlusVersionError,
-)
+from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
 from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
 
@@ -44,7 +42,7 @@ class SlabThread(Thread):
     def cmd(self):
         """Get the command."""
         cmd_path = Path(shutil.which("Slab", path=self.run_dir))
-        return [cmd_path.relpath(self.run_dir)]
+        return [cmd_path]
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface."""
@@ -58,20 +56,15 @@ class SlabThread(Thread):
 
         # Get executable using shutil.which (determines the extension based on
         # the platform, eg: .exe. And copy the executable to tmp
-        slab_exe = shutil.which(
-            "Slab", path=self.eplus_home / "PreProcess" / "GrndTempCalc"
-        )
+        slab_exe = shutil.which("Slab", path=self.eplus_home)
         if slab_exe is None:
             log(
-                f"The Slab program could not be found at "
-                f"'{self.eplus_home / 'PreProcess' / 'GrndTempCalc'}'",
+                f"The Slab program could not be found at " f"'{self.eplus_home}'",
                 lg.WARNING,
             )
             return
         self.slabexe = Path(slab_exe).copy(self.run_dir)
-        self.slabidd = (
-            self.eplus_home / "PreProcess" / "GrndTempCalc" / "SlabGHT.idd"
-        ).copy(self.run_dir)
+        self.slabidd = (self.eplus_home / "SlabGHT.idd").copy(self.run_dir)
 
         # The GHTin.idf file is copied from the self.include list (added by
         # ExpandObjects. If self.include is empty, no need to run Slab.
@@ -81,49 +74,49 @@ class SlabThread(Thread):
             return
 
         # Run Slab Program
-        with tqdm(
-            unit_scale=True,
-            miniters=1,
-            desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
-            position=self.idf.position,
-        ) as progress:
+        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+            with tqdm(
+                unit_scale=True,
+                miniters=1,
+                desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+                position=self.idf.position,
+            ) as progress:
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    shell=True,  # can use shell
+                    cwd=self.run_dir.abspath(),
+                )
+                start_time = time.time()
+                self.msg_callback("Begin Slab Temperature Calculation processing . . .")
+                for line in self.p.stdout:
+                    self.msg_callback(line.decode("utf-8").strip("\n"))
+                    progress.update()
 
-            self.p = subprocess.Popen(
-                self.cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                shell=True,  # can use shell
-                cwd=self.run_dir.abspath(),
-            )
-            start_time = time.time()
-            self.msg_callback("Begin Slab Temperature Calculation processing . . .")
-            for line in self.p.stdout:
-                self.msg_callback(line.decode("utf-8").strip("\n"))
-                progress.update()
+                # We explicitly close stdout
+                self.p.stdout.close()
 
-            # We explicitly close stdout
-            self.p.stdout.close()
+                # Wait for process to complete
+                self.p.wait()
 
-            # Wait for process to complete
-            self.p.wait()
-
-            # Communicate callbacks
-            if self.cancelled:
-                self.msg_callback("RunSlab cancelled")
-                # self.cancelled_callback(self.std_out, self.std_err)
-            else:
-                if self.p.returncode == 0:
-                    self.msg_callback(
-                        "RunSlab completed in {:,.2f} seconds".format(
-                            time.time() - start_time
-                        )
-                    )
-                    self.success_callback()
-                    for line in self.p.stderr:
-                        self.msg_callback(line.decode("utf-8"))
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("RunSlab cancelled")
+                    # self.cancelled_callback(self.std_out, self.std_err)
                 else:
-                    self.msg_callback("RunSlab failed")
-                    self.failure_callback()
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "RunSlab completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                        for line in self.p.stderr:
+                            self.msg_callback(line.decode("utf-8"))
+                    else:
+                        self.msg_callback("RunSlab failed")
+                        self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         """Pass message to logger."""
@@ -172,14 +165,16 @@ class SlabThread(Thread):
 
     @property
     def eplus_home(self):
-        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
-        if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
-            )
+        """Get the version-dependant directory where executables are installed."""
+        if self.idf.file_version <= Version("7.2"):
+            install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            return Path(eplus_home)
+            install_dir = (
+                self.idf.file_version.current_install_dir
+                / "PreProcess"
+                / "GrndTempCalc"
+            )
+        return install_dir.expand()
 
     def stop(self):
         if self.p.poll() is None:

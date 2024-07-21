@@ -4,6 +4,7 @@ import calendar
 import collections
 import hashlib
 from datetime import datetime
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,8 @@ from archetypal.utils import log
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
 
+    _CREATED_OBJECTS = []
+
     __slots__ = ("_quantity",)
 
     def __init__(self, Name, quantity=None, **kwargs):
@@ -29,6 +32,9 @@ class UmiSchedule(Schedule, UmiBase):
         """
         super(UmiSchedule, self).__init__(Name, **kwargs)
         self.quantity = quantity
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def quantity(self):
@@ -217,6 +223,7 @@ class UmiSchedule(Schedule, UmiBase):
         year.Comments = (
             f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
         )
+        year.quantity = self.quantity
         return year
 
     def get_unique(self):
@@ -241,7 +248,7 @@ class UmiSchedule(Schedule, UmiBase):
         """Validate object and fill in missing values."""
         return self
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -304,7 +311,7 @@ class UmiSchedule(Schedule, UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -450,7 +457,10 @@ class YearSchedulePart:
 
     def __str__(self):
         """Return string representation of self."""
-        return str(self.to_dict())
+        return repr(self)
+
+    def __repr__(self):
+        return "".join([f"{k}={v}" for k, v in self.to_dict().items()])
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
@@ -611,7 +621,7 @@ class DaySchedule(UmiSchedule):
 
         return data_dict
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -664,7 +674,7 @@ class DaySchedule(UmiSchedule):
         Args:
             idf (IDF): An IDF model.
 
-        .. code-block:: python
+        .. code-block::
 
             SCHEDULE:DAY:HOURLY,
                 ,                         !- Name
@@ -790,7 +800,7 @@ class WeekSchedule(UmiSchedule):
 
         return data_dict
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -895,6 +905,10 @@ class WeekSchedule(UmiSchedule):
             ),
         )
 
+    @property
+    def children(self):
+        return self.Days
+
 
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
@@ -934,7 +948,7 @@ class YearSchedule(UmiSchedule):
         """Return numpy array of schedule Values."""
         if self._values is None:
             index = pd.date_range(start=self.startDate, freq="1H", periods=8760)
-            series = pd.Series(index=index)
+            series = pd.Series(index=index, dtype="float")
             for part in self.Parts:
                 start = "{}-{}-{}".format(self.year, part.FromMonth, part.FromDay)
                 end = "{}-{}-{}".format(self.year, part.ToMonth, part.ToDay)
@@ -962,7 +976,7 @@ class YearSchedule(UmiSchedule):
                 keys.
             **kwargs: keywords passed to the constructor.
         """
-        Parts = [
+        Parts: List[YearSchedulePart] = [
             YearSchedulePart.from_dict(data, week_schedules)
             for data in data.pop("Parts", None)
         ]
@@ -1018,7 +1032,7 @@ class YearSchedule(UmiSchedule):
 
         return idf.newidfobject(key="Schedule:Year".upper(), **new_dict)
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -1055,7 +1069,7 @@ class YearSchedule(UmiSchedule):
                     next(
                         (
                             x
-                            for x in self.CREATED_OBJECTS
+                            for x in self._CREATED_OBJECTS
                             if x.Name == week_day_schedule_name
                             and type(x).__name__ == "WeekSchedule"
                         )
@@ -1067,3 +1081,7 @@ class YearSchedule(UmiSchedule):
     def to_ref(self):
         """Return a ref pointer to self."""
         return {"$ref": str(self.id)}
+
+    @property
+    def children(self):
+        return tuple(p.Schedule for p in self.Parts)

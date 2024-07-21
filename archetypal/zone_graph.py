@@ -7,7 +7,7 @@ import matplotlib.colors
 import networkx
 import tabulate
 from eppy.bunch_subclass import EpBunch
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from archetypal.plot import save_and_show
 from archetypal.template.zonedefinition import is_core, resolve_obco
@@ -270,7 +270,8 @@ class ZoneGraph(networkx.Graph):
         # Define color range proportional to number of edges adjacent to a
         # single node
         colors = {
-            i: plt.cm.get_cmap(cmap)(self.degree[i] / edge_max) for i in self.nodes
+            i: matplotlib.colormaps.get_cmap(cmap)(self.degree[i] / edge_max)
+            for i in self.nodes
         }
         labels = {}
         if annotate:
@@ -397,7 +398,8 @@ class ZoneGraph(networkx.Graph):
 
         Examples:
             >>> import networkx as nx
-            >>> G = BuildingTemplate().from_idf
+            >>> from archetypal.umi_template import BuildingTemplate
+            >>> G = BuildingTemplate.from_idf()
             >>> G.plot_graph2d(nx.nx_agraph.graphviz_layout, ('dot'),
             >>>                font_color='w', legend=True, font_size=8,
             >>>                color_nodes='core',
@@ -457,7 +459,7 @@ class ZoneGraph(networkx.Graph):
             G = networkx.convert_node_labels_to_integers(G, label_attribute="name")
         tree = networkx.dfs_tree(G)
         pos = layout_function(tree, *func_args)
-        with plt.style.context((plt_style)):
+        with plt.style.context(plt_style):
             if ax:
                 fig = plt.gcf()
             else:
@@ -570,12 +572,12 @@ def discrete_cmap(N, base_cmap=None):
     """
 
     # Note that if base_cmap is a string or None, you can simply do
-    #    return plt.cm.get_cmap(base_cmap, N)
+    #    return matplotlib.colormaps.get_cmap(base_cmap, N)
     # The following works for string, None, or a colormap instance:
     import matplotlib.pyplot as plt
     from numpy.core.function_base import linspace
 
-    base = plt.cm.get_cmap(base_cmap)
+    base = matplotlib.colormaps.get_cmap(base_cmap)
     color_list = base(linspace(0, 1, N))
     cmap_name = base.name + str(N)
     return matplotlib.colors.ListedColormap(color_list, cmap_name, N)

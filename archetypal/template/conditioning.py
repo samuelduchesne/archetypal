@@ -89,6 +89,8 @@ class ZoneConditioning(UmiBase):
     .. image:: ../images/template/zoninfo-conditioning.png
     """
 
+    _CREATED_OBJECTS = []
+
     __slots__ = (
         "_cooling_setpoint",
         "_heating_setpoint",
@@ -262,16 +264,16 @@ class ZoneConditioning(UmiBase):
         self.HeatingSchedule = HeatingSchedule
         self.CoolingSchedule = CoolingSchedule
         self.CoolingCoeffOfPerf = CoolingCoeffOfPerf
-        self.CoolingLimitType = IdealSystemLimit(CoolingLimitType)
-        self.CoolingFuelType = FuelType(CoolingFuelType)
+        self.CoolingLimitType = CoolingLimitType
+        self.CoolingFuelType = CoolingFuelType
         self._cooling_setpoint = CoolingSetpoint  # setter without check
-        self.EconomizerType = EconomizerTypes(EconomizerType)
+        self.EconomizerType = EconomizerType
         self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
         self.HeatRecoveryEfficiencySensible = HeatRecoveryEfficiencySensible
-        self.HeatRecoveryType = HeatRecoveryTypes(HeatRecoveryType)
+        self.HeatRecoveryType = HeatRecoveryType
         self.HeatingCoeffOfPerf = HeatingCoeffOfPerf
-        self.HeatingLimitType = IdealSystemLimit(HeatingLimitType)
-        self.HeatingFuelType = FuelType(HeatingFuelType)
+        self.HeatingLimitType = HeatingLimitType
+        self.HeatingFuelType = HeatingFuelType
         self.HeatingSetpoint = HeatingSetpoint
         self.IsCoolingOn = IsCoolingOn
         self.IsHeatingOn = IsHeatingOn
@@ -284,6 +286,9 @@ class ZoneConditioning(UmiBase):
         self.MinFreshAirPerPerson = MinFreshAirPerPerson
 
         self.area = area
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def area(self):
@@ -304,7 +309,7 @@ class ZoneConditioning(UmiBase):
         assert (
             self._heating_setpoint < value
         ), "Heating setpoint must be lower than the cooling setpoint."
-        self._cooling_setpoint = validators.float(value, minimum=-100, maximum=50)
+        self._cooling_setpoint = validators.float(value, minimum=-100, maximum=100)
 
     @property
     def HeatingSetpoint(self):
@@ -316,7 +321,7 @@ class ZoneConditioning(UmiBase):
         assert (
             value < self._cooling_setpoint
         ), "Heating setpoint must be lower than the cooling setpoint."
-        self._heating_setpoint = validators.float(value)
+        self._heating_setpoint = validators.float(value, minimum=-100, maximum=100)
 
     @property
     def MaxCoolFlow(self):
@@ -413,7 +418,7 @@ class ZoneConditioning(UmiBase):
             )
             self._heating_limit_type = IdealSystemLimit[value]
         elif checkers.is_numeric(value):
-            assert IdealSystemLimit[value], (
+            assert IdealSystemLimit(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in IdealSystemLimit)}"
             )
@@ -435,7 +440,7 @@ class ZoneConditioning(UmiBase):
             )
             self._heating_fuel_type = FuelType[value]
         elif checkers.is_numeric(value):
-            assert FuelType[value], (
+            assert FuelType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in FuelType)}"
             )
@@ -493,7 +498,7 @@ class ZoneConditioning(UmiBase):
             )
             self._cooling_limit_type = IdealSystemLimit[value]
         elif checkers.is_numeric(value):
-            assert IdealSystemLimit[value], (
+            assert IdealSystemLimit(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in IdealSystemLimit)}"
             )
@@ -515,7 +520,7 @@ class ZoneConditioning(UmiBase):
             )
             self._cooling_fuel_type = FuelType[value]
         elif checkers.is_numeric(value):
-            assert FuelType[value], (
+            assert FuelType(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in FuelType)}"
             )
@@ -559,7 +564,7 @@ class ZoneConditioning(UmiBase):
             )
             self._economizer_type = EconomizerTypes[value]
         elif checkers.is_numeric(value):
-            assert EconomizerTypes[value], (
+            assert EconomizerTypes(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in EconomizerTypes)}"
             )
@@ -595,7 +600,7 @@ class ZoneConditioning(UmiBase):
             )
             self._heat_recovery_type = HeatRecoveryTypes[value]
         elif checkers.is_numeric(value):
-            assert HeatRecoveryTypes[value], (
+            assert HeatRecoveryTypes(value), (
                 f"Input value error for '{value}'. "
                 f"Expected one of {tuple(a for a in HeatRecoveryTypes)}"
             )
@@ -634,7 +639,7 @@ class ZoneConditioning(UmiBase):
             schedules (dict): A dictionary of UmiSchedules with their id as keys.
             **kwargs: keywords passed to parent constructor.
 
-        .. code-block:: python
+        .. code-block::
 
             {
                 "$id": "165",
@@ -1195,9 +1200,9 @@ class ZoneConditioning(UmiBase):
                     )
                 else:
                     cooling_sched = None
-        self.HeatingSetpoint = max(h_array)[0]
+        self.HeatingSetpoint = h_array.mean()
         self.HeatingSchedule = heating_sched
-        self.CoolingSetpoint = min(c_array)[0]
+        self.CoolingSetpoint = c_array.mean()
         self.CoolingSchedule = cooling_sched
 
         # If HeatingSetpoint == nan, means there is no heat or cold input,
@@ -1255,7 +1260,6 @@ class ZoneConditioning(UmiBase):
 
         # iterate over those objects. If the list is empty, it will simply pass.
         for object in heat_recovery_in_idf:
-
             if object.key.upper() == "HeatExchanger:AirToAir:FlatPlate".upper():
                 # Do HeatExchanger:AirToAir:FlatPlate
 
@@ -1484,14 +1488,14 @@ class ZoneConditioning(UmiBase):
             self.CoolingSchedule = UmiSchedule.constant_schedule()
         if self.MechVentSchedule is None:
             self.MechVentSchedule = UmiSchedule.constant_schedule()
-        if not self.IsMechVentOn:
+        if self.IsMechVentOn is None:
             self.IsMechVentOn = False
-        if not self.MinFreshAirPerPerson:
+        if self.MinFreshAirPerPerson is None:
             self.MinFreshAirPerPerson = 0
-        if not self.MinFreshAirPerArea:
+        if self.MinFreshAirPerArea is None:
             self.MinFreshAirPerArea = 0
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -1583,9 +1587,7 @@ class ZoneConditioning(UmiBase):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash(
-            (self.__class__.__name__, getattr(self, "Name", None), self.DataSource)
-        )
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -1624,3 +1626,7 @@ class ZoneConditioning(UmiBase):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False))
+
+    @property
+    def children(self):
+        return self.CoolingSchedule, self.HeatingSchedule, self.MechVentSchedule

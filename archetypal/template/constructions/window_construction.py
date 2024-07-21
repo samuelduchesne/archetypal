@@ -63,6 +63,8 @@ class WindowConstruction(LayeredConstruction):
     .. image:: ../images/template/constructions-window.png
     """
 
+    _CREATED_OBJECTS = []
+
     _CATEGORIES = ("single", "double", "triple", "quadruple")
 
     __slots__ = ("_category",)
@@ -84,6 +86,9 @@ class WindowConstruction(LayeredConstruction):
             **kwargs,
         )
         self.Category = Category  # set here for validators
+
+        # Only at the end append self to _CREATED_OBJECTS
+        self._CREATED_OBJECTS.append(self)
 
     @property
     def Category(self):
@@ -311,7 +316,7 @@ class WindowConstruction(LayeredConstruction):
         Args:
             idf (IDF): The idf model in which the EpBunch is created.
 
-        .. code-block:: python
+        .. code-block::
 
             Construction,
                 B_Dbl_Air_Cl,                           !- Name
@@ -332,7 +337,7 @@ class WindowConstruction(LayeredConstruction):
 
         return idf.newidfobject("CONSTRUCTION", **data)
 
-    def mapping(self, validate=True):
+    def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
         Args:
@@ -412,16 +417,8 @@ class WindowConstruction(LayeredConstruction):
                 Default is 101325 Pa for standard pressure at sea level.
         Returns:
             A tuple with two elements
-            -   temperatures: A list of temperature values [C].
-                The first value will always be the outside temperature and the
-                second will be the exterior surface temperature.
-                The last value will always be the inside temperature and the second
-                to last will be the interior surface temperature.
-            -   r_values: A list of R-values for each of the material layers [m2-K/W].
-                The first value will always be the resistance of the exterior air
-                and the last value is the resistance of the interior air.
-                The sum of this list is the R-factor for this construction given
-                the input parameters.
+            - temperatures: A list of temperature values [C]. The first value will always be the outside temperature and the second will be the exterior surface temperature. The last value will always be the inside temperature and the second to last will be the interior surface temperature.
+            - r_values: A list of R-values for each of the material layers [m2-K/W]. The first value will always be the resistance of the exterior air and the last value is the resistance of the interior air. The sum of this list is the R-factor for this construction given the input parameters.
         """
         # reverse the angle if the outside temperature is greater than the inside one
         if angle != 90 and outside_temperature > inside_temperature:
@@ -557,7 +554,7 @@ class WindowConstruction(LayeredConstruction):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return hash((self.__class__.__name__, getattr(self, "Name", None)))
+        return hash(self.id)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""

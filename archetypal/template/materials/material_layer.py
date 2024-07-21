@@ -2,6 +2,7 @@
 
 import collections
 import logging as lg
+import math
 
 from sigfig import round
 from validator_collection import validators
@@ -25,7 +26,7 @@ class MaterialLayer(object):
         """Initialize a MaterialLayer object with parameters.
 
         Args:
-            Material (OpaqueMaterial, GlazingMaterial, GasMaterial):
+            Material (OpaqueMaterial, GlazingMaterial):
             Thickness (float): The thickness of the material in the
                 construction.
         """
@@ -135,7 +136,7 @@ class MaterialLayer(object):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return id(self)
+        return hash(id(self))
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -143,7 +144,10 @@ class MaterialLayer(object):
             return NotImplemented
         else:
             return all(
-                [self.Thickness == other.Thickness, self.Material == other.Material]
+                [
+                    math.isclose(self.Thickness, other.Thickness, abs_tol=0.001),
+                    self.Material == other.Material,
+                ]
             )
 
     def __repr__(self):
@@ -162,3 +166,7 @@ class MaterialLayer(object):
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(self.Material, self.Thickness)
+
+    @property
+    def children(self):
+        return (self.Material,)

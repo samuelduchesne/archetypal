@@ -6,8 +6,10 @@ from threading import Thread
 
 import eppy
 from eppy.runner.run_functions import paths_from_version
+from packaging.version import Version
 from path import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from archetypal.eplus_interface.exceptions import (
     EnergyPlusProcessError,
@@ -23,14 +25,12 @@ class EnergyPlusProgram:
 
     @property
     def eplus_home(self):
-        eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
-        if not Path(eplus_home).exists():
-            raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
-            )
+        """Get the version-dependant directory where executables are installed."""
+        if self.idf.file_version <= Version("7.2"):
+            install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            return Path(eplus_home)
+            install_dir = self.idf.file_version.current_install_dir
+        return install_dir
 
 
 class EnergyPlusExe:
@@ -177,11 +177,11 @@ class EnergyPlusThread(Thread):
 
         # build a list of command line arguments
         try:
-            self.cmd = EnergyPlusExe(
+            eplus_exe = EnergyPlusExe(
                 idfname=self.idfname,
                 epw=self.epw,
                 output_directory=self.run_dir,
-                ep_version=self.idf.as_version,
+                ep_version=self.idf.file_version,
                 annual=self.idf.annual,
                 convert=self.idf.convert,
                 design_day=self.idf.design_day,
@@ -193,60 +193,64 @@ class EnergyPlusThread(Thread):
                 output_sufix=self.idf.output_suffix,
                 version=False,
                 expandobjects=self.idf.expandobjects,
-            ).cmd()
+            )
+            self.cmd = eplus_exe.cmd()
         except EnergyPlusVersionError as e:
             self.exception = e
             self.p.kill()  # kill process to be sure
             return
+        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+            # Start process with tqdm bar
+            with tqdm(
+                unit_scale=False,
+                total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
+                miniters=1,
+                desc=f"{eplus_exe.eplus_exe_path} #{self.idf.position}-{self.idf.name}"
+                if self.idf.position
+                else f"{eplus_exe.eplus_exe_path} {self.idf.name}",
+                position=self.idf.position,
+            ) as progress:
+                self.p = subprocess.Popen(
+                    self.cmd,
+                    shell=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                start_time = time.time()
+                self.msg_callback("Simulation started")
+                self.idf._energyplus_its = 0  # reset counter
+                for line in self.p.stdout:
+                    self.msg_callback(line.decode("utf-8").strip("\n"))
+                    self.idf._energyplus_its += 1
+                    progress.update()
 
-        # Start process with tqdm bar
-        with tqdm(
-            unit_scale=True,
-            total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
-            miniters=1,
-            desc=f"EnergyPlus #{self.idf.position}-{self.idf.name}"
-            if self.idf.position
-            else f"EnergyPlus {self.idf.name}",
-            position=self.idf.position,
-        ) as progress:
-            self.p = subprocess.Popen(
-                self.cmd,
-                shell=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            start_time = time.time()
-            self.msg_callback("Simulation started")
-            self.idf._energyplus_its = 0  # reset counter
-            for line in self.p.stdout:
-                self.msg_callback(line.decode("utf-8").strip("\n"))
-                self.idf._energyplus_its += 1
-                progress.update()
+                # We explicitly close stdout
+                self.p.stdout.close()
 
-            # We explicitly close stdout
-            self.p.stdout.close()
+                # Wait for process to complete
+                self.p.wait()
 
-            # Wait for process to complete
-            self.p.wait()
-
-            # Communicate callbacks
-            if self.cancelled:
-                self.msg_callback("Simulation cancelled")
-                self.cancelled_callback(self.std_out, self.std_err)
-            else:
-                if self.p.returncode == 0:
-                    self.msg_callback(
-                        "EnergyPlus Completed in {:,.2f} seconds".format(
-                            time.time() - start_time
-                        )
-                    )
-                    self.success_callback()
+                # Communicate callbacks
+                if self.cancelled:
+                    self.msg_callback("Simulation cancelled")
+                    self.cancelled_callback(self.std_out, self.std_err)
                 else:
-                    self.msg_callback("Simulation failed")
-                    self.failure_callback()
+                    if self.p.returncode == 0:
+                        self.msg_callback(
+                            "EnergyPlus Completed in {:,.2f} seconds".format(
+                                time.time() - start_time
+                            )
+                        )
+                        self.success_callback()
+                    else:
+                        self.msg_callback("Simulation failed")
+                        self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
-        log(*args, name=self.idf.name, **kwargs)
+        msg, *_ = args
+        for m in msg.split("\r"):
+            if m:
+                log(m, name=self.idf.name, **kwargs)
 
     def success_callback(self):
         save_dir = self.idf.simulation_dir

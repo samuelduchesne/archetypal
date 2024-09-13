@@ -65,6 +65,7 @@ class SlabThread(Thread):
             slab_exe = (self.eplus_home / slab_exe).expand()
         self.slabexe = slab_exe
         self.slabidd = (self.eplus_home / "SlabGHT.idd").copy(self.run_dir)
+        self.outfile = self.idf.name
 
         # The GHTin.idf file is copied from the self.include list
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
@@ -92,30 +93,40 @@ class SlabThread(Thread):
                     start_time = time.time()
                     self.msg_callback(
                         "Begin Slab Temperature Calculation processing . . ."
+                    )
+                    stdout, stderr = self.p.communicate()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+                    # Process stdout
+                    stdout_lines = stdout.decode("utf-8").splitlines()
+                    for line in stdout_lines:
+                        self.msg_callback(line)
+                        progress.update()
 
-                # Wait for process to complete
-                self.p.wait()
+                    # Process stderr
+                    stderr_lines = stderr.decode("utf-8").splitlines()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("RunSlab cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            "RunSlab completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
-                        )
-                        self.success_callback()
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
+                    # Communicate callbacks
+                    if self.cancelled:
+                        self.msg_callback("RunSlab cancelled")
                     else:
-                        self.msg_callback("RunSlab failed")
-                        self.failure_callback()
+                        if self.p.returncode == 0:
+                            self.msg_callback(
+                                "RunSlab completed in {:,.2f} seconds".format(
+                                    time.time() - start_time
+                                )
+                            )
+                            self.success_callback()
+                        else:
+                            self.msg_callback("RunSlab failed")
+                            self.msg_callback(
+                                "Standard Output:\n" + "\n".join(stdout_lines),
+                                lg.INFO,
+                            )
+                            self.msg_callback(
+                                "Standard Error:\n" + "\n".join(stderr_lines),
+                                level=lg.ERROR,
+                            )
+                            self.failure_callback()
                 except Exception as e:
                     self.msg_callback(f"An error occurred: {str(e)}")
                     self.failure_callback()

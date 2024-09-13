@@ -163,13 +163,13 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         todays_date = dt.datetime.today().strftime("%Y_%m_%d")
 
         if not log_dir:
-            log_dir = settings.logs_folder
+            log_dir: Path = settings.logs_folder
 
         log_filename = log_dir / "{}_{}.log".format(filename, todays_date)
 
         # if the logs folder does not already exist, create it
         if not log_dir.exists():
-            log_dir.makedirs_p()
+            os.mkdir(log_dir)
         # create file handler and log formatter and set them up
         formatter = lg.Formatter(
             "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"

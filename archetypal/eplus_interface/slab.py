@@ -136,16 +136,18 @@ class SlabThread(Thread):
 
     def success_callback(self):
         """Parse surface temperature and append to IDF file."""
-        temp_schedule = self.run_dir / "SLABSurfaceTemps.txt"
-        if temp_schedule.exists():
-            with open(self.idf.idfname, "a") as outfile:
-                with open(temp_schedule) as infile:
-                    next(infile)  # Skipping first line
-                    next(infile)  # Skipping second line
-                    for line in infile:
-                        outfile.write(line)
-            # invalidate attributes dependent on idfname, since it has changed
-            self.idf._reset_dependant_vars("idfname")
+        for temp_schedule in self.run_dir.glob("SLABSurfaceTemps*"):
+            if temp_schedule.exists():
+                with open(self.outfile, "a") as outfile:
+                    with open(temp_schedule) as infile:
+                        next(infile)  # Skipping first line
+                        next(infile)  # Skipping second line
+                        for line in infile:
+                            outfile.write(line)
+                # invalidate attributes dependent on idfname, since it has changed
+                self.idf._reset_dependant_vars("idfname")
+            else:
+                self.msg_callback("No SLABSurfaceTemps.txt file found.", level=lg.ERROR)
         self.cleanup_callback()
 
     def cleanup_callback(self):

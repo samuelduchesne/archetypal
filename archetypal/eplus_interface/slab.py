@@ -116,6 +116,9 @@ class SlabThread(Thread):
                     else:
                         self.msg_callback("RunSlab failed")
                         self.failure_callback()
+                except Exception as e:
+                    self.msg_callback(f"An error occurred: {str(e)}")
+                    self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         """Pass message to logger."""

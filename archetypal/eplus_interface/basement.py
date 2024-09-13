@@ -89,7 +89,7 @@ class BasementThread(Thread):
         self.msg_callback(f"Weather File: {self.epw}")
 
         # Run Slab Program
-        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
             with tqdm(
                 unit_scale=True,
                 miniters=1,
@@ -108,9 +108,15 @@ class BasementThread(Thread):
                     "Begin Basement Temperature Calculation processing . . ."
                 )
 
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
+                # Read stdout line by line
+                for line in iter(self.p.stdout.readline, b""):
+                    decoded_line = line.decode("utf-8").strip()
+                    self.msg_callback(decoded_line)
                     progress.update()
+
+                # Process stderr after stdout is fully read
+                stderr = self.p.stderr.read()
+                stderr_lines = stderr.decode("utf-8").splitlines()
 
                 # We explicitly close stdout
                 self.p.stdout.close()
@@ -120,20 +126,21 @@ class BasementThread(Thread):
 
                 # Communicate callbacks
                 if self.cancelled:
-                    self.msg_callback("RunSlab cancelled")
+                    self.msg_callback("Basement cancelled")
                     # self.cancelled_callback(self.std_out, self.std_err)
                 else:
                     if self.p.returncode == 0:
                         self.msg_callback(
-                            "RunSlab completed in {:,.2f} seconds".format(
+                            "Basement completed in {:,.2f} seconds".format(
                                 time.time() - start_time
                             )
                         )
                         self.success_callback()
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
+                        for line in stderr_lines:
+                            self.msg_callback(line)
                     else:
-                        self.msg_callback("RunSlab failed")
+                        self.msg_callback("Basement failed")
+                        self.msg_callback("\n".join(stderr_lines), level=lg.ERROR)
                         self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):

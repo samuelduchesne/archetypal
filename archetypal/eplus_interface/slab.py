@@ -1,10 +1,10 @@
 """Slab module"""
 
 import logging as lg
-import os
 import shutil
 import subprocess
 import time
+from io import StringIO
 from threading import Thread
 
 from packaging.version import Version
@@ -138,14 +138,23 @@ class SlabThread(Thread):
         """Parse surface temperature and append to IDF file."""
         for temp_schedule in self.run_dir.glob("SLABSurfaceTemps*"):
             if temp_schedule.exists():
-                with open(self.outfile, "a") as outfile:
-                    with open(temp_schedule) as infile:
-                        next(infile)  # Skipping first line
-                        next(infile)  # Skipping second line
-                        for line in infile:
-                            outfile.write(line)
-                # invalidate attributes dependent on idfname, since it has changed
-                self.idf._reset_dependant_vars("idfname")
+                slab_models = self.idf.__class__(
+                    StringIO(open(temp_schedule, "r").read()),
+                    file_version=self.idf.file_version,
+                    as_version=self.idf.as_version,
+                    prep_outputs=False,
+                )
+                # Loop on all objects and using self.newidfobject
+                added_objects = []
+                for sequence in slab_models.idfobjects.values():
+                    if sequence:
+                        for obj in sequence:
+                            data = obj.to_dict()
+                            key = data.pop("key")
+                            added_objects.append(
+                                self.idf.newidfobject(key=key.upper(), **data)
+                            )
+                del slab_models  # remove loaded_string model
             else:
                 self.msg_callback("No SLABSurfaceTemps.txt file found.", level=lg.ERROR)
         self.cleanup_callback()

@@ -74,54 +74,61 @@ class SlabThread(Thread):
             return
 
         # Run Slab Program
-        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
             with tqdm(
                 unit_scale=True,
                 miniters=1,
                 desc=f"{self.slabexe} #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=False,
-                    cwd=self.run_dir,
-                )
-                start_time = time.time()
-                self.msg_callback("Begin Slab Temperature Calculation processing . . .")
+                try:
+                    print("Running...", self.cmd, "from", self.run_dir)
+                    self.p = subprocess.Popen(
+                        self.cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        shell=False,
+                        cwd=self.run_dir,
+                    )
+                    start_time = time.time()
+                    self.msg_callback(
+                        "Begin Slab Temperature Calculation processing . . ."
+                    )
+                    stdout, stderr = self.p.communicate()
 
-                # Read stdout line by line
-                for line in iter(self.p.stdout.readline, b""):
-                    decoded_line = line.decode("utf-8").strip()
-                    self.msg_callback(decoded_line)
-                    progress.update()
+                    # Process stdout
+                    stdout_lines = stdout.decode("utf-8").splitlines()
+                    for line in stdout_lines:
+                        self.msg_callback(line)
+                        progress.update()
 
-                # Process stderr after stdout is fully read
-                stderr = self.p.stderr.read()
-                stderr_lines = stderr.decode("utf-8").splitlines()
+                    # Process stderr
+                    stderr_lines = stderr.decode("utf-8").splitlines()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
-
-                # Wait for process to complete
-                self.p.wait()
-
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("Slab cancelled")
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            "Slab completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
-                        )
-                        self.success_callback()
+                    # Communicate callbacks
+                    if self.cancelled:
+                        self.msg_callback("RunSlab cancelled")
                     else:
-                        self.msg_callback("Slab failed", level=lg.ERROR)
-                        self.msg_callback("\n".join(stderr_lines), level=lg.ERROR)
-                        self.failure_callback()
+                        if self.p.returncode == 0:
+                            self.msg_callback(
+                                "RunSlab completed in {:,.2f} seconds".format(
+                                    time.time() - start_time
+                                )
+                            )
+                            self.success_callback()
+                        else:
+                            self.msg_callback("RunSlab failed")
+                            self.msg_callback(
+                                "Standard Output:\n" + "\n".join(stdout_lines),
+                                lg.INFO,
+                            )
+                            print(
+                                "Standard Error:\n" + "\n".join(stderr_lines)
+                            )  # todo: revert to msg_callback
+                            self.failure_callback()
+                except Exception as e:
+                    self.msg_callback(f"An error occurred: {str(e)}")
+                    self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         """Pass message to logger."""

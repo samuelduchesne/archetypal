@@ -89,7 +89,7 @@ class BasementThread(Thread):
         self.msg_callback(f"Weather File: {self.epw}")
 
         # Run Slab Program
-        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
             with tqdm(
                 unit_scale=True,
                 miniters=1,
@@ -120,12 +120,12 @@ class BasementThread(Thread):
 
                 # Communicate callbacks
                 if self.cancelled:
-                    self.msg_callback("Basement cancelled")
+                    self.msg_callback("RunSlab cancelled")
                     # self.cancelled_callback(self.std_out, self.std_err)
                 else:
                     if self.p.returncode == 0:
                         self.msg_callback(
-                            "Basement completed in {:,.2f} seconds".format(
+                            "RunSlab completed in {:,.2f} seconds".format(
                                 time.time() - start_time
                             )
                         )
@@ -133,7 +133,7 @@ class BasementThread(Thread):
                         for line in self.p.stderr:
                             self.msg_callback(line.decode("utf-8"))
                     else:
-                        self.msg_callback("Basement failed")
+                        self.msg_callback("RunSlab failed")
                         self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):

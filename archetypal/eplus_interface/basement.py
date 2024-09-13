@@ -50,7 +50,6 @@ class BasementThread(Thread):
         # get version from IDF object or by parsing the IDF file for it
 
         # Move files into place
-        # copy "%wthrfile%.epw" in.epw
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
         self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir).expand()
@@ -60,7 +59,7 @@ class BasementThread(Thread):
         basemenet_exe = shutil.which("Basement", path=self.eplus_home)
         if basemenet_exe is None:
             log(
-                f"The Basement program could not be found at " f"'{self.eplus_home}",
+                f"The Basement program could not be found at '{self.eplus_home}'",
                 lg.WARNING,
             )
             return

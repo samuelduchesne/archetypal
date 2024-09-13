@@ -77,21 +77,21 @@ class SlabThread(Thread):
             with tqdm(
                 unit_scale=True,
                 miniters=1,
-                desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+                desc=f"{self.slabexe} #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=True,  # can use shell
-                    cwd=self.run_dir.abspath(),
-                )
-                start_time = time.time()
-                self.msg_callback("Begin Slab Temperature Calculation processing . . .")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
-                    progress.update()
+                try:
+                    print("Running...", self.cmd, "from", self.run_dir)
+                    self.p = subprocess.Popen(
+                        self.cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        shell=False,
+                        cwd=self.run_dir,
+                    )
+                    start_time = time.time()
+                    self.msg_callback(
+                        "Begin Slab Temperature Calculation processing . . ."
 
                 # We explicitly close stdout
                 self.p.stdout.close()

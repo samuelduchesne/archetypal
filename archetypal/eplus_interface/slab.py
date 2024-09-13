@@ -122,10 +122,9 @@ class SlabThread(Thread):
                                 "Standard Output:\n" + "\n".join(stdout_lines),
                                 lg.INFO,
                             )
-                            self.msg_callback(
-                                "Standard Error:\n" + "\n".join(stderr_lines),
-                                level=lg.ERROR,
-                            )
+                            print(
+                                "Standard Error:\n" + "\n".join(stderr_lines)
+                            )  # todo: revert to msg_callback
                             self.failure_callback()
                 except Exception as e:
                     self.msg_callback(f"An error occurred: {str(e)}")

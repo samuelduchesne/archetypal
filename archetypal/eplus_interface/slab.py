@@ -1,6 +1,7 @@
 """Slab module"""
 
 import logging as lg
+import os
 import shutil
 import subprocess
 import time
@@ -12,7 +13,6 @@ from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
-from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
 
 
@@ -41,33 +41,32 @@ class SlabThread(Thread):
     @property
     def cmd(self):
         """Get the command."""
-        cmd_path = Path(shutil.which("Slab", path=self.run_dir))
-        return [cmd_path]
+        # if platform is windows
+        return [self.slabexe]
 
     def run(self):
-        """Wrapper around the EnergyPlus command line interface."""
+        """Wrapper around the Slab command line interface."""
         self.cancelled = False
-        # get version from IDF object or by parsing the IDF file for it
 
         # Move files into place
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
         self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir).expand()
 
-        # Get executable using shutil.which (determines the extension based on
-        # the platform, eg: .exe. And copy the executable to tmp
+        # Get executable using shutil.which
         slab_exe = shutil.which("Slab", path=self.eplus_home)
         if slab_exe is None:
             log(
-                f"The Slab program could not be found at " f"'{self.eplus_home}'",
+                f"The Slab program could not be found at '{self.eplus_home}'",
                 lg.WARNING,
             )
             return
-        self.slabexe = Path(slab_exe).copy(self.run_dir)
+        else:
+            slab_exe = (self.eplus_home / slab_exe).expand()
+        self.slabexe = slab_exe
         self.slabidd = (self.eplus_home / "SlabGHT.idd").copy(self.run_dir)
 
-        # The GHTin.idf file is copied from the self.include list (added by
-        # ExpandObjects. If self.include is empty, no need to run Slab.
+        # The GHTin.idf file is copied from the self.include list
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
         if not self.include:
             self.cleanup_callback()
@@ -132,7 +131,7 @@ class SlabThread(Thread):
                     next(infile)  # Skipping second line
                     for line in infile:
                         outfile.write(line)
-            # invalidate attributes dependant on idfname, since it has changed
+            # invalidate attributes dependent on idfname, since it has changed
             self.idf._reset_dependant_vars("idfname")
         self.cleanup_callback()
 

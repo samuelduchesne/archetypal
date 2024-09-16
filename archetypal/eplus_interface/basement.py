@@ -11,7 +11,7 @@ from path import Path
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from ..utils import log
+from archetypal.utils import log
 
 from ..eplus_interface.exceptions import EnergyPlusProcessError
 
@@ -47,15 +47,13 @@ class BasementThread(Thread):
     def run(self):
         """Wrapper around the Basement command line interface."""
         self.cancelled = False
-        # get version from IDF object or by parsing the IDF file for it
 
         # Move files into place
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
         self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir).expand()
 
-        # Get executable using shutil.which (determines the extension based on
-        # the platform, eg: .exe. And copy the executable to tmp
+        # Get executable using shutil.which
         basemenet_exe = shutil.which("Basement", path=self.eplus_home)
         if basemenet_exe is None:
             log(
@@ -69,9 +67,7 @@ class BasementThread(Thread):
         self.basement_idd = (self.eplus_home / "BasementGHT.idd").copy(self.run_dir)
         self.outfile = self.idf.name
 
-        # The BasementGHTin.idf file is copied from the self.include list (
-        # added by ExpandObjects. If self.include is empty, no need to run
-        # Basement.
+        # The BasementGHTin.idf file is copied from the self.include list
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
         if "BasementGHTIn.idf" not in self.include:
             self.cleanup_callback()

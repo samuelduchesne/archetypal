@@ -383,9 +383,10 @@ class IDF(GeomIDF):
         from pathlib import Path as Pathlib
 
         example_name = Path(example_name)
-        example_files_dir: Path = (
-            EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
+        eplus_version = EnergyPlusVersion(
+            kwargs.get("as_version", EnergyPlusVersion.current())
         )
+        example_files_dir: Path = eplus_version.current_install_dir / "ExampleFiles"
         try:
             file = next(
                 iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf"))
@@ -399,9 +400,7 @@ class IDF(GeomIDF):
             epw = Path(epw)
 
             if not epw.exists():
-                dir_weather_data_ = (
-                    EnergyPlusVersion.current().current_install_dir / "WeatherData"
-                )
+                dir_weather_data_ = eplus_version.current_install_dir / "WeatherData"
                 try:
                     epw = next(
                         iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw"))

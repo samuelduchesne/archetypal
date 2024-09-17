@@ -1485,7 +1485,8 @@ class IDF(GeomIDF):
         except KeyboardInterrupt:
             slab_thread.stop()
         finally:
-            tmp.rmtree(ignore_errors=True)
+            if not self.keep_data_err:
+                tmp.rmtree(ignore_errors=True)
             e = slab_thread.exception
             if e is not None:
                 raise e

@@ -4,6 +4,7 @@ import logging as lg
 import shutil
 import subprocess
 import time
+from io import StringIO
 from threading import Thread
 
 from packaging.version import Version
@@ -12,7 +13,6 @@ from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
-from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import log
 
 
@@ -41,58 +41,65 @@ class SlabThread(Thread):
     @property
     def cmd(self):
         """Get the command."""
-        cmd_path = Path(shutil.which("Slab", path=self.run_dir))
-        return [cmd_path]
+        # if platform is windows
+        return [self.slabexe]
 
     def run(self):
-        """Wrapper around the EnergyPlus command line interface."""
+        """Wrapper around the Slab command line interface."""
         self.cancelled = False
-        # get version from IDF object or by parsing the IDF file for it
 
         # Move files into place
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
         self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir).expand()
 
-        # Get executable using shutil.which (determines the extension based on
-        # the platform, eg: .exe. And copy the executable to tmp
+        # Get executable using shutil.which
         slab_exe = shutil.which("Slab", path=self.eplus_home)
         if slab_exe is None:
             log(
-                f"The Slab program could not be found at " f"'{self.eplus_home}'",
+                f"The Slab program could not be found at '{self.eplus_home}'",
                 lg.WARNING,
             )
             return
-        self.slabexe = Path(slab_exe).copy(self.run_dir)
+        else:
+            slab_exe = (self.eplus_home / slab_exe).expand()
+        self.slabexe = slab_exe
         self.slabidd = (self.eplus_home / "SlabGHT.idd").copy(self.run_dir)
+        self.outfile = self.idf.name
 
-        # The GHTin.idf file is copied from the self.include list (added by
-        # ExpandObjects. If self.include is empty, no need to run Slab.
+        # The GHTin.idf file is copied from the self.include list
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
         if not self.include:
             self.cleanup_callback()
             return
 
         # Run Slab Program
-        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
             with tqdm(
                 unit_scale=True,
                 miniters=1,
-                desc=f"RunSlab #{self.idf.position}-{self.idf.name}",
+                desc=f"{self.slabexe} #{self.idf.position}-{self.idf.name}",
                 position=self.idf.position,
             ) as progress:
                 self.p = subprocess.Popen(
                     self.cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    shell=True,  # can use shell
-                    cwd=self.run_dir.abspath(),
+                    shell=False,
+                    cwd=self.run_dir,
                 )
                 start_time = time.time()
                 self.msg_callback("Begin Slab Temperature Calculation processing . . .")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
+
+                # Read stdout line by line
+                for line in iter(self.p.stdout.readline, b""):
+                    decoded_line = line.decode("utf-8").strip()
+                    self.msg_callback(decoded_line)
                     progress.update()
+
+                # Process stderr after stdout is fully read
+                stderr = self.p.stderr.read()
+                stderr_lines = stderr.decode("utf-8").splitlines()
 
                 # We explicitly close stdout
                 self.p.stdout.close()
@@ -102,20 +109,20 @@ class SlabThread(Thread):
 
                 # Communicate callbacks
                 if self.cancelled:
-                    self.msg_callback("RunSlab cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
+                    self.msg_callback("Slab cancelled")
                 else:
                     if self.p.returncode == 0:
                         self.msg_callback(
-                            "RunSlab completed in {:,.2f} seconds".format(
+                            "Slab completed in {:,.2f} seconds".format(
                                 time.time() - start_time
                             )
                         )
                         self.success_callback()
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
+                        for line in stderr_lines:
+                            self.msg_callback(line)
                     else:
-                        self.msg_callback("RunSlab failed")
+                        self.msg_callback("Slab failed", level=lg.ERROR)
+                        self.msg_callback("\n".join(stderr_lines), level=lg.ERROR)
                         self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
@@ -124,16 +131,27 @@ class SlabThread(Thread):
 
     def success_callback(self):
         """Parse surface temperature and append to IDF file."""
-        temp_schedule = self.run_dir / "SLABSurfaceTemps.txt"
-        if temp_schedule.exists():
-            with open(self.idf.idfname, "a") as outfile:
-                with open(temp_schedule) as infile:
-                    next(infile)  # Skipping first line
-                    next(infile)  # Skipping second line
-                    for line in infile:
-                        outfile.write(line)
-            # invalidate attributes dependant on idfname, since it has changed
-            self.idf._reset_dependant_vars("idfname")
+        for temp_schedule in self.run_dir.glob("SLABSurfaceTemps*"):
+            if temp_schedule.exists():
+                slab_models = self.idf.__class__(
+                    StringIO(open(temp_schedule, "r").read()),
+                    file_version=self.idf.file_version,
+                    as_version=self.idf.as_version,
+                    prep_outputs=False,
+                )
+                # Loop on all objects and using self.newidfobject
+                added_objects = []
+                for sequence in slab_models.idfobjects.values():
+                    if sequence:
+                        for obj in sequence:
+                            data = obj.to_dict()
+                            key = data.pop("key")
+                            added_objects.append(
+                                self.idf.newidfobject(key=key.upper(), **data)
+                            )
+                del slab_models  # remove loaded_string model
+            else:
+                self.msg_callback("No SLABSurfaceTemps.txt file found.", level=lg.ERROR)
         self.cleanup_callback()
 
     def cleanup_callback(self):

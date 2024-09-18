@@ -207,7 +207,7 @@ class Sql:
             query = f"SELECT {cols} FROM TabularDataWithStrings"
             data = pd.read_sql(query, conn)
 
-        data.RowName = data.RowName.replace({"": np.NaN, "-": np.NaN})
+        data.RowName = data.RowName.replace({"": np.nan, "-": np.nan})
         data.dropna(subset=["RowName"], inplace=True)
 
         all_df = {}

@@ -853,7 +853,7 @@ class ZoneConditioning(UmiBase):
             if zone.occupants > 0:
                 oa_person = oa_design / zone.occupants
             else:
-                oa_person = np.NaN
+                oa_person = np.nan
 
             designobjs = zone._epbunch.getreferingobjs(
                 iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"]

@@ -233,7 +233,7 @@ def weighted_mean(series, df, weighting_variable):
         wa = np.average(series[index].astype("float"), weights=weights[index])
     except ZeroDivisionError:
         log(f"Cannot aggregate empty series {series.name}", lg.WARNING)
-        return np.NaN
+        return np.nan
     except Exception:
         raise
     else:
@@ -269,15 +269,15 @@ def top(series, df, weighting_variable):
             idx = idx_.nlargest(1).index
         else:
             log(f'No such names "{series.name}"')
-            return np.NaN
+            return np.nan
     except KeyError:
         log(f"Cannot aggregate empty series {series.name}", lg.WARNING)
-        return np.NaN
+        return np.nan
     except Exception:
         raise
     else:
         if idx.isnull().any():
-            return np.NaN
+            return np.nan
         else:
             return pd.to_numeric(idx, errors="ignore").values[0]
 

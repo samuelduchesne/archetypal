@@ -411,7 +411,7 @@ class ZoneLoad(UmiBase):
                 EquipmentPowerDensity = EquipmentAvailabilitySchedule.quantity / zone.area
             else:
                 EquipmentAvailabilitySchedule = None
-                EquipmentPowerDensity = np.NaN
+                EquipmentPowerDensity = np.nan
 
             # Verifies if Lights in zone
             sql_query = "select t.* from NominalLighting t where ZoneIndex=?"
@@ -432,7 +432,7 @@ class ZoneLoad(UmiBase):
                 LightingPowerDensity = LightsAvailabilitySchedule.quantity / zone.area
             else:
                 LightsAvailabilitySchedule = None
-                LightingPowerDensity = np.NaN
+                LightingPowerDensity = np.nan
 
             # Verifies if People in zone
 
@@ -464,7 +464,7 @@ class ZoneLoad(UmiBase):
                 PeopleDensity = OccupancySchedule.quantity / zone.area
             else:
                 OccupancySchedule = None
-                PeopleDensity = np.NaN
+                PeopleDensity = np.nan
 
         name = zone.Name + "_ZoneLoad"
         z_load = cls(

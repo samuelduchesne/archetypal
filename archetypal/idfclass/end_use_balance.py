@@ -288,7 +288,7 @@ class EndUseBalance:
     @classmethod
     def get_rolling_sign_change(cls, data: pd.DataFrame):
         # create a sign series where -1 is negative and 0 or 1 is positive
-        sign = np.sign(data).replace({0: np.NaN}).fillna(method="bfill").fillna(method="ffill")
+        sign = np.sign(data).replace({0: np.nan}).fillna(method="bfill").fillna(method="ffill")
         # when does a change of sign occurs?
         sign_switch = sign != sign.shift(-1)
         # From sign, keep when the sign switches and fill with the previous values
@@ -641,7 +641,7 @@ class EndUseBalance:
             .loc["Net Conditioned Building Area", ("Area", "m2")]
         )
 
-        system_input = system_input.replace({0: np.NaN}).dropna(how="all").dropna(how="all", axis=1)
+        system_input = system_input.replace({0: np.nan}).dropna(how="all").dropna(how="all", axis=1)
         system_input.rename_axis("source", axis=1, inplace=True)
         system_input.rename_axis("target", axis=0, inplace=True)
         system_input = system_input.unstack().rename("value").reset_index().dropna()
@@ -713,7 +713,7 @@ class EndUseBalance:
         assert load_type in ["heating", "cooling"]
         load_source = (
             load.unstack("Gain/Loss")
-            .replace({0: np.NaN})
+            .replace({0: np.nan})
             .loc[:, "Heat Gain"]
             .dropna(how="all")
             .apply(abs)
@@ -722,7 +722,7 @@ class EndUseBalance:
         )
         load_target = (
             load.unstack("Gain/Loss")
-            .replace({0: np.NaN})
+            .replace({0: np.nan})
             .loc[:, "Heat Loss"]
             .dropna(how="all")
             .apply(abs)
@@ -759,7 +759,7 @@ class EndUseBalance:
         assert load_type in ["heating", "cooling"]
         load_source = (
             load.unstack("Gain/Loss")
-            .replace({0: np.NaN})
+            .replace({0: np.nan})
             .loc[:, "Heat Loss"]
             .dropna(how="all")
             .apply(abs)
@@ -768,7 +768,7 @@ class EndUseBalance:
         )
         load_target = (
             load.unstack("Gain/Loss")
-            .replace({0: np.NaN})
+            .replace({0: np.nan})
             .loc[:, "Heat Gain"]
             .dropna(how="all")
             .apply(abs)

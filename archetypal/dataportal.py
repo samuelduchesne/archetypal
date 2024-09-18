@@ -649,7 +649,7 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
-        domain = re.findall(r"//(?s)(.*?)/", prepared_url)[0]
+        domain = re.findall(r"(?s)//(.*?)/", prepared_url)[0]
         log(f"Downloaded {size_kb:,.1f}KB from {domain}" f" in {time.time() - start_time:,.2f} seconds")
 
         try:

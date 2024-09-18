@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v3
+        with:
+          submodules: "true"
 
       - uses: actions/cache@v3
         with:
@@ -42,6 +44,8 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v3
+        with:
+          submodules: "true"
 
       - name: Set up python
         uses: actions/setup-python@v4

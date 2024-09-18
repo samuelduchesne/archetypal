@@ -631,7 +631,7 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
             British Columbia 60 = Yukon 61 = Northwest Territories 62 = Nunavut.
     """
     prepared_url = (
-        "https://www12.statcan.gc.ca/rest/census-recensement" f"/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}"
+        f"https://www12.statcan.gc.ca/rest/census-recensement/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}"
     )
 
     cached_response_json = get_from_cache(prepared_url)

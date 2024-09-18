@@ -10,9 +10,7 @@ from archetypal.idfclass.util import hash_model
 from archetypal.utils import log
 
 
-def get_report(
-    eplus_file, output_directory=None, output_report="sql", output_prefix=None, **kwargs
-):
+def get_report(eplus_file, output_directory=None, output_report="sql", output_prefix=None, **kwargs):
     """Returns the specified report format (html or sql)
 
     Args:
@@ -39,19 +37,15 @@ def get_report(
         if fullpath_filename.exists():
             return get_html_report(fullpath_filename)
         else:
-            raise FileNotFoundError(
-                'File "{}" does not exist'.format(fullpath_filename)
-            )
+            raise FileNotFoundError(f'File "{fullpath_filename}" does not exist')
 
-    elif "sql" == output_report.lower():
+    elif output_report.lower() == "sql":
         # Get the sql report
         fullpath_filename = output_directory / output_prefix + "out.sql"
         if fullpath_filename.exists():
             return get_sqlite_report(fullpath_filename)
         else:
-            raise FileNotFoundError(
-                'File "{}" does not exist'.format(fullpath_filename)
-            )
+            raise FileNotFoundError(f'File "{fullpath_filename}" does not exist')
     else:
         return None
 
@@ -68,14 +62,12 @@ def get_html_report(report_fullpath):
     """
     from eppy.results import readhtml  # the eppy module with functions to read the html
 
-    with open(report_fullpath, "r", encoding="utf-8") as cache_file:
+    with open(report_fullpath, encoding="utf-8") as cache_file:
         filehandle = cache_file.read()  # get a file handle to the html file
 
-        cached_tbl = readhtml.titletable(
-            filehandle
-        )  # get a file handle to the html file
+        cached_tbl = readhtml.titletable(filehandle)  # get a file handle to the html file
 
-        log('Retrieved response from cache file "{}"'.format(report_fullpath))
+        log(f'Retrieved response from cache file "{report_fullpath}"')
         return summary_reports_to_dataframes(cached_tbl)
 
 
@@ -133,7 +125,7 @@ def get_sqlite_report(report_file, report_tables=None):
                     # Try regular str read, could fail if wrong encoding
                     conn.text_factory = str
                     df = pd.read_sql_query(
-                        "select * from {};".format(table),
+                        f"select * from {table};",
                         conn,
                         index_col=report_tables[table]["PrimaryKey"],
                         parse_dates=report_tables[table]["ParseDates"],
@@ -145,7 +137,7 @@ def get_sqlite_report(report_file, report_tables=None):
                     # columns only
                     conn.text_factory = bytes
                     df = pd.read_sql_query(
-                        "select * from {};".format(table),
+                        f"select * from {table};",
                         conn,
                         index_col=report_tables[table]["PrimaryKey"],
                         parse_dates=report_tables[table]["ParseDates"],
@@ -156,11 +148,7 @@ def get_sqlite_report(report_file, report_tables=None):
                     for col in str_df:
                         df[col] = str_df[col]
                     all_tables[table] = df
-            log(
-                "SQL query parsed {} tables as DataFrames from {}".format(
-                    len(all_tables), report_file
-                )
-            )
+            log(f"SQL query parsed {len(all_tables)} tables as DataFrames from {report_file}")
             return all_tables
 
 
@@ -175,15 +163,9 @@ def get_ideal_loads_summary(idf):
     """
     res = {
         "SDL/Cooling": idf.meters.OutputMeter.Cooling__DistrictCooling.values("kWh"),
-        "SDL/Domestic Hot Water": idf.meters.OutputMeter.WaterSystems__DistrictHeating.values(
-            "kWh"
-        ),
-        "SDL/Equipment": idf.meters.OutputMeter.InteriorEquipment__Electricity.values(
-            "kWh"
-        ),
+        "SDL/Domestic Hot Water": idf.meters.OutputMeter.WaterSystems__DistrictHeating.values("kWh"),
+        "SDL/Equipment": idf.meters.OutputMeter.InteriorEquipment__Electricity.values("kWh"),
         "SDL/Heating": idf.meters.OutputMeter.Heating__DistrictHeating.values("kWh"),
-        "SDL/Lighting": idf.meters.OutputMeter.InteriorLights__Electricity.values(
-            "kWh"
-        ),
+        "SDL/Lighting": idf.meters.OutputMeter.InteriorLights__Electricity.values("kWh"),
     }
     return pd.DataFrame(res)

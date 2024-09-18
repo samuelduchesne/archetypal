@@ -5,17 +5,16 @@ name: Python package
 
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
-
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [ 3.9 ]
-        os: [ ubuntu-latest ]  # later, add macos-latest, windows-latest
-        energyplus-version: [ 9.2.0 ]  # later, add 9.4.0
+        python-version: [3.9]
+        os: [ubuntu-latest] # later, add macos-latest, windows-latest
+        energyplus-version: [9.2.0] # later, add 9.4.0
         include:
           - runs-on: ubuntu-latest
             compiler: gcc

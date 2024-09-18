@@ -115,26 +115,15 @@ class EndUseBalance:
         self.is_heating = is_heating
 
     @classmethod
-    def from_sql_file(
-        cls, sql_file, units="kWh", power_units="kW", outdoor_surfaces_only=True
-    ):
+    def from_sql_file(cls, sql_file, units="kWh", power_units="kW", outdoor_surfaces_only=True):
         sql = Sql(sql_file)
 
-        _hvac_input = sql.timeseries_by_name(cls.HVAC_INPUT_SENSIBLE).to_units(
-            power_units
-        )
-        _hvac_input_heated_surface = sql.timeseries_by_name(
-            cls.HVAC_INPUT_HEATED_SURFACE
-        ).to_units(units)
-        _hvac_input_cooled_surface = sql.timeseries_by_name(
-            cls.HVAC_INPUT_COOLED_SURFACE
-        ).to_units(units)
+        _hvac_input = sql.timeseries_by_name(cls.HVAC_INPUT_SENSIBLE).to_units(power_units)
+        _hvac_input_heated_surface = sql.timeseries_by_name(cls.HVAC_INPUT_HEATED_SURFACE).to_units(units)
+        _hvac_input_cooled_surface = sql.timeseries_by_name(cls.HVAC_INPUT_COOLED_SURFACE).to_units(units)
         # convert power to energy assuming the reporting frequency
         freq = pd.infer_freq(_hvac_input.index)
-        assert freq.lower() == "h", (
-            f"freq='{freq}': A reporting frequency other than H is not yet "
-            f"supported."
-        )
+        assert freq.lower() == "h", f"freq='{freq}': A reporting frequency other than H is not yet " f"supported."
         freq_to_unit = {"h": "hr"}
         _hvac_input = _hvac_input.apply(
             lambda row: unit_registry.Quantity(
@@ -169,9 +158,7 @@ class EndUseBalance:
         cooling = _hvac_input.mul(is_cooling, level="KeyValue", axis=1)
 
         lighting = sql.timeseries_by_name(cls.LIGHTING).to_units(units)
-        zone_multipliers = sql.zone_info.set_index("ZoneName")["Multiplier"].rename(
-            "KeyValue"
-        )
+        zone_multipliers = sql.zone_info.set_index("ZoneName")["Multiplier"].rename("KeyValue")
         lighting = cls.apply_multipliers(
             lighting,
             zone_multipliers,
@@ -204,19 +191,13 @@ class EndUseBalance:
         mech_vent = None
         nat_vent = None
         if len(infil_gain) == len(infil_loss):
-            infiltration = cls.subtract_loss_from_gain(
-                infil_gain, infil_loss, level="Name"
-            )
+            infiltration = cls.subtract_loss_from_gain(infil_gain, infil_loss, level="Name")
         if nat_vent_gain.shape == nat_vent_loss.shape:
-            nat_vent = cls.subtract_loss_from_gain(
-                nat_vent_gain, nat_vent_loss, level="Name"
-            )
+            nat_vent = cls.subtract_loss_from_gain(nat_vent_gain, nat_vent_loss, level="Name")
 
         # get the surface energy flow
         opaque_flow = sql.timeseries_by_name(cls.OPAQUE_ENERGY_FLOW).to_units(units)
-        opaque_storage = sql.timeseries_by_name(cls.OPAQUE_ENERGY_STORAGE).to_units(
-            units
-        )
+        opaque_storage = sql.timeseries_by_name(cls.OPAQUE_ENERGY_STORAGE).to_units(units)
         opaque_storage_ = opaque_storage.copy()
         opaque_storage_.columns = opaque_flow.columns
         opaque_flow = -(opaque_flow + opaque_storage_)
@@ -224,32 +205,18 @@ class EndUseBalance:
         window_loss = cls.apply_multipliers(window_loss, zone_multipliers)
         window_gain = sql.timeseries_by_name(cls.WINDOW_GAIN).to_units(units)
         window_gain = cls.apply_multipliers(window_gain, zone_multipliers)
-        window_flow = cls.subtract_loss_from_gain(
-            window_gain, window_loss, level="Name"
-        )
-        window_flow = cls.subtract_solar_from_window_net(
-            window_flow, solar_gain, level="KeyValue"
-        )
+        window_flow = cls.subtract_loss_from_gain(window_gain, window_loss, level="Name")
+        window_flow = cls.subtract_solar_from_window_net(window_flow, solar_gain, level="KeyValue")
 
-        opaque_flow = cls.match_opaque_surface_to_zone(
-            sql.surfaces_table, opaque_flow, sql.zone_info
-        )
-        opaque_storage = cls.match_opaque_surface_to_zone(
-            sql.surfaces_table, opaque_storage, sql.zone_info
-        )
+        opaque_flow = cls.match_opaque_surface_to_zone(sql.surfaces_table, opaque_flow, sql.zone_info)
+        opaque_storage = cls.match_opaque_surface_to_zone(sql.surfaces_table, opaque_storage, sql.zone_info)
         if outdoor_surfaces_only:
             # inside surfaces are identified by ExtBoundCond > 0
-            inside_surfaces = sql.surfaces_table[lambda x: x["ExtBoundCond"] > 0][
-                "SurfaceName"
-            ].values.tolist()
+            inside_surfaces = sql.surfaces_table[lambda x: x["ExtBoundCond"] > 0]["SurfaceName"].values.tolist()
 
             # drop inside surfaces
-            opaque_flow = opaque_flow.drop(
-                inside_surfaces, level="KeyValue", axis=1, errors="ignore"
-            )
-            opaque_storage = opaque_storage.drop(
-                inside_surfaces, level="KeyValue", axis=1, errors="ignore"
-            )
+            opaque_flow = opaque_flow.drop(inside_surfaces, level="KeyValue", axis=1, errors="ignore")
+            opaque_storage = opaque_storage.drop(inside_surfaces, level="KeyValue", axis=1, errors="ignore")
         window_energy_flow = window_flow
 
         bal_obj = cls(
@@ -285,10 +252,7 @@ class EndUseBalance:
         if isinstance(idf, IDF):
             multipliers = (
                 pd.Series(
-                    {
-                        zone.Name.upper(): zone.Multiplier
-                        for zone in idf.idfobjects["ZONE"]
-                    },
+                    {zone.Name.upper(): zone.Multiplier for zone in idf.idfobjects["ZONE"]},
                     name="Key_Name",
                 )
                 .replace({"": 1})
@@ -303,9 +267,7 @@ class EndUseBalance:
         return data.mul(multipliers, level=key, axis=1)
 
     @classmethod
-    def subtract_cooled_from_heated_surface(
-        cls, _hvac_input_cooled_surface, _hvac_input_heated_surface
-    ):
+    def subtract_cooled_from_heated_surface(cls, _hvac_input_cooled_surface, _hvac_input_heated_surface):
         if _hvac_input_cooled_surface.empty:
             return _hvac_input_cooled_surface
         try:
@@ -326,12 +288,7 @@ class EndUseBalance:
     @classmethod
     def get_rolling_sign_change(cls, data: pd.DataFrame):
         # create a sign series where -1 is negative and 0 or 1 is positive
-        sign = (
-            np.sign(data)
-            .replace({0: np.NaN})
-            .fillna(method="bfill")
-            .fillna(method="ffill")
-        )
+        sign = np.sign(data).replace({0: np.NaN}).fillna(method="bfill").fillna(method="ffill")
         # when does a change of sign occurs?
         sign_switch = sign != sign.shift(-1)
         # From sign, keep when the sign switches and fill with the previous values
@@ -363,9 +320,7 @@ class EndUseBalance:
                     window.get_referenced_object(  # get the zone name though the surface name
                         "Building_Surface_Name"
                     ).Zone_Name.upper(),
-                    float(window.Multiplier)
-                    if window.Multiplier != ""
-                    else 1,  # multiplier of this window.
+                    float(window.Multiplier) if window.Multiplier != "" else 1,  # multiplier of this window.
                 )
                 for window in idf.getsubsurfaces()
             ],
@@ -384,16 +339,10 @@ class EndUseBalance:
                 window_to_surface_match.rename(index=str.upper),
                 on="Key_Name",
             )
-            .set_index(
-                ["Building_Surface_Name", "Surface_Type", "Zone_Name"], append=True
-            )
+            .set_index(["Building_Surface_Name", "Surface_Type", "Zone_Name"], append=True)
         )
-        window_flow = (
-            stacked.drop(columns=["Multiplier"]).iloc[:, 0] * stacked["Multiplier"]
-        )
-        window_flow = window_flow.unstack(
-            level=["Key_Name", "Building_Surface_Name", "Surface_Type", "Zone_Name"]
-        )
+        window_flow = stacked.drop(columns=["Multiplier"]).iloc[:, 0] * stacked["Multiplier"]
+        window_flow = window_flow.unstack(level=["Key_Name", "Building_Surface_Name", "Surface_Type", "Zone_Name"])
 
         return window_flow  # .groupby("Building_Surface_Name", axis=1).sum()
 
@@ -408,15 +357,11 @@ class EndUseBalance:
             * Outside_Boundary_Condition
             * Zone_Name
         """
-        surface_with_idx = surface_table.join(
-            zone_info["ZoneName"], on="ZoneIndex"
-        ).reset_index()
+        surface_with_idx = surface_table.join(zone_info["ZoneName"], on="ZoneIndex").reset_index()
         opaque_flow.columns = pd.MultiIndex.from_frame(
             opaque_flow.columns.to_frame(index=False).join(
                 surface_with_idx.reset_index()
-                .set_index("SurfaceName")[
-                    ["ClassName", "ExtBoundCond", "ZoneName", "ZoneIndex"]
-                ]
+                .set_index("SurfaceName")[["ClassName", "ExtBoundCond", "ZoneName", "ZoneIndex"]]
                 .rename(
                     {
                         "ClassName": "Surface_Type",
@@ -435,9 +380,7 @@ class EndUseBalance:
     @classmethod
     def subtract_loss_from_gain(cls, load_gain, load_loss, level="OutputVariable"):
         try:
-            columns = load_gain.rename(
-                columns=lambda x: str.replace(x, " Gain", ""), level=level
-            ).columns
+            columns = load_gain.rename(columns=lambda x: str.replace(x, " Gain", ""), level=level).columns
         except KeyError:
             columns = None
         return EnergyDataFrame(
@@ -450,10 +393,7 @@ class EndUseBalance:
     def subtract_solar_from_window_net(cls, window_flow, solar_gain, level="Key_Name"):
         columns = window_flow.columns
         return EnergyDataFrame(
-            (
-                window_flow.groupby(level=level, axis=1).sum()
-                - solar_gain.groupby(level=level, axis=1).sum()
-            )
+            (window_flow.groupby(level=level, axis=1).sum() - solar_gain.groupby(level=level, axis=1).sum())
             .loc[:, list(columns.get_level_values(level))]
             .values,
             columns=columns,
@@ -464,8 +404,7 @@ class EndUseBalance:
     def subtract_vent_from_system(cls, system, vent, level="Key_Name"):
         columns = vent.columns
         return EnergyDataFrame(
-            system.groupby(level=level, axis=1).sum().values
-            - vent.groupby(level=level, axis=1).sum().values,
+            system.groupby(level=level, axis=1).sum().values - vent.groupby(level=level, axis=1).sum().values,
             columns=columns,
             index=system.index,
         )
@@ -480,9 +419,7 @@ class EndUseBalance:
         Returns:
 
         """
-        assert (
-            component in self.__dict__.keys()
-        ), f"{component} is not a valid attribute of EndUseBalance."
+        assert component in self.__dict__.keys(), f"{component} is not a valid attribute of EndUseBalance."
         component_df = getattr(self, component)
         assert not component_df.empty, "Expected a component that is not empty."
         print(component)
@@ -540,13 +477,11 @@ class EndUseBalance:
                         .sum()
                         .sort_index(axis=1)
                     )
-            for (surface_type), data in self.separate_gains_and_losses(
-                "opaque_flow", level="Zone_Name"
-            ).groupby(level=["Surface_Type"], axis=1):
+            for (surface_type), data in self.separate_gains_and_losses("opaque_flow", level="Zone_Name").groupby(
+                level=["Surface_Type"], axis=1
+            ):
                 summary_by_component[surface_type] = (
-                    data.groupby(level=["Zone_Name", "Period", "Gain/Loss"], axis=1)
-                    .sum()
-                    .sort_index(axis=1)
+                    data.groupby(level=["Zone_Name", "Period", "Gain/Loss"], axis=1).sum().sort_index(axis=1)
                 )
 
         else:
@@ -564,40 +499,30 @@ class EndUseBalance:
             ]:
                 component_df = getattr(self, component)
                 if not component_df.empty:
-                    summary_by_component[component] = component_df.sum(
-                        level=level, axis=1
-                    ).sort_index(axis=1)
+                    summary_by_component[component] = component_df.sum(level=level, axis=1).sort_index(axis=1)
             for (zone_name, surface_type), data in self.opaque_flow.groupby(
                 level=["Zone_Name", "Surface_Type"], axis=1
             ):
-                summary_by_component[surface_type] = data.sum(
-                    level="Zone_Name", axis=1
-                ).sort_index(axis=1)
+                summary_by_component[surface_type] = data.sum(level="Zone_Name", axis=1).sort_index(axis=1)
             levels = ["Component", "Zone_Name"]
 
         # Add contribution of heating/cooling outside air, if any
         if not self.air_system.empty:
             summary_by_component["air_system_heating"] = (
-                self.air_system.xs(
-                    "Air System Heating Coil Total Heating Energy", level="Name", axis=1
-                )
+                self.air_system.xs("Air System Heating Coil Total Heating Energy", level="Name", axis=1)
                 .assign(**{"Period": "Heating Periods", "Gain/Loss": "Heat Loss"})
                 .set_index(["Period", "Gain/Loss"], append=True)
                 .unstack(["Period", "Gain/Loss"])
                 .droplevel("IndexGroup", axis=1)
             )
             summary_by_component["air_system_cooling"] = (
-                self.air_system.xs(
-                    "Air System Cooling Coil Total Cooling Energy", level="Name", axis=1
-                )
+                self.air_system.xs("Air System Cooling Coil Total Cooling Energy", level="Name", axis=1)
                 .assign(**{"Period": "Cooling Periods", "Gain/Loss": "Heat Gain"})
                 .set_index(["Period", "Gain/Loss"], append=True)
                 .unstack(["Period", "Gain/Loss"])
                 .droplevel("IndexGroup", axis=1)
             )
-        return pd.concat(
-            summary_by_component, axis=1, verify_integrity=True, names=levels
-        )
+        return pd.concat(summary_by_component, axis=1, verify_integrity=True, names=levels)
 
     def component_summary(self) -> EnergyDataFrame:
         """Return a DataFrame of components summarized annually."""
@@ -613,29 +538,13 @@ class EndUseBalance:
             .groupby(level=["Period", "Gain/Loss"])
             .sum()
         )
-        sum_solar_gain = (
-            self.separate_gains_and_losses("solar_gain")
-            .sum()
-            .groupby(level=["Period", "Gain/Loss"])
-            .sum()
-        )
-        sum_lighting = (
-            self.separate_gains_and_losses("lighting")
-            .sum()
-            .groupby(level=["Period", "Gain/Loss"])
-            .sum()
-        )
+        sum_solar_gain = self.separate_gains_and_losses("solar_gain").sum().groupby(level=["Period", "Gain/Loss"]).sum()
+        sum_lighting = self.separate_gains_and_losses("lighting").sum().groupby(level=["Period", "Gain/Loss"]).sum()
         sum_infiltration = (
-            self.separate_gains_and_losses("infiltration")
-            .sum()
-            .groupby(level=["Period", "Gain/Loss"])
-            .sum()
+            self.separate_gains_and_losses("infiltration").sum().groupby(level=["Period", "Gain/Loss"]).sum()
         )
         sum_people_gain = (
-            self.separate_gains_and_losses("people_gain")
-            .sum()
-            .groupby(level=["Period", "Gain/Loss"])
-            .sum()
+            self.separate_gains_and_losses("people_gain").sum().groupby(level=["Period", "Gain/Loss"]).sum()
         )
 
         df = pd.concat(
@@ -661,9 +570,7 @@ class EndUseBalance:
 
     def to_sankey(self, path_or_buf):
         system_data = self.to_df(separate_gains_and_losses=True)
-        annual_system_data = (
-            system_data.sum().groupby(level=["Component", "Period", "Gain/Loss"]).sum()
-        )
+        annual_system_data = system_data.sum().groupby(level=["Component", "Period", "Gain/Loss"]).sum()
         annual_system_data.rename(
             {
                 "people_gain": "Occupants",
@@ -712,9 +619,7 @@ class EndUseBalance:
                 'select * from "TabularDataWithStrings" as f where f."TableName" == "End Uses" and f."ReportName" == "AnnualBuildingUtilityPerformanceSummary"',
                 conn,
             )
-            system_input = df.pivot(
-                index="RowName", columns="ColumnName", values="Value"
-            ).loc[end_uses, energy_sources]
+            system_input = df.pivot(index="RowName", columns="ColumnName", values="Value").loc[end_uses, energy_sources]
             system_input = system_input.astype("float")
             system_input = EnergyDataFrame(
                 system_input.values,
@@ -736,11 +641,7 @@ class EndUseBalance:
             .loc["Net Conditioned Building Area", ("Area", "m2")]
         )
 
-        system_input = (
-            system_input.replace({0: np.NaN})
-            .dropna(how="all")
-            .dropna(how="all", axis=1)
-        )
+        system_input = system_input.replace({0: np.NaN}).dropna(how="all").dropna(how="all", axis=1)
         system_input.rename_axis("source", axis=1, inplace=True)
         system_input.rename_axis("target", axis=0, inplace=True)
         system_input = system_input.unstack().rename("value").reset_index().dropna()
@@ -805,9 +706,7 @@ class EndUseBalance:
 
         # TO EUI
         flows["value"] = flows["value"] / floor_area
-        links = pd.DataFrame(
-            link_heating_system_to_gains + link_cooling_system_to_gains
-        )
+        links = pd.DataFrame(link_heating_system_to_gains + link_cooling_system_to_gains)
         return pd.concat([flows, links]).to_csv(path_or_buf, index=False)
 
     def _sankey_heating(self, load, load_type="heating"):
@@ -833,9 +732,7 @@ class EndUseBalance:
         load_source["target"] = load_type.title() + " Load"
         load_source = load_source.rename({"Component": "source"}, axis=1)
         load_source["source"] = load_source["source"] + " Gain"
-        load_source = load_source.replace(
-            {f"{load_type.title()} Gain": load_type.title() + " System"}
-        )
+        load_source = load_source.replace({f"{load_type.title()} Gain": load_type.title() + " System"})
 
         load_source_data = load_source.to_dict(orient="records")
         load_target["source"] = load_type.title() + " Load"
@@ -881,18 +778,12 @@ class EndUseBalance:
         load_source["target"] = load_type.title() + " Load"
         load_source = load_source.rename({"Component": "source"}, axis=1)
         load_source["source"] = load_source["source"] + " Losses"
-        load_source = load_source.replace(
-            {f"{load_type.title()} Losses": load_type.title() + " System"}
-        )
+        load_source = load_source.replace({f"{load_type.title()} Losses": load_type.title() + " System"})
 
         load_source_data = load_source.to_dict(orient="records")
         load_target["source"] = load_type.title() + " Load"
         load_target = load_target.rename({"Component": "target"}, axis=1)
-        load_target = (
-            load_target.set_index("target")
-            .drop(load_type.title(), errors="ignore")
-            .reset_index()
-        )
+        load_target = load_target.set_index("target").drop(load_type.title(), errors="ignore").reset_index()
         load_target_data = load_target.to_dict(orient="records")
         link_system_to_gains = (
             load_source.set_index("source")

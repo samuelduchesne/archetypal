@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
 #
@@ -25,7 +24,7 @@ sys.path.insert(0, os.path.abspath("archetypal"))
 # -- Project information -----------------------------------------------------
 
 project = "archetypal"
-copyright = "{}, Samuel Letellier-Duchesne".format(datetime.datetime.now().year)
+copyright = f"{datetime.datetime.now().year}, Samuel Letellier-Duchesne"
 author = "Samuel Letellier-Duchesne"
 
 # The full version, including alpha/beta/rc tags

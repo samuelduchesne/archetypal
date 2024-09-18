@@ -8,7 +8,7 @@ from archetypal.template.constructions.base_construction import ConstructionBase
 from archetypal.template.materials.opaque_material import OpaqueMaterial
 
 
-class MassRatio(object):
+class MassRatio:
     """Handles the properties of the mass ratio for building template structure."""
 
     __slots__ = ("_high_load_ratio", "_material", "_normal_ratio")
@@ -41,9 +41,7 @@ class MassRatio(object):
 
     @Material.setter
     def Material(self, value):
-        assert isinstance(
-            value, OpaqueMaterial
-        ), f"Material must be of type OpaqueMaterial, not {type(value)}"
+        assert isinstance(value, OpaqueMaterial), f"Material must be of type OpaqueMaterial, not {type(value)}"
         self._material = value
 
     @property

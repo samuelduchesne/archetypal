@@ -21,7 +21,7 @@ from .eplus_interface.version import EnergyPlusVersion
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
-class CliConfig(object):
+class CliConfig:
     def __init__(self):
         self.data_folder = settings.data_folder
         self.logs_folder = settings.logs_folder
@@ -70,8 +70,7 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     "--cache-responses",
     is_flag=True,
     default=False,
-    help="Use a local cache to save/retrieve DataPortal API calls for the same "
-    "requests.",
+    help="Use a local cache to save/retrieve DataPortal API calls for the same " "requests.",
 )
 @click.option(
     "-l",
@@ -96,14 +95,12 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     default=settings.log_level,
 )
 @click.option("--log-name", help="name of the logger", default=settings.log_name)
-@click.option(
-    "--log-filename", help="name of the log file", default=settings.log_filename
-)
+@click.option("--log-filename", help="name of the log file", default=settings.log_filename)
 @click.option(
     "--ep_version",
     type=click.STRING,
     default=settings.ep_version,
-    help='the EnergyPlus version to use. eg. "{}"'.format(settings.ep_version),
+    help=f'the EnergyPlus version to use. eg. "{settings.ep_version}"',
 )
 @click.option(
     "-d",
@@ -209,9 +206,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     dir_ = output.dirname()
 
     file_paths = list(set_filepaths(idf))
-    file_list = "\n".join(
-        [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
-    )
+    file_list = "\n".join([f"{i}. " + str(file.name) for i, file in enumerate(file_paths)])
     log(
         f"executing {len(file_paths)} file(s):\n{file_list}",
     )
@@ -246,9 +241,7 @@ def validate_energyplusversion(ctx, param, value):
 def validate_paths(ctx, param, value):
     try:
         file_paths = set_filepaths(value)
-        file_list = "\n".join(
-            [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
-        )
+        file_list = "\n".join([f"{i}. " + str(file.name) for i, file in enumerate(file_paths)])
         return file_paths, file_list
     except FileNotFoundError:
         raise click.BadParameter("no files were found.")
@@ -333,10 +326,7 @@ def transition(idf, to_version, cores, yes):
                 file_list.append(idf.original_idfname)
                 idf.saveas(str(idf.original_idfname))
             else:
-                full_path = (
-                    idf.original_idfname.dirname() / idf.original_idfname.stem
-                    + f"V{to_version}.idf"
-                )
+                full_path = idf.original_idfname.dirname() / idf.original_idfname.stem + f"V{to_version}.idf"
                 file_list.append(full_path)
                 idf.saveas(full_path)
     log(

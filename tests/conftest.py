@@ -24,8 +24,8 @@ def scratch_then_cache(request):
             settings.cache_folder,
             settings.imgs_folder,
         ]
-        for dir in dirs:
-            dir.rmtree_p()
+        for d in dirs:
+            d.rmtree_p()
 
 
 samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular', 'umi_samples']
@@ -33,7 +33,7 @@ samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular', 'umi_samples
 
 @pytest.fixture(params=samples_, ids=samples_, scope="session")
 def idf_source(request):
-    return glob.glob("tests/input_data/{}/*.idf".format(request.param))
+    return glob.glob(f"tests/input_data/{request.param}/*.idf")
 
 
 @pytest.fixture(scope="session")
@@ -55,8 +55,8 @@ def clean_config(config):
     """calls config fixture and clears default folders"""
 
     dirs = [settings.data_folder, settings.cache_folder, settings.imgs_folder]
-    for dir in dirs:
-        dir.rmtree_p()
+    for d in dirs:
+        d.rmtree_p()
 
 
 # List fixtures that are located outiside of conftest.py so that they can be

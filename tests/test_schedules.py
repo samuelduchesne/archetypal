@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from archetypal import settings
 from archetypal import IDF
 from archetypal.eplus_interface import EnergyPlusVersion
 from archetypal.schedule import Schedule, ScheduleTypeLimits
@@ -49,9 +48,7 @@ class TestSchedule:
 
     def test_scale(self, schedules_in_necb_specific):
         before_sum = sum(schedules_in_necb_specific.Values)
-        assert before_sum == pytest.approx(
-            sum(schedules_in_necb_specific.scale(0.1).Values)
-        )
+        assert before_sum == pytest.approx(sum(schedules_in_necb_specific.scale(0.1).Values))
 
     def test_plot(self, schedules_in_necb_specific):
         schedules_in_necb_specific.plot(drawstyle="steps-post")
@@ -117,12 +114,7 @@ def schedules_idf():
         idf_file,
         epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
         readvars=True,
-        include=[
-            EnergyPlusVersion.current().current_install_dir
-            / "DataSets"
-            / "TDV"
-            / "TDV_2008_kBtu_CTZ06.csv"
-        ],
+        include=[EnergyPlusVersion.current().current_install_dir / "DataSets" / "TDV" / "TDV_2008_kBtu_CTZ06.csv"],
     )
     return idf
 
@@ -143,9 +135,7 @@ def csv_out(config):
 schedules = [
     pytest.param(
         schedule,
-        marks=pytest.mark.xfail(
-            reason="Can't quite capture all possibilities with special days"
-        ),
+        marks=pytest.mark.xfail(reason="Can't quite capture all possibilities with special days"),
     )
     if schedule == "POFF"
     else pytest.param(schedule, marks=pytest.mark.xfail(raises=NotImplementedError))
@@ -173,9 +163,9 @@ def schedule_parametrized(request, csv_out):
     epv = epv.loc[:, ep_bunch.Name.upper() + ":Schedule Value [](Hourly)"].values
     expected = pd.Series(epv, index=index)
 
-    print("Year: {}".format(new_eps[0].Name))
-    print("Weeks: {}".format([obj.Name for obj in new_eps[1]]))
-    print("Days: {}".format([obj.Name for obj in new_eps[2]]))
+    print(f"Year: {new_eps[0].Name}")
+    print(f"Weeks: {[obj.Name for obj in new_eps[1]]}")
+    print(f"Days: {[obj.Name for obj in new_eps[2]]}")
 
     yield origin, new, expected
 

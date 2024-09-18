@@ -120,9 +120,7 @@ class LoadBalance:
             total_load = cls.subtract_loss_from_gain(mech_vent_gain, mech_vent_loss)
             mech_vent = total_load.copy()
             mech_vent.rename(
-                columns=lambda x: str.replace(
-                    x, "Zone Ideal Loads Supply Air", "Zone Ideal Loads Ventilation"
-                ),
+                columns=lambda x: str.replace(x, "Zone Ideal Loads Supply Air", "Zone Ideal Loads Ventilation"),
                 level="OutputVariable",
                 inplace=True,
             )
@@ -145,9 +143,7 @@ class LoadBalance:
             window_flow = cls.subtract_loss_from_gain(window_gain, window_loss)
             window_flow = cls.match_window_to_zone(idf, window_flow)
         face_energy_flow = opaque_flow.add(
-            window_flow.groupby(level=["Building_Surface_Name"], axis=1)
-            .sum()
-            .rename(columns=str.upper),
+            window_flow.groupby(level=["Building_Surface_Name"], axis=1).sum().rename(columns=str.upper),
             level="Key_Name",
             axis=1,
             fill_value=0,
@@ -205,25 +201,17 @@ class LoadBalance:
                 window_to_surface_match.rename(index=str.upper),
                 on="Key_Name",
             )
-            .set_index(
-                ["Building_Surface_Name", "Surface_Type", "Zone_Name"], append=True
-            )
+            .set_index(["Building_Surface_Name", "Surface_Type", "Zone_Name"], append=True)
         )
-        window_flow = stacked.drop(columns=["Multiplier"]).iloc[:, 0] * pd.to_numeric(
-            stacked["Multiplier"]
-        )
-        window_flow = window_flow.unstack(
-            level=["Key_Name", "Building_Surface_Name", "Surface_Type", "Zone_Name"]
-        )
+        window_flow = stacked.drop(columns=["Multiplier"]).iloc[:, 0] * pd.to_numeric(stacked["Multiplier"])
+        window_flow = window_flow.unstack(level=["Key_Name", "Building_Surface_Name", "Surface_Type", "Zone_Name"])
 
         return window_flow  # .groupby("Building_Surface_Name", axis=1).sum()
 
     @classmethod
     def subtract_loss_from_gain(cls, load_gain, load_loss):
         try:
-            columns = load_gain.rename(
-                columns=lambda x: str.replace(x, " Gain", ""), level="OutputVariable"
-            ).columns
+            columns = load_gain.rename(columns=lambda x: str.replace(x, " Gain", ""), level="OutputVariable").columns
         except KeyError:
             columns = None
         return EnergyDataFrame(

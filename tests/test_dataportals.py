@@ -52,9 +52,7 @@ def test_tabula_building_sheet(config):
 
 def test_tabula_building_sheet_code_building(config):
     # Test with code_building not None
-    sheet = tabula_building_details_sheet(
-        code_building="AT.MT.AB.02.Gen.ReEx.001.001", code_country="Austria"
-    )
+    sheet = tabula_building_details_sheet(code_building="AT.MT.AB.02.Gen.ReEx.001.001", code_country="Austria")
 
     # Makes sure result is not empty
     assert list(sheet["val"])
@@ -65,17 +63,13 @@ def test_tabula_building_sheet_code_building(config):
 def test_tabula_building_sheet_valueerror(config):
     # Test with wrong code_building
     with pytest.raises(ValueError):
-        sheet = tabula_building_details_sheet(
-            code_building="wrong_string", code_country="Austria"
-        )
+        sheet = tabula_building_details_sheet(code_building="wrong_string", code_country="Austria")
     # Makes sure sheet not in locals
     assert "sheet" not in locals()
 
     # Test with wrong code_buildingsizeclass
     with pytest.raises(ValueError):
-        sheet = tabula_building_details_sheet(
-            code_buildingsizeclass="wrong_string", code_country="Austria"
-        )
+        sheet = tabula_building_details_sheet(code_buildingsizeclass="wrong_string", code_country="Austria")
     # Makes sure sheet not in locals
     assert "sheet" not in locals()
 
@@ -98,9 +92,7 @@ def test_tabula_system(config):
 def test_tabula_system_valueerror(config):
     # Test with wrong code_boundarycond
     with pytest.raises(ValueError):
-        res = dataportal.tabula_system(
-            code_country="FR", code_boundarycond="wrong_string"
-        )
+        res = dataportal.tabula_system(code_country="FR", code_boundarycond="wrong_string")
     # Makes sure res not in locals
     assert "res" not in locals()
 
@@ -148,10 +140,7 @@ def test_tabula_multiple(config):
     archetypes = pd.concat(
         ab.apply(
             lambda x: tabula_building_details_sheet(
-                code_building=x.code_buildingtype_column1
-                + "."
-                + x.suffix_building_column1
-                + ".001"
+                code_building=x.code_buildingtype_column1 + "." + x.suffix_building_column1 + ".001"
             ),
             axis=1,
         ).values.tolist(),

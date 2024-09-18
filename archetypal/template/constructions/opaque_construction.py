@@ -78,7 +78,7 @@ class OpaqueConstruction(LayeredConstruction):
 
         alpha = float(value) / self.r_value
         new_r_value = (
-            ((alpha - 1) * sum([a.r_value for a in all_layers_except_insulation_layer]))
+            (alpha - 1) * sum([a.r_value for a in all_layers_except_insulation_layer])
         ) + alpha * insulation_layer.r_value
         insulation_layer.r_value = new_r_value
 
@@ -105,10 +105,7 @@ class OpaqueConstruction(LayeredConstruction):
             https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         return (1 / self.total_thickness) * sum(
-            [
-                layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
-                for layer in self.Layers
-            ]
+            [layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness for layer in self.Layers]
         )
 
     @property
@@ -156,9 +153,7 @@ class OpaqueConstruction(LayeredConstruction):
         solar_absorptance = exposed_material.Material.SolarAbsorptance
         thermal_emissivity = exposed_material.Material.ThermalEmittance
 
-        x = (20.797 * solar_absorptance - 0.603 * thermal_emissivity) / (
-            9.5205 * thermal_emissivity + 12.0
-        )
+        x = (20.797 * solar_absorptance - 0.603 * thermal_emissivity) / (9.5205 * thermal_emissivity + 12.0)
         sri = 123.97 - 141.35 * x + 9.6555 * x * x
 
         return sri
@@ -212,16 +207,11 @@ class OpaqueConstruction(LayeredConstruction):
             oc = self.dominant_wall(other, weights)
             return oc
         else:
-            raise ValueError(
-                'Possible choices are ["constant_ufactor", "dominant_wall"]'
-            )
+            raise ValueError('Possible choices are ["constant_ufactor", "dominant_wall"]')
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
         new_obj = self.__class__(**meta, Layers=layers)
-        new_name = (
-            "Combined Opaque Construction {{{}}} with u_value "
-            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
-        )
+        new_name = f"Combined Opaque Construction {{{uuid.uuid1()}}} with u_value " f"of {new_obj.u_value:,.3f} W/m2k"
         new_obj.rename(new_name)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.area = sum(weights)
@@ -234,12 +224,7 @@ class OpaqueConstruction(LayeredConstruction):
             other:
             weights:
         """
-        oc = [
-            x
-            for _, x in sorted(
-                zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True
-            )
-        ][0]
+        oc = [x for _, x in sorted(zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True)][0]
         return oc
 
     def _constant_ufactor(self, other, weights=None):
@@ -266,23 +251,13 @@ class OpaqueConstruction(LayeredConstruction):
             expected_total_thickness,
         ):
             """Objective function for thickness evaluation."""
-            u_value = 1 / sum(
-                [
-                    thickness / mat.Conductivity
-                    for thickness, mat in zip(thicknesses, materials)
-                ]
-            )
+            u_value = 1 / sum([thickness / mat.Conductivity for thickness, mat in zip(thicknesses, materials)])
 
             # Specific_heat: (J/kg K)
-            h_calc = [
-                mat.SpecificHeat for thickness, mat in zip(thicknesses, materials)
-            ]
+            h_calc = [mat.SpecificHeat for thickness, mat in zip(thicknesses, materials)]
 
             # (kg/m3) x (m) = (kg/m2)
-            mass_per_unit_area = [
-                mat.Density * thickness
-                for thickness, mat in zip(thicknesses, materials)
-            ]
+            mass_per_unit_area = [mat.Density * thickness for thickness, mat in zip(thicknesses, materials)]
             specific_heat = np.average(h_calc, weights=mass_per_unit_area)
             return (
                 (u_value - expected_u_value) ** 2
@@ -299,15 +274,10 @@ class OpaqueConstruction(LayeredConstruction):
         )
 
         # Get a set of all materials sorted by Material Density (descending order)
-        materials = list(
-            sorted(
-                set(
-                    [layer.Material for layer in self.Layers]
-                    + [layer.Material for layer in other.Layers]
-                ),
-                key=lambda x: x.Density,
-                reverse=True,
-            )
+        materials = sorted(
+            set([layer.Material for layer in self.Layers] + [layer.Material for layer in other.Layers]),
+            key=lambda x: x.Density,
+            reverse=True,
         )
 
         # Setup weights
@@ -319,12 +289,8 @@ class OpaqueConstruction(LayeredConstruction):
             weights = [1, 1]
 
         # Calculate the desired equivalent specific heat
-        equi_spec_heat = np.average(
-            [self.specific_heat, other.specific_heat], weights=weights
-        )
-        two_wall_thickness = np.average(
-            [self.total_thickness, other.total_thickness], weights=weights
-        )
+        equi_spec_heat = np.average([self.specific_heat, other.specific_heat], weights=weights)
+        two_wall_thickness = np.average([self.total_thickness, other.total_thickness], weights=weights)
         x0 = np.ones(len(materials))
         bnds = tuple([(0.003, None) for layer in materials])
         res = minimize(
@@ -426,10 +392,7 @@ class OpaqueConstruction(LayeredConstruction):
             "internalmass",
             "construction",
             "construction:internalsource",
-        ), (
-            f"Expected ('Internalmass', 'Construction', 'construction:internalsource')."
-            f"Got '{epbunch.key}'."
-        )
+        ), f"Expected ('Internalmass', 'Construction', 'construction:internalsource')." f"Got '{epbunch.key}'."
         name = epbunch.Name
 
         # treat internalmass and regular surfaces differently
@@ -570,8 +533,5 @@ class OpaqueConstruction(LayeredConstruction):
             key="CONSTRUCTION",
             Name=self.Name,
             Outside_Layer=self.Layers[0].to_epbunch(idf).Name,
-            **{
-                f"Layer_{i+2}": layer.to_epbunch(idf).Name
-                for i, layer in enumerate(self.Layers[1:])
-            },
+            **{f"Layer_{i+2}": layer.to_epbunch(idf).Name for i, layer in enumerate(self.Layers[1:])},
         )

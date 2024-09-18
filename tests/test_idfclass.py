@@ -5,7 +5,6 @@ from path import Path
 
 from archetypal import IDF, settings
 from archetypal.eplus_interface import (
-    EnergyPlusProcessError,
     EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
 )
@@ -26,8 +25,7 @@ class TestIDF:
     def idf_model(self, config):
         """An IDF model. Yields both the idf"""
         file = (
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD " "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         )
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w).simulate()
@@ -46,11 +44,7 @@ class TestIDF:
     def FiveZoneNightVent1(self):
         """"""
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idfname = (
-            EnergyPlusVersion.current().current_install_dir
-            / "ExampleFiles"
-            / "5ZoneNightVent1.idf"
-        )
+        idfname = EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "5ZoneNightVent1.idf"
         yield IDF(idfname, epw=w)
 
     @pytest.fixture()
@@ -151,10 +145,7 @@ class TestIDF:
     @pytest.mark.xfail(reason="Fails on Linux")
     def test_transition_error(self, config):
         with pytest.raises(CalledProcessError):
-            file = (
-                "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7"
-                ".2_5A_USA_IL_CHICAGO-OHARE.idf"
-            )
+            file = "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7" ".2_5A_USA_IL_CHICAGO-OHARE.idf"
             wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
             IDF(file, epw=wf, as_version="8.9.0")
 
@@ -188,10 +179,7 @@ class TestIDF:
         assert not idf_model.wwr(round_to=10).empty
 
     def test_wrong_epversion(self, config):
-        file = (
-            "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7"
-            ".2_5A_USA_IL_CHICAGO-OHARE.idf"
-        )
+        file = "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7" ".2_5A_USA_IL_CHICAGO-OHARE.idf"
         wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         with pytest.raises(InvalidEnergyPlusVersion):
             IDF(file, epw=wf, as_version="7-3-0")
@@ -252,17 +240,13 @@ class TestIDF:
         w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(idf_file, epw=w, prep_outputs=False)
 
-        np.testing.assert_almost_equal(
-            actual=idf.net_conditioned_building_area, desired=area, decimal=0
-        )
+        np.testing.assert_almost_equal(actual=idf.net_conditioned_building_area, desired=area, decimal=0)
 
     @pytest.fixture(
         scope="class",
         params=[
             None,
-            EnergyPlusVersion.current().current_install_dir
-            / "ExampleFiles"
-            / "5ZoneNightVent1.idf",
+            EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "5ZoneNightVent1.idf",
         ],
         ids=["in memory", "5ZoneNightVent1"],
     )
@@ -397,12 +381,8 @@ class TestThreads:
             / "WeatherData"
             / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
         )
-        slab_idf = (
-            EnergyPlusVersion.current().current_install_dir
-            / "ExampleFiles"
-            / "5ZoneAirCooledWithSlab.idf"
-        )
-        with open(slab_idf, "r") as f:
+        slab_idf = EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
+        with open(slab_idf) as f:
             p.write_text(f.read())
         idf = IDF(p, epw=epw, annual=False, design_day=True)
 

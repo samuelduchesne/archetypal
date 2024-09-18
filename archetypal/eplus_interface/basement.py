@@ -73,14 +73,11 @@ class BasementThread(Thread):
             self.cleanup_callback()
             return
 
-        self.msg_callback(
-            "===== (Run Basement Temperature Generation) ===== Start ====="
-        )
+        self.msg_callback("===== (Run Basement Temperature Generation) ===== Start =====")
         self.msg_callback("Running Basement.exe")
         self.msg_callback(f"Input File  : {self.idfname}")
         self.msg_callback(
-            f"Output Files: {self.outfile}_bsmt.csv "
-            f"{self.outfile}_bsmt.audit {self.outfile}_bsmt.out"
+            f"Output Files: {self.outfile}_bsmt.csv " f"{self.outfile}_bsmt.audit {self.outfile}_bsmt.out"
         )
         self.msg_callback(f"Weather File: {self.epw}")
 
@@ -100,9 +97,7 @@ class BasementThread(Thread):
                     cwd=self.run_dir,
                 )
                 start_time = time.time()
-                self.msg_callback(
-                    "Begin Basement Temperature Calculation processing . . ."
-                )
+                self.msg_callback("Begin Basement Temperature Calculation processing . . .")
 
                 # Read stdout line by line
                 for line in iter(self.p.stdout.readline, b""):
@@ -126,11 +121,7 @@ class BasementThread(Thread):
                     # self.cancelled_callback(self.std_out, self.std_err)
                 else:
                     if self.p.returncode == 0:
-                        self.msg_callback(
-                            "Basement completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
-                        )
+                        self.msg_callback(f"Basement completed in {time.time() - start_time:,.2f} seconds")
                         self.success_callback()
                         for line in stderr_lines:
                             self.msg_callback(line)
@@ -151,9 +142,7 @@ class BasementThread(Thread):
 
         input_ = self.run_dir / "RunINPUT.TXT"
         if input_.exists():
-            input_ = input_.rename(
-                self.idf.output_directory / f"{self.outfile}_bsmt.out"
-            )
+            input_ = input_.rename(self.idf.output_directory / f"{self.outfile}_bsmt.out")
 
         debug_ = self.run_dir / "RunDEBUGOUT.txt"
         if debug_.exists():
@@ -201,11 +190,9 @@ class BasementThread(Thread):
         """Parse error file and log"""
         error_filename = self.run_dir / "eplusout.err"
         if error_filename.exists():
-            with open(error_filename, "r") as stderr:
+            with open(error_filename) as stderr:
                 stderr_r = stderr.read()
-                self.exception = EnergyPlusProcessError(
-                    cmd=self.cmd, stderr=stderr_r, idf=self.idf
-                )
+                self.exception = EnergyPlusProcessError(cmd=self.cmd, stderr=stderr_r, idf=self.idf)
         self.cleanup_callback()
 
     def cancelled_callback(self, stdin, stdout):
@@ -218,11 +205,7 @@ class BasementThread(Thread):
         if self.idf.file_version <= Version("7.2"):
             install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            install_dir = (
-                self.idf.file_version.current_install_dir
-                / "PreProcess"
-                / "GrndTempCalc"
-            )
+            install_dir = self.idf.file_version.current_install_dir / "PreProcess" / "GrndTempCalc"
         return install_dir.expand()
 
     def stop(self):

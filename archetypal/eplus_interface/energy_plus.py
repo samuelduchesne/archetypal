@@ -99,13 +99,10 @@ class EnergyPlusExe:
         self.get_exe_path()
 
     def get_exe_path(self):
-        (eplus_exe_path, eplus_weather_path) = eppy.runner.run_functions.install_paths(
-            self.ep_version.dash, self.i
-        )
+        (eplus_exe_path, eplus_weather_path) = eppy.runner.run_functions.install_paths(self.ep_version.dash, self.i)
         if not Path(eplus_exe_path).exists():
             raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.ep_version)}"
+                msg=f"No EnergyPlus Executable found for version " f"{EnergyPlusVersion(self.ep_version)}"
             )
         self.eplus_exe_path = Path(eplus_exe_path).expand()
         self.eplus_weather_path = Path(eplus_weather_path).expand()
@@ -236,11 +233,7 @@ class EnergyPlusThread(Thread):
                     self.cancelled_callback(self.std_out, self.std_err)
                 else:
                     if self.p.returncode == 0:
-                        self.msg_callback(
-                            "EnergyPlus Completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
-                        )
+                        self.msg_callback(f"EnergyPlus Completed in {time.time() - start_time:,.2f} seconds")
                         self.success_callback()
                     else:
                         self.msg_callback("Simulation failed")
@@ -258,12 +251,11 @@ class EnergyPlusThread(Thread):
             try:
                 save_dir.rmtree_p()  # purge target dir
                 self.run_dir.copytree(save_dir)  # copy files
-            except PermissionError as e:
+            except PermissionError:
                 pass
             else:
                 log(
-                    "Files generated at the end of the simulation: %s"
-                    % "\n".join(save_dir.files()),
+                    "Files generated at the end of the simulation: %s" % "\n".join(save_dir.files()),
                     lg.DEBUG,
                     name=self.name,
                 )
@@ -271,23 +263,19 @@ class EnergyPlusThread(Thread):
     def failure_callback(self):
         error_filename = self.run_dir / self.idf.output_prefix + "out.err"
         try:
-            with open(error_filename, "r") as stderr:
+            with open(error_filename) as stderr:
                 stderr_r = stderr.read()
             if self.idf.keep_data_err:
                 failed_dir = self.idf.simulation_dir.mkdir_p()
                 try:
                     failed_dir.rmtree_p()
-                except PermissionError as e:
+                except PermissionError:
                     log(f"Could not remove {failed_dir}")
                 else:
                     self.run_dir.copytree(failed_dir)  # no need to create folder before
-            self.exception = EnergyPlusProcessError(
-                cmd=self.cmd, stderr=stderr_r, idf=self.idf
-            )
+            self.exception = EnergyPlusProcessError(cmd=self.cmd, stderr=stderr_r, idf=self.idf)
         except FileNotFoundError:
-            self.exception = CalledProcessError(
-                self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
-            )
+            self.exception = CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
 
     def cancelled_callback(self, stdin, stdout):
         pass
@@ -297,8 +285,7 @@ class EnergyPlusThread(Thread):
         eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
+                msg=f"No EnergyPlus Executable found for version " f"{EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)

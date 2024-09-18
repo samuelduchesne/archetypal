@@ -175,9 +175,7 @@ class MaterialBase(UmiBase):
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,
                     self.TransportEnergy == other.TransportEnergy,
-                    np.array_equal(
-                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
-                    ),
+                    np.array_equal(self.SubstitutionRatePattern, other.SubstitutionRatePattern),
                     self.Density == other.Density,
                 ]
             )

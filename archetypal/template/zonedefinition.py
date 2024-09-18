@@ -25,6 +25,7 @@ class ZoneDefinition(UmiBase):
 
     .. image:: ../images/template/zoneinfo-zone.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -133,8 +134,7 @@ class ZoneDefinition(UmiBase):
     def Constructions(self, value):
         if value is not None:
             assert isinstance(value, ZoneConstructionSet), (
-                f"Input value error. Constructions must be of "
-                f"type {ZoneConstructionSet}, not {type(value)}."
+                f"Input value error. Constructions must be of " f"type {ZoneConstructionSet}, not {type(value)}."
             )
         self._constructions = value
 
@@ -147,8 +147,7 @@ class ZoneDefinition(UmiBase):
     def Loads(self, value):
         if value is not None:
             assert isinstance(value, ZoneLoad), (
-                f"Input value error. Loads must be of "
-                f"type {ZoneLoad}, not {type(value)}."
+                f"Input value error. Loads must be of " f"type {ZoneLoad}, not {type(value)}."
             )
         self._loads = value
 
@@ -161,8 +160,7 @@ class ZoneDefinition(UmiBase):
     def Conditioning(self, value):
         if value is not None:
             assert isinstance(value, ZoneConditioning), (
-                f"Input value error. Conditioning must be of "
-                f"type {ZoneConditioning}, not {type(value)}."
+                f"Input value error. Conditioning must be of " f"type {ZoneConditioning}, not {type(value)}."
             )
         self._conditioning = value
 
@@ -175,8 +173,7 @@ class ZoneDefinition(UmiBase):
     def Ventilation(self, value):
         if value is not None:
             assert isinstance(value, VentilationSetting), (
-                f"Input value error. Ventilation must be of "
-                f"type {VentilationSetting}, not {type(value)}."
+                f"Input value error. Ventilation must be of " f"type {VentilationSetting}, not {type(value)}."
             )
         self._ventilation = value
 
@@ -189,8 +186,7 @@ class ZoneDefinition(UmiBase):
     def DomesticHotWater(self, value):
         if value is not None:
             assert isinstance(value, DomesticHotWaterSetting), (
-                f"Input value error. DomesticHotWater must be of "
-                f"type {DomesticHotWaterSetting}, not {type(value)}."
+                f"Input value error. DomesticHotWater must be of " f"type {DomesticHotWaterSetting}, not {type(value)}."
             )
         self._domestic_hot_water = value
 
@@ -244,8 +240,7 @@ class ZoneDefinition(UmiBase):
     def Windows(self, value):
         if value is not None:
             assert isinstance(value, WindowSetting), (
-                f"Input value error. Windows must be of "
-                f"type {WindowSetting}, not {type(value)}."
+                f"Input value error. Windows must be of " f"type {WindowSetting}, not {type(value)}."
             )
         self._windows = value
 
@@ -341,9 +336,7 @@ class ZoneDefinition(UmiBase):
         data_dict["DaylightWorkplaneHeight"] = round(self.DaylightWorkplaneHeight, 2)
         data_dict["DomesticHotWater"] = self.DomesticHotWater.to_ref()
         data_dict["InternalMassConstruction"] = self.InternalMassConstruction.to_ref()
-        data_dict["InternalMassExposedPerFloorArea"] = round(
-            self.InternalMassExposedPerFloorArea, 3
-        )
+        data_dict["InternalMassExposedPerFloorArea"] = round(self.InternalMassExposedPerFloorArea, 3)
         data_dict["Loads"] = self.Loads.to_ref()
         data_dict["Ventilation"] = self.Ventilation.to_ref()
         data_dict["Category"] = self.Category
@@ -418,12 +411,8 @@ class ZoneDefinition(UmiBase):
 
         conditioning = zone_conditionings[data.pop("Conditioning")["$ref"]]
         construction_set = zone_construction_sets[data.pop("Constructions")["$ref"]]
-        domestic_hot_water_setting = domestic_hot_water_settings[
-            data.pop("DomesticHotWater")["$ref"]
-        ]
-        internal_mass_construction = opaque_constructions[
-            data.pop("InternalMassConstruction")["$ref"]
-        ]
+        domestic_hot_water_setting = domestic_hot_water_settings[data.pop("DomesticHotWater")["$ref"]]
+        internal_mass_construction = opaque_constructions[data.pop("InternalMassConstruction")["$ref"]]
         zone_load = zone_loads[data.pop("Loads")["$ref"]]
         ventilation_setting = ventilation_settings[data.pop("Ventilation")["$ref"]]
 
@@ -448,18 +437,16 @@ class ZoneDefinition(UmiBase):
             construct_parents (bool): If False, skips construction of parents objects
                 such as Constructions, Conditioning, etc.
         """
-        assert (
-            ep_bunch.key.lower() == "zone"
-        ), f"Expected a `ZONE` epbunch, got {ep_bunch.key}"
+        assert ep_bunch.key.lower() == "zone", f"Expected a `ZONE` epbunch, got {ep_bunch.key}"
         start_time = time.time()
-        log('Constructing :class:`Zone` for zone "{}"'.format(ep_bunch.Name))
+        log(f'Constructing :class:`Zone` for zone "{ep_bunch.Name}"')
 
         def calc_zone_area(zone_ep):
             """Get zone area from simulation sql file."""
             with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
                 sql_query = """
-                    SELECT t.Value 
-                    FROM TabularDataWithStrings t 
+                    SELECT t.Value
+                    FROM TabularDataWithStrings t
                     WHERE TableName='Zone Summary' and ColumnName='Area' and RowName=?
                 """
                 (res,) = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
@@ -544,9 +531,7 @@ class ZoneDefinition(UmiBase):
             area=calc_zone_area(ep_bunch),
             volume=calc_zone_volume(ep_bunch),
             occupants=calc_zone_occupants(ep_bunch),
-            is_part_of_conditioned_floor_area=calc_is_part_of_conditioned_floor_area(
-                ep_bunch
-            ),
+            is_part_of_conditioned_floor_area=calc_is_part_of_conditioned_floor_area(ep_bunch),
             is_part_of_total_floor_area=calc_is_part_of_total_floor_area(ep_bunch),
             multiplier=calc_multiplier(ep_bunch),
             zone_surfaces=ep_bunch.zonesurfaces,
@@ -558,22 +543,14 @@ class ZoneDefinition(UmiBase):
             zone.Constructions = ZoneConstructionSet.from_zone(zone, **kwargs)
             zone.Conditioning = ZoneConditioning.from_zone(zone, ep_bunch, **kwargs)
             zone.Ventilation = VentilationSetting.from_zone(zone, ep_bunch, **kwargs)
-            zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(
-                ep_bunch, **kwargs
-            )
+            zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(ep_bunch, **kwargs)
             zone.Loads = ZoneLoad.from_zone(zone, ep_bunch, **kwargs)
             internal_mass_from_zone = InternalMass.from_zone(ep_bunch)
             zone.InternalMassConstruction = internal_mass_from_zone.construction
-            zone.InternalMassExposedPerFloorArea = (
-                internal_mass_from_zone.total_area_exposed_to_zone
-            )
+            zone.InternalMassExposedPerFloorArea = internal_mass_from_zone.total_area_exposed_to_zone
             zone.Windows = WindowSetting.from_zone(zone, **kwargs)
 
-        log(
-            'completed Zone "{}" constructor in {:,.2f} seconds'.format(
-                ep_bunch.Name, time.time() - start_time
-            )
-        )
+        log(f'completed Zone "{ep_bunch.Name}" constructor in {time.time() - start_time:,.2f} seconds')
         return zone
 
     def combine(self, other, weights=None, allow_duplicates=False):
@@ -597,9 +574,7 @@ class ZoneDefinition(UmiBase):
             return None
         elif self == other:
             area = 1 if self.area + other.area == 2 else self.area + other.area
-            volume = (
-                1 if self.volume + other.volume == 2 else self.volume + other.volume
-            )
+            volume = 1 if self.volume + other.volume == 2 else self.volume + other.volume
             new_obj = self.duplicate()
             new_obj.area = area
             new_obj.volume = volume
@@ -625,8 +600,7 @@ class ZoneDefinition(UmiBase):
                 getattr(other, str(zone_weight)),
             ]
             log(
-                'using zone {} "{}" as weighting factor in "{}" '
-                "combine.".format(
+                'using zone {} "{}" as weighting factor in "{}" ' "combine.".format(
                     zone_weight,
                     " & ".join(list(map(str, map(int, weights)))),
                     self.__class__.__name__,
@@ -634,29 +608,17 @@ class ZoneDefinition(UmiBase):
             )
 
         new_attr = dict(
-            Conditioning=ZoneConditioning.combine(
-                self.Conditioning, other.Conditioning, weights
-            ),
-            Constructions=ZoneConstructionSet.combine(
-                self.Constructions, other.Constructions, weights
-            ),
+            Conditioning=ZoneConditioning.combine(self.Conditioning, other.Conditioning, weights),
+            Constructions=ZoneConstructionSet.combine(self.Constructions, other.Constructions, weights),
             Ventilation=VentilationSetting.combine(self.Ventilation, other.Ventilation),
             Windows=WindowSetting.combine(self.Windows, other.Windows, weights),
-            DaylightMeshResolution=self.float_mean(
-                other, "DaylightMeshResolution", weights=weights
-            ),
-            DaylightWorkplaneHeight=self.float_mean(
-                other, "DaylightWorkplaneHeight", weights
-            ),
-            DomesticHotWater=DomesticHotWaterSetting.combine(
-                self.DomesticHotWater, other.DomesticHotWater
-            ),
+            DaylightMeshResolution=self.float_mean(other, "DaylightMeshResolution", weights=weights),
+            DaylightWorkplaneHeight=self.float_mean(other, "DaylightWorkplaneHeight", weights),
+            DomesticHotWater=DomesticHotWaterSetting.combine(self.DomesticHotWater, other.DomesticHotWater),
             InternalMassConstruction=OpaqueConstruction.combine(
                 self.InternalMassConstruction, other.InternalMassConstruction
             ),
-            InternalMassExposedPerFloorArea=self.float_mean(
-                other, "InternalMassExposedPerFloorArea", weights
-            ),
+            InternalMassExposedPerFloorArea=self.float_mean(other, "InternalMassExposedPerFloorArea", weights),
             Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
         )
         new_obj = ZoneDefinition(**meta, **new_attr)
@@ -677,9 +639,7 @@ class ZoneDefinition(UmiBase):
         if self.InternalMassConstruction is None:
             internal_mass = InternalMass.generic_internalmass_from_zone(self)
             self.InternalMassConstruction = internal_mass.construction
-            self.InternalMassExposedPerFloorArea = (
-                internal_mass.total_area_exposed_to_zone
-            )
+            self.InternalMassExposedPerFloorArea = internal_mass.total_area_exposed_to_zone
             log(
                 f"While validating {self}, the required attribute "
                 f"'InternalMassConstruction' was filled "
@@ -750,8 +710,7 @@ class ZoneDefinition(UmiBase):
                     self.Ventilation == other.Ventilation,
                     self.Windows == other.Windows,
                     self.InternalMassConstruction == other.InternalMassConstruction,
-                    self.InternalMassExposedPerFloorArea
-                    == other.InternalMassExposedPerFloorArea,
+                    self.InternalMassExposedPerFloorArea == other.InternalMassExposedPerFloorArea,
                     self.DaylightMeshResolution == other.DaylightMeshResolution,
                     self.DaylightWorkplaneHeight == other.DaylightWorkplaneHeight,
                 ]

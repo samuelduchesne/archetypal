@@ -31,9 +31,7 @@ class TestOutput:
         outputs = Outputs(idf)
 
         outputs.output_variables = ["Air System Outdoor Air Minimum Flow Fraction"]
-        assert outputs.output_variables == (
-            ("Air System Outdoor Air Minimum Flow Fraction", "Monthly"),
-        )
+        assert outputs.output_variables == (("Air System Outdoor Air Minimum Flow Fraction", "Monthly"),)
         outputs.reporting_frequency = "daily"  # lower case
         assert outputs.reporting_frequency == "Daily"  # should be upper case
         outputs.unit_conversion = "InchPound"
@@ -44,9 +42,7 @@ class TestOutput:
         assert outputs.include_html
 
         with pytest.raises(AssertionError):
-            outputs.output_variables = (
-                "Zone Ideal Loads Supply Air Total Cooling Energy"
-            )
+            outputs.output_variables = "Zone Ideal Loads Supply Air Total Cooling Energy"
         with pytest.raises(AssertionError):
             outputs.reporting_frequency = "annually"
         with pytest.raises(AssertionError):

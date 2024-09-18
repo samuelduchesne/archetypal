@@ -59,9 +59,9 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
     debug: bool = Field(False, validation_alias="ARCHETYPAL_DEBUG")
 
     # write log to file and/or to console
-    log_file: bool = Field(False)
-    log_console: bool = Field(False)
-    log_notebook: bool = Field(False)
+    log_file: bool = Field(False, validation_alias="ARCHETYPAL_LOG_FILE")
+    log_console: bool = Field(False, validation_alias="ARCHETYPAL_LOG_CONSOLE")
+    log_notebook: bool = Field(False, validation_alias="ARCHETYPAL_LOG_NOTEBOOK")
     log_level: Literal[0, 10, 20, 30, 40, 50] = Field(lg.INFO, validation_alias="ARCHETYPAL_LOG_LEVEL")
     log_name: str = Field("archetypal", validation_alias="ARCHETYPAL_LOG_NAME")
     log_filename: str = Field("archetypal")

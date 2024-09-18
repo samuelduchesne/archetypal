@@ -46,7 +46,7 @@ class TestEnergySeries:
     def test_plot_3d(self, rd_es, kind):
         fig, ax = rd_es.plot3d(
             save=False,
-            show=True,
+            show=False,
             axis_off=False,
             kind=kind,
             cmap="Reds",
@@ -60,7 +60,7 @@ class TestEnergySeries:
             axis_off=False,
             cmap="Reds",
             figsize=(2, 6),
-            show=True,
+            show=False,
             save=False,
             filename=rd_es.name + "_heatmap",
         )
@@ -92,7 +92,7 @@ class TestEnergyDataFrame:
             axis_off=False,
             cmap="Reds",
             figsize=(4, 6),
-            show=True,
+            show=False,
             save=False,
             extent="tight",
         )

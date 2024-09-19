@@ -7,6 +7,8 @@ from archetypal import IDF, dataportal
 from archetypal.dataportal import download_bld_window, tabula_building_details_sheet
 from archetypal.template.window_setting import WindowSetting
 
+from .conftest import data_dir
+
 
 def test_tabula_available_country(config):
     # First, let's try the API call
@@ -208,7 +210,7 @@ def test_download_and_load_bld_window(config):
     )
     idf = IDF(
         response[0],
-        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+        epw=data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
         prep_outputs=False,
     )
     construct = idf.getobject("CONSTRUCTION", "AEDG-SmOffice 1A Window Fixed")

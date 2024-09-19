@@ -70,7 +70,7 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     "--cache-responses",
     is_flag=True,
     default=False,
-    help="Use a local cache to save/retrieve DataPortal API calls for the same " "requests.",
+    help="Use a local cache to save/retrieve DataPortal API calls for the same requests.",
 )
 @click.option(
     "-l",
@@ -177,7 +177,7 @@ def cli(
     "--all_zones",
     is_flag=True,
     default=False,
-    help="Include all zones in the " "output template",
+    help="Include all zones in the output template",
 )
 @click.option(
     "-v",

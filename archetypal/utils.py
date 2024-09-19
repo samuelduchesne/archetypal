@@ -171,7 +171,7 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         if not log_dir.exists():
             os.mkdir(log_dir)
         # create file handler and log formatter and set them up
-        formatter = lg.Formatter("%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s")
+        formatter = lg.Formatter("%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(message)s")
         if settings.log_file:
             handler = lg.FileHandler(log_filename, encoding="utf-8")
             handler.setFormatter(formatter)

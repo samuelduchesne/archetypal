@@ -55,7 +55,7 @@ def tabula_api_request(data, table="detail"):
     # Prepare URL
     if table == "all-country":
         codehex = str(int(hashlib.md5(data["code_country"].encode("utf-8")).hexdigest(), 16))[0:13]
-        url_base = "http://webtool.building-typology.eu/data/matrix/building" "/{0}/p/0/o/0/l/10/dc/{1}"
+        url_base = "http://webtool.building-typology.eu/data/matrix/building/{0}/p/0/o/0/l/10/dc/{1}"
         prepared_url = url_base.format(data["code_country"], codehex)
 
     elif table == "detail":
@@ -63,7 +63,7 @@ def tabula_api_request(data, table="detail"):
         suffix = ".".join(s for s in data["suffix"])
         bldname = buildingtype + "." + suffix
         hexint = hashlib.md5(bldname.encode("utf-8")).hexdigest()[0:13]
-        url_base = "http://webtool.building-typology.eu/data/adv/building" "/detail/{0}/bv/{1}/dc/{2}"
+        url_base = "http://webtool.building-typology.eu/data/adv/building/detail/{0}/bv/{1}/dc/{2}"
         prepared_url = url_base.format(bldname, data["variant"], hexint)
 
     else:
@@ -427,7 +427,7 @@ def nrel_api_cbr_request(data):
     """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
-    url = "https://developer.nrel.gov/api/commercial-building-resources/v1" "/resources.json"
+    url = "https://developer.nrel.gov/api/commercial-building-resources/v1/resources.json"
     prepared_url = requests.Request("GET", url, params=data).prepare().url
     cached_response_json = get_from_cache(prepared_url)
 
@@ -603,7 +603,7 @@ def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, s
                 return response_json
             # deal with response status_code here
             log(
-                f"Server at {domain} returned status code {response.status_code} and no JSON " "data.",
+                f"Server at {domain} returned status code {response.status_code} and no JSON data.",
                 level=lg.ERROR,
             )
         else:
@@ -756,7 +756,7 @@ def download_bld_window(
 
     if response:
         log(
-            "found {} possible window component(s) matching " "the range {}".format(
+            "found {} possible window component(s) matching the range {}".format(
                 len(response["result"]), str(data["f[]"])
             )
         )
@@ -765,7 +765,7 @@ def download_bld_window(
         uids = []
         for component in response["result"]:
             uids.append(component["component"]["uid"])
-        url = "https://bcl.nrel.gov/api/component/download?uids={}".format("," "".join(uids))
+        url = "https://bcl.nrel.gov/api/component/download?uids={}".format(",".join(uids))
         # actual download with get()
         d_response = requests.get(url)
 

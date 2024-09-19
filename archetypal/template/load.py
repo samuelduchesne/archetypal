@@ -380,7 +380,7 @@ class ZoneLoad(UmiBase):
             def get_schedule(series):
                 """Compute the schedule with quantity for nominal equipment series."""
                 sched = series["ScheduleIndex"]
-                sql_query = "select t.ScheduleName, t.ScheduleType as M from " "Schedules t where ScheduleIndex=?"
+                sql_query = "select t.ScheduleName, t.ScheduleType as M from Schedules t where ScheduleIndex=?"
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 level_ = float(series["DesignLevel"])
                 if level_ > 0:
@@ -439,7 +439,7 @@ class ZoneLoad(UmiBase):
             def get_schedule(series):
                 """Compute schedule with quantity for nominal equipment series."""
                 sched = series["NumberOfPeopleScheduleIndex"]
-                sql_query = "select t.ScheduleName, t.ScheduleType as M from " "Schedules t where ScheduleIndex=?"
+                sql_query = "select t.ScheduleName, t.ScheduleType as M from Schedules t where ScheduleIndex=?"
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 return UmiSchedule.from_epbunch(
                     zone_ep.theidf.schedules_dict[sched_name.upper()],
@@ -830,7 +830,7 @@ def _resolve_dimming_type(zone, zone_ep):
                 return DimmingTypes[dimming_type]  # Return first element
         else:
             raise ValueError(
-                f"Could not resolve more than one dimming types for Zone {zone.Name}. " "Make sure there is only one"
+                f"Could not resolve more than one dimming types for Zone {zone.Name}. Make sure there is only one"
             )
     else:
         # Else, there are no dimming controls => set to "Off".
@@ -869,7 +869,7 @@ def _resolve_illuminance_target(zone, zone_ep):
     else:
         # Else, there are no dimming controls => set to "Off".
         log(
-            f"No illuminance target found for zone {zone.Name}. Setting to default 500 " "lux",
+            f"No illuminance target found for zone {zone.Name}. Setting to default 500 lux",
             lg.DEBUG,
         )
         return 500

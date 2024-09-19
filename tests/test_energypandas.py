@@ -7,7 +7,7 @@ from pandas import read_csv
 
 from archetypal import IDF, settings
 
-data_dir = Path(__file__).parent / "input_data"
+from .conftest import data_dir
 
 
 @pytest.fixture(scope="module")

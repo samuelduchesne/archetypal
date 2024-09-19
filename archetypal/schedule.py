@@ -268,7 +268,7 @@ class _ScheduleParser:
             index:
         """
         if index is None:
-            idx = pd.date_range(start=start_date, periods=168, freq="1H")
+            idx = pd.date_range(start=start_date, periods=168, freq="1h")
             slicer_ = pd.Series([False] * (len(idx)), index=idx)
         else:
             slicer_ = pd.Series([False] * (len(index)), index=index)
@@ -354,7 +354,7 @@ class _ScheduleParser:
         series = pd.Series(all_values, index=index)
 
         # resample series to hourly values and apply resampler function
-        series = series.resample("1H").apply(_how(method))
+        series = series.resample("1h").apply(_how(method))
 
         return series.values
 
@@ -410,7 +410,7 @@ class _ScheduleParser:
         field_sets = ["through", "for", "interpolate", "until", "value"]
         fields = epbunch.fieldvalues[3:]
 
-        index = pd.date_range(start=start_date, periods=8760, freq="H")
+        index = pd.date_range(start=start_date, periods=8760, freq="h")
         zeros = np.zeros(len(index))
 
         slicer_ = pd.Series([False] * len(index), index=index)
@@ -525,7 +525,7 @@ class _ScheduleParser:
                 # update in memory slice
                 slicer_.loc[all_conditions] = True
         if how_interpolate:
-            return series.resample("H").mean().values
+            return series.resample("h").mean().values
         else:
             return series.values
 
@@ -540,8 +540,8 @@ class _ScheduleParser:
         """
         # first week
         year = start_date.year
-        idx = pd.date_range(start=start_date, periods=8760, freq="1H")
-        hourly_values = pd.Series([0] * 8760, index=idx)
+        idx = pd.date_range(start=start_date, periods=8760, freq="h")
+        hourly_values = pd.Series([0] * 8760, index=idx, dtype=float)
 
         # generate weekly schedules
         num_of_weekly_schedules = int(len(epbunch.fieldvalues[3:]) / 5)
@@ -562,7 +562,7 @@ class _ScheduleParser:
             how = pd.IndexSlice[start_date:end_date]
 
             weeks = []
-            for name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168H")):
+            for name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168h")):
                 if not week.empty:
                     try:
                         week.loc[:] = cls.get_schedule_values(
@@ -1178,7 +1178,7 @@ class Schedule:
     @property
     def series(self):
         """Return an :class:`EnergySeries`."""
-        index = pd.date_range(start=self.startDate, periods=self.all_values.size, freq="1H")
+        index = pd.date_range(start=self.startDate, periods=self.all_values.size, freq="1h")
         if self.Type is not None:
             units = self.Type.UnitType
         else:
@@ -1221,9 +1221,9 @@ class Schedule:
             "The index of `new_values` must be a `pandas.DatetimeIndex`. Instead, "
             f"`{type(new_values.index)}` was provided."
         )
-        assert not self.series.index.difference(new_values.index).empty, (
-            "There is no overlap between self.index and new_values.index. Please " "check your dates."
-        )
+        assert not self.series.index.difference(
+            new_values.index
+        ).empty, "There is no overlap between self.index and new_values.index. Please check your dates."
 
         # create a copy of self.series as orig.
         orig = self.series.copy()

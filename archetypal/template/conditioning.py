@@ -1184,7 +1184,7 @@ class ZoneConditioning(UmiBase):
                 HeatRecoveryEfficiencySensible = 0.7
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
-            elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow" ":PerformanceDataType1".upper():
+            elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow:PerformanceDataType1".upper():
                 # This is not an actual HeatExchanger, pass
                 pass
             else:

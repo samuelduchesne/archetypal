@@ -1076,7 +1076,7 @@ def nominal_infiltration(df):
     tbstr = df[(df.ReportName == report_name) & (df.TableName == table_name)].reset_index()
     if tbstr.empty:
         log(
-            f"Table {table_name} does not exist. " "Returning an empty DataFrame",
+            f"Table {table_name} does not exist. Returning an empty DataFrame",
             lg.WARNING,
         )
         return pd.DataFrame([])
@@ -1089,7 +1089,7 @@ def nominal_infiltration(df):
     )
     tbpiv.replace({"N/A": np.nan}, inplace=True)
     return (
-        tbpiv.reset_index().groupby(["Archetype", "Zone Name"]).agg(lambda x: pd.to_numeric(x, errors="ignore").sum())
+        tbpiv.reset_index().groupby(["Archetype", "Zone Name"]).agg(lambda x: pd.to_numeric(x, errors="coerce").sum())
     )
 
 
@@ -1107,7 +1107,7 @@ def nominal_ventilation(df):
     tbstr = df[(df.ReportName == report_name) & (df.TableName == table_name)].reset_index()
     if tbstr.empty:
         log(
-            f"Table {table_name} does not exist. " "Returning an empty DataFrame",
+            f"Table {table_name} does not exist. Returning an empty DataFrame",
             lg.WARNING,
         )
         return pd.DataFrame([])

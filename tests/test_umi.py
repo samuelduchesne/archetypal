@@ -26,6 +26,8 @@ from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
 
+from .conftest import data_dir
+
 
 class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
@@ -33,7 +35,7 @@ class TestUmiTemplate:
     @pytest.fixture(scope="function")
     def two_identical_libraries(self):
         """Yield two identical libraries. Scope of this fixture is `function`."""
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        file = data_dir / "umi_samples/BostonTemplateLibrary_nodup.json"
         yield UmiTemplateLibrary.open(file), UmiTemplateLibrary.open(file)
 
     def test_add(self, two_identical_libraries):
@@ -74,7 +76,7 @@ class TestUmiTemplate:
 
     def test_graph(self):
         """Test initialization of networkx DiGraph"""
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        file = data_dir / "umi_samples/BostonTemplateLibrary_2.json"
 
         a = UmiTemplateLibrary.open(file)
         G = a.to_graph()
@@ -88,7 +90,7 @@ class TestUmiTemplate:
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""
 
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        file = data_dir / "umi_samples/BostonTemplateLibrary_nodup.json"
 
         a = UmiTemplateLibrary.open(file).to_dict()
         b = TestUmiTemplate.read_json(file)
@@ -103,7 +105,7 @@ class TestUmiTemplate:
         idf_source = [
             EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "VentilationSimpleTest.idf",
         ]
-        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.from_idf_files(idf_source, wf, name="Mixed_Files", processors=-1, debug=True)
 
         data_dict = a.to_dict()
@@ -115,12 +117,12 @@ class TestUmiTemplate:
     )
     def test_umi_samples(self, config):
         idf_source = [
-            "tests/input_data/umi_samples/B_Off_0.idf",
-            "tests/input_data/umi_samples/B_Ret_0.idf",
-            "tests/input_data/umi_samples/B_Res_0_Masonry.idf",
-            "tests/input_data/umi_samples/B_Res_0_WoodFrame.idf",
+            data_dir / "umi_samples/B_Off_0.idf",
+            data_dir / "umi_samples/B_Ret_0.idf",
+            data_dir / "umi_samples/B_Res_0_Masonry.idf",
+            data_dir / "umi_samples/B_Res_0_WoodFrame.idf",
         ]
-        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.from_idf_files(idf_source, wf, name="Mixed_Files")
         a.to_dict()
         data_dict = a.to_dict()
@@ -579,15 +581,15 @@ class TestUmiTemplate:
     @pytest.mark.parametrize(
         "file",
         (
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         ),
         ids=("small", "medium", "large"),
     )
     def test_necb_serial(self, file, config):
         settings.log_console = True
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         template = UmiTemplateLibrary.from_idf_files(
             name="my_umi_template",
             idf_files=[file],
@@ -605,14 +607,11 @@ class TestUmiTemplate:
     def test_necb_parallel(self, config):
         settings.log_console = True
         office = [
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         ]
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         template = UmiTemplateLibrary.from_idf_files(
             name="my_umi_template",
             idf_files=office,
@@ -625,19 +624,19 @@ class TestUmiTemplate:
         assert no_duplicates(template.to_dict(), attribute="$id")
 
     office = [
-        "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD " "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD " "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD " "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        data_dir / "necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
     ]
 
     @pytest.mark.skipif(
         os.environ.get("CI", "False").lower() == "true",
         reason="Skipping this test on CI environment",
     )
-    @pytest.mark.parametrize("file", Path("tests/input_data/problematic").files("*CZ5A*.idf"))
+    @pytest.mark.parametrize("file", Path(data_dir / "problematic").files("*CZ5A*.idf"))
     def test_cz5a_serial(self, file, config):
         settings.log_console = True
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         template = UmiTemplateLibrary.from_idf_files(
             name=file.stem,
             idf_files=[file],
@@ -653,8 +652,8 @@ class TestUmiTemplate:
 def climatestudio(config):
     """A building template fixture from a climate studio idf file used in subsequent
     tests"""
-    file = "tests/input_data/umi_samples/climatestudio_test.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/climatestudio_test.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w, annual=True)
     if idf.sim_info is None:
         idf.simulate()
@@ -667,8 +666,8 @@ def climatestudio(config):
 def sf_cz5a(config):
     """A building template fixture from a climate studio idf file used in subsequent
     tests"""
-    file = "tests/input_data/problematic/SF+CZ5A+USA_IL_Chicago-OHare.Intl.AP.725300+oilfurnace+slab+IECC_2012.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "problematic/SF+CZ5A+USA_IL_Chicago-OHare.Intl.AP.725300+oilfurnace+slab+IECC_2012.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w, annual=True)
 
     bt = BuildingTemplate.from_idf(idf)

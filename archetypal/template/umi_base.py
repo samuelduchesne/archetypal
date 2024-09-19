@@ -199,7 +199,7 @@ class UmiBase:
         return {
             "Name": _resolve_combined_names(predecessors),
             "Comments": (
-                "Object composed of a combination of these " "objects:\n{}".format(
+                "Object composed of a combination of these objects:\n{}".format(
                     "\n- ".join(set(obj.Name for obj in predecessors))
                 )
             ),

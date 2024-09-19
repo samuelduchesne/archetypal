@@ -1,5 +1,6 @@
 import itertools
 from copy import copy
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -39,6 +40,8 @@ from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.utils import reduce
 
+from .conftest import data_dir
+
 
 @pytest.fixture(scope="class")
 def small_idf(small_idf_obj):
@@ -55,8 +58,8 @@ def small_idf_copy(config):
     Args:
         config:
     """
-    file = "tests/input_data/umi_samples/B_Off_0.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Off_0.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     yield idf
 
@@ -64,8 +67,8 @@ def small_idf_copy(config):
 @pytest.fixture(scope="class")
 def small_idf_obj(config):
     """An IDF model. Yields just the idf object."""
-    file = "tests/input_data/umi_samples/B_Off_0.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Off_0.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     yield idf
 
@@ -77,8 +80,8 @@ def other_idf(config):
     Args:
         config:
     """
-    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Res_0_Masonry.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     yield idf
 
@@ -90,8 +93,8 @@ def other_idf_object(config):
     Args:
         config:
     """
-    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Res_0_Masonry.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     if idf.sim_info is None:
         idf.simulate()
@@ -105,8 +108,8 @@ def other_idf_object_copy(config):
     Args:
         config:
     """
-    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Res_0_Masonry.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     if idf.sim_info is None:
         idf.simulate()
@@ -115,8 +118,8 @@ def other_idf_object_copy(config):
 
 @pytest.fixture(scope="module")
 def small_office(config):
-    file = "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD " "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     yield idf
 
@@ -128,7 +131,7 @@ def idf():
 
 @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
 def warehouse(config, request):
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF.from_example_files(request.param, epw=w, annual=True)
     if idf.sim_info is None:
         idf.simulate()
@@ -302,7 +305,7 @@ class TestDaySchedule:
 
     @pytest.fixture(scope="class")
     def schedules_idf(self):
-        yield IDF("tests/input_data/schedules/schedules.idf")
+        yield IDF(data_dir / "schedules/schedules.idf")
 
     @pytest.fixture()
     def schedule_day_interval(self, schedules_idf):
@@ -366,7 +369,7 @@ class TestWeekSchedule:
 
     @pytest.fixture(scope="class")
     def schedules_idf(self):
-        yield IDF("tests/input_data/schedules/schedules.idf")
+        yield IDF(data_dir / "schedules/schedules.idf")
 
     def test_from_epbunch_daily(self, schedule_week_daily):
         for epbunch in schedule_week_daily:
@@ -514,8 +517,8 @@ class TestOpaqueMaterial:
 
     @pytest.fixture()
     def idf(self):
-        file = "tests/input_data/umi_samples/B_Off_0.idf"
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        file = data_dir / "umi_samples/B_Off_0.idf"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w)
 
     def test_add_materials(self, mat_a, mat_b):
@@ -651,7 +654,7 @@ class TestOpaqueMaterial:
     @pytest.fixture()
     def materials_idf(self):
         """An IDF object with different material definitions."""
-        file = "tests/input_data/materials.idf"
+        file = data_dir / "materials.idf"
         yield IDF(file, prep_outputs=False)
 
     def test_from_epbunch(self, materials_idf):
@@ -878,7 +881,7 @@ class TestGasMaterial:
 
         from archetypal.template.materials.gas_material import GasMaterial
 
-        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        filename = data_dir / "umi_samples/BostonTemplateLibrary_2.json"
         with open(filename) as f:
             datastore = json.load(f)
         gasMat_json = [GasMaterial.from_dict(store, allow_duplicates=True) for store in datastore["GasMaterials"]]
@@ -1831,7 +1834,7 @@ class TestZoneLoad:
     def zl(self):
         yield ZoneLoad(
             EquipmentPowerDensity=10,
-            EquipmentAvailabilitySchedule=UmiSchedule.random(Name="Random Equipment " "Schedule"),
+            EquipmentAvailabilitySchedule=UmiSchedule.random(Name="Random Equipment Schedule"),
             LightsAvailabilitySchedule=UmiSchedule.constant_schedule(Name="AlwaysOn"),
             OccupancySchedule=UmiSchedule.constant_schedule(Name="AlwaysOn"),
             area=50,
@@ -1905,7 +1908,7 @@ class TestZoneConditioning:
         ],
     )
     def zoneConditioningtests(self, config, request):
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF.from_example_files(request.param, epw=w, annual=False, design_day=True)
         copy = IDF.from_example_files(request.param, epw=w, annual=False, design_day=True)
         if idf.sim_info is None:
@@ -2405,7 +2408,7 @@ class TestWindowSetting:
             config:
             request:
         """
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF.from_example_files(request.param, epw=w, design_day=True)
         if idf.sim_info is None:
             idf.simulate()
@@ -2695,8 +2698,7 @@ class TestZoneDefinition:
 
     def test_zone_volume(self, small_idf_copy):
         """Test the zone volume for a sloped roof."""
-        idf = small_idf_copy.simulate()
-        zone = idf.getobject("ZONE", "Perim")
+        zone = small_idf_copy.simulate().getobject("ZONE", "Perim")
         z = ZoneDefinition.from_epbunch(ep_bunch=zone, construct_parents=False)
         assert z.volume == pytest.approx(25.54, 1e-2)
 
@@ -2793,7 +2795,7 @@ class TestZoneDefinition:
 def bt(config):
     """A building template fixture used in subsequent tests"""
 
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF.from_example_files("5ZoneCostEst.idf", epw=w, annual=True)
     if idf.sim_info is None:
         idf.simulate()

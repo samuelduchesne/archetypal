@@ -3,16 +3,16 @@ import pytest
 from archetypal import IDF
 from archetypal.zone_graph import ZoneGraph
 
+from .conftest import data_dir
+
 
 class TestZoneGraph:
     """Series of tests for the :class:`ZoneGraph` class"""
 
     @pytest.fixture(scope="class")
-    def small_office(config):
-        file = (
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD " "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-        )
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    def small_office(self, config):
+        file = data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w)
         yield idf
 
@@ -40,7 +40,7 @@ class TestZoneGraph:
         yield ZoneGraph.from_idf(idf)
 
     @pytest.mark.parametrize("adj_report", [True, False])
-    def test_graph(self, small_office, adj_report):
+    def test_graph(self, config, small_office, adj_report):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -61,7 +61,7 @@ class TestZoneGraph:
             EpBunch,
         )
 
-    def test_graph_info(self, G):
+    def test_graph_info(self, config, G):
         """test the info method on a ZoneGraph
 
         Args:
@@ -69,7 +69,7 @@ class TestZoneGraph:
         """
         G.info()
 
-    def test_viewgraph2d(self, G):
+    def test_viewgraph2d(self, config, G):
         """test the visualization of the zonegraph in 2d
 
         Args:
@@ -92,7 +92,7 @@ class TestZoneGraph:
         )
 
     @pytest.mark.parametrize("annotate", [True, "Name", ("core", None)])
-    def test_viewgraph3d(self, G, annotate):
+    def test_viewgraph3d(self, config, G, annotate):
         """test the visualization of the zonegraph in 3d
 
         Args:
@@ -106,7 +106,7 @@ class TestZoneGraph:
             show=False,
         )
 
-    def test_core_graph(self, G):
+    def test_core_graph(self, config, G):
         """
         Args:
             G:
@@ -116,7 +116,7 @@ class TestZoneGraph:
         assert len(H) == 1  # assert G has no nodes since Warehouse does not have a
         # core zone
 
-    def test_perim_graph(self, G):
+    def test_perim_graph(self, config, G):
         """
         Args:
             G:

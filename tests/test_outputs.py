@@ -6,7 +6,7 @@ from archetypal.idfclass import Outputs
 
 class TestOutput:
     @pytest.fixture()
-    def idf(self):
+    def idf(self, config):
         yield IDF(prep_outputs=False)
 
     def test_output_init(self, idf):

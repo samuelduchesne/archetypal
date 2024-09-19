@@ -421,7 +421,7 @@ class IDF(GeomIDF):
             - idd_index : dict
         """
         if self.getiddname() is None:
-            errortxt = "IDD file needed to read the idf file. " "Set it using IDF.setiddname(iddfile)"
+            errortxt = "IDD file needed to read the idf file. Set it using IDF.setiddname(iddfile)"
             raise IDDNotSetError(errortxt)
         readout = idfreader1(self.idfname, self.iddname, self, commdct=self.idd_info, block=self.block)
         (self.idfobjects, block, self.model, idd_info, idd_index, idd_version) = readout
@@ -1222,7 +1222,7 @@ class IDF(GeomIDF):
             try:
                 self.simulation_dir.files("*.mdd")
             except FileNotFoundError:
-                raise Exception("call IDF.simulate() at least once to get a list of " "possible meters")
+                raise Exception("call IDF.simulate() at least once to get a list of possible meters")
             else:
                 self._meters = Meters(self)
         return self._meters
@@ -2423,7 +2423,7 @@ class IDF(GeomIDF):
             "relative" in [o.Coordinate_System.lower() for o in self.idfobjects["GLOBALGEOMETRYRULES"]]
             and self.coords_are_truly_relative
         ):
-            raise Exception("Model is in relative coordinates and must be translated to world using " "IDF.to_world().")
+            raise Exception("Model is in relative coordinates and must be translated to world using IDF.to_world().")
         view_idf(idf=self, test=~show)
 
         fig = plt.gcf()

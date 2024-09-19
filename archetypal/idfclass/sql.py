@@ -50,7 +50,7 @@ class SqlOutput:
         Returns:
             (EnergyDataFrame): The time series as an EnergyDataFrame.
         """
-        cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, " "Units, ReportingFrequency"
+        cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, Units, ReportingFrequency"
         query = f"""
             SELECT {cols}
             FROM ReportDataDictionary
@@ -203,7 +203,7 @@ class Sql:
         "ReportForString").
         """
         with connect(self.file_path) as conn:
-            cols = "ReportName, TableName, ReportForString, ColumnName, RowName, " "Units, Value"
+            cols = "ReportName, TableName, ReportForString, ColumnName, RowName, Units, Value"
             query = f"SELECT {cols} FROM TabularDataWithStrings"
             data = pd.read_sql(query, conn)
 

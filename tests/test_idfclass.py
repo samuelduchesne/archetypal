@@ -11,7 +11,7 @@ from archetypal.eplus_interface import (
 from archetypal.eplus_interface.version import EnergyPlusVersion
 from archetypal.utils import parallel_process
 
-data_dir = Path(__file__).parent / "input_data"
+from .conftest import data_dir
 
 
 @pytest.fixture()
@@ -26,7 +26,7 @@ class TestIDF:
     @pytest.fixture(scope="session")
     def idf_model(self, config):
         """An IDF model. Yields both the idf"""
-        file = data_dir / "necb/NECB 2011-SmallOffice-NECB HDD " "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        file = data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w).simulate()
 
@@ -126,7 +126,7 @@ class TestIDF:
         assert natvent_v9_1_0.file_version == EnergyPlusVersion("9-1-0")
 
     def test_specific_version_error_simulate(self, natvent_v9_1_0):
-        with pytest.raises(EnergyPlusVersionError):
+        with pytest.raises(InvalidEnergyPlusVersion):
             natvent_v9_1_0.simulate()
 
     def test_version(self, natvent_v9_1_0):
@@ -145,7 +145,7 @@ class TestIDF:
     @pytest.mark.xfail(reason="Fails on Linux")
     def test_transition_error(self, config):
         with pytest.raises(CalledProcessError):
-            file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7" ".2_5A_USA_IL_CHICAGO-OHARE.idf"
+            file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7.2_5A_USA_IL_CHICAGO-OHARE.idf"
             wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
             IDF(file, epw=wf, as_version="8.9.0")
 
@@ -179,7 +179,7 @@ class TestIDF:
         assert not idf_model.wwr(round_to=10).empty
 
     def test_wrong_epversion(self, config):
-        file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7" ".2_5A_USA_IL_CHICAGO-OHARE.idf"
+        file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7.2_5A_USA_IL_CHICAGO-OHARE.idf"
         wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         with pytest.raises(InvalidEnergyPlusVersion):
             IDF(file, epw=wf, as_version="7-3-0")
@@ -226,7 +226,7 @@ class TestIDF:
             pytest.param(
                 "Supermarket",
                 4181,
-                marks=pytest.mark.skip("Supermarket missing from BTAP " "database"),
+                marks=pytest.mark.skip("Supermarket missing from BTAP database"),
             ),
             ("Warehouse", 4835),
         ],

@@ -196,7 +196,7 @@ class IDF(GeomIDF):
         output_suffix="L",
         epmacro=False,
         keep_data=True,
-        keep_data_err=True,
+        keep_data_err=False,
         position=0,
         name=None,
         output_directory=None,
@@ -1419,8 +1419,7 @@ class IDF(GeomIDF):
         except KeyboardInterrupt:
             slab_thread.stop()
         finally:
-            if not self.keep_data_err:
-                tmp.rmtree(ignore_errors=True)
+            tmp.rmtree(ignore_errors=True)
             e = slab_thread.exception
             if e is not None:
                 raise e

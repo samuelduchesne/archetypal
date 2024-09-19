@@ -46,7 +46,6 @@ class BasementThread(Thread):
 
     def run(self):
         """Wrapper around the Basement command line interface."""
-        self.cancelled = False
 
         # Move files into place
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
@@ -118,7 +117,6 @@ class BasementThread(Thread):
                 # Communicate callbacks
                 if self.cancelled:
                     self.msg_callback("Basement cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
                 else:
                     if self.p.returncode == 0:
                         self.msg_callback(f"Basement completed in {time.time() - start_time:,.2f} seconds")
@@ -213,3 +211,4 @@ class BasementThread(Thread):
             self.msg_callback("Attempting to cancel simulation ...")
             self.cancelled = True
             self.p.kill()
+            self.cancelled_callback(self.std_out, self.std_err)

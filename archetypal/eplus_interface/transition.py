@@ -218,6 +218,13 @@ class TransitionThread(Thread):
                         self.msg_callback("Transition failed")
                         self.failure_callback()
 
+    def stop(self):
+        if self.p.poll() is None:
+            self.msg_callback("Attempting to cancel simulation ...")
+            self.cancelled = True
+            self.p.kill()
+            self.cancelled_callback(self.std_out, self.std_err)
+
     @property
     def trans_exec(self) -> dict:
         """Return dict of {EnergyPlusVersion, executable} for each transitions."""

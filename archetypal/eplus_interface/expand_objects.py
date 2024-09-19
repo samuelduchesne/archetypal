@@ -157,3 +157,4 @@ class ExpandObjectsThread(Thread):
             self.msg_callback("Attempting to cancel simulation ...")
             self.cancelled = True
             self.p.kill()
+            self.cancelled_callback(self.std_out, self.std_err)

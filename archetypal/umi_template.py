@@ -209,7 +209,8 @@ class UmiTemplateLibrary:
             weather (str or Path): Path to the weather file.
             name (str): The name of the Template File
             processors (int): Number of cores. Defaults to -1, all cores.
-            debug (bool): If True, will raise any error on any processed file.
+            debug (bool): If True, will raise any error on any processed file and
+                keep simulation cache directory.
             kwargs: keyword arguments passed to IDF().
 
         Raises:
@@ -228,7 +229,7 @@ class UmiTemplateLibrary:
                 verbose=False,
                 position=i,
                 nolimit=True,
-                keep_data_err=True,  # For debugging
+                keep_data_err=debug,
                 readvars=False,  # No need to readvars since only sql is used
                 **kwargs,
             )

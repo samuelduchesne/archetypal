@@ -156,13 +156,13 @@ class EnergyPlusThread(Thread):
             self.msg_callback("Attempting to cancel simulation ...")
             self.cancelled = True
             self.p.kill()
+            self.cancelled_callback(self.std_out, self.std_err)
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
 
         Adapted from :func:`eppy.runner.runfunctions.run`.
         """
-        self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
         tmp = self.tmp

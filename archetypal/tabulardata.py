@@ -85,10 +85,7 @@ class TabularData(pd.DataFrame):
 
         if archetype:
             c_1 = (
-                conjunction(
-                    *[self[self.ARCHETYPE] == archetype for archetype in archetype],
-                    logical=np.logical_or
-                )
+                conjunction(*[self[self.ARCHETYPE] == archetype for archetype in archetype], logical=np.logical_or)
                 if isinstance(archetype, tuple)
                 else self[self.ARCHETYPE] == archetype
             )
@@ -96,11 +93,8 @@ class TabularData(pd.DataFrame):
         if tabulardataindex:
             c_2 = (
                 conjunction(
-                    *[
-                        self[self.TABULARDATAINDEX] == tabulardataindex
-                        for tabulardataindex in tabulardataindex
-                    ],
-                    logical=np.logical_or
+                    *[self[self.TABULARDATAINDEX] == tabulardataindex for tabulardataindex in tabulardataindex],
+                    logical=np.logical_or,
                 )
                 if isinstance(tabulardataindex, tuple)
                 else self[self.TABULARDATAINDEX] == tabulardataindex
@@ -108,30 +102,21 @@ class TabularData(pd.DataFrame):
             c_n.append(c_2)
         if value:
             c_3 = (
-                conjunction(
-                    *[self[self.VALUE] == value for value in value],
-                    logical=np.logical_or
-                )
+                conjunction(*[self[self.VALUE] == value for value in value], logical=np.logical_or)
                 if isinstance(value, tuple)
                 else self[self.VALUE] == value
             )
             c_n.append(c_3)
         if reportname:
             c_4 = (
-                conjunction(
-                    *[self[self.REPORTNAME] == reportname for reportname in reportname],
-                    logical=np.logical_or
-                )
+                conjunction(*[self[self.REPORTNAME] == reportname for reportname in reportname], logical=np.logical_or)
                 if isinstance(reportname, tuple)
                 else self[self.REPORTNAME] == reportname
             )
             c_n.append(c_4)
         if value:
             c_5 = (
-                conjunction(
-                    *[self[self.VALUE] == value for value in value],
-                    logical=np.logical_or
-                )
+                conjunction(*[self[self.VALUE] == value for value in value], logical=np.logical_or)
                 if isinstance(value, tuple)
                 else self[self.VALUE] == value
             )
@@ -139,11 +124,8 @@ class TabularData(pd.DataFrame):
         if reportforstring:
             c_6 = (
                 conjunction(
-                    *[
-                        self[self.REPORTFORSTRING] == reportforstring
-                        for reportforstring in reportforstring
-                    ],
-                    logical=np.logical_or
+                    *[self[self.REPORTFORSTRING] == reportforstring for reportforstring in reportforstring],
+                    logical=np.logical_or,
                 )
                 if isinstance(reportforstring, tuple)
                 else self[self.REPORTFORSTRING] == reportforstring
@@ -151,47 +133,35 @@ class TabularData(pd.DataFrame):
             c_n.append(c_6)
         if tablename:
             c_7 = (
-                conjunction(
-                    *[self[self.TABLENAME] == tablename for tablename in tablename],
-                    logical=np.logical_or
-                )
+                conjunction(*[self[self.TABLENAME] == tablename for tablename in tablename], logical=np.logical_or)
                 if isinstance(tablename, tuple)
                 else self[self.TABLENAME] == tablename
             )
             c_n.append(c_7)
         if rowname:
             c_8 = (
-                conjunction(
-                    *[self[self.ROWNAME] == rowname for rowname in rowname],
-                    logical=np.logical_or
-                )
+                conjunction(*[self[self.ROWNAME] == rowname for rowname in rowname], logical=np.logical_or)
                 if isinstance(rowname, tuple)
                 else self[self.ROWNAME] == rowname
             )
             c_n.append(c_8)
         if columnname:
             c_9 = (
-                conjunction(
-                    *[self[self.COLUMNNAME] == columnname for columnname in columnname],
-                    logical=np.logical_or
-                )
+                conjunction(*[self[self.COLUMNNAME] == columnname for columnname in columnname], logical=np.logical_or)
                 if isinstance(columnname, tuple)
                 else self[self.COLUMNNAME] == columnname
             )
             c_n.append(c_9)
         if units:
             c_14 = (
-                conjunction(
-                    *[self[self.UNITS] == units for units in units],
-                    logical=np.logical_or
-                )
+                conjunction(*[self[self.UNITS] == units for units in units], logical=np.logical_or)
                 if isinstance(units, tuple)
                 else self[self.UNITS] == units
             )
             c_n.append(c_14)
 
         filtered_df = self.loc[conjunction(*c_n, logical=np.logical_and)]
-        log("filtered TabularData in {:,.2f} seconds".format(time.time() - start_time))
+        log(f"filtered TabularData in {time.time() - start_time:,.2f} seconds")
         if inplace:
             return filtered_df._update_inplace(filtered_df)
         else:

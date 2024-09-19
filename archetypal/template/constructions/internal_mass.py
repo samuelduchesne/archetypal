@@ -22,9 +22,7 @@ class InternalMass:
 
     @surface_name.setter
     def surface_name(self, value):
-        self._surface_name = validators.string(
-            value, minimum_length=1, maximum_length=100
-        )
+        self._surface_name = validators.string(value, minimum_length=1, maximum_length=100)
 
     @property
     def construction(self) -> OpaqueConstruction:
@@ -34,8 +32,7 @@ class InternalMass:
     @construction.setter
     def construction(self, value):
         assert isinstance(value, OpaqueConstruction), (
-            f"Input value error for {value}. construction must be of type "
-            f"{OpaqueConstruction}, not {type(value)}."
+            f"Input value error for {value}. construction must be of type " f"{OpaqueConstruction}, not {type(value)}."
         )
         self._construction = value
 
@@ -72,9 +69,7 @@ class InternalMass:
         # one.
         for int_obj in internal_mass_objs:
             if int_obj.key.upper() == "INTERNALMASS":
-                mass_opaque_constructions.append(
-                    OpaqueConstruction.from_epbunch(int_obj, Category="Internal Mass")
-                )
+                mass_opaque_constructions.append(OpaqueConstruction.from_epbunch(int_obj, Category="Internal Mass"))
                 area += float(int_obj.Surface_Area)
 
         # If one or more constructions, combine them into one.

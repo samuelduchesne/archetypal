@@ -115,12 +115,9 @@ class Outputs:
         """
         self.idf = idf
         self.reporting_frequency = reporting_frequency
-        self.output_variables = set(
-            a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]
-        )
+        self.output_variables = set(a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()])
         self.output_meters = set(
-            (get_name_attribute(a), a.Reporting_Frequency)
-            for a in idf.idfobjects["Output:Meter".upper()]
+            (get_name_attribute(a), a.Reporting_Frequency) for a in idf.idfobjects["Output:Meter".upper()]
         )
         self.other_outputs = outputs
 
@@ -184,9 +181,7 @@ class Outputs:
     @output_variables.setter
     def output_variables(self, value):
         if value is not None:
-            assert not isinstance(
-                value, (str, bytes)
-            ), f"Expected list or tuple. Got {type(value)}."
+            assert not isinstance(value, (str, bytes)), f"Expected list or tuple. Got {type(value)}."
             values = []
             # for each element
             for output in value:
@@ -207,9 +202,7 @@ class Outputs:
     @output_meters.setter
     def output_meters(self, value):
         if value is not None:
-            assert not isinstance(
-                value, (str, bytes)
-            ), f"Expected list or tuple. Got {type(value)}."
+            assert not isinstance(value, (str, bytes)), f"Expected list or tuple. Got {type(value)}."
             values = []
             for output in value:
                 if isinstance(output, tuple):
@@ -229,9 +222,7 @@ class Outputs:
     @other_outputs.setter
     def other_outputs(self, value):
         if value is not None:
-            assert all(
-                isinstance(item, dict) for item in value
-            ), f"Expected list of dict. Got {type(value)}."
+            assert all(isinstance(item, dict) for item in value), f"Expected list of dict. Got {type(value)}."
             values = []
             for output in value:
                 values.append(output)
@@ -285,25 +276,16 @@ class Outputs:
         assert isinstance(outputs, Iterable), "outputs must be some sort of iterable"
         for output in outputs:
             if "meter" in output["key"].lower():
-                self._output_meters.add(
-                    (output["Key_Name"], output["Reporting_Frequency"].title())
-                )
+                self._output_meters.add((output["Key_Name"], output["Reporting_Frequency"].title()))
             elif "variable" in output["key"].lower():
-                self._output_variables.add(
-                    (output["Variable_Name"], output["Reporting_Frequency"].title())
-                )
+                self._output_variables.add((output["Variable_Name"], output["Reporting_Frequency"].title()))
             else:
                 self._other_outputs.append(output)
         return self
 
     def add_basics(self):
         """Adds the summary report and the sql file to the idf outputs"""
-        return (
-            self.add_summary_report()
-            .add_output_control()
-            .add_schedules()
-            .add_meter_variables()
-        )
+        return self.add_summary_report().add_output_control().add_schedules().add_meter_variables()
 
     def add_schedules(self):
         """Adds Schedules object"""
@@ -379,9 +361,7 @@ class Outputs:
         Returns:
             Outputs: self
         """
-        outputs = [
-            {"key": "Output:SQLite".upper(), **dict(Option_Type=sql_output_style)}
-        ]
+        outputs = [{"key": "Output:SQLite".upper(), **dict(Option_Type=sql_output_style)}]
 
         for output in outputs:
             self._other_outputs.append(output)
@@ -441,9 +421,7 @@ class Outputs:
             "Zone Thermostat Heating Setpoint Temperature",
         ]
         for output in variables:
-            self._output_variables.add(
-                (output, reporting_frequency or self.reporting_frequency)
-            )
+            self._output_variables.add((output, reporting_frequency or self.reporting_frequency))
 
         meters = [
             "Baseboard:EnergyTransfer",
@@ -533,17 +511,13 @@ class Outputs:
             "Zone Other Equipment Convective Heating Energy",
         ]
 
-        window_heat_addition_and_window_heat_removal = [
-            "Zone Windows Total Heat Gain Energy"
-        ]
+        window_heat_addition_and_window_heat_removal = ["Zone Windows Total Heat Gain Energy"]
 
         interzone_air_transfer_heat_addition_and_interzone_air_transfer_heat_removal = [
             "Zone Air Heat Balance Interzone Air Transfer Rate"
         ]
 
-        infiltration_heat_addition_and_infiltration_heat_removal = [
-            "Zone Air Heat Balance Outdoor Air Transfer Rate"
-        ]
+        infiltration_heat_addition_and_infiltration_heat_removal = ["Zone Air Heat Balance Outdoor Air Transfer Rate"]
 
         tuple(
             map(
@@ -745,11 +719,7 @@ class Outputs:
         return self
 
     def __repr__(self):
-        variables = "OutputVariables:\n {}".format(
-            "\n ".join(map(str, self.output_variables))
-        )
+        variables = "OutputVariables:\n {}".format("\n ".join(map(str, self.output_variables)))
         meters = "OutputMeters:\n {}".format("\n ".join(map(str, self.output_meters)))
-        outputs = "Outputs:\n {}".format(
-            "\n ".join((a["key"] for a in self.other_outputs))
-        )
+        outputs = "Outputs:\n {}".format("\n ".join(a["key"] for a in self.other_outputs))
         return "\n".join([variables, meters, outputs])

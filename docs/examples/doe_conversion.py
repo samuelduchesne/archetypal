@@ -7,15 +7,11 @@ from path import Path
 from archetypal.umi_template import UmiTemplateLibrary
 
 if __name__ == "__main__":
-    basepath = Path(
-        r"C:\Users\samueld\Dropbox (Personal)\MIT\PostDoc\research\umiverse\template library\usa"
-    )
+    basepath = Path(r"C:\Users\samueld\Dropbox (Personal)\MIT\PostDoc\research\umiverse\template library\usa")
     zone = "6A"
 
     os.chdir(basepath / zone)
-    epw = next(
-        iter(Path(rf"../refbldgs-v1.3_5.0-weather_files_tmy2").files(f"{zone}*.epw"))
-    )
+    epw = next(iter(Path(r"../refbldgs-v1.3_5.0-weather_files_tmy2").files(f"{zone}*.epw")))
 
     # Change the template list with names of archetypes to convert
     templates = [
@@ -35,9 +31,7 @@ if __name__ == "__main__":
         idf_files.extend(Path(".").files(f"*{name}*.idf"))
 
     # Create the Template Library File
-    umi = UmiTemplateLibrary.from_idf_files(
-        idf_files, weather=epw, name=f"refbldgs_{zone}", processors=-1
-    )
+    umi = UmiTemplateLibrary.from_idf_files(idf_files, weather=epw, name=f"refbldgs_{zone}", processors=-1)
 
     # Adjust metadata
     for template in umi.BuildingTemplates:

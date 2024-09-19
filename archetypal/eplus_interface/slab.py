@@ -112,11 +112,7 @@ class SlabThread(Thread):
                     self.msg_callback("Slab cancelled")
                 else:
                     if self.p.returncode == 0:
-                        self.msg_callback(
-                            "Slab completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
-                        )
+                        self.msg_callback(f"Slab completed in {time.time() - start_time:,.2f} seconds")
                         self.success_callback()
                         for line in stderr_lines:
                             self.msg_callback(line)
@@ -134,7 +130,7 @@ class SlabThread(Thread):
         for temp_schedule in self.run_dir.glob("SLABSurfaceTemps*"):
             if temp_schedule.exists():
                 slab_models = self.idf.__class__(
-                    StringIO(open(temp_schedule, "r").read()),
+                    StringIO(open(temp_schedule).read()),
                     file_version=self.idf.file_version,
                     as_version=self.idf.as_version,
                     prep_outputs=False,
@@ -146,9 +142,7 @@ class SlabThread(Thread):
                         for obj in sequence:
                             data = obj.to_dict()
                             key = data.pop("key")
-                            added_objects.append(
-                                self.idf.newidfobject(key=key.upper(), **data)
-                            )
+                            added_objects.append(self.idf.newidfobject(key=key.upper(), **data))
                 del slab_models  # remove loaded_string model
             else:
                 self.msg_callback("No SLABSurfaceTemps.txt file found.", level=lg.ERROR)
@@ -170,11 +164,9 @@ class SlabThread(Thread):
         """Parse error file and log"""
         error_filename = self.run_dir / "eplusout.err"
         if error_filename.exists():
-            with open(error_filename, "r") as stderr:
+            with open(error_filename) as stderr:
                 stderr_r = stderr.read()
-                self.exception = EnergyPlusProcessError(
-                    cmd=self.cmd, stderr=stderr_r, idf=self.idf
-                )
+                self.exception = EnergyPlusProcessError(cmd=self.cmd, stderr=stderr_r, idf=self.idf)
         self.cleanup_callback()
 
     def cancelled_callback(self, stdin, stdout):
@@ -187,11 +179,7 @@ class SlabThread(Thread):
         if self.idf.file_version <= Version("7.2"):
             install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            install_dir = (
-                self.idf.file_version.current_install_dir
-                / "PreProcess"
-                / "GrndTempCalc"
-            )
+            install_dir = self.idf.file_version.current_install_dir / "PreProcess" / "GrndTempCalc"
         return install_dir.expand()
 
     def stop(self):
@@ -199,3 +187,4 @@ class SlabThread(Thread):
             self.msg_callback("Attempting to cancel simulation ...")
             self.cancelled = True
             self.p.kill()
+            self.cancelled_callback(self.std_out, self.std_err)

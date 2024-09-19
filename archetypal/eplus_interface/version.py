@@ -82,14 +82,7 @@ class EnergyPlusVersion(Version):
         version = next(
             iter(
                 sorted(
-                    (
-                        Version(
-                            re.search(r"\d+(-\d+)+", home.stem)
-                            .group()
-                            .replace("-", ".")
-                        )
-                        for home in eplus_homes
-                    ),
+                    (Version(re.search(r"\d+(-\d+)+", home.stem).group().replace("-", ".")) for home in eplus_homes),
                     reverse=True,
                 )
             )
@@ -117,9 +110,7 @@ class EnergyPlusVersion(Version):
         try:
             return self.install_locations[self.dash]
         except KeyError:
-            raise EnergyPlusVersionError(
-                f"EnergyPlusVersion {self.dash} is not installed."
-            )
+            raise EnergyPlusVersionError(f"EnergyPlusVersion {self.dash} is not installed.")
 
     @property
     def tuple(self) -> tuple:
@@ -222,7 +213,7 @@ class EnergyPlusVersion(Version):
 
     def __repr__(self) -> str:
         """Return a representation of self."""
-        return f"<EnergyPlusVersion('{str(self)}')>"
+        return f"<EnergyPlusVersion('{self!s}')>"
 
 
 def get_eplus_basedirs():

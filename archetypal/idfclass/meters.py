@@ -6,12 +6,12 @@ import logging
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
-from geomeppy.patches import EpBunch
 from tabulate import tabulate
 
 from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
 from archetypal.utils import log
+from geomeppy.patches import EpBunch
 
 
 class Meter:
@@ -98,10 +98,7 @@ class Meter:
                 # the environment_type is specified by the simulationcontrol.
                 try:
                     for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                        if (
-                            ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower()
-                            == "yes"
-                        ):
+                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes":
                             environment_type = 3
                         else:
                             environment_type = 1
@@ -197,12 +194,8 @@ class Meters:
             mdd, *_ = self._idf.simulate().simulation_dir.files("*.mdd")
         if not mdd:
             raise FileNotFoundError
-        meters = pd.read_csv(
-            mdd, skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"]
-        )
-        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace(
-            r"\;.*", "", regex=True
-        )
+        meters = pd.read_csv(mdd, skiprows=2, names=["key", "Key_Name", "Reporting_Frequency"])
+        meters.Reporting_Frequency = meters.Reporting_Frequency.str.replace(r"\;.*", "", regex=True)
         for key, group in meters.groupby("key"):
             meters_dict = group.T.to_dict()
             setattr(

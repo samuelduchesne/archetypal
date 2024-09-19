@@ -117,5 +117,5 @@ def getoldiddfile(versionid):
     ver_str = "-".join(vlist)
     eplus_exe, _ = eppy.runner.run_functions.install_paths(ver_str)
     eplusfolder = os.path.dirname(eplus_exe)
-    iddfile = "{}/bin/Energy+.idd".format(eplusfolder)
+    iddfile = f"{eplusfolder}/bin/Energy+.idd"
     return iddfile

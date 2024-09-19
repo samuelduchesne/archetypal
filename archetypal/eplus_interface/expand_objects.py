@@ -1,4 +1,5 @@
 """ExpandObjects module"""
+
 import logging as lg
 import shutil
 import subprocess
@@ -98,10 +99,7 @@ class ExpandObjectsThread(Thread):
                         # self.cancelled_callback(self.std_out, self.std_err)
                     else:
                         if self.p.returncode == 0:
-                            self.msg_callback(
-                                f"ExpandObjects completed in "
-                                f"{time.time() - start_time:,.2f} seconds"
-                            )
+                            self.msg_callback(f"ExpandObjects completed in " f"{time.time() - start_time:,.2f} seconds")
                             self.success_callback()
                         else:
                             self.failure_callback()
@@ -125,9 +123,7 @@ class ExpandObjectsThread(Thread):
             self.idf.idfname = file
         if (Path(self.run_dir) / "GHTIn.idf").exists():
             self.idf.include.append(
-                (Path(self.run_dir) / "GHTIn.idf").copy(
-                    self.idf.output_directory.makedirs_p() / "GHTIn.idf"
-                )
+                (Path(self.run_dir) / "GHTIn.idf").copy(self.idf.output_directory.makedirs_p() / "GHTIn.idf")
             )
 
         if (Path(self.run_dir) / "BasementGHTIn.idf").exists():
@@ -141,9 +137,7 @@ class ExpandObjectsThread(Thread):
         """Read stderr and pass to logger."""
         for line in self.p.stderr:
             self.msg_callback(line.decode("utf-8"), level=lg.ERROR)
-        self.exception = CalledProcessError(
-            self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
-        )
+        self.exception = CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
 
     def cancelled_callback(self, stdin, stdout):
         """Call on cancelled."""
@@ -163,3 +157,4 @@ class ExpandObjectsThread(Thread):
             self.msg_callback("Attempting to cancel simulation ...")
             self.cancelled = True
             self.p.kill()
+            self.cancelled_callback(self.std_out, self.std_err)

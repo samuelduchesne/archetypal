@@ -1,13 +1,17 @@
+import os
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from archetypal import settings
 from archetypal import IDF
 from archetypal.eplus_interface import EnergyPlusVersion
 from archetypal.schedule import Schedule, ScheduleTypeLimits
 from archetypal.template.schedule import UmiSchedule, YearSchedule
 from archetypal.utils import config
+
+from .conftest import data_dir
 
 
 class TestScheduleTypeLimits:
@@ -39,19 +43,14 @@ class TestScheduleTypeLimits:
 class TestSchedule:
     @pytest.fixture()
     def schedules_in_necb_specific(self, config):
-        idf = IDF(
-            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-        )
+        idf = IDF(data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf")
         epbunch = idf.schedules_dict["NECB-A-Thermostat Setpoint-Heating".upper()]
         s = Schedule.from_epbunch(epbunch, start_day_of_the_week=0)
         yield s
 
     def test_scale(self, schedules_in_necb_specific):
         before_sum = sum(schedules_in_necb_specific.Values)
-        assert before_sum == pytest.approx(
-            sum(schedules_in_necb_specific.scale(0.1).Values)
-        )
+        assert before_sum == pytest.approx(sum(schedules_in_necb_specific.scale(0.1).Values))
 
     def test_plot(self, schedules_in_necb_specific):
         schedules_in_necb_specific.plot(drawstyle="steps-post")
@@ -62,7 +61,7 @@ class TestSchedule:
     def test_make_umi_schedule(self):
         """Test only a single schedule name."""
 
-        idf = IDF("tests/input_data/schedules/schedules.idf", prep_outputs=False)
+        idf = IDF(data_dir / "schedules/schedules.idf", prep_outputs=False)
         ep_bunch = idf.schedules_dict["CoolingCoilAvailSched".upper()]
         s = UmiSchedule.from_epbunch(ep_bunch, start_day_of_the_week=0)
         new = s.develop()
@@ -108,21 +107,16 @@ class TestSchedule:
         assert new == pytest.approx(orig)
 
 
-idf_file = "tests/input_data/schedules/test_multizone_EP.idf"
+idf_file = data_dir / "schedules/test_multizone_EP.idf"
 
 
 def schedules_idf():
-    config(cache_folder="tests/.temp/cache")
+    config(cache_folder=os.getenv("ARCHETYPAL_CACHE") or data_dir / ".temp/cache")
     idf = IDF(
         idf_file,
-        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+        epw=data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
         readvars=True,
-        include=[
-            EnergyPlusVersion.current().current_install_dir
-            / "DataSets"
-            / "TDV"
-            / "TDV_2008_kBtu_CTZ06.csv"
-        ],
+        include=[EnergyPlusVersion.current().current_install_dir / "DataSets" / "TDV" / "TDV_2008_kBtu_CTZ06.csv"],
     )
     return idf
 
@@ -130,7 +124,16 @@ def schedules_idf():
 idf = schedules_idf()
 schedules_dict = idf._get_all_schedules(yearly_only=True)
 schedules = list(schedules_dict.values())
-ids = [i.replace(" ", "_") for i in schedules_dict.keys()]
+ids = [key.replace(" ", "_") for key in schedules_dict.keys()]
+
+schedules = [
+    pytest.param(schedule, marks=pytest.mark.xfail(reason="Can't quite capture all possibilities with special days"))
+    if schedule == "POFF"
+    else pytest.param(schedule, marks=pytest.mark.xfail(raises=NotImplementedError))
+    if schedule == "Cooling Setpoint Schedule"
+    else schedule
+    for schedule in schedules
+]
 
 
 @pytest.fixture(scope="module")
@@ -138,21 +141,6 @@ def csv_out(config):
     idf = schedules_idf().simulate()
     csv, *_ = idf.simulation_dir.files("*out.csv")
     yield csv
-
-
-schedules = [
-    pytest.param(
-        schedule,
-        marks=pytest.mark.xfail(
-            reason="Can't quite capture all possibilities with special days"
-        ),
-    )
-    if schedule == "POFF"
-    else pytest.param(schedule, marks=pytest.mark.xfail(raises=NotImplementedError))
-    if schedule == "Cooling Setpoint Schedule"
-    else schedule
-    for schedule in schedules
-]
 
 
 @pytest.fixture(params=schedules, ids=ids, scope="module")
@@ -173,9 +161,9 @@ def schedule_parametrized(request, csv_out):
     epv = epv.loc[:, ep_bunch.Name.upper() + ":Schedule Value [](Hourly)"].values
     expected = pd.Series(epv, index=index)
 
-    print("Year: {}".format(new_eps[0].Name))
-    print("Weeks: {}".format([obj.Name for obj in new_eps[1]]))
-    print("Days: {}".format([obj.Name for obj in new_eps[2]]))
+    print(f"Year: {new_eps[0].Name}")
+    print(f"Weeks: {[obj.Name for obj in new_eps[1]]}")
+    print(f"Days: {[obj.Name for obj in new_eps[2]]}")
 
     yield origin, new, expected
 

@@ -41,7 +41,7 @@ from archetypal.template.schedule import (
     YearSchedule,
     YearSchedulePart,
 )
-from archetypal.template.structure import StructureInformation, MassRatio
+from archetypal.template.structure import MassRatio, StructureInformation
 from archetypal.template.ventilation import VentilationSetting
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet

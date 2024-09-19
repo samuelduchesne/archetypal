@@ -6,18 +6,18 @@
 ################################################################################
 import logging as lg
 from pathlib import Path
-from typing import Literal, List, Optional, Any
+from typing import Any, List, Literal, Optional
 
 from energy_pandas.units import unit_registry
 
 # Version of the package
-from pkg_resources import get_distribution, DistributionNotFound
+from pkg_resources import DistributionNotFound, get_distribution
 
 try:
     from pydantic_settings import BaseSettings
 except ImportError:
     from pydantic_settings import BaseSettingsModel as BaseSettings
-from pydantic import Field, DirectoryPath
+from pydantic import DirectoryPath, Field
 
 try:
     from pydantic import field_validator
@@ -25,7 +25,7 @@ except ImportError:
     from pydantic import validator as field_validator
 
 
-class ZoneWeight(object):
+class ZoneWeight:
     """Zone weights for Umi Templates"""
 
     weight_attr = {0: "area", 1: "volume"}
@@ -59,12 +59,10 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
     debug: bool = Field(False, validation_alias="ARCHETYPAL_DEBUG")
 
     # write log to file and/or to console
-    log_file: bool = Field(False)
-    log_console: bool = Field(False)
-    log_notebook: bool = Field(False)
-    log_level: Literal[0, 10, 20, 30, 40, 50] = Field(
-        lg.INFO, validation_alias="ARCHETYPAL_LOG_LEVEL"
-    )
+    log_file: bool = Field(False, validation_alias="ARCHETYPAL_LOG_FILE")
+    log_console: bool = Field(False, validation_alias="ARCHETYPAL_LOG_CONSOLE")
+    log_notebook: bool = Field(False, validation_alias="ARCHETYPAL_LOG_NOTEBOOK")
+    log_level: Literal[0, 10, 20, 30, 40, 50] = Field(lg.INFO, validation_alias="ARCHETYPAL_LOG_LEVEL")
     log_name: str = Field("archetypal", validation_alias="ARCHETYPAL_LOG_NAME")
     log_filename: str = Field("archetypal")
 
@@ -194,12 +192,13 @@ settings = Settings()
 settings.unit_registry = unit_registry
 
 # After settings are loaded, import other modules
-from .idfclass import IDF
-from .eplus_interface.version import EnergyPlusVersion
-from .umi_template import UmiTemplateLibrary
-from .utils import config, clear_cache, parallel_process
-from .umi_template import BuildingTemplate
-
+from .eplus_interface.version import EnergyPlusVersion  # noqa: E402
+from .idfclass import IDF  # noqa: E402
+from .umi_template import (
+    BuildingTemplate,  # noqa: E402
+    UmiTemplateLibrary,  # noqa: E402
+)
+from .utils import clear_cache, config, parallel_process  # noqa: E402
 
 try:
     __version__ = get_distribution("archetypal").version
@@ -208,10 +207,13 @@ except DistributionNotFound:
     __version__ = "0.0.0"  # should happen only if package is copied, not installed.
 else:
     # warn if a newer version of archetypal is available
-    from outdated import warn_if_outdated
     from .eplus_interface.version import warn_if_not_compatible
 finally:
     # warn if energyplus not installed or incompatible
     from .eplus_interface.version import warn_if_not_compatible
 
     warn_if_not_compatible()
+
+from .idfclass import IDF  # noqa: E402
+
+__all__ = ["settings", "Settings", "__version__", "utils", "dataportal", "IDF"]

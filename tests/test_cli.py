@@ -8,6 +8,8 @@ from archetypal import settings
 from archetypal.cli import cli
 from archetypal.utils import log
 
+from .conftest import data_dir
+
 
 class TestCli:
     """Defines tests for usage of the archetypal Command Line Interface"""
@@ -19,8 +21,8 @@ class TestCli:
     def test_reduce(self):
         """Tests the 'reduced_model' method"""
         runner = CliRunner()
-        base = Path("tests/input_data/umi_samples")
-        outname = "tests/.temp/warehouse.json"
+        base = Path(data_dir / "umi_samples")
+        outname = settings.cache_folder / "warehouse.json"
         result = runner.invoke(
             cli,
             [
@@ -37,7 +39,7 @@ class TestCli:
                 settings.ep_version,
                 "reduce",
                 "-w",
-                "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_*.epw",
+                data_dir / "CAN_PQ_Montreal.Intl.AP.716270_*.epw",
                 base / "*Res*.idf",
                 "-o",
                 outname,
@@ -59,19 +61,19 @@ class TestCli:
             cli,
             [
                 "--cache-folder",
-                "tests/.temp/cache",
+                os.getenv("ARCHETYPAL_CACHE") or "tests/.temp/cache",
                 "--data-folder",
-                "tests/.temp/data",
+                os.getenv("ARCHETYPAL_DATA") or "tests/.temp/data",
                 "--imgs-folder",
-                "tests/.temp/images",
+                os.getenv("ARCHETYPAL_IMAGES") or "tests/.temp/images",
                 "--logs-folder",
-                "tests/.temp/logs",
+                os.getenv("ARCHETYPAL_LOGS") or "tests/.temp/logs",
                 "transition",
                 "-v",
                 "9.2",
-                "tests/input_data/problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf",
-                "tests/input_data/problematic/*.idf",  # Path with wildcard
-                "tests/input_data/problematic",  # Just a path
+                str(data_dir / "problematic/ASHRAE90.1_ApartmentHighRise_STD2016_Buffalo.idf"),
+                str(data_dir / "problematic/*.idf"),  # Path with wildcard
+                str(data_dir / "problematic"),  # Just a path
             ],
             catch_exceptions=False,
         )

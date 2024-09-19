@@ -1,14 +1,15 @@
 """EnergyPlus variables module."""
+
 import logging
 from typing import Iterable
 
 import pandas as pd
 from energy_pandas import EnergyDataFrame
-from geomeppy.patches import EpBunch
 
 from archetypal.idfclass.extensions import bunch2db
 from archetypal.reportdata import ReportData
 from archetypal.utils import log
+from geomeppy.patches import EpBunch
 
 
 class Variable:
@@ -76,10 +77,7 @@ class Variable:
                 # the environment_type is specified by the simulationcontrol.
                 try:
                     for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                        if (
-                            ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower()
-                            == "yes"
-                        ):
+                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes":
                             environment_type = 3
                         else:
                             environment_type = 1
@@ -177,9 +175,7 @@ class VariableGroup:
             if not output_values:
                 return EnergyDataFrame([])
             else:
-                return pd.concat(
-                    output_values, axis=1, names=["OutputVariable", "Key_Name"]
-                )
+                return pd.concat(output_values, axis=1, names=["OutputVariable", "Key_Name"])
 
 
 class Variables:
@@ -217,9 +213,7 @@ class Variables:
             skiprows=2,
             names=["key", "Key_Value", "Variable_Name", "Reporting_Frequency"],
         )
-        variables.Reporting_Frequency = variables.Reporting_Frequency.str.replace(
-            r"\;.*", "", regex=True
-        )
+        variables.Reporting_Frequency = variables.Reporting_Frequency.str.replace(r"\;.*", "", regex=True)
         for key, group in variables.groupby("key"):
             variable_dict = group.T.to_dict()
             setattr(

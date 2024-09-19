@@ -306,9 +306,7 @@ class ZoneConditioning(UmiBase):
 
     @CoolingSetpoint.setter
     def CoolingSetpoint(self, value):
-        assert (
-            self._heating_setpoint < value
-        ), "Heating setpoint must be lower than the cooling setpoint."
+        assert self._heating_setpoint < value, "Heating setpoint must be lower than the cooling setpoint."
         self._cooling_setpoint = validators.float(value, minimum=-100, maximum=100)
 
     @property
@@ -318,9 +316,7 @@ class ZoneConditioning(UmiBase):
 
     @HeatingSetpoint.setter
     def HeatingSetpoint(self, value):
-        assert (
-            value < self._cooling_setpoint
-        ), "Heating setpoint must be lower than the cooling setpoint."
+        assert value < self._cooling_setpoint, "Heating setpoint must be lower than the cooling setpoint."
         self._heating_setpoint = validators.float(value, minimum=-100, maximum=100)
 
     @property
@@ -385,8 +381,7 @@ class ZoneConditioning(UmiBase):
     @IsHeatingOn.setter
     def IsHeatingOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsHeatingOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsHeatingOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_heating_on = value
 
@@ -399,8 +394,7 @@ class ZoneConditioning(UmiBase):
     def HeatingSchedule(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. HeatingSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
+                f"Input error with value {value}. HeatingSchedule must " f"be an UmiSchedule, not a {type(value)}"
             )
         self._heating_schedule = value
 
@@ -413,14 +407,12 @@ class ZoneConditioning(UmiBase):
     def HeatingLimitType(self, value):
         if checkers.is_string(value):
             assert IdealSystemLimit[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in IdealSystemLimit)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in IdealSystemLimit)}"
             )
             self._heating_limit_type = IdealSystemLimit[value]
         elif checkers.is_numeric(value):
             assert IdealSystemLimit(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in IdealSystemLimit)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in IdealSystemLimit)}"
             )
             self._heating_limit_type = IdealSystemLimit(value)
         elif isinstance(value, IdealSystemLimit):
@@ -434,16 +426,10 @@ class ZoneConditioning(UmiBase):
     @HeatingFuelType.setter
     def HeatingFuelType(self, value):
         if checkers.is_string(value):
-            assert FuelType[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in FuelType)}"
-            )
+            assert FuelType[value], f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in FuelType)}"
             self._heating_fuel_type = FuelType[value]
         elif checkers.is_numeric(value):
-            assert FuelType(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in FuelType)}"
-            )
+            assert FuelType(value), f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in FuelType)}"
             self._heating_fuel_type = FuelType(value)
         elif isinstance(value, FuelType):
             self._heating_fuel_type = value
@@ -465,8 +451,7 @@ class ZoneConditioning(UmiBase):
     @IsCoolingOn.setter
     def IsCoolingOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsCoolingOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsCoolingOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_cooling_on = value
 
@@ -479,8 +464,7 @@ class ZoneConditioning(UmiBase):
     def CoolingSchedule(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. CoolingSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
+                f"Input error with value {value}. CoolingSchedule must " f"be an UmiSchedule, not a {type(value)}"
             )
         self._cooling_schedule = value
 
@@ -493,14 +477,12 @@ class ZoneConditioning(UmiBase):
     def CoolingLimitType(self, value):
         if checkers.is_string(value):
             assert IdealSystemLimit[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in IdealSystemLimit)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in IdealSystemLimit)}"
             )
             self._cooling_limit_type = IdealSystemLimit[value]
         elif checkers.is_numeric(value):
             assert IdealSystemLimit(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in IdealSystemLimit)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in IdealSystemLimit)}"
             )
             self._cooling_limit_type = IdealSystemLimit(value)
         elif isinstance(value, IdealSystemLimit):
@@ -514,16 +496,10 @@ class ZoneConditioning(UmiBase):
     @CoolingFuelType.setter
     def CoolingFuelType(self, value):
         if checkers.is_string(value):
-            assert FuelType[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in FuelType)}"
-            )
+            assert FuelType[value], f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in FuelType)}"
             self._cooling_fuel_type = FuelType[value]
         elif checkers.is_numeric(value):
-            assert FuelType(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in FuelType)}"
-            )
+            assert FuelType(value), f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in FuelType)}"
             self._cooling_fuel_type = FuelType(value)
         elif isinstance(value, FuelType):
             self._cooling_fuel_type = value
@@ -545,8 +521,7 @@ class ZoneConditioning(UmiBase):
     @IsMechVentOn.setter
     def IsMechVentOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsMechVentOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsMechVentOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_mech_vent_on = value
 
@@ -559,14 +534,12 @@ class ZoneConditioning(UmiBase):
     def EconomizerType(self, value):
         if checkers.is_string(value):
             assert EconomizerTypes[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in EconomizerTypes)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in EconomizerTypes)}"
             )
             self._economizer_type = EconomizerTypes[value]
         elif checkers.is_numeric(value):
             assert EconomizerTypes(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in EconomizerTypes)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in EconomizerTypes)}"
             )
             self._economizer_type = EconomizerTypes(value)
         elif isinstance(value, EconomizerTypes):
@@ -581,8 +554,7 @@ class ZoneConditioning(UmiBase):
     def MechVentSchedule(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. MechVentSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
+                f"Input error with value {value}. MechVentSchedule must " f"be an UmiSchedule, not a {type(value)}"
             )
         self._mech_vent_schedule = value
 
@@ -595,14 +567,12 @@ class ZoneConditioning(UmiBase):
     def HeatRecoveryType(self, value):
         if checkers.is_string(value):
             assert HeatRecoveryTypes[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in HeatRecoveryTypes)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in HeatRecoveryTypes)}"
             )
             self._heat_recovery_type = HeatRecoveryTypes[value]
         elif checkers.is_numeric(value):
             assert HeatRecoveryTypes(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in HeatRecoveryTypes)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in HeatRecoveryTypes)}"
             )
             self._heat_recovery_type = HeatRecoveryTypes(value)
         elif isinstance(value, HeatRecoveryTypes):
@@ -615,9 +585,7 @@ class ZoneConditioning(UmiBase):
 
     @HeatRecoveryEfficiencyLatent.setter
     def HeatRecoveryEfficiencyLatent(self, value):
-        self._heat_recovery_efficiency_latent = validators.float(
-            value, minimum=0, maximum=1
-        )
+        self._heat_recovery_efficiency_latent = validators.float(value, minimum=0, maximum=1)
 
     @property
     def HeatRecoveryEfficiencySensible(self):
@@ -626,9 +594,7 @@ class ZoneConditioning(UmiBase):
 
     @HeatRecoveryEfficiencySensible.setter
     def HeatRecoveryEfficiencySensible(self, value):
-        self._heat_recovery_efficiency_sensible = validators.float(
-            value, minimum=0, maximum=1
-        )
+        self._heat_recovery_efficiency_sensible = validators.float(value, minimum=0, maximum=1)
 
     @classmethod
     def from_dict(cls, data, schedules, **kwargs):
@@ -695,11 +661,7 @@ class ZoneConditioning(UmiBase):
         data_dict["$id"] = str(self.id)
         data_dict["CoolingSchedule"] = self.CoolingSchedule.to_ref()
         data_dict["CoolingCoeffOfPerf"] = round(self.CoolingCoeffOfPerf, 3)
-        data_dict["CoolingSetpoint"] = (
-            round(self.CoolingSetpoint, 3)
-            if not math.isnan(self.CoolingSetpoint)
-            else 26
-        )
+        data_dict["CoolingSetpoint"] = round(self.CoolingSetpoint, 3) if not math.isnan(self.CoolingSetpoint) else 26
         data_dict["CoolingLimitType"] = self.CoolingLimitType.value
         data_dict["CoolingFuelType"] = self.CoolingFuelType.value
         data_dict["EconomizerType"] = self.EconomizerType.value
@@ -707,17 +669,9 @@ class ZoneConditioning(UmiBase):
         data_dict["HeatingLimitType"] = self.HeatingLimitType.value
         data_dict["HeatingFuelType"] = self.HeatingFuelType.value
         data_dict["HeatingSchedule"] = self.HeatingSchedule.to_ref()
-        data_dict["HeatingSetpoint"] = (
-            round(self.HeatingSetpoint, 3)
-            if not math.isnan(self.HeatingSetpoint)
-            else 20
-        )
-        data_dict["HeatRecoveryEfficiencyLatent"] = round(
-            self.HeatRecoveryEfficiencyLatent, 3
-        )
-        data_dict["HeatRecoveryEfficiencySensible"] = round(
-            self.HeatRecoveryEfficiencySensible, 3
-        )
+        data_dict["HeatingSetpoint"] = round(self.HeatingSetpoint, 3) if not math.isnan(self.HeatingSetpoint) else 20
+        data_dict["HeatRecoveryEfficiencyLatent"] = round(self.HeatRecoveryEfficiencyLatent, 3)
+        data_dict["HeatRecoveryEfficiencySensible"] = round(self.HeatRecoveryEfficiencySensible, 3)
         data_dict["HeatRecoveryType"] = self.HeatRecoveryType.value
         data_dict["IsCoolingOn"] = self.IsCoolingOn
         data_dict["IsHeatingOn"] = self.IsHeatingOn
@@ -845,19 +799,12 @@ class ZoneConditioning(UmiBase):
         Args:
             zone_ep:
         """
-        connections = zone_ep.getreferingobjs(
-            iddgroups=["Zone HVAC Equipment Connections"], fields=["Zone_Name"]
-        )
-        referenced_object = next(iter(connections)).get_referenced_object(
-            "Zone_Conditioning_Equipment_List_Name"
-        )
+        connections = zone_ep.getreferingobjs(iddgroups=["Zone HVAC Equipment Connections"], fields=["Zone_Name"])
+        referenced_object = next(iter(connections)).get_referenced_object("Zone_Conditioning_Equipment_List_Name")
         # EquipmentList can have 18 objects. Filter out the None objects.
         return filter(
             None,
-            [
-                referenced_object.get_referenced_object(f"Zone_Equipment_{i}_Name")
-                for i in range(1, 19)
-            ],
+            [referenced_object.get_referenced_object(f"Zone_Equipment_{i}_Name") for i in range(1, 19)],
         )
 
     def fresh_air_from_ideal_loads(self, zone, zone_ep):
@@ -872,23 +819,11 @@ class ZoneConditioning(UmiBase):
             MechVentSchedule)
         """
         equip_list = self.get_equipment_list(zone, zone_ep)
-        equipment = next(
-            iter(
-                [
-                    eq
-                    for eq in equip_list
-                    if eq.key.lower() == "ZoneHVAC:IdealLoadsAirSystem".lower()
-                ]
-            )
-        )
-        oa_spec = equipment.get_referenced_object(
-            "Design_Specification_Outdoor_Air_Object_Name"
-        )
+        equipment = next(iter([eq for eq in equip_list if eq.key.lower() == "ZoneHVAC:IdealLoadsAirSystem".lower()]))
+        oa_spec = equipment.get_referenced_object("Design_Specification_Outdoor_Air_Object_Name")
         oa_area = float(oa_spec.Outdoor_Air_Flow_per_Zone_Floor_Area)
         oa_person = float(oa_spec.Outdoor_Air_Flow_per_Person)
-        mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(
-            oa_spec, zone
-        )
+        mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(oa_spec, zone)
         return True, oa_area, oa_person, mechvent_schedule
 
     def fresh_air_from_zone_sizes(self, zone):
@@ -910,11 +845,7 @@ class ZoneConditioning(UmiBase):
                         select t.ColumnName, t.Value
                         from TabularDataWithStrings t
                         where TableName == 'Zone Sensible Heating' and RowName == '{zone.Name.upper()}'"""
-            oa = (
-                pd.read_sql_query(sql_query, con=conn, coerce_float=True)
-                .set_index("ColumnName")
-                .squeeze()
-            )
+            oa = pd.read_sql_query(sql_query, con=conn, coerce_float=True).set_index("ColumnName").squeeze()
             oa = pd.to_numeric(oa, errors="coerce")
             oa_design = oa["Minimum Outdoor Air Flow Rate"]  # m3/s
             isoa = oa["Calculated Design Air Flow"] > 0  # True if ach > 0
@@ -922,18 +853,14 @@ class ZoneConditioning(UmiBase):
             if zone.occupants > 0:
                 oa_person = oa_design / zone.occupants
             else:
-                oa_person = np.NaN
+                oa_person = np.nan
 
             designobjs = zone._epbunch.getreferingobjs(
                 iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"]
             )
             obj = next(iter(eq for eq in designobjs if eq.key.lower() == "sizing:zone"))
-            oa_spec = obj.get_referenced_object(
-                "Design_Specification_Outdoor_Air_Object_Name"
-            )
-            mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(
-                oa_spec, zone
-            )
+            oa_spec = obj.get_referenced_object("Design_Specification_Outdoor_Air_Object_Name")
+            mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(oa_spec, zone)
             return isoa, oa_area, oa_person, mechvent_schedule
 
     def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone) -> UmiSchedule:
@@ -942,8 +869,7 @@ class ZoneConditioning(UmiBase):
             epbunch = zone.idf.schedules_dict[oa_spec.Outdoor_Air_Schedule_Name.upper()]
             umi_schedule = UmiSchedule.from_epbunch(epbunch)
             log(
-                f"Mechanical Ventilation Schedule set as {UmiSchedule} for "
-                f"zone {zone.Name}",
+                f"Mechanical Ventilation Schedule set as {UmiSchedule} for " f"zone {zone.Name}",
                 lg.DEBUG,
             )
             return umi_schedule
@@ -952,9 +878,7 @@ class ZoneConditioning(UmiBase):
             # Try to get
             try:
                 values = (
-                    self.idf.variables.OutputVariable[
-                        "Air_System_Outdoor_Air_Minimum_Flow_Fraction"
-                    ]
+                    self.idf.variables.OutputVariable["Air_System_Outdoor_Air_Minimum_Flow_Fraction"]
                     .values()  # return values
                     .mean(axis=1)  # for more than one system, return mean
                     .values  # get numpy array
@@ -962,13 +886,8 @@ class ZoneConditioning(UmiBase):
             except KeyError:
                 # if no Air_System_Outdoor_Air_Minimum_Flow_Fraction defined,
                 # then create an always off schedule as a backup.
-                log(
-                    f"No Mechanical Ventilation Schedule specified for zone "
-                    f"{zone.Name}"
-                )
-                return UmiSchedule.constant_schedule(
-                    value=0, Name="AlwaysOff", allow_duplicates=True
-                )
+                log(f"No Mechanical Ventilation Schedule specified for zone " f"{zone.Name}")
+                return UmiSchedule.constant_schedule(value=0, Name="AlwaysOff", allow_duplicates=True)
             else:
                 log(
                     f"Mechanical Ventilation Schedule specified for zone "
@@ -1003,9 +922,7 @@ class ZoneConditioning(UmiBase):
         total_input_heating_energy = 0
         for meter in heating_meters:
             try:
-                total_input_heating_energy += (
-                    zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
-                )
+                total_input_heating_energy += zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
             except KeyError:
                 pass  # pass if meter does not exist for model
 
@@ -1016,17 +933,13 @@ class ZoneConditioning(UmiBase):
         total_output_heating_energy = 0
         for meter in heating_energy_transfer_meters:
             try:
-                total_output_heating_energy += (
-                    zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
-                )
+                total_output_heating_energy += zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
             except KeyError:
                 pass  # pass if meter does not exist for model
         if total_output_heating_energy == 0:  # IdealLoadsAirSystem
             try:
                 total_output_heating_energy += (
-                    zone_ep.theidf.meters.OutputMeter["Heating__EnergyTransfer"]
-                    .values("kWh")
-                    .sum()
+                    zone_ep.theidf.meters.OutputMeter["Heating__EnergyTransfer"].values("kWh").sum()
                 )
             except KeyError:
                 pass
@@ -1041,9 +954,7 @@ class ZoneConditioning(UmiBase):
         total_input_cooling_energy = 0
         for meter in cooling_meters:
             try:
-                total_input_cooling_energy += (
-                    zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
-                )
+                total_input_cooling_energy += zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
             except KeyError:
                 pass  # pass if meter does not exist for model
 
@@ -1054,35 +965,23 @@ class ZoneConditioning(UmiBase):
         total_output_cooling_energy = 0
         for meter in cooling_energy_transfer_meters:
             try:
-                total_output_cooling_energy += (
-                    zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
-                )
+                total_output_cooling_energy += zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
             except KeyError:
                 pass  # pass if meter does not exist for model
         if total_output_cooling_energy == 0:  # IdealLoadsAirSystem
             try:
                 total_output_cooling_energy += (
-                    zone_ep.theidf.meters.OutputMeter["Cooling__EnergyTransfer"]
-                    .values("kWh")
-                    .sum()
+                    zone_ep.theidf.meters.OutputMeter["Cooling__EnergyTransfer"].values("kWh").sum()
                 )
             except KeyError:
                 pass
 
-        ratio_cooling = total_output_cooling_energy / (
-            total_output_cooling_energy + total_output_heating_energy
-        )
-        ratio_heating = total_output_heating_energy / (
-            total_output_cooling_energy + total_output_heating_energy
-        )
+        ratio_cooling = total_output_cooling_energy / (total_output_cooling_energy + total_output_heating_energy)
+        ratio_heating = total_output_heating_energy / (total_output_cooling_energy + total_output_heating_energy)
 
         # estimate fans electricity for cooling and heating
         try:
-            fans_energy = (
-                zone_ep.theidf.meters.OutputMeter["Fans__Electricity"]
-                .values("kWh")
-                .sum()
-            )
+            fans_energy = zone_ep.theidf.meters.OutputMeter["Fans__Electricity"].values("kWh").sum()
             fans_cooling = fans_energy * ratio_cooling
             fans_heating = fans_energy * ratio_heating
         except KeyError:
@@ -1092,11 +991,7 @@ class ZoneConditioning(UmiBase):
 
         # estimate pumps electricity for cooling and heating
         try:
-            pumps_energy = (
-                zone_ep.theidf.meters.OutputMeter["Pumps__Electricity"]
-                .values("kWh")
-                .sum()
-            )
+            pumps_energy = zone_ep.theidf.meters.OutputMeter["Pumps__Electricity"].values("kWh").sum()
             pumps_cooling = pumps_energy * ratio_cooling
             pumps_heating = pumps_energy * ratio_heating
         except KeyError:
@@ -1247,9 +1142,7 @@ class ZoneConditioning(UmiBase):
 
         # get possible heat recovery objects from this idf
         heat_recovery_in_idf = list(
-            chain.from_iterable(
-                zone_ep.theidf.idfobjects[key.upper()] for key in heat_recovery_objects
-            )
+            chain.from_iterable(zone_ep.theidf.idfobjects[key.upper()] for key in heat_recovery_objects)
         )
 
         # Set defaults
@@ -1277,17 +1170,11 @@ class ZoneConditioning(UmiBase):
                     "Supply Air Inlet T°C)"
                 )
 
-            elif (
-                object.key.upper() == "HeatExchanger:AirToAir:SensibleAndLatent".upper()
-            ):
+            elif object.key.upper() == "HeatExchanger:AirToAir:SensibleAndLatent".upper():
                 # Do HeatExchanger:AirToAir:SensibleAndLatent calculation
 
-                HeatRecoveryEfficiencyLatent = (
-                    object.Latent_Effectiveness_at_100_Heating_Air_Flow
-                )
-                HeatRecoveryEfficiencySensible = (
-                    object.Sensible_Effectiveness_at_100_Heating_Air_Flow
-                )
+                HeatRecoveryEfficiencyLatent = object.Latent_Effectiveness_at_100_Heating_Air_Flow
+                HeatRecoveryEfficiencySensible = object.Sensible_Effectiveness_at_100_Heating_Air_Flow
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
             elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow".upper():
@@ -1297,14 +1184,11 @@ class ZoneConditioning(UmiBase):
                 HeatRecoveryEfficiencySensible = 0.7
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
-            elif (
-                object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow"
-                ":PerformanceDataType1".upper()
-            ):
+            elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow:PerformanceDataType1".upper():
                 # This is not an actual HeatExchanger, pass
                 pass
             else:
-                msg = 'Heat exchanger object "{}" is not ' "implemented".format(object)
+                msg = f'Heat exchanger object "{object}" is not ' "implemented"
                 raise NotImplementedError(msg)
 
         self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
@@ -1327,12 +1211,8 @@ class ZoneConditioning(UmiBase):
             .Value.mean()
             .unstack(level=-1)
         )
-        HeatRecoveryEfficiencySensible = effectiveness.loc[
-            object.Name.upper(), "Heat Exchanger Sensible Effectiveness"
-        ]
-        HeatRecoveryEfficiencyLatent = effectiveness.loc[
-            object.Name.upper(), "Heat Exchanger Latent Effectiveness"
-        ]
+        HeatRecoveryEfficiencySensible = effectiveness.loc[object.Name.upper(), "Heat Exchanger Sensible Effectiveness"]
+        HeatRecoveryEfficiencyLatent = effectiveness.loc[object.Name.upper(), "Heat Exchanger Latent Effectiveness"]
         return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible
 
     @staticmethod
@@ -1349,14 +1229,8 @@ class ZoneConditioning(UmiBase):
         if nolimit:
             return IdealSystemLimit.NoLimit, 100, 100
         try:
-            cap = (
-                zone_size[zone_size["LoadType"] == load_name]["UserDesLoad"].values[0]
-                / zone.area
-            )
-            flow = (
-                zone_size[zone_size["LoadType"] == load_name]["UserDesFlow"].values[0]
-                / zone.area
-            )
+            cap = zone_size[zone_size["LoadType"] == load_name]["UserDesLoad"].values[0] / zone.area
+            flow = zone_size[zone_size["LoadType"] == load_name]["UserDesFlow"].values[0] / zone.area
             LimitType = IdealSystemLimit.LimitFlowRateAndCapacity
         except Exception:
             cap = 100
@@ -1427,56 +1301,32 @@ class ZoneConditioning(UmiBase):
             weights = [self.area, other.area]
 
         new_attr = dict(
-            CoolingCoeffOfPerf=UmiBase.float_mean(
-                self, other, "CoolingCoeffOfPerf", weights
-            ),
+            CoolingCoeffOfPerf=UmiBase.float_mean(self, other, "CoolingCoeffOfPerf", weights),
             CoolingLimitType=max(self.CoolingLimitType, other.CoolingLimitType),
             CoolingSetpoint=UmiBase.float_mean(self, other, "CoolingSetpoint", weights),
             EconomizerType=max(self.EconomizerType, other.EconomizerType),
-            HeatRecoveryEfficiencyLatent=UmiBase.float_mean(
-                self, other, "HeatRecoveryEfficiencyLatent", weights
-            ),
-            HeatRecoveryEfficiencySensible=UmiBase.float_mean(
-                self, other, "HeatRecoveryEfficiencySensible", weights
-            ),
+            HeatRecoveryEfficiencyLatent=UmiBase.float_mean(self, other, "HeatRecoveryEfficiencyLatent", weights),
+            HeatRecoveryEfficiencySensible=UmiBase.float_mean(self, other, "HeatRecoveryEfficiencySensible", weights),
             HeatRecoveryType=max(self.HeatRecoveryType, other.HeatRecoveryType),
-            HeatingCoeffOfPerf=UmiBase.float_mean(
-                self, other, "HeatingCoeffOfPerf", weights
-            ),
+            HeatingCoeffOfPerf=UmiBase.float_mean(self, other, "HeatingCoeffOfPerf", weights),
             HeatingLimitType=max(self.HeatingLimitType, other.HeatingLimitType),
             HeatingSetpoint=UmiBase.float_mean(self, other, "HeatingSetpoint", weights),
             IsCoolingOn=any((self.IsCoolingOn, other.IsCoolingOn)),
             IsHeatingOn=any((self.IsHeatingOn, other.IsHeatingOn)),
             IsMechVentOn=any((self.IsMechVentOn, other.IsMechVentOn)),
             MaxCoolFlow=UmiBase.float_mean(self, other, "MaxCoolFlow", weights),
-            MaxCoolingCapacity=UmiBase.float_mean(
-                self, other, "MaxCoolingCapacity", weights
-            ),
+            MaxCoolingCapacity=UmiBase.float_mean(self, other, "MaxCoolingCapacity", weights),
             MaxHeatFlow=UmiBase.float_mean(self, other, "MaxHeatFlow", weights),
-            MaxHeatingCapacity=UmiBase.float_mean(
-                self, other, "MaxHeatingCapacity", weights
-            ),
-            MinFreshAirPerArea=UmiBase.float_mean(
-                self, other, "MinFreshAirPerArea", weights
-            ),
-            MinFreshAirPerPerson=UmiBase.float_mean(
-                self, other, "MinFreshAirPerPerson", weights
-            ),
-            HeatingSchedule=UmiSchedule.combine(
-                self.HeatingSchedule, other.HeatingSchedule, weights
-            ),
-            CoolingSchedule=UmiSchedule.combine(
-                self.CoolingSchedule, other.CoolingSchedule, weights
-            ),
-            MechVentSchedule=UmiSchedule.combine(
-                self.MechVentSchedule, other.MechVentSchedule, weights
-            ),
+            MaxHeatingCapacity=UmiBase.float_mean(self, other, "MaxHeatingCapacity", weights),
+            MinFreshAirPerArea=UmiBase.float_mean(self, other, "MinFreshAirPerArea", weights),
+            MinFreshAirPerPerson=UmiBase.float_mean(self, other, "MinFreshAirPerPerson", weights),
+            HeatingSchedule=UmiSchedule.combine(self.HeatingSchedule, other.HeatingSchedule, weights),
+            CoolingSchedule=UmiSchedule.combine(self.CoolingSchedule, other.CoolingSchedule, weights),
+            MechVentSchedule=UmiSchedule.combine(self.MechVentSchedule, other.MechVentSchedule, weights),
             area=1 if self.area + other.area == 2 else self.area + other.area,
         )
         # create a new object with the previous attributes
-        new_obj = self.__class__(
-            **meta, **new_attr, allow_duplicates=self.allow_duplicates
-        )
+        new_obj = self.__class__(**meta, **new_attr, allow_duplicates=self.allow_duplicates)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
 
@@ -1601,10 +1451,8 @@ class ZoneConditioning(UmiBase):
                     self.CoolingSetpoint == other.CoolingSetpoint,
                     self.CoolingSchedule == other.CoolingSchedule,
                     self.EconomizerType == other.EconomizerType,
-                    self.HeatRecoveryEfficiencyLatent
-                    == other.HeatRecoveryEfficiencyLatent,
-                    self.HeatRecoveryEfficiencySensible
-                    == other.HeatRecoveryEfficiencySensible,
+                    self.HeatRecoveryEfficiencyLatent == other.HeatRecoveryEfficiencyLatent,
+                    self.HeatRecoveryEfficiencySensible == other.HeatRecoveryEfficiencySensible,
                     self.HeatRecoveryType == other.HeatRecoveryType,
                     self.HeatingCoeffOfPerf == other.HeatingCoeffOfPerf,
                     self.HeatingLimitType == other.HeatingLimitType,

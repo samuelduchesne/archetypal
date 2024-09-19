@@ -173,9 +173,7 @@ class OpaqueMaterial(MaterialBase):
     def SolarAbsorptance(self, value):
         if value == "" or value is None:
             value = 0.7
-        self._solar_absorptance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        self._solar_absorptance = validators.float(value, minimum=0, maximum=1, allow_empty=True)
 
     @property
     def SpecificHeat(self):
@@ -196,9 +194,7 @@ class OpaqueMaterial(MaterialBase):
     def ThermalEmittance(self, value):
         if value == "" or value is None:
             value = 0.9
-        self._thermal_emittance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        self._thermal_emittance = validators.float(value, minimum=0, maximum=1, allow_empty=True)
 
     @property
     def VisibleAbsorptance(self):
@@ -209,9 +205,7 @@ class OpaqueMaterial(MaterialBase):
     def VisibleAbsorptance(self, value):
         if value == "" or value is None or value is None:
             value = 0.7
-        self._visible_absorptance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        self._visible_absorptance = validators.float(value, minimum=0, maximum=1, allow_empty=True)
 
     @property
     def MoistureDiffusionResistance(self):
@@ -269,10 +263,7 @@ class OpaqueMaterial(MaterialBase):
             return self
 
         if not weights:
-            log(
-                'using OpaqueMaterial density as weighting factor in "{}" '
-                "combine.".format(self.__class__.__name__)
-            )
+            log(f'using OpaqueMaterial density as weighting factor in "{self.__class__.__name__}" ' "combine.")
             weights = [self.Density, other.Density]
 
         meta = self._get_predecessors_meta(other)
@@ -287,19 +278,13 @@ class OpaqueMaterial(MaterialBase):
             TransportCarbon=self.float_mean(other, "TransportCarbon", weights),
             TransportDistance=self.float_mean(other, "TransportDistance", weights),
             TransportEnergy=self.float_mean(other, "TransportEnergy", weights),
-            SubstitutionRatePattern=self.float_mean(
-                other, "SubstitutionRatePattern", weights=None
-            ),
-            SubstitutionTimestep=self.float_mean(
-                other, "SubstitutionTimestep", weights
-            ),
+            SubstitutionRatePattern=self.float_mean(other, "SubstitutionRatePattern", weights=None),
+            SubstitutionTimestep=self.float_mean(other, "SubstitutionTimestep", weights),
             Cost=self.float_mean(other, "Cost", weights),
             Density=self.float_mean(other, "Density", weights),
             EmbodiedCarbon=self.float_mean(other, "EmbodiedCarbon", weights),
             EmbodiedEnergy=self.float_mean(other, "EmbodiedEnergy", weights),
-            MoistureDiffusionResistance=self.float_mean(
-                other, "MoistureDiffusionResistance", weights
-            ),
+            MoistureDiffusionResistance=self.float_mean(other, "MoistureDiffusionResistance", weights),
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -431,8 +416,7 @@ class OpaqueMaterial(MaterialBase):
             )
         elif epbunch.key.upper() == "MATERIAL:AIRGAP":
             gas_prop = {
-                obj.Name.upper(): obj.mapping()
-                for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
+                obj.Name.upper(): obj.mapping() for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
             }
             for gasname, properties in gas_prop.items():
                 if gasname.lower() in epbunch.Name.lower():
@@ -446,9 +430,7 @@ class OpaqueMaterial(MaterialBase):
                         **properties,
                     )
                 else:
-                    thickness = (
-                        gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
-                    )
+                    thickness = gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
                     properties.pop("Name")
                     return cls(
                         Name=epbunch.Name,
@@ -459,9 +441,9 @@ class OpaqueMaterial(MaterialBase):
                     )
         else:
             raise NotImplementedError(
-                "Material '{}' of type '{}' is not yet "
+                f"Material '{epbunch.Name}' of type '{epbunch.key}' is not yet "
                 "supported. Please contact package "
-                "authors".format(epbunch.Name, epbunch.key)
+                "authors"
             )
 
     def to_epbunch(self, idf, thickness) -> EpBunch:
@@ -526,12 +508,12 @@ class OpaqueMaterial(MaterialBase):
             is parsed. This breaks the UmiTemplate Editor, therefore we set a value
             on these attributes (if necessary) in this validation step.
         """
-        if getattr(self, "SolarAbsorptance") == "":
-            setattr(self, "SolarAbsorptance", 0.7)
-        if getattr(self, "ThermalEmittance") == "":
-            setattr(self, "ThermalEmittance", 0.9)
-        if getattr(self, "VisibleAbsorptance") == "":
-            setattr(self, "VisibleAbsorptance", 0.7)
+        if self.SolarAbsorptance == "":
+            self.SolarAbsorptance = 0.7
+        if self.ThermalEmittance == "":
+            self.ThermalEmittance = 0.9
+        if self.VisibleAbsorptance == "":
+            self.VisibleAbsorptance = 0.7
         return self
 
     def mapping(self, validate=False):

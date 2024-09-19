@@ -16,7 +16,6 @@ class TestEndUseBalance:
             design_day=False,
             readvars=False,
         )
-        idf = idf.saveas("AdultEducationCenter.idf")
         idf.outputs.add_end_use_balance_components()
         idf.outputs.apply()
         idf.simulate()

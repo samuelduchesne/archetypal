@@ -297,6 +297,7 @@ class TestIDF:
         """Saving should overwrite the file content."""
         save_as = tmp_path / "idf_dup.idf"
         idf_dup = idf.saveas(save_as)
+        assert idf_dup.idfstr() == idf_dup.idfstr()
 
     def test_resize(self):
         """Test resizing a building to specific width and length"""
@@ -351,7 +352,7 @@ class TestIDFTransition:
 
 class TestMeters:
     @pytest.fixture()
-    def shoebox_res(self):
+    def shoebox_res(self, config):
         """An IDF model. Yields both the idf. This needs to be the only one used in
         the following test: test_retrieve_meters_nosim"""
         file = data_dir / "umi_samples/B_Res_0_WoodFrame.idf"

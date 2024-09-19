@@ -248,7 +248,7 @@ class UmiTemplateLibrary:
                 with open(filename, "a") as file:
                     file.writelines(res.write())
                     log(
-                        f"EnergyPlusProcess error for {filename} listed in" f" {filename}: {res}",
+                        f"EnergyPlusProcess error for {filename} listed in {filename}: {res}",
                         lg.ERROR,
                     )
             elif isinstance(res, Exception):

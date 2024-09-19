@@ -12,7 +12,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
-networkx = "<3"
+networkx = "<4"
 eppy = "^0.5.63"
 matplotlib = ">=3.4,<4.0"
 pycountry = "^24.6.1"

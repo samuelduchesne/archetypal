@@ -74,7 +74,6 @@ jobs:
           energyplus-install: ${{ matrix.energyplus-install }}
 
       - name: Test with tox
-        description: "Run pytests (parallel n=2) with tox and generate coverage reports"
         run: tox -- -n 2 --doctest-modules tests --cov --cov-config=pyproject.toml --cov-report=xml
 
       - name: Upload coverage reports to Codecov with GitHub Action on Python 3.11

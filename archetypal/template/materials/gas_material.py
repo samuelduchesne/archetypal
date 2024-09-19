@@ -21,9 +21,7 @@ class GasMaterial(MaterialBase):
 
     _GASTYPES = ("air", "argon", "krypton", "xenon", "sf6")
 
-    def __init__(
-        self, Name, Conductivity=None, Density=None, Category="Gases", **kwargs
-    ):
+    def __init__(self, Name, Conductivity=None, Density=None, Category="Gases", **kwargs):
         """Initialize object with parameters.
 
         Args:
@@ -291,9 +289,7 @@ class GasMaterial(MaterialBase):
                     self.Density == other.Density,
                     self.EmbodiedCarbon == other.EmbodiedCarbon,
                     self.EmbodiedEnergy == other.EmbodiedEnergy,
-                    np.array_equal(
-                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
-                    ),
+                    np.array_equal(self.SubstitutionRatePattern, other.SubstitutionRatePattern),
                     self.SubstitutionTimestep == other.SubstitutionTimestep,
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,

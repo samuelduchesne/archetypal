@@ -2,7 +2,6 @@
 
 import collections
 
-import numpy as np
 from sigfig import round
 from validator_collection import validators
 
@@ -127,9 +126,7 @@ class NoMassMaterial(MaterialBase):
     def ThermalEmittance(self, value):
         if value == "" or value is None:
             value = 0.9
-        self._thermal_emittance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        self._thermal_emittance = validators.float(value, minimum=0, maximum=1, allow_empty=True)
 
     @property
     def VisibleAbsorptance(self):
@@ -140,9 +137,7 @@ class NoMassMaterial(MaterialBase):
     def VisibleAbsorptance(self, value):
         if value == "" or value is None or value is None:
             value = 0.7
-        self._visible_absorptance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        self._visible_absorptance = validators.float(value, minimum=0, maximum=1, allow_empty=True)
 
     @property
     def MoistureDiffusionResistance(self):
@@ -179,10 +174,7 @@ class NoMassMaterial(MaterialBase):
             return self
 
         if not weights:
-            log(
-                'using OpaqueMaterial density as weighting factor in "{}" '
-                "combine.".format(self.__class__.__name__)
-            )
+            log(f'using OpaqueMaterial density as weighting factor in "{self.__class__.__name__}" ' "combine.")
             weights = [self.Density, other.Density]
 
         meta = self._get_predecessors_meta(other)
@@ -196,18 +188,12 @@ class NoMassMaterial(MaterialBase):
             TransportCarbon=self.float_mean(other, "TransportCarbon", weights),
             TransportDistance=self.float_mean(other, "TransportDistance", weights),
             TransportEnergy=self.float_mean(other, "TransportEnergy", weights),
-            SubstitutionRatePattern=self.float_mean(
-                other, "SubstitutionRatePattern", weights=None
-            ),
-            SubstitutionTimestep=self.float_mean(
-                other, "SubstitutionTimestep", weights
-            ),
+            SubstitutionRatePattern=self.float_mean(other, "SubstitutionRatePattern", weights=None),
+            SubstitutionTimestep=self.float_mean(other, "SubstitutionTimestep", weights),
             Cost=self.float_mean(other, "Cost", weights),
             EmbodiedCarbon=self.float_mean(other, "EmbodiedCarbon", weights),
             EmbodiedEnergy=self.float_mean(other, "EmbodiedEnergy", weights),
-            MoistureDiffusionResistance=self.float_mean(
-                other, "MoistureDiffusionResistance", weights
-            ),
+            MoistureDiffusionResistance=self.float_mean(other, "MoistureDiffusionResistance", weights),
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -328,8 +314,7 @@ class NoMassMaterial(MaterialBase):
             )
         elif epbunch.key.upper() == "MATERIAL:AIRGAP":
             gas_prop = {
-                obj.Name.upper(): obj.mapping()
-                for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
+                obj.Name.upper(): obj.mapping() for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
             }
             for gasname, properties in gas_prop.items():
                 if gasname.lower() in epbunch.Name.lower():
@@ -340,9 +325,7 @@ class NoMassMaterial(MaterialBase):
                         **properties,
                     )
                 else:
-                    thickness = (
-                        gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
-                    )
+                    thickness = gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
                     return cls(
                         Name=epbunch.Name,
                         Thickness=thickness,
@@ -350,9 +333,9 @@ class NoMassMaterial(MaterialBase):
                     )
         else:
             raise NotImplementedError(
-                "Material '{}' of type '{}' is not yet "
+                f"Material '{epbunch.Name}' of type '{epbunch.key}' is not yet "
                 "supported. Please contact package "
-                "authors".format(epbunch.Name, epbunch.key)
+                "authors"
             )
 
     def to_epbunch(self, idf):
@@ -382,12 +365,12 @@ class NoMassMaterial(MaterialBase):
             is parsed. This breaks the UmiTemplate Editor, therefore we set a value
             on these attributes (if necessary) in this validation step.
         """
-        if getattr(self, "SolarAbsorptance") == "":
-            setattr(self, "SolarAbsorptance", 0.7)
-        if getattr(self, "ThermalEmittance") == "":
-            setattr(self, "ThermalEmittance", 0.9)
-        if getattr(self, "VisibleAbsorptance") == "":
-            setattr(self, "VisibleAbsorptance", 0.7)
+        if self.SolarAbsorptance == "":
+            self.SolarAbsorptance = 0.7
+        if self.ThermalEmittance == "":
+            self.ThermalEmittance = 0.9
+        if self.VisibleAbsorptance == "":
+            self.VisibleAbsorptance = 0.7
         return self
 
     def mapping(self, validate=False):

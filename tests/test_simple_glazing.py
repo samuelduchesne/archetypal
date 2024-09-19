@@ -32,8 +32,8 @@ def test_glazing_unequal(another):
 
 
 def test_simple_glazing_system_equal():
-    dict = calc_simple_glazing(0.6, 2.2, 0.21)
-    assert dict["Conductivity"] == 0.11992503503877955
+    d = calc_simple_glazing(0.6, 2.2, 0.21)
+    assert d["Conductivity"] == 0.11992503503877955
 
 
 def test_simple_glazing_value_error():

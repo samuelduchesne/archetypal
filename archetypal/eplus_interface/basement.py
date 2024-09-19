@@ -11,7 +11,7 @@ from path import Path
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from ..utils import log
+from archetypal.utils import log
 
 from ..eplus_interface.exceptions import EnergyPlusProcessError
 
@@ -46,21 +46,17 @@ class BasementThread(Thread):
 
     def run(self):
         """Wrapper around the Basement command line interface."""
-        self.cancelled = False
-        # get version from IDF object or by parsing the IDF file for it
 
         # Move files into place
-        # copy "%wthrfile%.epw" in.epw
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
         self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir).expand()
 
-        # Get executable using shutil.which (determines the extension based on
-        # the platform, eg: .exe. And copy the executable to tmp
+        # Get executable using shutil.which
         basemenet_exe = shutil.which("Basement", path=self.eplus_home)
         if basemenet_exe is None:
             log(
-                f"The Basement program could not be found at " f"'{self.eplus_home}",
+                f"The Basement program could not be found at '{self.eplus_home}'",
                 lg.WARNING,
             )
             return
@@ -70,27 +66,22 @@ class BasementThread(Thread):
         self.basement_idd = (self.eplus_home / "BasementGHT.idd").copy(self.run_dir)
         self.outfile = self.idf.name
 
-        # The BasementGHTin.idf file is copied from the self.include list (
-        # added by ExpandObjects. If self.include is empty, no need to run
-        # Basement.
+        # The BasementGHTin.idf file is copied from the self.include list
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
         if "BasementGHTIn.idf" not in self.include:
             self.cleanup_callback()
             return
 
-        self.msg_callback(
-            "===== (Run Basement Temperature Generation) ===== Start ====="
-        )
+        self.msg_callback("===== (Run Basement Temperature Generation) ===== Start =====")
         self.msg_callback("Running Basement.exe")
         self.msg_callback(f"Input File  : {self.idfname}")
         self.msg_callback(
-            f"Output Files: {self.outfile}_bsmt.csv "
-            f"{self.outfile}_bsmt.audit {self.outfile}_bsmt.out"
+            f"Output Files: {self.outfile}_bsmt.csv " f"{self.outfile}_bsmt.audit {self.outfile}_bsmt.out"
         )
         self.msg_callback(f"Weather File: {self.epw}")
 
         # Run Slab Program
-        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
             with tqdm(
                 unit_scale=True,
                 miniters=1,
@@ -105,13 +96,17 @@ class BasementThread(Thread):
                     cwd=self.run_dir,
                 )
                 start_time = time.time()
-                self.msg_callback(
-                    "Begin Basement Temperature Calculation processing . . ."
-                )
+                self.msg_callback("Begin Basement Temperature Calculation processing . . .")
 
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
+                # Read stdout line by line
+                for line in iter(self.p.stdout.readline, b""):
+                    decoded_line = line.decode("utf-8").strip()
+                    self.msg_callback(decoded_line)
                     progress.update()
+
+                # Process stderr after stdout is fully read
+                stderr = self.p.stderr.read()
+                stderr_lines = stderr.decode("utf-8").splitlines()
 
                 # We explicitly close stdout
                 self.p.stdout.close()
@@ -121,20 +116,16 @@ class BasementThread(Thread):
 
                 # Communicate callbacks
                 if self.cancelled:
-                    self.msg_callback("RunSlab cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
+                    self.msg_callback("Basement cancelled")
                 else:
                     if self.p.returncode == 0:
-                        self.msg_callback(
-                            "RunSlab completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
-                        )
+                        self.msg_callback(f"Basement completed in {time.time() - start_time:,.2f} seconds")
                         self.success_callback()
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
+                        for line in stderr_lines:
+                            self.msg_callback(line)
                     else:
-                        self.msg_callback("RunSlab failed")
+                        self.msg_callback("Basement failed")
+                        self.msg_callback("\n".join(stderr_lines), level=lg.ERROR)
                         self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
@@ -149,9 +140,7 @@ class BasementThread(Thread):
 
         input_ = self.run_dir / "RunINPUT.TXT"
         if input_.exists():
-            input_ = input_.rename(
-                self.idf.output_directory / f"{self.outfile}_bsmt.out"
-            )
+            input_ = input_.rename(self.idf.output_directory / f"{self.outfile}_bsmt.out")
 
         debug_ = self.run_dir / "RunDEBUGOUT.txt"
         if debug_.exists():
@@ -199,11 +188,9 @@ class BasementThread(Thread):
         """Parse error file and log"""
         error_filename = self.run_dir / "eplusout.err"
         if error_filename.exists():
-            with open(error_filename, "r") as stderr:
+            with open(error_filename) as stderr:
                 stderr_r = stderr.read()
-                self.exception = EnergyPlusProcessError(
-                    cmd=self.cmd, stderr=stderr_r, idf=self.idf
-                )
+                self.exception = EnergyPlusProcessError(cmd=self.cmd, stderr=stderr_r, idf=self.idf)
         self.cleanup_callback()
 
     def cancelled_callback(self, stdin, stdout):
@@ -216,11 +203,7 @@ class BasementThread(Thread):
         if self.idf.file_version <= Version("7.2"):
             install_dir = self.idf.file_version.current_install_dir / "bin"
         else:
-            install_dir = (
-                self.idf.file_version.current_install_dir
-                / "PreProcess"
-                / "GrndTempCalc"
-            )
+            install_dir = self.idf.file_version.current_install_dir / "PreProcess" / "GrndTempCalc"
         return install_dir.expand()
 
     def stop(self):
@@ -228,3 +211,4 @@ class BasementThread(Thread):
             self.msg_callback("Attempting to cancel simulation ...")
             self.cancelled = True
             self.p.kill()
+            self.cancelled_callback(self.std_out, self.std_err)

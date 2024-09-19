@@ -165,15 +165,10 @@ class LayeredConstruction(ConstructionBase):
     def Layers(self, value):
         value = validators.iterable(value, minimum_length=1, maximum_length=10)
         assert all(isinstance(a, (MaterialLayer, GasLayer)) for a in value), (
-            f"Input error for '{value}'. Layers must be a list of MaterialLayer "
-            f"or GasLayer objects only."
+            f"Input error for '{value}'. Layers must be a list of MaterialLayer " f"or GasLayer objects only."
         )
-        assert isinstance(
-            value[0], MaterialLayer
-        ), "The outside layer cannot be a GasLayer"
-        assert isinstance(
-            value[-1], MaterialLayer
-        ), "The inside layer cannot be a GasLayer"
+        assert isinstance(value[0], MaterialLayer), "The outside layer cannot be a GasLayer"
+        assert isinstance(value[-1], MaterialLayer), "The inside layer cannot be a GasLayer"
         self._layers = value
 
     @property
@@ -246,9 +241,7 @@ class LayeredConstruction(ConstructionBase):
         _rad_h = 4 * 5.6697e-8 * self.inside_emissivity * (t_kelvin**3)
         return _conv_h + _rad_h
 
-    def in_h_c(
-        self, t_kelvin=293.15, delta_t=15, height=1.0, angle=90, pressure=101325
-    ):
+    def in_h_c(self, t_kelvin=293.15, delta_t=15, height=1.0, angle=90, pressure=101325):
         """Get detailed indoor convective heat transfer coef. according to ISO 15099.
 
         This is used for window U-factor calculations and all of the
@@ -298,9 +291,7 @@ class LayeredConstruction(ConstructionBase):
             nusselt = 0.56 * ((_rayleigh_h * _sin_a) ** (1 / 4))
         else:
             nusselt = 0.58 * (_rayleigh_h ** (1 / 5))
-        _conv_h = nusselt * (
-            gas_material.conductivity_at_temperature(t_kelvin, pressure) / height
-        )
+        _conv_h = nusselt * (gas_material.conductivity_at_temperature(t_kelvin, pressure) / height)
         return _conv_h
 
     @property
@@ -324,9 +315,7 @@ class LayeredConstruction(ConstructionBase):
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
-        return isinstance(other, LayeredConstruction) and all(
-            [self.Layers == other.Layers]
-        )
+        return isinstance(other, LayeredConstruction) and all([self.Layers == other.Layers])
 
     @property
     def children(self):

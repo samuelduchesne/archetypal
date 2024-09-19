@@ -93,8 +93,7 @@ class ScheduleTypeLimits:
         validators.string(value, allow_empty=True)
         if value is not None:
             assert value.lower() in self._NUMERIC_TYPES, (
-                f"Input error for value '{value}'. NumericType must "
-                f"be one of '{self._NUMERIC_TYPES}'"
+                f"Input error for value '{value}'. NumericType must " f"be one of '{self._NUMERIC_TYPES}'"
             )
         self._numeric_type = value
 
@@ -107,8 +106,7 @@ class ScheduleTypeLimits:
     def UnitType(self, value):
         value = validators.string(value)
         assert value.lower() in map(str.lower, self._UNIT_TYPES), (
-            f"Input error for value '{value}'. UnitType must "
-            f"be one of '{self._UNIT_TYPES}'"
+            f"Input error for value '{value}'. UnitType must " f"be one of '{self._UNIT_TYPES}'"
         )
         self._unit_type = value
 
@@ -138,9 +136,7 @@ class ScheduleTypeLimits:
         Args:
             epbunch (EpBunch): The epbunch of key "SCHEDULETYPELIMITS".
         """
-        assert (
-            epbunch.key.upper() == "SCHEDULETYPELIMITS"
-        ), f"Expected 'SCHEDULETYPELIMITS' epbunch. Got {epbunch.key}."
+        assert epbunch.key.upper() == "SCHEDULETYPELIMITS", f"Expected 'SCHEDULETYPELIMITS' epbunch. Got {epbunch.key}."
         name = epbunch.Name
         lower_limit = epbunch.Lower_Limit_Value
         upper_limit = epbunch.Upper_Limit_Value
@@ -150,12 +146,8 @@ class ScheduleTypeLimits:
             Name=name,
             LowerLimit=lower_limit if checkers.is_numeric(lower_limit) else None,
             UpperLimit=upper_limit if checkers.is_numeric(upper_limit) else None,
-            NumericType=numeric_type
-            if checkers.is_string(numeric_type, minimum_length=1)
-            else "Continuous",
-            UnitType=unit_type
-            if checkers.is_string(unit_type, minimum_length=1)
-            else "Dimensionless",
+            NumericType=numeric_type if checkers.is_string(numeric_type, minimum_length=1) else "Continuous",
+            UnitType=unit_type if checkers.is_string(unit_type, minimum_length=1) else "Dimensionless",
         )
 
     def to_dict(self):
@@ -204,17 +196,11 @@ class ScheduleTypeLimits:
 
     def __copy__(self):
         """Get copy of self."""
-        return self.__class__(
-            self.Name, self.LowerLimit, self.UpperLimit, self.NumericType, self.UnitType
-        )
+        return self.__class__(self.Name, self.LowerLimit, self.UpperLimit, self.NumericType, self.UnitType)
 
     def __repr__(self):
         """Return the string representation of self."""
-        return (
-            self.Name
-            + f" {self.LowerLimit} < values < {self.UpperLimit}"
-            + f"Units: {self.UnitType}"
-        )
+        return self.Name + f" {self.LowerLimit} < values < {self.UpperLimit}" + f"Units: {self.UnitType}"
 
     def __keys__(self):
         """Get keys of self. Useful for hashing."""
@@ -249,12 +235,8 @@ class _ScheduleParser:
         hourly_values = np.arange(24, dtype=float)
         start_hour = 0
         for i in range(number_of_day_sch):
-            value = float(epbunch["Value_Until_Time_{}".format(i + 1)])
-            until_time = [
-                int(s.strip())
-                for s in epbunch["Time_{}".format(i + 1)].split(":")
-                if s.strip().isdigit()
-            ]
+            value = float(epbunch[f"Value_Until_Time_{i + 1}"])
+            until_time = [int(s.strip()) for s in epbunch[f"Time_{i + 1}"].split(":") if s.strip().isdigit()]
             end_hour = int(until_time[0] + until_time[1] / 60)
             for hour in range(start_hour, end_hour):
                 hourly_values[hour] = value
@@ -276,9 +258,7 @@ class _ScheduleParser:
         return np.array(epbunch.fieldvalues[3:])
 
     @staticmethod
-    def get_compact_weekly_ep_schedule_values(
-        epbunch, start_date, index=None, strict=False
-    ) -> np.ndarray:
+    def get_compact_weekly_ep_schedule_values(epbunch, start_date, index=None, strict=False) -> np.ndarray:
         """Get values for schedule:week:compact.
 
         Args:
@@ -288,7 +268,7 @@ class _ScheduleParser:
             index:
         """
         if index is None:
-            idx = pd.date_range(start=start_date, periods=168, freq="1H")
+            idx = pd.date_range(start=start_date, periods=168, freq="1h")
             slicer_ = pd.Series([False] * (len(idx)), index=idx)
         else:
             slicer_ = pd.Series([False] * (len(index)), index=index)
@@ -299,21 +279,15 @@ class _ScheduleParser:
         num_of_daily_schedules = int(len(epbunch.fieldvalues[2:]) / 2)
 
         for i in range(num_of_daily_schedules):
-            day_type = epbunch["DayType_List_{}".format(i + 1)].lower()
+            day_type = epbunch[f"DayType_List_{i + 1}"].lower()
             # This field can optionally contain the prefix “For”
-            how = _ScheduleParser._field_set(
-                epbunch, day_type.strip("for: "), start_date, slicer_, strict
-            )
+            how = _ScheduleParser._field_set(epbunch, day_type.strip("for: "), start_date, slicer_, strict)
             if not weekly_schedules.loc[how].empty:
                 # Loop through days and replace with day:schedule values
                 days = []
-                for name, day in weekly_schedules.loc[how].groupby(
-                    pd.Grouper(freq="D")
-                ):
+                for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(freq="D")):
                     if not day.empty:
-                        ref = epbunch.get_referenced_object(
-                            "ScheduleDay_Name_{}".format(i + 1)
-                        )
+                        ref = epbunch.get_referenced_object(f"ScheduleDay_Name_{i + 1}")
                         day.loc[:] = _ScheduleParser.get_schedule_values(
                             sched_epbunch=ref, start_date=start_date, strict=strict
                         )
@@ -346,10 +320,8 @@ class _ScheduleParser:
             "Saturday",
             "Sunday",
         ]:
-            ref = epbunch.get_referenced_object("{}_ScheduleDay_Name".format(day))
-            h = _ScheduleParser.get_schedule_values(
-                sched_epbunch=ref, start_date=start_date, strict=strict
-            )
+            ref = epbunch.get_referenced_object(f"{day}_ScheduleDay_Name")
+            h = _ScheduleParser.get_schedule_values(sched_epbunch=ref, start_date=start_date, strict=strict)
             hourly_values.append(h)
         hourly_values = np.array(hourly_values)
         # shift days earlier by self.startDayOfTheWeek
@@ -378,13 +350,11 @@ class _ScheduleParser:
             except Exception:
                 all_values[i] = 0
         # create a fake index to help us with the resampling
-        index = pd.date_range(
-            start=start_date, periods=(24 * 60) / freq, freq="{}T".format(freq)
-        )
+        index = pd.date_range(start=start_date, periods=(24 * 60) / freq, freq=f"{freq}T")
         series = pd.Series(all_values, index=index)
 
         # resample series to hourly values and apply resampler function
-        series = series.resample("1H").apply(_how(method))
+        series = series.resample("1h").apply(_how(method))
 
         return series.values
 
@@ -424,9 +394,7 @@ class _ScheduleParser:
         delimeter = _separator(sep)
         skip_rows = int(rows) - 1  # We want to keep the column
         col = [int(column) - 1]  # zero-based
-        epbunch = pd.read_csv(
-            file, delimiter=delimeter, skiprows=skip_rows, usecols=col
-        )
+        epbunch = pd.read_csv(file, delimiter=delimeter, skiprows=skip_rows, usecols=col)
 
         return epbunch.iloc[:, 0].values
 
@@ -442,7 +410,7 @@ class _ScheduleParser:
         field_sets = ["through", "for", "interpolate", "until", "value"]
         fields = epbunch.fieldvalues[3:]
 
-        index = pd.date_range(start=start_date, periods=8760, freq="H")
+        index = pd.date_range(start=start_date, periods=8760, freq="h")
         zeros = np.zeros(len(index))
 
         slicer_ = pd.Series([False] * len(index), index=index)
@@ -454,9 +422,7 @@ class _ScheduleParser:
         how_interpolate = None
         for field in fields:
             if any([spe in field.lower() for spe in field_sets]):
-                f_set, hour, minute, value = _ScheduleParser._field_interpreter(
-                    field, epbunch.Name
-                )
+                f_set, hour, minute, value = _ScheduleParser._field_interpreter(field, epbunch.Name)
 
                 if f_set.lower() == "through":
                     # main condition. All sub-conditions must obey a
@@ -469,9 +435,7 @@ class _ScheduleParser:
                     from_time = "00:00"
 
                     # Prepare ep_to_day variable
-                    ep_to_day = _ScheduleParser._date_field_interpretation(
-                        value, start_date
-                    ) + timedelta(days=1)
+                    ep_to_day = _ScheduleParser._date_field_interpretation(value, start_date) + timedelta(days=1)
 
                     # Calculate Timedelta in days
                     days = (ep_to_day - ep_from_day).days
@@ -496,29 +460,21 @@ class _ScheduleParser:
                         for value in fors:
                             if value.lower() == "allotherdays":
                                 # Apply condition to slice
-                                how = _ScheduleParser._field_set(
-                                    epbunch, value, start_date, slicer_, strict
-                                )
+                                how = _ScheduleParser._field_set(epbunch, value, start_date, slicer_, strict)
                                 # Reset for condition
                                 for_condition = how
                             else:
-                                how = _ScheduleParser._field_set(
-                                    epbunch, value, start_date, slicer_, strict
-                                )
+                                how = _ScheduleParser._field_set(epbunch, value, start_date, slicer_, strict)
                                 if how is not None:
                                     for_condition.loc[how] = True
                     elif value.lower() == "allotherdays":
                         # Apply condition to slice
-                        how = _ScheduleParser._field_set(
-                            epbunch, value, start_date, slicer_, strict
-                        )
+                        how = _ScheduleParser._field_set(epbunch, value, start_date, slicer_, strict)
                         # Reset for condition
                         for_condition = how
                     else:
                         # Apply condition to slice
-                        how = _ScheduleParser._field_set(
-                            epbunch, value, start_date, slicer_, strict
-                        )
+                        how = _ScheduleParser._field_set(epbunch, value, start_date, slicer_, strict)
                         for_condition.loc[how] = True
 
                     # Combine the for_condition with all_conditions
@@ -528,9 +484,7 @@ class _ScheduleParser:
                     # self.sliced_day_.loc[all_conditions] = True
                 elif "interpolate" in f_set.lower():
                     # we need to upsample to series to 8760 * 60 values
-                    new_idx = pd.date_range(
-                        start=start_date, periods=525600, closed="left", freq="T"
-                    )
+                    new_idx = pd.date_range(start=start_date, periods=525600, closed="left", freq="T")
                     series = series.resample("T").pad()
                     series = series.reindex(new_idx)
                     series.fillna(method="pad", inplace=True)
@@ -545,18 +499,12 @@ class _ScheduleParser:
                     until_condition = _ScheduleParser._invalidate_condition(series)
                     if series.index.freq.name == "T":
                         # until_time = str(int(hour) - 1) + ':' + minute
-                        until_time = timedelta(
-                            hours=int(hour), minutes=int(minute)
-                        ) - timedelta(minutes=1)
+                        until_time = timedelta(hours=int(hour), minutes=int(minute)) - timedelta(minutes=1)
 
                     else:
                         until_time = str(int(hour) - 1) + ":" + minute
-                    until_condition.loc[
-                        until_condition.between_time(from_time, str(until_time)).index
-                    ] = True
-                    all_conditions = (
-                        for_condition & through_conditions & until_condition
-                    )
+                    until_condition.loc[until_condition.between_time(from_time, str(until_time)).index] = True
+                    all_conditions = for_condition & through_conditions & until_condition
 
                     from_time = str(int(hour)) + ":" + minute
                 elif f_set.lower() == "value":
@@ -577,7 +525,7 @@ class _ScheduleParser:
                 # update in memory slice
                 slicer_.loc[all_conditions] = True
         if how_interpolate:
-            return series.resample("H").mean().values
+            return series.resample("h").mean().values
         else:
             return series.values
 
@@ -592,33 +540,29 @@ class _ScheduleParser:
         """
         # first week
         year = start_date.year
-        idx = pd.date_range(start=start_date, periods=8760, freq="1H")
-        hourly_values = pd.Series([0] * 8760, index=idx)
+        idx = pd.date_range(start=start_date, periods=8760, freq="h")
+        hourly_values = pd.Series([0] * 8760, index=idx, dtype=float)
 
         # generate weekly schedules
         num_of_weekly_schedules = int(len(epbunch.fieldvalues[3:]) / 5)
 
         for i in range(num_of_weekly_schedules):
-            ref = epbunch.get_referenced_object("ScheduleWeek_Name_{}".format(i + 1))
+            ref = epbunch.get_referenced_object(f"ScheduleWeek_Name_{i + 1}")
 
-            start_month = getattr(epbunch, "Start_Month_{}".format(i + 1))
-            end_month = getattr(epbunch, "End_Month_{}".format(i + 1))
-            start_day = getattr(epbunch, "Start_Day_{}".format(i + 1))
-            end_day = getattr(epbunch, "End_Day_{}".format(i + 1))
+            start_month = getattr(epbunch, f"Start_Month_{i + 1}")
+            end_month = getattr(epbunch, f"End_Month_{i + 1}")
+            start_day = getattr(epbunch, f"Start_Day_{i + 1}")
+            end_day = getattr(epbunch, f"End_Day_{i + 1}")
 
-            start = datetime.strptime(
-                "{}/{}/{}".format(year, start_month, start_day), "%Y/%m/%d"
-            )
-            end = datetime.strptime(
-                "{}/{}/{}".format(year, end_month, end_day), "%Y/%m/%d"
-            )
+            start = datetime.strptime(f"{year}/{start_month}/{start_day}", "%Y/%m/%d")
+            end = datetime.strptime(f"{year}/{end_month}/{end_day}", "%Y/%m/%d")
             days = (end - start).days + 1
 
             end_date = start_date + timedelta(days=days) + timedelta(hours=23)
             how = pd.IndexSlice[start_date:end_date]
 
             weeks = []
-            for name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168H")):
+            for name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168h")):
                 if not week.empty:
                     try:
                         week.loc[:] = cls.get_schedule_values(
@@ -640,9 +584,7 @@ class _ScheduleParser:
         return hourly_values.values
 
     @staticmethod
-    def get_schedule_values(
-        sched_epbunch, start_date, index=None, strict=False
-    ) -> list:
+    def get_schedule_values(sched_epbunch, start_date, index=None, strict=False) -> list:
         """Get schedule values for epbunch.
 
         Args:
@@ -655,37 +597,26 @@ class _ScheduleParser:
         sch_type = sched_epbunch.key.upper()
 
         if sch_type.upper() == "schedule:year".upper():
-            hourly_values = cls.get_yearly_ep_schedule_values(
-                sched_epbunch, start_date, strict
-            )
+            hourly_values = cls.get_yearly_ep_schedule_values(sched_epbunch, start_date, strict)
         elif sch_type.upper() == "schedule:day:interval".upper():
             hourly_values = cls.get_interval_day_ep_schedule_values(sched_epbunch)
         elif sch_type.upper() == "schedule:day:hourly".upper():
             hourly_values = cls.get_hourly_day_ep_schedule_values(sched_epbunch)
         elif sch_type.upper() == "schedule:day:list".upper():
-            hourly_values = cls.get_list_day_ep_schedule_values(
-                sched_epbunch, start_date
-            )
+            hourly_values = cls.get_list_day_ep_schedule_values(sched_epbunch, start_date)
         elif sch_type.upper() == "schedule:week:compact".upper():
-            hourly_values = cls.get_compact_weekly_ep_schedule_values(
-                sched_epbunch, start_date, index, strict
-            )
+            hourly_values = cls.get_compact_weekly_ep_schedule_values(sched_epbunch, start_date, index, strict)
         elif sch_type.upper() == "schedule:week:daily".upper():
-            hourly_values = cls.get_daily_weekly_ep_schedule_values(
-                sched_epbunch, start_date, strict
-            )
+            hourly_values = cls.get_daily_weekly_ep_schedule_values(sched_epbunch, start_date, strict)
         elif sch_type.upper() == "schedule:constant".upper():
             hourly_values = cls.get_constant_ep_schedule_values(sched_epbunch)
         elif sch_type.upper() == "schedule:compact".upper():
-            hourly_values = cls.get_compact_ep_schedule_values(
-                sched_epbunch, start_date, strict
-            )
+            hourly_values = cls.get_compact_ep_schedule_values(sched_epbunch, start_date, strict)
         elif sch_type.upper() == "schedule:file".upper():
             hourly_values = cls.get_file_ep_schedule_values(sched_epbunch)
         else:
             log(
-                "Archetypal does not currently support schedules of type "
-                '"{}"'.format(sch_type),
+                "Archetypal does not currently support schedules of type " f'"{sch_type}"',
                 lg.WARNING,
             )
             hourly_values = []
@@ -730,10 +661,7 @@ class _ScheduleParser:
                 minute = None
                 value = statement.strip()
             else:
-                msg = (
-                    'The schedule "{sch}" contains a Field '
-                    'that is not understood: "{field}"'.format(sch=name, field=field)
-                )
+                msg = f'The schedule "{name}" contains a Field ' f'that is not understood: "{field}"'
                 raise NotImplementedError(msg)
         elif "for" in field.lower():
             keywords = [word for word in values_sets if word in field.lower()]
@@ -752,16 +680,13 @@ class _ScheduleParser:
                 minute = None
             else:
                 # parse without a colon
-                msg = (
-                    'The schedule "{sch}" contains a Field '
-                    'that is not understood: "{field}"'.format(sch=name, field=field)
-                )
+                msg = f'The schedule "{name}" contains a Field ' f'that is not understood: "{field}"'
                 raise NotImplementedError(msg)
         elif "interpolate" in field.lower():
             msg = (
-                'The schedule "{sch}" contains sub-hourly values ('
-                'Field-Set="{field}"). The average over the hour is '
-                "taken".format(sch=name, field=field)
+                f'The schedule "{name}" contains sub-hourly values ('
+                f'Field-Set="{field}"). The average over the hour is '
+                "taken"
             )
             log(msg, lg.WARNING)
             f_set, value = field.split(":")
@@ -782,10 +707,7 @@ class _ScheduleParser:
                     minute = minute.strip()
                     value = None
             else:
-                msg = (
-                    'The schedule "{sch}" contains a Field '
-                    'that is not understood: "{field}"'.format(sch=name, field=field)
-                )
+                msg = f'The schedule "{name}" contains a Field ' f'that is not understood: "{field}"'
                 raise NotImplementedError(msg)
         elif "value" in field.lower():
             if ":" in field.lower():
@@ -795,10 +717,7 @@ class _ScheduleParser:
                 hour = None
                 minute = None
             else:
-                msg = (
-                    'The schedule "{sch}" contains a Field '
-                    'that is not understood: "{field}"'.format(sch=name, field=field)
-                )
+                msg = f'The schedule "{name}" contains a Field ' f'that is not understood: "{field}"'
                 raise NotImplementedError(msg)
         else:
             # deal with the data value
@@ -830,9 +749,7 @@ class _ScheduleParser:
                 upper_limit,
                 numeric_type,
                 unit_type,
-            ) = epbunch.theidf.get_schedule_type_limits_data_by_name(
-                schedule_limit_name
-            )
+            ) = epbunch.theidf.get_schedule_type_limits_data_by_name(schedule_limit_name)
 
             return lower_limit, upper_limit, numeric_type, unit_type
 
@@ -871,9 +788,7 @@ class _ScheduleParser:
             if slicer_ is not None:
                 return _conjunction(
                     *[
-                        _ScheduleParser.special_day(
-                            schedule_epbunch, field, slicer_, strict, start_date
-                        ),
+                        _ScheduleParser.special_day(schedule_epbunch, field, slicer_, strict, start_date),
                         ~slicer_,
                     ],
                     logical=operator.or_,
@@ -913,16 +828,12 @@ class _ScheduleParser:
             return None
         elif field.lower() == "holiday" or field.lower() == "holidays":
             field = "holiday"
-            return _ScheduleParser.special_day(
-                schedule_epbunch, field, slicer_, strict, start_date
-            )
+            return _ScheduleParser.special_day(schedule_epbunch, field, slicer_, strict, start_date)
         elif not strict:
             # If not strict, ignore missing field-sets such as CustomDay1
             return lambda x: x < 0
         else:
-            raise NotImplementedError(
-                f"Archetypal does not yet support The Field_set '{field}'"
-            )
+            raise NotImplementedError(f"Archetypal does not yet support The Field_set '{field}'")
 
     @staticmethod
     def _date_field_interpretation(field, start_date):
@@ -955,10 +866,7 @@ class _ScheduleParser:
             try:
                 date = _ScheduleParser._parse_fancy_string(field, start_date)
             except Exception as e:
-                msg = (
-                    f"the schedule contains a "
-                    f"Field that is not understood: '{field}'"
-                )
+                msg = f"the schedule contains a " f"Field that is not understood: '{field}'"
                 raise ValueError(msg, e)
             else:
                 return date
@@ -1010,12 +918,7 @@ class _ScheduleParser:
         monthcal = c.monthdatescalendar(start_date.year, month)
 
         # iterate though the month and get the nth weekday
-        date = [
-            day
-            for week in monthcal
-            for day in week
-            if day.weekday() == dayofweek and day.month == month
-        ][nth]
+        date = [day for week in monthcal for day in week if day.weekday() == dayofweek and day.month == month][nth]
         return datetime(date.year, date.month, date.day)
 
     @staticmethod
@@ -1034,24 +937,15 @@ class _ScheduleParser:
 
         dds = schedule_epbunch.theidf.idfobjects["RunPeriodControl:SpecialDays".upper()]
         dd = [
-            dd
-            for dd in dds
-            if dd.Special_Day_Type.lower() == field
-            or dd.Special_Day_Type.lower() in special_day_types
+            dd for dd in dds if dd.Special_Day_Type.lower() == field or dd.Special_Day_Type.lower() in special_day_types
         ]
         if len(dd) > 0:
             for dd in dd:
                 # can have more than one special day types
                 field = dd.Start_Date
-                special_day_start_date = _ScheduleParser._date_field_interpretation(
-                    field, start_date
-                )
+                special_day_start_date = _ScheduleParser._date_field_interpretation(field, start_date)
                 duration = int(dd.Duration)
-                to_date = (
-                    special_day_start_date
-                    + timedelta(days=duration)
-                    + timedelta(hours=-1)
-                )
+                to_date = special_day_start_date + timedelta(days=duration) + timedelta(hours=-1)
 
                 sp_slicer_.loc[special_day_start_date:to_date] = True
             return sp_slicer_
@@ -1060,7 +954,7 @@ class _ScheduleParser:
         else:
             msg = (
                 'Could not find a "SizingPeriod:DesignDay" object '
-                'needed for schedule with Day Type "{}"'.format(field.capitalize())
+                f'needed for schedule with Day Type "{field.capitalize()}"'
             )
             raise ValueError(msg)
 
@@ -1085,9 +979,7 @@ class _ScheduleParser:
                 month = dd.Month
                 day = dd.Day_of_Month
                 data = str(month) + "/" + str(day)
-                ep_start_date = _ScheduleParser._date_field_interpretation(
-                    data, start_date
-                )
+                ep_start_date = _ScheduleParser._date_field_interpretation(data, start_date)
                 ep_orig = datetime(start_date.year, 1, 1)
                 days_to_speciald = (ep_start_date - ep_orig).days
                 duration = 1  # Duration of 1 day
@@ -1220,9 +1112,7 @@ class Schedule:
         """
         if Type is None:
             try:
-                type_limit_ep = epbunch.get_referenced_object(
-                    "Schedule_Type_Limits_Name"
-                )
+                type_limit_ep = epbunch.get_referenced_object("Schedule_Type_Limits_Name")
                 Type = ScheduleTypeLimits.from_epbunch(type_limit_ep)
             except (BadEPFieldError, AttributeError):
                 pass
@@ -1233,16 +1123,10 @@ class Schedule:
         schedule = cls(
             Name=kwargs.pop("Name", name),
             epbunch=epbunch,
-            start_day_of_the_week=kwargs.pop(
-                "start_day_of_the_week", start_day_of_the_week
-            ),
+            start_day_of_the_week=kwargs.pop("start_day_of_the_week", start_day_of_the_week),
             Type=Type,
             DataSource=kwargs.pop("DataSource", epbunch.theidf.name),
-            Values=np.array(
-                _ScheduleParser.get_schedule_values(
-                    epbunch, start_date=start_date, strict=strict
-                )
-            ),
+            Values=np.array(_ScheduleParser.get_schedule_values(epbunch, start_date=start_date, strict=strict)),
             **kwargs,
         )
         return schedule
@@ -1294,9 +1178,7 @@ class Schedule:
     @property
     def series(self):
         """Return an :class:`EnergySeries`."""
-        index = pd.date_range(
-            start=self.startDate, periods=self.all_values.size, freq="1H"
-        )
+        index = pd.date_range(start=self.startDate, periods=self.all_values.size, freq="1h")
         if self.Type is not None:
             units = self.Type.UnitType
         else:
@@ -1339,10 +1221,9 @@ class Schedule:
             "The index of `new_values` must be a `pandas.DatetimeIndex`. Instead, "
             f"`{type(new_values.index)}` was provided."
         )
-        assert not self.series.index.difference(new_values.index).empty, (
-            "There is no overlap between self.index and new_values.index. Please "
-            "check your dates."
-        )
+        assert not self.series.index.difference(
+            new_values.index
+        ).empty, "There is no overlap between self.index and new_values.index. Please check your dates."
 
         # create a copy of self.series as orig.
         orig = self.series.copy()
@@ -1359,9 +1240,7 @@ class Schedule:
         orig.loc[idx] = new_values
 
         # adjust remaining time steps with the average difference. Inplace.
-        orig.loc[orig.index.difference(idx)] += diff.sum() / len(
-            orig.index.difference(idx)
-        )
+        orig.loc[orig.index.difference(idx)] += diff.sum() / len(orig.index.difference(idx))
         new = orig
 
         # assert the sum has not changed as a sanity check.
@@ -1447,9 +1326,7 @@ class Schedule:
             dict_day[name] = unique_day
 
             # Create idf_objects for schedule:day:hourly
-            ep_day = DaySchedule(
-                Name=name, Type=self.Type, Values=[unique_day[i] for i in range(24)]
-            )
+            ep_day = DaySchedule(Name=name, Type=self.Type, Values=[unique_day[i] for i in range(24)])
             ep_days.append(ep_day)
 
         # create unique weeks from unique days
@@ -1462,9 +1339,7 @@ class Schedule:
                 return_counts=True,
             )
         except ValueError:
-            raise ValueError(
-                "Looks like the idf model needs to be rerun with 'annual=True'"
-            )
+            raise ValueError("Looks like the idf model needs to be rerun with 'annual=True'")
 
         # We use the calendar module to set the week days order
         import calendar
@@ -1483,7 +1358,7 @@ class Schedule:
                 day_of_week = unique_week[..., i * 24 : (i + 1) * 24]
                 for key, ep_day in zip(dict_day, ep_days):
                     if (day_of_week == dict_day[key]).all():
-                        dict_week[week_id]["day_{}".format(day)] = ep_day
+                        dict_week[week_id][f"day_{day}"] = ep_day
 
         # Create idf_objects for schedule:week:daily
 
@@ -1492,22 +1367,14 @@ class Schedule:
         for week_id in dict_week:
             ep_week = WeekSchedule(
                 Name=week_id,
-                Days=[
-                    dict_week[week_id]["day_{}".format(day_num)]
-                    for day_num in c.iterweekdays()
-                ],
+                Days=[dict_week[week_id][f"day_{day_num}"] for day_num in c.iterweekdays()],
             )
             ep_weeks[week_id] = ep_week
 
         blocks = {}
         from_date = datetime(self.year, 1, 1)
         bincount = [sum(1 for _ in group) for key, group in groupby(nws + 1) if key]
-        week_order = {
-            i: v
-            for i, v in enumerate(
-                np.array([key for key, group in groupby(nws + 1) if key]) - 1
-            )
-        }
+        week_order = {i: v for i, v in enumerate(np.array([key for key, group in groupby(nws + 1) if key]) - 1)}
         for i, (week_n, count) in enumerate(zip(week_order, bincount)):
             week_id = list(dict_week)[week_order[i]]
             to_date = from_date + timedelta(days=int(count * 7), hours=-1)
@@ -1567,9 +1434,7 @@ class Schedule:
             vmax = self.Type.UpperLimit
         else:
             vmin, vmax = (None, None)
-        fig, ax = self.series.plot2d(
-            cmap="Greys", show=False, figsize=(7, 2), dpi=72, vmin=vmin, vmax=vmax
-        )
+        fig, ax = self.series.plot2d(cmap="Greys", show=False, figsize=(7, 2), dpi=72, vmin=vmin, vmax=vmax)
         f = io.BytesIO()
         fig.savefig(f, format="svg")
         plt.close(fig)
@@ -1610,9 +1475,7 @@ class Schedule:
             return self
         if not weights:
             weights = [1, 1]
-        new_values = np.average(
-            [self.all_values, other.all_values], axis=0, weights=weights
-        )
+        new_values = np.average([self.all_values, other.all_values], axis=0, weights=weights)
 
         # the new object's name
         name = "+".join([self.Name, other.Name])

@@ -191,13 +191,11 @@ class GlazingMaterial(MaterialBase):
     @VisibleTransmittance.setter
     def VisibleTransmittance(self, value):
         assert value + self._visible_reflectance_front <= 1, (
-            f"Sum of window transmittance and reflectance '"
-            f"{self._visible_reflectance_front}' is greater than 1."
+            f"Sum of window transmittance and reflectance '" f"{self._visible_reflectance_front}' is greater than 1."
         )
         if self._visible_reflectance_back is not None:
             assert value + self._visible_reflectance_back <= 1, (
-                f"Sum of window transmittance and reflectance '"
-                f"{self._visible_reflectance_back}' is greater than 1."
+                f"Sum of window transmittance and reflectance '" f"{self._visible_reflectance_back}' is greater than 1."
             )
         self._visible_transmittance = validators.float(value, False, 0.0, 1.0)
 
@@ -252,28 +250,19 @@ class GlazingMaterial(MaterialBase):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            log(
-                'using GlazingMaterial density as weighting factor in "{}" '
-                "combine.".format(self.__class__.__name__)
-            )
+            log(f'using GlazingMaterial density as weighting factor in "{self.__class__.__name__}" ' "combine.")
             weights = [self.Density, other.Density]
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
         for attr, value in self.mapping().items():
             if attr not in ["Comments", "DataSource"]:
                 if isinstance(value, (int, float)) or isinstance(other, (int, float)):
-                    new_attr[attr] = UmiBase.float_mean(
-                        self, other, attr=attr, weights=weights
-                    )
+                    new_attr[attr] = UmiBase.float_mean(self, other, attr=attr, weights=weights)
                 elif isinstance(value, str) or isinstance(other, str):
-                    new_attr[attr] = UmiBase._str_mean(
-                        self, other, attr=attr, append=False
-                    )
+                    new_attr[attr] = UmiBase._str_mean(self, other, attr=attr, append=False)
                 elif isinstance(value, list) or isinstance(other, list):
                     new_attr[attr] = getattr(self, attr) + getattr(other, attr)
-                elif isinstance(value, collections.UserList) or isinstance(
-                    other, collections.UserList
-                ):
+                elif isinstance(value, collections.UserList) or isinstance(other, collections.UserList):
                     pass
                 else:
                     raise NotImplementedError

@@ -17,6 +17,5 @@ from .extensions import __eq__, _parse_idd_type, get_default, makedict, nameexis
 from .idf import IDF
 from .meters import Meters
 from .outputs import Outputs
-from .reports import get_ideal_loads_summary
 from .util import hash_model
 from .variables import Variables

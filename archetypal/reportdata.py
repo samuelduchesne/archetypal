@@ -33,17 +33,11 @@ class ReportData(DataFrame):
     def from_sql_dict(cls, sql_dict):
         """Create from dictionary."""
         report_data = sql_dict["ReportData"]
-        report_data["ReportDataDictionaryIndex"] = to_numeric(
-            report_data["ReportDataDictionaryIndex"]
-        )
+        report_data["ReportDataDictionaryIndex"] = to_numeric(report_data["ReportDataDictionaryIndex"])
 
         report_data_dict = sql_dict["ReportDataDictionary"]
 
-        return cls(
-            report_data.reset_index().join(
-                report_data_dict, on=["ReportDataDictionaryIndex"]
-            )
-        )
+        return cls(report_data.reset_index().join(report_data_dict, on=["ReportDataDictionaryIndex"]))
 
     @classmethod
     def from_sqlite(
@@ -77,10 +71,10 @@ class ReportData(DataFrame):
             ReportData: a :class:`ReportData` which is a subclass of :class:`DataFrame`.
         """
         if not isinstance(sqlite_file, str):
-            raise TypeError("Please provide a str, not a {}".format(type(sqlite_file)))
+            raise TypeError(f"Please provide a str, not a {type(sqlite_file)}")
         file = Path(sqlite_file)
         if not file.exists():
-            raise FileNotFoundError("Could not find sql file {}".format(file.relpath()))
+            raise FileNotFoundError(f"Could not find sql file {file.relpath()}")
 
         import sqlite3
 
@@ -89,7 +83,7 @@ class ReportData(DataFrame):
             # empty dict to hold all DataFrames
             all_tables = {}
             # Iterate over all tables in the report_tables list
-            sql_query = f"""
+            sql_query = """
             SELECT rd.ReportDataIndex,
                    rd.TimeIndex,
                    rd.ReportDataDictionaryIndex,
@@ -125,15 +119,11 @@ class ReportData(DataFrame):
             """
             params = {"warmup_flag": warmup_flag}
             if table_name:
-                conditions, table_name = cls.multiple_conditions(
-                    "table_name", table_name, "Name"
-                )
+                conditions, table_name = cls.multiple_conditions("table_name", table_name, "Name")
                 sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
                 params.update(table_name)
             if environment_type:
-                conditions, env_name = cls.multiple_conditions(
-                    "env_name", environment_type, "EnvironmentType"
-                )
+                conditions, env_name = cls.multiple_conditions("env_name", environment_type, "EnvironmentType")
                 sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
                 params.update(env_name)
             if reporting_frequency:
@@ -150,12 +140,8 @@ class ReportData(DataFrame):
         if not isinstance(cond_names, (list, tuple)):
             cond_names = [cond_names]
         cond_names = set(cond_names)
-        cond_names = {
-            "%s_%s" % (basename, i): name for i, name in enumerate(cond_names)
-        }
-        conditions = " OR ".join(
-            ["%s = @%s" % (var_name, cond_name) for cond_name in cond_names]
-        )
+        cond_names = {"%s_%s" % (basename, i): name for i, name in enumerate(cond_names)}
+        conditions = " OR ".join(["%s = @%s" % (var_name, cond_name) for cond_name in cond_names])
         return conditions, cond_names
 
     @staticmethod
@@ -237,10 +223,7 @@ class ReportData(DataFrame):
         if reportdataindex:
             c_2 = (
                 conjunction(
-                    *[
-                        self[self.REPORTDATAINDEX] == reportdataindex
-                        for reportdataindex in reportdataindex
-                    ],
+                    *[self[self.REPORTDATAINDEX] == reportdataindex for reportdataindex in reportdataindex],
                     logical=np.logical_or,
                 )
                 if isinstance(reportdataindex, tuple)
@@ -261,8 +244,7 @@ class ReportData(DataFrame):
             c_4 = (
                 conjunction(
                     *[
-                        self[self.REPORTDATADICTIONARYINDEX]
-                        == reportdatadictionaryindex
+                        self[self.REPORTDATADICTIONARYINDEX] == reportdatadictionaryindex
                         for reportdatadictionaryindex in reportdatadictionaryindex
                     ],
                     logical=np.logical_or,
@@ -293,9 +275,7 @@ class ReportData(DataFrame):
             c_n.append(c_6)
         if type:
             c_7 = (
-                conjunction(
-                    *[self[self.TYPE] == type for type in type], logical=np.logical_or
-                )
+                conjunction(*[self[self.TYPE] == type for type in type], logical=np.logical_or)
                 if isinstance(type, tuple)
                 else self[self.TYPE] == type
             )
@@ -313,10 +293,7 @@ class ReportData(DataFrame):
         if timesteptype:
             c_9 = (
                 conjunction(
-                    *[
-                        self[self.TIMESTEPTYPE] == timesteptype
-                        for timesteptype in timesteptype
-                    ],
+                    *[self[self.TIMESTEPTYPE] == timesteptype for timesteptype in timesteptype],
                     logical=np.logical_or,
                 )
                 if isinstance(timesteptype, tuple)
@@ -335,9 +312,7 @@ class ReportData(DataFrame):
             c_n.append(c_10)
         if name:
             c_11 = (
-                conjunction(
-                    *[self[self.NAME] == name for name in name], logical=np.logical_or
-                )
+                conjunction(*[self[self.NAME] == name for name in name], logical=np.logical_or)
                 if isinstance(name, tuple)
                 else self[self.NAME] == name
             )
@@ -345,10 +320,7 @@ class ReportData(DataFrame):
         if reportingfrequency:
             c_12 = (
                 conjunction(
-                    *[
-                        self[self.REPORTINGFREQUENCY] == reportingfrequency
-                        for reportingfrequency in reportingfrequency
-                    ],
+                    *[self[self.REPORTINGFREQUENCY] == reportingfrequency for reportingfrequency in reportingfrequency],
                     logical=np.logical_or,
                 )
                 if isinstance(reportingfrequency, tuple)
@@ -358,10 +330,7 @@ class ReportData(DataFrame):
         if schedulename:
             c_13 = (
                 conjunction(
-                    *[
-                        self[self.SCHEDULENAME] == schedulename
-                        for schedulename in schedulename
-                    ],
+                    *[self[self.SCHEDULENAME] == schedulename for schedulename in schedulename],
                     logical=np.logical_or,
                 )
                 if isinstance(schedulename, tuple)
@@ -380,7 +349,7 @@ class ReportData(DataFrame):
             c_n.append(c_14)
 
         filtered_df = self.loc[conjunction(*c_n, logical=np.logical_and)]
-        log("filtered ReportData in {:,.2f} seconds".format(time.time() - start_time))
+        log(f"filtered ReportData in {time.time() - start_time:,.2f} seconds")
         if inplace:
             return filtered_df._update_inplace(filtered_df)
         else:

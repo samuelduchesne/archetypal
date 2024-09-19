@@ -57,9 +57,7 @@ class UmiSchedule(Schedule, UmiBase):
             **kwargs:
         """
         value = validators.float(value)
-        return super(UmiSchedule, cls).constant_schedule(
-            value=value, Name=Name, Type=Type, **kwargs
-        )
+        return super(UmiSchedule, cls).constant_schedule(value=value, Name=Name, Type=Type, **kwargs)
 
     @classmethod
     def random(cls, Name="AlwaysOn", Type="Fraction", **kwargs):
@@ -85,9 +83,7 @@ class UmiSchedule(Schedule, UmiBase):
             Type:
             **kwargs:
         """
-        return super(UmiSchedule, cls).from_values(
-            Name=Name, Values=Values, Type=Type, **kwargs
-        )
+        return super(UmiSchedule, cls).from_values(Name=Name, Values=Values, Type=Type, **kwargs)
 
     def combine(self, other, weights=None, quantity=None):
         """Combine two UmiSchedule objects together.
@@ -137,10 +133,7 @@ class UmiSchedule(Schedule, UmiBase):
             return self
 
         if not weights:
-            log(
-                'using 1 as weighting factor in "{}" '
-                "combine.".format(self.__class__.__name__)
-            )
+            log(f'using 1 as weighting factor in "{self.__class__.__name__}" ' "combine.")
             weights = [1, 1]
         elif isinstance(weights, str):
             # get the attribute from self and other
@@ -150,16 +143,13 @@ class UmiSchedule(Schedule, UmiBase):
             length = len(weights)
             if length != 2:
                 raise ValueError(
-                    "USing a list or tuple, the weights attribute must "
-                    "have a length of 2. A length of {}".format(length)
+                    "USing a list or tuple, the weights attribute must " f"have a length of 2. A length of {length}"
                 )
         elif isinstance(weights, dict):
             weights = [weights[self.Name], weights[other.Name]]
 
         if quantity is None:
-            new_values = np.average(
-                [self.all_values, other.all_values], axis=0, weights=weights
-            )
+            new_values = np.average([self.all_values, other.all_values], axis=0, weights=weights)
         elif isinstance(quantity, dict):
             # Multiplying the schedule values by the quantity for both self and other
             # and then using a weighted average. Finally, new values are normalized.
@@ -185,9 +175,7 @@ class UmiSchedule(Schedule, UmiBase):
             # Multiplying the schedule values by the quantity for both self and other
             # and then using a weighted average. Finally, new values are normalized.
             self_quantity, other_quantity = quantity
-            new_values = (
-                self.all_values * self_quantity + other.all_values * other_quantity
-            ) / sum(quantity)
+            new_values = (self.all_values * self_quantity + other.all_values * other_quantity) / sum(quantity)
         elif isinstance(quantity, bool):
             new_values = np.average(
                 [self.all_values, other.all_values],
@@ -204,12 +192,8 @@ class UmiSchedule(Schedule, UmiBase):
         hasher = hashlib.md5()
         hasher.update(new_values)
         meta["Name"] = f"Combined_UmiSchedule_{hasher.hexdigest()}"
-        quantity = np.nansum(
-            [self.quantity or float("nan"), other.quantity or float("nan")]
-        )
-        new_obj = UmiSchedule.from_values(
-            Values=new_values, Type="Fraction", quantity=quantity, **meta
-        )
+        quantity = np.nansum([self.quantity or float("nan"), other.quantity or float("nan")])
+        new_obj = UmiSchedule.from_values(Values=new_values, Type="Fraction", quantity=quantity, **meta)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.weights = sum(weights)
         return new_obj
@@ -217,12 +201,10 @@ class UmiSchedule(Schedule, UmiBase):
     def develop(self):
         """Develop the UmiSchedule into a Year-Week-Day schedule structure."""
         year, weeks, days = self.to_year_week_day()
-        lines = ["- {}".format(obj) for obj in self.predecessors]
+        lines = [f"- {obj}" for obj in self.predecessors]
 
         _from = "\n".join(lines)
-        year.Comments = (
-            f"Year Week Day schedules created from: \n{_from}" + str(id(self)),
-        )
+        year.Comments = (f"Year Week Day schedules created from: \n{_from}" + str(id(self)),)
         year.quantity = self.quantity
         return year
 
@@ -273,13 +255,7 @@ class UmiSchedule(Schedule, UmiBase):
             ref:
         """
         return next(
-            iter(
-                [
-                    value
-                    for value in UmiSchedule.CREATED_OBJECTS
-                    if value.id == ref["$ref"]
-                ]
-            ),
+            iter([value for value in UmiSchedule.CREATED_OBJECTS if value.id == ref["$ref"]]),
             None,
         )
 
@@ -301,7 +277,7 @@ class UmiSchedule(Schedule, UmiBase):
         return (
             name
             + ": "
-            + "mean daily min:{:.2f} mean:{:.2f} max:{:.2f} ".format(min, mean, max)
+            + f"mean daily min:{min:.2f} mean:{mean:.2f} max:{max:.2f} "
             + (f"quantity {self.quantity}" if self.quantity is not None else "")
         )
 
@@ -515,9 +491,7 @@ class DaySchedule(UmiSchedule):
             Category (str): category identification (default: "Day").
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
         """
-        super(DaySchedule, self).__init__(
-            Category=Category, Name=Name, Values=Values, **kwargs
-        )
+        super(DaySchedule, self).__init__(Category=Category, Name=Name, Values=Values, **kwargs)
 
     @property
     def all_values(self) -> np.ndarray:
@@ -557,9 +531,7 @@ class DaySchedule(UmiSchedule):
             epbunch=epbunch,
             schType=epbunch.key,
             Type=cls.get_schedule_type_limits_name(epbunch),
-            Values=_ScheduleParser.get_schedule_values(
-                epbunch, start_date, strict=strict
-            ),
+            Values=_ScheduleParser.get_schedule_values(epbunch, start_date, strict=strict),
             **kwargs,
         )
 
@@ -712,7 +684,7 @@ class DaySchedule(UmiSchedule):
             **dict(
                 Name=self.Name,
                 Schedule_Type_Limits_Name=self.Type.to_epbunch(idf).Name,
-                **{"Hour_{}".format(i + 1): self.all_values[i] for i in range(24)},
+                **{f"Hour_{i + 1}": self.all_values[i] for i in range(24)},
             ),
         )
 
@@ -840,7 +812,7 @@ class WeekSchedule(UmiSchedule):
             "Sunday",
         ]
         for day in dayname:
-            day_ep = epbunch.get_referenced_object("{}_ScheduleDay_Name".format(day))
+            day_ep = epbunch.get_referenced_object(f"{day}_ScheduleDay_Name")
             Days.append(DaySchedule.from_epbunch(day_ep, **kwargs))
 
         return Days
@@ -928,9 +900,7 @@ class YearSchedule(UmiSchedule):
             self.Parts = self._get_parts(self.epbunch)
         else:
             self.Parts = Parts
-        super(YearSchedule, self).__init__(
-            Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs
-        )
+        super(YearSchedule, self).__init__(Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -950,16 +920,10 @@ class YearSchedule(UmiSchedule):
             index = pd.date_range(start=self.startDate, freq="1H", periods=8760)
             series = pd.Series(index=index, dtype="float")
             for part in self.Parts:
-                start = "{}-{}-{}".format(self.year, part.FromMonth, part.FromDay)
-                end = "{}-{}-{}".format(self.year, part.ToMonth, part.ToDay)
+                start = f"{self.year}-{part.FromMonth}-{part.FromDay}"
+                end = f"{self.year}-{part.ToMonth}-{part.ToDay}"
                 # Get week values from all_values of Days
-                one_week = np.array(
-                    [
-                        item
-                        for sublist in part.Schedule.Days
-                        for item in sublist.all_values
-                    ]
-                )
+                one_week = np.array([item for sublist in part.Schedule.Days for item in sublist.all_values])
 
                 all_weeks = np.resize(one_week, len(series.loc[start:end]))
                 series.loc[start:end] = all_weeks
@@ -977,8 +941,7 @@ class YearSchedule(UmiSchedule):
             **kwargs: keywords passed to the constructor.
         """
         Parts: List[YearSchedulePart] = [
-            YearSchedulePart.from_dict(data, week_schedules)
-            for data in data.pop("Parts", None)
+            YearSchedulePart.from_dict(data, week_schedules) for data in data.pop("Parts", None)
         ]
         _id = data.pop("$id")
         ys = cls(Parts=Parts, id=_id, **data, **kwargs)
@@ -1014,19 +977,15 @@ class YearSchedule(UmiSchedule):
         Returns:
             EpBunch: The EpBunch object added to the idf model.
         """
-        new_dict = dict(
-            Name=self.Name, Schedule_Type_Limits_Name=self.Type.to_epbunch(idf).Name
-        )
+        new_dict = dict(Name=self.Name, Schedule_Type_Limits_Name=self.Type.to_epbunch(idf).Name)
         for i, part in enumerate(self.Parts):
             new_dict.update(
                 {
-                    "ScheduleWeek_Name_{}".format(i + 1): part.Schedule.to_epbunch(
-                        idf
-                    ).Name,
-                    "Start_Month_{}".format(i + 1): part.FromMonth,
-                    "Start_Day_{}".format(i + 1): part.FromDay,
-                    "End_Month_{}".format(i + 1): part.ToMonth,
-                    "End_Day_{}".format(i + 1): part.ToDay,
+                    f"ScheduleWeek_Name_{i + 1}": part.Schedule.to_epbunch(idf).Name,
+                    f"Start_Month_{i + 1}": part.FromMonth,
+                    f"Start_Day_{i + 1}": part.FromDay,
+                    f"End_Month_{i + 1}": part.ToMonth,
+                    f"End_Day_{i + 1}": part.ToDay,
                 }
             )
 
@@ -1054,12 +1013,12 @@ class YearSchedule(UmiSchedule):
     def _get_parts(self, epbunch):
         parts = []
         for i in range(int(len(epbunch.fieldvalues[3:]) / 5)):
-            week_day_schedule_name = epbunch["ScheduleWeek_Name_{}".format(i + 1)]
+            week_day_schedule_name = epbunch[f"ScheduleWeek_Name_{i + 1}"]
 
-            FromMonth = epbunch["Start_Month_{}".format(i + 1)]
-            ToMonth = epbunch["End_Month_{}".format(i + 1)]
-            FromDay = epbunch["Start_Day_{}".format(i + 1)]
-            ToDay = epbunch["End_Day_{}".format(i + 1)]
+            FromMonth = epbunch[f"Start_Month_{i + 1}"]
+            ToMonth = epbunch[f"End_Month_{i + 1}"]
+            FromDay = epbunch[f"Start_Day_{i + 1}"]
+            ToDay = epbunch[f"End_Day_{i + 1}"]
             parts.append(
                 YearSchedulePart(
                     FromDay,
@@ -1067,12 +1026,9 @@ class YearSchedule(UmiSchedule):
                     ToDay,
                     ToMonth,
                     next(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                            if x.Name == week_day_schedule_name
-                            and type(x).__name__ == "WeekSchedule"
-                        )
+                        x
+                        for x in self._CREATED_OBJECTS
+                        if x.Name == week_day_schedule_name and type(x).__name__ == "WeekSchedule"
                     ),
                 )
             )

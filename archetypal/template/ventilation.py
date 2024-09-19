@@ -62,6 +62,7 @@ class VentilationSetting(UmiBase):
 
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -215,8 +216,7 @@ class VentilationSetting(UmiBase):
     def NatVentSchedule(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. NatVentSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
+                f"Input error with value {value}. NatVentSchedule must " f"be an UmiSchedule, not a {type(value)}"
             )
         self._nat_ventilation_schedule = value
 
@@ -257,8 +257,7 @@ class VentilationSetting(UmiBase):
     @IsInfiltrationOn.setter
     def IsInfiltrationOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsInfiltrationOn must "
-            f"be an boolean, not a {type(value)}"
+            f"Input error with value {value}. IsInfiltrationOn must " f"be an boolean, not a {type(value)}"
         )
         self._is_infiltration_on = value
 
@@ -270,8 +269,7 @@ class VentilationSetting(UmiBase):
     @IsBuoyancyOn.setter
     def IsBuoyancyOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsBuoyancyOn must "
-            f"be an boolean, not a {type(value)}"
+            f"Input error with value {value}. IsBuoyancyOn must " f"be an boolean, not a {type(value)}"
         )
         self._is_buoyancy_on = value
 
@@ -283,8 +281,7 @@ class VentilationSetting(UmiBase):
     @IsNatVentOn.setter
     def IsNatVentOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsNatVentOn must "
-            f"be an boolean, not a {type(value)}"
+            f"Input error with value {value}. IsNatVentOn must " f"be an boolean, not a {type(value)}"
         )
         self._is_nat_vent_on = value
 
@@ -296,16 +293,12 @@ class VentilationSetting(UmiBase):
     @IsScheduledVentilationOn.setter
     def IsScheduledVentilationOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsScheduledVentilationOn must "
-            f"be an boolean, not a {type(value)}"
+            f"Input error with value {value}. IsScheduledVentilationOn must " f"be an boolean, not a {type(value)}"
         )
         if value:
-            assert (
-                self.ScheduledVentilationAch >= 0
-                and self.ScheduledVentilationSchedule is not None
-            ), (
-                f"IsScheduledVentilationOn cannot be 'True' if ScheduledVentilationAch "
-                f"is 0 or if ScheduledVentilationSchedule is None."
+            assert self.ScheduledVentilationAch >= 0 and self.ScheduledVentilationSchedule is not None, (
+                "IsScheduledVentilationOn cannot be 'True' if ScheduledVentilationAch "
+                "is 0 or if ScheduledVentilationSchedule is None."
             )
         self._is_scheduled_ventilation_on = value
 
@@ -317,8 +310,7 @@ class VentilationSetting(UmiBase):
     @IsWindOn.setter
     def IsWindOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsWindOn must "
-            f"be an boolean, not a {type(value)}"
+            f"Input error with value {value}. IsWindOn must " f"be an boolean, not a {type(value)}"
         )
         self._is_wind_on = value
 
@@ -329,9 +321,7 @@ class VentilationSetting(UmiBase):
 
     @NatVentMaxOutdoorAirTemp.setter
     def NatVentMaxOutdoorAirTemp(self, value):
-        self._natural_ventilation_max_outdoor_air_temp = validators.float(
-            value, minimum=-100, maximum=100
-        )
+        self._natural_ventilation_max_outdoor_air_temp = validators.float(value, minimum=-100, maximum=100)
 
     @property
     def NatVentMaxRelHumidity(self):
@@ -340,9 +330,7 @@ class VentilationSetting(UmiBase):
 
     @NatVentMaxRelHumidity.setter
     def NatVentMaxRelHumidity(self, value):
-        self._natural_ventilation_max_relative_humidity = validators.float(
-            value, minimum=0, maximum=100
-        )
+        self._natural_ventilation_max_relative_humidity = validators.float(value, minimum=0, maximum=100)
 
     @property
     def NatVentMinOutdoorAirTemp(self):
@@ -351,9 +339,7 @@ class VentilationSetting(UmiBase):
 
     @NatVentMinOutdoorAirTemp.setter
     def NatVentMinOutdoorAirTemp(self, value):
-        self._natural_ventilation_min_outdoor_air_temp = validators.float(
-            value, minimum=-100, maximum=100
-        )
+        self._natural_ventilation_min_outdoor_air_temp = validators.float(value, minimum=-100, maximum=100)
 
     @property
     def NatVentZoneTempSetpoint(self):
@@ -386,9 +372,7 @@ class VentilationSetting(UmiBase):
 
     @ScheduledVentilationSetpoint.setter
     def ScheduledVentilationSetpoint(self, value):
-        self._scheduled_ventilation_setpoint = validators.float(
-            value, minimum=-100, maximum=100
-        )
+        self._scheduled_ventilation_setpoint = validators.float(value, minimum=-100, maximum=100)
 
     @property
     def VentilationType(self):
@@ -403,14 +387,12 @@ class VentilationSetting(UmiBase):
     def VentilationType(self, value):
         if checkers.is_string(value):
             assert VentilationType[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in VentilationType)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in VentilationType)}"
             )
             self._ventilation_type = VentilationType[value]
         elif checkers.is_numeric(value):
             assert VentilationType(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in VentilationType)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in VentilationType)}"
             )
             self._ventilation_type = VentilationType(value)
         elif isinstance(value, VentilationType):
@@ -424,8 +406,7 @@ class VentilationSetting(UmiBase):
     @Afn.setter
     def Afn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. Afn must "
-            f"be an boolean, not a {type(value)}"
+            f"Input error with value {value}. Afn must " f"be an boolean, not a {type(value)}"
         )
         self._afn = value
 
@@ -515,12 +496,8 @@ class VentilationSetting(UmiBase):
         data_dict["NatVentSchedule"] = self.NatVentSchedule.to_ref()
         data_dict["NatVentZoneTempSetpoint"] = round(self.NatVentZoneTempSetpoint, 3)
         data_dict["ScheduledVentilationAch"] = round(self.ScheduledVentilationAch, 3)
-        data_dict[
-            "ScheduledVentilationSchedule"
-        ] = self.ScheduledVentilationSchedule.to_ref()
-        data_dict["ScheduledVentilationSetpoint"] = round(
-            self.ScheduledVentilationSetpoint, 3
-        )
+        data_dict["ScheduledVentilationSchedule"] = self.ScheduledVentilationSchedule.to_ref()
+        data_dict["ScheduledVentilationSetpoint"] = round(self.ScheduledVentilationSetpoint, 3)
         data_dict["IsWindOn"] = self.IsWindOn
         data_dict["Category"] = self.Category
         data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
@@ -610,9 +587,7 @@ class VentilationSetting(UmiBase):
             return None
         elif self == other:
             area = 1 if self.area + other.area == 2 else self.area + other.area
-            volume = (
-                1 if self.volume + other.volume == 2 else self.volume + other.volume
-            )
+            volume = 1 if self.volume + other.volume == 2 else self.volume + other.volume
             new_obj = self.duplicate()
             new_obj.area = area
             new_obj.volume = volume
@@ -633,9 +608,7 @@ class VentilationSetting(UmiBase):
 
         # create a new object with the combined attributes
         new_obj = self.__class__(
-            NatVentSchedule=UmiSchedule.combine(
-                self.NatVentSchedule, other.NatVentSchedule, [self.area, other.area]
-            ),
+            NatVentSchedule=UmiSchedule.combine(self.NatVentSchedule, other.NatVentSchedule, [self.area, other.area]),
             ScheduledVentilationSchedule=UmiSchedule.combine(
                 self.ScheduledVentilationSchedule,
                 other.ScheduledVentilationSchedule,
@@ -643,31 +616,17 @@ class VentilationSetting(UmiBase):
                 quantity=True,
             ),
             Afn=any((self.Afn, other.Afn)),
-            Infiltration=self.float_mean(
-                other, "Infiltration", [self.area, other.area]
-            ),
+            Infiltration=self.float_mean(other, "Infiltration", [self.area, other.area]),
             IsBuoyancyOn=any((self.IsBuoyancyOn, other.IsBuoyancyOn)),
             IsInfiltrationOn=any((self.IsInfiltrationOn, other.IsInfiltrationOn)),
             IsNatVentOn=any((self.IsNatVentOn, other.IsNatVentOn)),
-            IsScheduledVentilationOn=any(
-                (self.IsScheduledVentilationOn, other.IsScheduledVentilationOn)
-            ),
+            IsScheduledVentilationOn=any((self.IsScheduledVentilationOn, other.IsScheduledVentilationOn)),
             IsWindOn=any((self.IsWindOn, other.IsWindOn)),
-            NatVentMaxOutdoorAirTemp=self.float_mean(
-                other, "NatVentMaxOutdoorAirTemp", [self.area, other.area]
-            ),
-            NatVentMaxRelHumidity=self.float_mean(
-                other, "NatVentMaxRelHumidity", [self.area, other.area]
-            ),
-            NatVentMinOutdoorAirTemp=self.float_mean(
-                other, "NatVentMinOutdoorAirTemp", [self.area, other.area]
-            ),
-            NatVentZoneTempSetpoint=self.float_mean(
-                other, "NatVentZoneTempSetpoint", [self.area, other.area]
-            ),
-            ScheduledVentilationAch=self.float_mean(
-                other, "ScheduledVentilationAch", [self.volume, other.volume]
-            ),
+            NatVentMaxOutdoorAirTemp=self.float_mean(other, "NatVentMaxOutdoorAirTemp", [self.area, other.area]),
+            NatVentMaxRelHumidity=self.float_mean(other, "NatVentMaxRelHumidity", [self.area, other.area]),
+            NatVentMinOutdoorAirTemp=self.float_mean(other, "NatVentMinOutdoorAirTemp", [self.area, other.area]),
+            NatVentZoneTempSetpoint=self.float_mean(other, "NatVentZoneTempSetpoint", [self.area, other.area]),
+            ScheduledVentilationAch=self.float_mean(other, "ScheduledVentilationAch", [self.volume, other.volume]),
             ScheduledVentilationSetpoint=self.float_mean(
                 other, "ScheduledVentilationSetpoint", [self.area, other.area]
             ),
@@ -683,9 +642,7 @@ class VentilationSetting(UmiBase):
     def validate(self):
         """Validate object and fill in missing values."""
         if self.NatVentSchedule is None:
-            self.NatVentSchedule = UmiSchedule.constant_schedule(
-                value=0, Name="AlwaysOff", allow_duplicates=True
-            )
+            self.NatVentSchedule = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff", allow_duplicates=True)
         if self.ScheduledVentilationSchedule is None:
             self.ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
                 value=0, Name="AlwaysOff", allow_duplicates=True
@@ -765,9 +722,7 @@ class VentilationSetting(UmiBase):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(
-            **self.mapping(validate=False), area=self.area, volume=self.volume
-        )
+        return self.__class__(**self.mapping(validate=False), area=self.area, volume=self.volume)
 
     def to_epbunch(self, idf, zone_name, opening_area=0.0):
         """Convert self to the EpBunches given an idf model, a zone name.
@@ -856,9 +811,7 @@ class VentilationSetting(UmiBase):
                 key="ZONEINFILTRATION:DESIGNFLOWRATE",
                 Name=f"{zone_name} Infiltration",
                 Zone_or_ZoneList_Name=zone_name,
-                Schedule_Name=idf.newidfobject(
-                    key="SCHEDULE:CONSTANT", Name="AlwaysOn", Hourly_Value=1
-                ).Name,
+                Schedule_Name=idf.newidfobject(key="SCHEDULE:CONSTANT", Name="AlwaysOn", Hourly_Value=1).Name,
                 Design_Flow_Rate_Calculation_Method="AirChanges/Hour",
                 Air_Changes_per_Hour=self.Infiltration,
                 Constant_Term_Coefficient=1,
@@ -1021,9 +974,7 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
         NatVentZoneTempSetpoint = 18
 
     # Is Wind ON
-    if not zone_ep.theidf.idfobjects[
-        "ZoneVentilation:WindandStackOpenArea".upper()
-    ].list1:
+    if not zone_ep.theidf.idfobjects["ZoneVentilation:WindandStackOpenArea".upper()].list1:
         IsWindOn = False
         IsBuoyancyOn = False
     else:
@@ -1069,9 +1020,7 @@ def do_scheduled_ventilation(index, scd_df, zone, zone_ep):
             ScheduledVentilationAch = 0
             ScheduledVentilationSetpoint = 18
     else:
-        ScheduledVentilationSchedule = UmiSchedule.constant_schedule(
-            value=0, Name="AlwaysOff", allow_duplicates=True
-        )
+        ScheduledVentilationSchedule = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff", allow_duplicates=True)
         IsScheduledVentilationOn = False
         ScheduledVentilationAch = 0
         ScheduledVentilationSetpoint = 18
@@ -1091,9 +1040,7 @@ def nominal_nat_ventilation(df):
     nom_natvent = (
         _nom_vent.reset_index()
         .set_index(["Archetype", "Zone Name"])
-        .loc[
-            lambda e: e["Fan Type {Exhaust;Intake;Natural}"].str.contains("Natural"), :
-        ]
+        .loc[lambda e: e["Fan Type {Exhaust;Intake;Natural}"].str.contains("Natural"), :]
         if not _nom_vent.empty
         else None
     )
@@ -1108,9 +1055,7 @@ def nominal_mech_ventilation(df):
     nom_vent = (
         _nom_vent.reset_index()
         .set_index(["Archetype", "Zone Name"])
-        .loc[
-            lambda e: ~e["Fan Type {Exhaust;Intake;Natural}"].str.contains("Natural"), :
-        ]
+        .loc[lambda e: ~e["Fan Type {Exhaust;Intake;Natural}"].str.contains("Natural"), :]
         if not _nom_vent.empty
         else None
     )
@@ -1128,13 +1073,10 @@ def nominal_infiltration(df):
     df = get_from_tabulardata(df)
     report_name = "Initialization Summary"
     table_name = "ZoneInfiltration Airflow Stats Nominal"
-    tbstr = df[
-        (df.ReportName == report_name) & (df.TableName == table_name)
-    ].reset_index()
+    tbstr = df[(df.ReportName == report_name) & (df.TableName == table_name)].reset_index()
     if tbstr.empty:
         log(
-            "Table {} does not exist. "
-            "Returning an empty DataFrame".format(table_name),
+            f"Table {table_name} does not exist. Returning an empty DataFrame",
             lg.WARNING,
         )
         return pd.DataFrame([])
@@ -1147,9 +1089,7 @@ def nominal_infiltration(df):
     )
     tbpiv.replace({"N/A": np.nan}, inplace=True)
     return (
-        tbpiv.reset_index()
-        .groupby(["Archetype", "Zone Name"])
-        .agg(lambda x: pd.to_numeric(x, errors="ignore").sum())
+        tbpiv.reset_index().groupby(["Archetype", "Zone Name"]).agg(lambda x: pd.to_numeric(x, errors="coerce").sum())
     )
 
 
@@ -1164,13 +1104,10 @@ def nominal_ventilation(df):
     df = get_from_tabulardata(df)
     report_name = "Initialization Summary"
     table_name = "ZoneVentilation Airflow Stats Nominal"
-    tbstr = df[
-        (df.ReportName == report_name) & (df.TableName == table_name)
-    ].reset_index()
+    tbstr = df[(df.ReportName == report_name) & (df.TableName == table_name)].reset_index()
     if tbstr.empty:
         log(
-            "Table {} does not exist. "
-            "Returning an empty DataFrame".format(table_name),
+            f"Table {table_name} does not exist. Returning an empty DataFrame",
             lg.WARNING,
         )
         return pd.DataFrame([])
@@ -1181,9 +1118,7 @@ def nominal_ventilation(df):
         aggfunc=lambda x: " ".join(x),
     )
 
-    tbpiv = tbpiv.replace({"N/A": np.nan}).apply(
-        lambda x: pd.to_numeric(x, errors="ignore")
-    )
+    tbpiv = tbpiv.replace({"N/A": np.nan}).apply(lambda x: pd.to_numeric(x, errors="ignore"))
     tbpiv = (
         tbpiv.reset_index()
         .groupby(
@@ -1215,16 +1150,10 @@ def nominal_ventilation_aggregation(x):
         "Zone Name": x["Zone Name"].iloc[0],
         "Name": top(x["Name"], x, "Zone Floor Area {m2}"),
         "Schedule Name": top(x["Schedule Name"], x, "Zone Floor Area {m2}"),
-        "Fan Type {Exhaust;Intake;Natural}": top(
-            x["Fan Type {Exhaust;Intake;Natural}"], x, "Zone Floor Area {m2}"
-        ),
-        "Zone Floor Area {m2}": top(
-            x["Zone Floor Area {m2}"], x, "Zone Floor Area {m2}"
-        ),
+        "Fan Type {Exhaust;Intake;Natural}": top(x["Fan Type {Exhaust;Intake;Natural}"], x, "Zone Floor Area {m2}"),
+        "Zone Floor Area {m2}": top(x["Zone Floor Area {m2}"], x, "Zone Floor Area {m2}"),
         "# Zone Occupants": top(x["# Zone Occupants"], x, "Zone Floor Area {m2}"),
-        "Design Volume Flow Rate {m3/s}": weighted_mean(
-            x["Design Volume Flow Rate {m3/s}"], x, "Zone Floor Area {m2}"
-        ),
+        "Design Volume Flow Rate {m3/s}": weighted_mean(x["Design Volume Flow Rate {m3/s}"], x, "Zone Floor Area {m2}"),
         "Volume Flow Rate/Floor Area {m3/s/m2}": weighted_mean(
             x.filter(like="Volume Flow Rate/Floor Area").squeeze(axis=1),
             x,
@@ -1235,15 +1164,9 @@ def nominal_ventilation_aggregation(x):
             x,
             "Zone Floor Area {m2}",
         ),
-        "ACH - Air Changes per Hour": weighted_mean(
-            x["ACH - Air Changes per Hour"], x, "Zone Floor Area {m2}"
-        ),
-        "Fan Pressure Rise {Pa}": weighted_mean(
-            x["Fan Pressure Rise {Pa}"], x, "Zone Floor Area {m2}"
-        ),
-        "Fan Efficiency {}": weighted_mean(
-            x["Fan Efficiency {}"], x, "Zone Floor Area {m2}"
-        ),
+        "ACH - Air Changes per Hour": weighted_mean(x["ACH - Air Changes per Hour"], x, "Zone Floor Area {m2}"),
+        "Fan Pressure Rise {Pa}": weighted_mean(x["Fan Pressure Rise {Pa}"], x, "Zone Floor Area {m2}"),
+        "Fan Efficiency {}": weighted_mean(x["Fan Efficiency {}"], x, "Zone Floor Area {m2}"),
         "Equation A - Constant Term Coefficient {}": top(
             x["Equation A - Constant Term Coefficient {}"], x, "Zone Floor Area {m2}"
         ),
@@ -1266,24 +1189,20 @@ def nominal_ventilation_aggregation(x):
         "Maximum Indoor Temperature{C}/Schedule": top(
             x["Maximum Indoor Temperature{C}/Schedule"], x, "Zone Floor Area {m2}"
         ),
-        "Delta Temperature{C}/Schedule": top(
-            x["Delta Temperature{C}/Schedule"], x, "Zone Floor Area {m2}"
-        ),
+        "Delta Temperature{C}/Schedule": top(x["Delta Temperature{C}/Schedule"], x, "Zone Floor Area {m2}"),
         "Minimum Outdoor Temperature{C}/Schedule": top(
             x["Minimum Outdoor Temperature{C}/Schedule"], x, "Zone Floor Area {m2}"
         ),
         "Maximum Outdoor Temperature{C}/Schedule": top(
             x["Maximum Outdoor Temperature{C}/Schedule"], x, "Zone Floor Area {m2}"
         ),
-        "Maximum WindSpeed{m/s}": top(
-            x["Maximum WindSpeed{m/s}"], x, "Zone Floor Area {m2}"
-        ),
+        "Maximum WindSpeed{m/s}": top(x["Maximum WindSpeed{m/s}"], x, "Zone Floor Area {m2}"),
     }
     try:
         df = pd.DataFrame(how_dict, index=range(0, 1))  # range should always be
         # one since we are trying to merge zones
     except Exception as e:
-        log("{}".format(e))
+        log(f"{e}")
     else:
         return df
 

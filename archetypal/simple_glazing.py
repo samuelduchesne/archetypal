@@ -144,7 +144,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
 
     dict["Comments"] = (
         "Properties calculated from Simple Glazing System with "
-        "SHGC={:.3f}, UFactor={:.3f} and Tvis={:.3f}".format(shgc, u_factor, T_vis)
+        f"SHGC={shgc:.3f}, UFactor={u_factor:.3f} and Tvis={T_vis:.3f}"
     )
 
     return dict
@@ -307,17 +307,11 @@ def t_sol(shgc, u_factor):
 def r_i_s_intermediate(shgc, t_sol, u_factor):
     if u_factor >= 4.5:
         return 1 / (
-            29.436546 * (shgc - t_sol) ** 3
-            - 21.943415 * (shgc - t_sol) ** 2
-            + 9.945872 * (shgc - t_sol)
-            + 7.426151
+            29.436546 * (shgc - t_sol) ** 3 - 21.943415 * (shgc - t_sol) ** 2 + 9.945872 * (shgc - t_sol) + 7.426151
         )
     if u_factor <= 3.4:
         return 1 / (
-            199.8208128 * (shgc - t_sol) ** 3
-            - 90.639733 * (shgc - t_sol) ** 2
-            + 19.737055 * (shgc - t_sol)
-            + 6.766575
+            199.8208128 * (shgc - t_sol) ** 3 - 90.639733 * (shgc - t_sol) ** 2 + 19.737055 * (shgc - t_sol) + 6.766575
         )
 
 

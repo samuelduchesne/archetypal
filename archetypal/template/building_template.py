@@ -126,9 +126,7 @@ class BuildingTemplate(UmiBase):
 
     @Perimeter.setter
     def Perimeter(self, value):
-        assert isinstance(
-            value, ZoneDefinition
-        ), f"Expected a ZoneDefinition, not {type(value)}"
+        assert isinstance(value, ZoneDefinition), f"Expected a ZoneDefinition, not {type(value)}"
         self._perimeter = value
 
     @property
@@ -138,9 +136,7 @@ class BuildingTemplate(UmiBase):
 
     @Core.setter
     def Core(self, value):
-        assert isinstance(
-            value, ZoneDefinition
-        ), f"Expected a ZoneDefinition, not {type(value)}"
+        assert isinstance(value, ZoneDefinition), f"Expected a ZoneDefinition, not {type(value)}"
         self._core = value
 
     @property
@@ -150,9 +146,7 @@ class BuildingTemplate(UmiBase):
 
     @Structure.setter
     def Structure(self, value):
-        assert isinstance(
-            value, StructureInformation
-        ), f"Expected a StructureInformation, not {type(value)}"
+        assert isinstance(value, StructureInformation), f"Expected a StructureInformation, not {type(value)}"
         self._structure_definition = value
 
     @property
@@ -162,9 +156,7 @@ class BuildingTemplate(UmiBase):
 
     @Windows.setter
     def Windows(self, value):
-        assert isinstance(
-            value, WindowSetting
-        ), f"Expected a WindowSetting, not {type(value)}"
+        assert isinstance(value, WindowSetting), f"Expected a WindowSetting, not {type(value)}"
         self._window_setting = value
 
     @property
@@ -174,9 +166,7 @@ class BuildingTemplate(UmiBase):
 
     @DefaultWindowToWallRatio.setter
     def DefaultWindowToWallRatio(self, value):
-        self._default_window_to_wall_ratio = validators.float(
-            value, minimum=0, maximum=1
-        )
+        self._default_window_to_wall_ratio = validators.float(value, minimum=0, maximum=1)
 
     @property
     def Lifespan(self):
@@ -203,9 +193,7 @@ class BuildingTemplate(UmiBase):
 
     @YearFrom.setter
     def YearFrom(self, value):
-        self._year_from = validators.integer(
-            value, coerce_value=True, maximum=self.YearTo, allow_empty=True
-        )
+        self._year_from = validators.integer(value, coerce_value=True, maximum=self.YearTo, allow_empty=True)
 
     @property
     def YearTo(self):
@@ -214,9 +202,7 @@ class BuildingTemplate(UmiBase):
 
     @YearTo.setter
     def YearTo(self, value):
-        self._year_to = validators.integer(
-            value, coerce_value=True, minimum=self.YearFrom, allow_empty=True
-        )
+        self._year_to = validators.integer(value, coerce_value=True, minimum=self.YearFrom, allow_empty=True)
 
     @property
     def Country(self):
@@ -336,9 +322,7 @@ class BuildingTemplate(UmiBase):
         try:
             window = window_settings[window_data["$ref"]]
         except KeyError:
-            window = WindowSetting.from_dict(
-                window_data, schedules, window_constructions
-            )
+            window = WindowSetting.from_dict(window_data, schedules, window_constructions)
 
         return cls(
             Core=core,
@@ -408,26 +392,12 @@ class BuildingTemplate(UmiBase):
 
         zone: ZoneDefinition
         cores = list(
-            chain.from_iterable(
-                [
-                    list(repeat(zone.duplicate(), zone.multiplier))
-                    for zone in zones
-                    if zone.is_core
-                ]
-            )
+            chain.from_iterable([list(repeat(zone.duplicate(), zone.multiplier)) for zone in zones if zone.is_core])
         )
         perimeters = list(
-            chain.from_iterable(
-                [
-                    list(repeat(zone.duplicate(), zone.multiplier))
-                    for zone in zones
-                    if not zone.is_core
-                ]
-            )
+            chain.from_iterable([list(repeat(zone.duplicate(), zone.multiplier)) for zone in zones if not zone.is_core])
         )
-        assert (
-            len(perimeters) >= 1
-        ), "Building complexity reduction must have at least one perimeter zone."
+        assert len(perimeters) >= 1, "Building complexity reduction must have at least one perimeter zone."
 
         Core = None
         # reduce list of core zones
@@ -478,8 +448,7 @@ class BuildingTemplate(UmiBase):
             level=lg.DEBUG,
         )
         log(
-            f"Completed model complexity reduction for BuildingTemplate '{name}' "
-            f"in {time.time() - start_time:,.2f}"
+            f"Completed model complexity reduction for BuildingTemplate '{name}' " f"in {time.time() - start_time:,.2f}"
         )
         return cls(
             name,
@@ -568,18 +537,14 @@ class BuildingTemplate(UmiBase):
 
         def recursive_replace(umibase):
             for key, obj in umibase.mapping(validate=False).items():
-                if isinstance(
-                    obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
-                ):
+                if isinstance(obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)):
                     recursive_replace(obj)
                     setattr(umibase, key, obj.get_unique())
                 elif isinstance(obj, list):
                     [
                         recursive_replace(obj)
                         for obj in obj
-                        if isinstance(
-                            obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
-                        )
+                        if isinstance(obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio))
                     ]
 
         recursive_replace(self)
@@ -622,13 +587,7 @@ class BuildingTemplate(UmiBase):
             ref:
         """
         return next(
-            iter(
-                [
-                    value
-                    for value in BuildingTemplate.CREATED_OBJECTS
-                    if value.id == ref["$ref"]
-                ]
-            ),
+            iter([value for value in BuildingTemplate.CREATED_OBJECTS if value.id == ref["$ref"]]),
             None,
         )
 

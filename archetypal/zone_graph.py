@@ -81,9 +81,7 @@ class ZoneGraph(networkx.Graph):
 
         counter = 0
         zone: EpBunch
-        for zone in tqdm(
-            idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs
-        ):
+        for zone in tqdm(idf.idfobjects["ZONE"], desc="zone_loop", position=idf.position, **kwargs):
             # initialize the adjacency report dictionary. default list.
             adj_report = defaultdict(list)
             zone_obj = None
@@ -107,16 +105,11 @@ class ZoneGraph(networkx.Graph):
                         _is_core = is_core(zone)
 
                         # create node for adjacent zone
-                        G.add_node(
-                            zone.Name, epbunch=adj_zone, core=_is_core, zone=zone_obj
-                        )
+                        G.add_node(zone.Name, epbunch=adj_zone, core=_is_core, zone=zone_obj)
                         try:
                             this_cstr = surface["Construction_Name"]
                             their_cstr = adj_surf["Construction_Name"]
-                            is_diff_cstr = (
-                                surface["Construction_Name"]
-                                != adj_surf["Construction_Name"]
-                            )
+                            is_diff_cstr = surface["Construction_Name"] != adj_surf["Construction_Name"]
                         except:
                             this_cstr, their_cstr, is_diff_cstr = None, None, None
                         # create edge from this zone to the adjacent zone
@@ -128,9 +121,7 @@ class ZoneGraph(networkx.Graph):
                             is_diff_cstr=is_diff_cstr,
                         )
 
-                        add_to_report(
-                            adj_report, zone, surface, adj_zone, adj_surf, counter
-                        )
+                        add_to_report(adj_report, zone, surface, adj_zone, adj_surf, counter)
                     else:
                         pass
             if log_adj_report:
@@ -138,7 +129,7 @@ class ZoneGraph(networkx.Graph):
                 msg += tabulate.tabulate(adj_report, headers="keys")
                 log(msg)
 
-        log("Created zone graph in {:,.2f} seconds".format(time.time() - start_time))
+        log(f"Created zone graph in {time.time() - start_time:,.2f} seconds")
         log(networkx.info(G), lg.DEBUG)
         return G
 
@@ -269,10 +260,7 @@ class ZoneGraph(networkx.Graph):
 
         # Define color range proportional to number of edges adjacent to a
         # single node
-        colors = {
-            i: matplotlib.colormaps.get_cmap(cmap)(self.degree[i] / edge_max)
-            for i in self.nodes
-        }
+        colors = {i: matplotlib.colormaps.get_cmap(cmap)(self.degree[i] / edge_max) for i in self.nodes}
         labels = {}
         if annotate:
             # annotate can be bool or str.
@@ -282,22 +270,13 @@ class ZoneGraph(networkx.Graph):
             if isinstance(annotate, str):
                 # create dict of the form {id: (x, y, z, label, zdir)}. zdir is
                 # None by default.
-                labels = {
-                    name: (*pos[name], data[annotate], None)
-                    for name, data in self.nodes(data="epbunch")
-                }
+                labels = {name: (*pos[name], data[annotate], None) for name, data in self.nodes(data="epbunch")}
             if isinstance(annotate, tuple):
                 data, key = annotate
                 if key:
-                    labels = {
-                        name: (*pos[name], data[key], None)
-                        for name, data in self.nodes(data=data)
-                    }
+                    labels = {name: (*pos[name], data[key], None) for name, data in self.nodes(data=data)}
                 else:
-                    labels = {
-                        name: (*pos[name], data, None)
-                        for name, data in self.nodes(data=data)
-                    }
+                    labels = {name: (*pos[name], data, None) for name, data in self.nodes(data=data)}
 
         # 3D network plot
         with plt.style.context(plt_style):
@@ -516,9 +495,7 @@ class ZoneGraph(networkx.Graph):
 
             if legend:
                 bbox = kwargs.get("bbox_to_anchor", (1, 1))
-                legend1 = ax.legend(
-                    title=color_nodes, bbox_to_anchor=bbox, markerscale=0.5
-                )
+                legend1 = ax.legend(title=color_nodes, bbox_to_anchor=bbox, markerscale=0.5)
                 ax.add_artist(legend1)
 
             # clear axis
@@ -574,7 +551,6 @@ def discrete_cmap(N, base_cmap=None):
     # Note that if base_cmap is a string or None, you can simply do
     #    return matplotlib.colormaps.get_cmap(base_cmap, N)
     # The following works for string, None, or a colormap instance:
-    import matplotlib.pyplot as plt
     from numpy.core.function_base import linspace
 
     base = matplotlib.colormaps.get_cmap(base_cmap)

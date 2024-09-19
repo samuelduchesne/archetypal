@@ -7,6 +7,3 @@
    :members:
    :inherited-members:
    {% endif %}
-
-
-

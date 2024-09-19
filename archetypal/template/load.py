@@ -152,14 +152,12 @@ class ZoneLoad(UmiBase):
     def DimmingType(self, value):
         if checkers.is_string(value):
             assert DimmingTypes[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in DimmingTypes)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in DimmingTypes)}"
             )
             self._dimming_type = DimmingTypes[value]
         elif checkers.is_numeric(value):
             assert DimmingTypes(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in DimmingTypes)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in DimmingTypes)}"
             )
             self._dimming_type = DimmingTypes(value)
         elif isinstance(value, DimmingTypes):
@@ -176,8 +174,7 @@ class ZoneLoad(UmiBase):
     def EquipmentAvailabilitySchedule(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input value error for '{value}'. Value must be of type '"
-                f"{UmiSchedule}', not {type(value)}"
+                f"Input value error for '{value}'. Value must be of type '" f"{UmiSchedule}', not {type(value)}"
             )
             # set quantity on schedule as well
             value.quantity = self.EquipmentPowerDensity
@@ -190,9 +187,7 @@ class ZoneLoad(UmiBase):
 
     @EquipmentPowerDensity.setter
     def EquipmentPowerDensity(self, value):
-        self._equipment_power_density = validators.float(
-            value, minimum=0, allow_empty=True
-        )
+        self._equipment_power_density = validators.float(value, minimum=0, allow_empty=True)
 
     @property
     def IlluminanceTarget(self):
@@ -210,9 +205,7 @@ class ZoneLoad(UmiBase):
 
     @LightingPowerDensity.setter
     def LightingPowerDensity(self, value):
-        self._lighting_power_density = validators.float(
-            value, minimum=0, allow_empty=True
-        )
+        self._lighting_power_density = validators.float(value, minimum=0, allow_empty=True)
 
     @property
     def LightsAvailabilitySchedule(self) -> UmiSchedule:
@@ -223,8 +216,7 @@ class ZoneLoad(UmiBase):
     def LightsAvailabilitySchedule(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input value error for '{value}'. Value must be of type '"
-                f"{UmiSchedule}', not {type(value)}"
+                f"Input value error for '{value}'. Value must be of type '" f"{UmiSchedule}', not {type(value)}"
             )
             # set quantity on schedule as well
             value.quantity = self.LightingPowerDensity
@@ -239,8 +231,7 @@ class ZoneLoad(UmiBase):
     def OccupancySchedule(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input value error for '{value}'. Value must be if type '"
-                f"{UmiSchedule}', not {type(value)}"
+                f"Input value error for '{value}'. Value must be if type '" f"{UmiSchedule}', not {type(value)}"
             )
             # set quantity on schedule as well
             value.quantity = self.PeopleDensity
@@ -263,8 +254,7 @@ class ZoneLoad(UmiBase):
     @IsEquipmentOn.setter
     def IsEquipmentOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsEquipmentOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsEquipmentOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_equipment_on = value
 
@@ -276,8 +266,7 @@ class ZoneLoad(UmiBase):
     @IsLightingOn.setter
     def IsLightingOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsLightingOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsLightingOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_lighting_on = value
 
@@ -289,8 +278,7 @@ class ZoneLoad(UmiBase):
     @IsPeopleOn.setter
     def IsPeopleOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsPeopleOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsPeopleOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_people_on = value
 
@@ -351,12 +339,8 @@ class ZoneLoad(UmiBase):
         _id = data.pop("$id")
         return cls(
             id=_id,
-            EquipmentAvailabilitySchedule=schedules[
-                data.pop("EquipmentAvailabilitySchedule")["$ref"]
-            ],
-            LightsAvailabilitySchedule=schedules[
-                data.pop("LightsAvailabilitySchedule")["$ref"]
-            ],
+            EquipmentAvailabilitySchedule=schedules[data.pop("EquipmentAvailabilitySchedule")["$ref"]],
+            LightsAvailabilitySchedule=schedules[data.pop("LightsAvailabilitySchedule")["$ref"]],
             OccupancySchedule=schedules[data.pop("OccupancySchedule")["$ref"]],
             **data,
             **kwargs,
@@ -396,10 +380,7 @@ class ZoneLoad(UmiBase):
             def get_schedule(series):
                 """Compute the schedule with quantity for nominal equipment series."""
                 sched = series["ScheduleIndex"]
-                sql_query = (
-                    "select t.ScheduleName, t.ScheduleType as M from "
-                    "Schedules t where ScheduleIndex=?"
-                )
+                sql_query = "select t.ScheduleName, t.ScheduleType as M from Schedules t where ScheduleIndex=?"
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 level_ = float(series["DesignLevel"])
                 if level_ > 0:
@@ -427,12 +408,10 @@ class ZoneLoad(UmiBase):
                     schedules,
                     quantity=True,
                 )
-                EquipmentPowerDensity = (
-                    EquipmentAvailabilitySchedule.quantity / zone.area
-                )
+                EquipmentPowerDensity = EquipmentAvailabilitySchedule.quantity / zone.area
             else:
                 EquipmentAvailabilitySchedule = None
-                EquipmentPowerDensity = np.NaN
+                EquipmentPowerDensity = np.nan
 
             # Verifies if Lights in zone
             sql_query = "select t.* from NominalLighting t where ZoneIndex=?"
@@ -453,17 +432,14 @@ class ZoneLoad(UmiBase):
                 LightingPowerDensity = LightsAvailabilitySchedule.quantity / zone.area
             else:
                 LightsAvailabilitySchedule = None
-                LightingPowerDensity = np.NaN
+                LightingPowerDensity = np.nan
 
             # Verifies if People in zone
 
             def get_schedule(series):
                 """Compute schedule with quantity for nominal equipment series."""
                 sched = series["NumberOfPeopleScheduleIndex"]
-                sql_query = (
-                    "select t.ScheduleName, t.ScheduleType as M from "
-                    "Schedules t where ScheduleIndex=?"
-                )
+                sql_query = "select t.ScheduleName, t.ScheduleType as M from Schedules t where ScheduleIndex=?"
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 return UmiSchedule.from_epbunch(
                     zone_ep.theidf.schedules_dict[sched_name.upper()],
@@ -488,7 +464,7 @@ class ZoneLoad(UmiBase):
                 PeopleDensity = OccupancySchedule.quantity / zone.area
             else:
                 OccupancySchedule = None
-                PeopleDensity = np.NaN
+                PeopleDensity = np.nan
 
         name = zone.Name + "_ZoneLoad"
         z_load = cls(
@@ -550,8 +526,7 @@ class ZoneLoad(UmiBase):
                 getattr(other, str(zone_weight)),
             ]
             log(
-                'using zone {} "{}" as weighting factor in "{}" '
-                "combine.".format(
+                'using zone {} "{}" as weighting factor in "{}" ' "combine.".format(
                     zone_weight,
                     " & ".join(list(map(str, map(int, weights)))),
                     self.__class__.__name__,
@@ -566,13 +541,9 @@ class ZoneLoad(UmiBase):
                 weights=[self.area, other.area],
                 quantity=True,
             ),
-            EquipmentPowerDensity=self.float_mean(
-                other, "EquipmentPowerDensity", weights
-            ),
+            EquipmentPowerDensity=self.float_mean(other, "EquipmentPowerDensity", weights),
             IlluminanceTarget=self.float_mean(other, "IlluminanceTarget", weights),
-            LightingPowerDensity=self.float_mean(
-                other, "LightingPowerDensity", weights
-            ),
+            LightingPowerDensity=self.float_mean(other, "LightingPowerDensity", weights),
             LightsAvailabilitySchedule=UmiSchedule.combine(
                 self.LightsAvailabilitySchedule,
                 other.LightsAvailabilitySchedule,
@@ -591,9 +562,7 @@ class ZoneLoad(UmiBase):
             PeopleDensity=self.float_mean(other, "PeopleDensity", weights),
         )
 
-        new_obj = self.__class__(
-            **meta, **new_attr, allow_duplicates=self.allow_duplicates
-        )
+        new_obj = self.__class__(**meta, **new_attr, allow_duplicates=self.allow_duplicates)
         new_obj.area = self.area + other.area
         new_obj.volume = self.volume + other.volume
         new_obj.predecessors.update(self.predecessors + other.predecessors)
@@ -661,30 +630,20 @@ class ZoneLoad(UmiBase):
 
         data_dict["$id"] = str(self.id)
         data_dict["DimmingType"] = self.DimmingType.value
-        data_dict[
-            "EquipmentAvailabilitySchedule"
-        ] = self.EquipmentAvailabilitySchedule.to_ref()
+        data_dict["EquipmentAvailabilitySchedule"] = self.EquipmentAvailabilitySchedule.to_ref()
         data_dict["EquipmentPowerDensity"] = (
-            round(self.EquipmentPowerDensity, 3)
-            if not math.isnan(self.EquipmentPowerDensity)
-            else 0
+            round(self.EquipmentPowerDensity, 3) if not math.isnan(self.EquipmentPowerDensity) else 0
         )
         data_dict["IlluminanceTarget"] = round(self.IlluminanceTarget, 3)
         data_dict["LightingPowerDensity"] = (
-            round(self.LightingPowerDensity, 3)
-            if not math.isnan(self.LightingPowerDensity)
-            else 0
+            round(self.LightingPowerDensity, 3) if not math.isnan(self.LightingPowerDensity) else 0
         )
-        data_dict[
-            "LightsAvailabilitySchedule"
-        ] = self.LightsAvailabilitySchedule.to_ref()
+        data_dict["LightsAvailabilitySchedule"] = self.LightsAvailabilitySchedule.to_ref()
         data_dict["OccupancySchedule"] = self.OccupancySchedule.to_ref()
         data_dict["IsEquipmentOn"] = self.IsEquipmentOn
         data_dict["IsLightingOn"] = self.IsLightingOn
         data_dict["IsPeopleOn"] = self.IsPeopleOn
-        data_dict["PeopleDensity"] = (
-            round(self.PeopleDensity, 3) if not math.isnan(self.PeopleDensity) else 0
-        )
+        data_dict["PeopleDensity"] = round(self.PeopleDensity, 3) if not math.isnan(self.PeopleDensity) else 0
         data_dict["Category"] = self.Category
         data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
@@ -772,9 +731,7 @@ class ZoneLoad(UmiBase):
                 "SCHEDULE:CONSTANT", Name="WorkEfficiency", Hourly_Value=0
             ).Name,
             Clothing_Insulation_Calculation_Method="DynamicClothingModelASHRAE55",
-            Air_Velocity_Schedule_Name=idf.newidfobject(
-                "SCHEDULE:CONSTANT", Name="AirVelocity", Hourly_Value=0.2
-            ).Name,
+            Air_Velocity_Schedule_Name=idf.newidfobject("SCHEDULE:CONSTANT", Name="AirVelocity", Hourly_Value=0.2).Name,
         )
         lights = idf.newidfobject(
             key="LIGHTS",
@@ -804,9 +761,7 @@ class ZoneLoad(UmiBase):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(
-            **self.mapping(validate=False), area=self.area, volume=self.volume
-        )
+        return self.__class__(**self.mapping(validate=False), area=self.area, volume=self.volume)
 
     def __add__(self, other):
         """Combine self and other."""
@@ -856,17 +811,11 @@ def _resolve_dimming_type(zone, zone_ep):
     """
     # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
     # `getreferingobjs` method.
-    possible_ctrls = zone_ep.getreferingobjs(
-        iddgroups=["Daylighting"], fields=["Zone_Name"]
-    )
+    possible_ctrls = zone_ep.getreferingobjs(iddgroups=["Daylighting"], fields=["Zone_Name"])
     # Then, if there are controls
     if possible_ctrls:
         # Filter only the "Daylighting:Controls"
-        ctrls = [
-            ctrl
-            for ctrl in possible_ctrls
-            if ctrl.key.upper() == "Daylighting:Controls".upper()
-        ]
+        ctrls = [ctrl for ctrl in possible_ctrls if ctrl.key.upper() == "Daylighting:Controls".upper()]
         ctrl_types = [ctrl["Lighting_Control_Type"] for ctrl in ctrls]
 
         # There should only be one control per zone. A set of controls should return 1.
@@ -881,13 +830,12 @@ def _resolve_dimming_type(zone, zone_ep):
                 return DimmingTypes[dimming_type]  # Return first element
         else:
             raise ValueError(
-                "Could not resolve more than one dimming types for Zone {}. "
-                "Make sure there is only one".format(zone.Name)
+                f"Could not resolve more than one dimming types for Zone {zone.Name}. Make sure there is only one"
             )
     else:
         # Else, there are no dimming controls => set to "Off".
         log(
-            "No dimming type found for zone {}. Setting as Off".format(zone.Name),
+            f"No dimming type found for zone {zone.Name}. Setting as Off",
             lg.DEBUG,
         )
         return DimmingTypes.Off
@@ -901,20 +849,12 @@ def _resolve_illuminance_target(zone, zone_ep):
     """
     # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
     # `getreferingobjs` method.
-    possible_ctrls = zone_ep.getreferingobjs(
-        iddgroups=["Daylighting"], fields=["Zone_Name"]
-    )
+    possible_ctrls = zone_ep.getreferingobjs(iddgroups=["Daylighting"], fields=["Zone_Name"])
     # Then, if there are controls
     if possible_ctrls:
         # Filter only the "Daylighting:Controls"
-        ctrls = [
-            ctrl
-            for ctrl in possible_ctrls
-            if ctrl.key.upper() == "Daylighting:Controls".upper()
-        ]
-        ctrl_types = [
-            ctrl["Illuminance_Setpoint_at_Reference_Point_1"] for ctrl in ctrls
-        ]
+        ctrls = [ctrl for ctrl in possible_ctrls if ctrl.key.upper() == "Daylighting:Controls".upper()]
+        ctrl_types = [ctrl["Illuminance_Setpoint_at_Reference_Point_1"] for ctrl in ctrls]
 
         # There should only be one control per zone. A set of controls should return 1.
         if len(set(ctrl_types)) == 1:
@@ -923,14 +863,13 @@ def _resolve_illuminance_target(zone, zone_ep):
             return float(dimming_type)  # Return first element
         else:
             raise ValueError(
-                "Could not resolve more than one illuminance targets for Zone {}. "
-                "Make sure there is only one".format(zone.Name)
+                f"Could not resolve more than one illuminance targets for Zone {zone.Name}. "
+                "Make sure there is only one"
             )
     else:
         # Else, there are no dimming controls => set to "Off".
         log(
-            "No illuminance target found for zone {}. Setting to default 500 "
-            "lux".format(zone.Name),
+            f"No illuminance target found for zone {zone.Name}. Setting to default 500 lux",
             lg.DEBUG,
         )
         return 500

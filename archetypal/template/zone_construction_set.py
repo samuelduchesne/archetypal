@@ -12,6 +12,7 @@ from archetypal.utils import log, reduce, timeit
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
+
     _CREATED_OBJECTS = []
 
     __slots__ = (
@@ -93,8 +94,7 @@ class ZoneConstructionSet(UmiBase):
     def Facade(self, value):
         if value is not None:
             assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Facade must be"
-                f" an OpaqueConstruction, not a {type(value)}"
+                f"Input value error for {value}. Facade must be" f" an OpaqueConstruction, not a {type(value)}"
             )
         self._facade = value
 
@@ -107,8 +107,7 @@ class ZoneConstructionSet(UmiBase):
     def Ground(self, value):
         if value is not None:
             assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Ground must be"
-                f" an OpaqueConstruction, not a {type(value)}"
+                f"Input value error for {value}. Ground must be" f" an OpaqueConstruction, not a {type(value)}"
             )
         self._ground = value
 
@@ -121,8 +120,7 @@ class ZoneConstructionSet(UmiBase):
     def Partition(self, value):
         if value is not None:
             assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Partition must be"
-                f" an OpaqueConstruction, not a {type(value)}"
+                f"Input value error for {value}. Partition must be" f" an OpaqueConstruction, not a {type(value)}"
             )
         self._partition = value
 
@@ -135,8 +133,7 @@ class ZoneConstructionSet(UmiBase):
     def Roof(self, value):
         if value is not None:
             assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Roof must be"
-                f" an OpaqueConstruction, not a {type(value)}"
+                f"Input value error for {value}. Roof must be" f" an OpaqueConstruction, not a {type(value)}"
             )
         self._roof = value
 
@@ -149,8 +146,7 @@ class ZoneConstructionSet(UmiBase):
     def Slab(self, value):
         if value is not None:
             assert isinstance(value, OpaqueConstruction), (
-                f"Input value error for {value}. Slab must be"
-                f" an OpaqueConstruction, not a {type(value)}"
+                f"Input value error for {value}. Slab must be" f" an OpaqueConstruction, not a {type(value)}"
             )
         self._slab = value
 
@@ -162,9 +158,7 @@ class ZoneConstructionSet(UmiBase):
     @IsFacadeAdiabatic.setter
     def IsFacadeAdiabatic(self, value):
         assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsFacadeAdiabatic must be of type bool, "
-            f"not {type(value)}."
+            f"Input value error for {value}. " f"IsFacadeAdiabatic must be of type bool, " f"not {type(value)}."
         )
         self._is_facade_adiabatic = value
 
@@ -176,9 +170,7 @@ class ZoneConstructionSet(UmiBase):
     @IsGroundAdiabatic.setter
     def IsGroundAdiabatic(self, value):
         assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsGroundAdiabatic must be of type bool, "
-            f"not {type(value)}."
+            f"Input value error for {value}. " f"IsGroundAdiabatic must be of type bool, " f"not {type(value)}."
         )
         self._is_ground_adiabatic = value
 
@@ -190,9 +182,7 @@ class ZoneConstructionSet(UmiBase):
     @IsPartitionAdiabatic.setter
     def IsPartitionAdiabatic(self, value):
         assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsPartitionAdiabatic must be of type bool, "
-            f"not {type(value)}."
+            f"Input value error for {value}. " f"IsPartitionAdiabatic must be of type bool, " f"not {type(value)}."
         )
         self._is_partition_adiabatic = value
 
@@ -204,9 +194,7 @@ class ZoneConstructionSet(UmiBase):
     @IsRoofAdiabatic.setter
     def IsRoofAdiabatic(self, value):
         assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsRoofAdiabatic must be of type bool, "
-            f"not {type(value)}."
+            f"Input value error for {value}. " f"IsRoofAdiabatic must be of type bool, " f"not {type(value)}."
         )
         self._is_roof_adiabatic = value
 
@@ -218,9 +206,7 @@ class ZoneConstructionSet(UmiBase):
     @IsSlabAdiabatic.setter
     def IsSlabAdiabatic(self, value):
         assert isinstance(value, bool), (
-            f"Input value error for {value}. "
-            f"IsSlabAdiabatic must be of type bool, "
-            f"not {type(value)}."
+            f"Input value error for {value}. " f"IsSlabAdiabatic must be of type bool, " f"not {type(value)}."
         )
         self._is_slab_adiabatic = value
 
@@ -269,10 +255,7 @@ class ZoneConstructionSet(UmiBase):
                 elif disp_surf.Category == "Slab":
                     slab.append(disp_surf)
                 else:
-                    msg = (
-                        'Surface Type "{}" is not known, this method is not'
-                        " implemented".format(disp_surf.Surface_Type)
-                    )
+                    msg = f'Surface Type "{disp_surf.Surface_Type}" is not known, this method is not' " implemented"
                     raise NotImplementedError(msg)
 
         # Returning a set() for each groups of Constructions.
@@ -388,9 +371,7 @@ class ZoneConstructionSet(UmiBase):
             return None
         elif self == other:
             area = 1 if self.area + other.area == 2 else self.area + other.area
-            volume = (
-                1 if self.volume + other.volume == 2 else self.volume + other.volume
-            )
+            volume = 1 if self.volume + other.volume == 2 else self.volume + other.volume
             new_obj = self.duplicate()
             new_obj.area = area
             new_obj.volume = volume
@@ -416,9 +397,7 @@ class ZoneConstructionSet(UmiBase):
             Roof=OpaqueConstruction.combine(self.Roof, other.Roof),
             IsRoofAdiabatic=any([self.IsRoofAdiabatic, other.IsRoofAdiabatic]),
             Partition=OpaqueConstruction.combine(self.Partition, other.Partition),
-            IsPartitionAdiabatic=any(
-                [self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]
-            ),
+            IsPartitionAdiabatic=any([self.IsPartitionAdiabatic, other.IsPartitionAdiabatic]),
             Ground=OpaqueConstruction.combine(self.Ground, other.Ground),
             IsGroundAdiabatic=any([self.IsGroundAdiabatic, other.IsGroundAdiabatic]),
             Facade=OpaqueConstruction.combine(self.Facade, other.Facade),
@@ -613,9 +592,7 @@ class SurfaceDispatcher:
             lg.DEBUG,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
-        )
+        oc = OpaqueConstruction.from_epbunch(surf.theidf.getobject("Construction".upper(), surf.Construction_Name))
         oc.area = surf.area
         oc.Category = "Facade"
         return oc
@@ -627,18 +604,14 @@ class SurfaceDispatcher:
             lg.DEBUG,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
-            surf.get_referenced_object("Construction_Name")
-        )
+        oc = OpaqueConstruction.from_epbunch(surf.get_referenced_object("Construction_Name"))
         oc.area = surf.area
         oc.Category = "Ground"
         return oc
 
     @staticmethod
     def _do_partition(surf):
-        the_construction = surf.theidf.getobject(
-            "Construction".upper(), surf.Construction_Name
-        )
+        the_construction = surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
         if the_construction:
             oc = OpaqueConstruction.from_epbunch(the_construction)
             oc.area = surf.area
@@ -662,9 +635,7 @@ class SurfaceDispatcher:
             lg.DEBUG,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
-        )
+        oc = OpaqueConstruction.from_epbunch(surf.theidf.getobject("Construction".upper(), surf.Construction_Name))
         oc.area = surf.area
         oc.Category = "Roof"
         return oc
@@ -676,9 +647,7 @@ class SurfaceDispatcher:
             lg.DEBUG,
             name=surf.theidf.name,
         )
-        oc = OpaqueConstruction.from_epbunch(
-            surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
-        )
+        oc = OpaqueConstruction.from_epbunch(surf.theidf.getobject("Construction".upper(), surf.Construction_Name))
         oc.area = surf.area
         oc.Category = "Slab"
         return oc
@@ -686,8 +655,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_basement(surf):
         log(
-            'surface "%s" ignored because basement facades are not supported'
-            % surf.Name,
+            'surface "%s" ignored because basement facades are not supported' % surf.Name,
             lg.WARNING,
             name=surf.theidf.name,
         )

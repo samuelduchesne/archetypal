@@ -6,6 +6,3 @@
 .. auto{{ objtype }}:: {{ objname }} {% if objtype in ['class'] %}
    :members:
    {% endif %}
-
-
-

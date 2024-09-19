@@ -1,6 +1,7 @@
 ---
-title: 'archetypal: A Python package for collecting, simulating, converting and analyzing
- building archetypes'
+title:
+  "archetypal: A Python package for collecting, simulating, converting and analyzing
+  building archetypes"
 tags:
   - Python
   - Building Energy Model
@@ -15,8 +16,8 @@ authors:
   - name: Louis Leroy
     affiliation: 1
 affiliations:
- - name: Department of Mechanical Engineering, Polytechnique Montréal, Montréal, Canada
-   index: 1
+  - name: Department of Mechanical Engineering, Polytechnique Montréal, Montréal, Canada
+    index: 1
 date: 8 October 2019
 bibliography: paper.bib
 ---
@@ -43,7 +44,7 @@ capabilities for researchers and practitioners:
 2. Convert [EnergyPlus](https://energyplus.net) models to [UMI Template Files](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html);
 3. Edit [UMI Template Files](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html) in a scripting environment.
 4. Convert [EnergyPlus](https://energyplus.net) models to TRNSYS [TrnBuild](http://www.trnsys.com/features/suite-of-tools.php) Models.
- 
+
 ## EnergyPlus Simulation Environment
 
 `archetypal` leverages the Python Eppy [@Philip2004] and GeomEppy [@Bull2016] packages to

@@ -209,7 +209,8 @@ class UmiTemplateLibrary:
             weather (str or Path): Path to the weather file.
             name (str): The name of the Template File
             processors (int): Number of cores. Defaults to -1, all cores.
-            debug (bool): If True, will raise any error on any processed file.
+            debug (bool): If True, will raise any error on any processed file and
+                keep simulation cache directory.
             kwargs: keyword arguments passed to IDF().
 
         Raises:
@@ -228,7 +229,7 @@ class UmiTemplateLibrary:
                 verbose=False,
                 position=i,
                 nolimit=True,
-                keep_data_err=True,  # For debugging
+                keep_data_err=debug,
                 readvars=False,  # No need to readvars since only sql is used
                 **kwargs,
             )
@@ -247,8 +248,7 @@ class UmiTemplateLibrary:
                 with open(filename, "a") as file:
                     file.writelines(res.write())
                     log(
-                        f"EnergyPlusProcess error for {filename} listed in"
-                        f" {filename}: {res}",
+                        f"EnergyPlusProcess error for {filename} listed in {filename}: {res}",
                         lg.ERROR,
                     )
             elif isinstance(res, Exception):
@@ -262,13 +262,9 @@ class UmiTemplateLibrary:
 
         # If all exceptions, raise them for debugging
         if all(isinstance(x, Exception) for x in results.values()):
-            raise Exception(
-                [res for res in results.values() if isinstance(res, Exception)]
-            )
+            raise Exception([res for res in results.values() if isinstance(res, Exception)])
 
-        umi_template.BuildingTemplates = [
-            res for res in results.values() if not isinstance(res, Exception)
-        ]
+        umi_template.BuildingTemplates = [res for res in results.values() if not isinstance(res, Exception)]
 
         if keep_all_zones:
             _zones = set(obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS)
@@ -279,9 +275,7 @@ class UmiTemplateLibrary:
             exceptions = None
 
         # Get unique instances
-        umi_template.unique_components(
-            *(unique_components or []), exceptions=exceptions
-        )
+        umi_template.unique_components(*(unique_components or []), exceptions=exceptions)
 
         # Update attributes of instance
         umi_template.update_components_list(exceptions=exceptions)
@@ -325,7 +319,7 @@ class UmiTemplateLibrary:
             UmiTemplateLibrary: The template object.
         """
         name = Path(filename)
-        with open(filename, "r") as f:
+        with open(filename) as f:
             t = cls.loads(f.read(), name)
 
         return t
@@ -336,25 +330,17 @@ class UmiTemplateLibrary:
         datastore = json.loads(s)
         # with datastore, create each objects
         t = cls(name)
-        t.GasMaterials = [
-            GasMaterial.from_dict(store, allow_duplicates=False)
-            for store in datastore["GasMaterials"]
-        ]
+        t.GasMaterials = [GasMaterial.from_dict(store, allow_duplicates=False) for store in datastore["GasMaterials"]]
         t.GlazingMaterials = [
-            GlazingMaterial.from_dict(store, allow_duplicates=False)
-            for store in datastore["GlazingMaterials"]
+            GlazingMaterial.from_dict(store, allow_duplicates=False) for store in datastore["GlazingMaterials"]
         ]
         t.OpaqueMaterials = [
-            OpaqueMaterial.from_dict(store, allow_duplicates=False)
-            for store in datastore["OpaqueMaterials"]
+            OpaqueMaterial.from_dict(store, allow_duplicates=False) for store in datastore["OpaqueMaterials"]
         ]
         t.OpaqueConstructions = [
             OpaqueConstruction.from_dict(
                 store,
-                materials={
-                    a.id: a
-                    for a in (t.GasMaterials + t.GlazingMaterials + t.OpaqueMaterials)
-                },
+                materials={a.id: a for a in (t.GasMaterials + t.GlazingMaterials + t.OpaqueMaterials)},
                 allow_duplicates=True,
             )
             for store in datastore["OpaqueConstructions"]
@@ -375,10 +361,7 @@ class UmiTemplateLibrary:
             )
             for store in datastore["StructureDefinitions"]
         ]
-        t.DaySchedules = [
-            DaySchedule.from_dict(store, allow_duplicates=True)
-            for store in datastore["DaySchedules"]
-        ]
+        t.DaySchedules = [DaySchedule.from_dict(store, allow_duplicates=True) for store in datastore["DaySchedules"]]
         t.WeekSchedules = [
             WeekSchedule.from_dict(
                 store,
@@ -440,9 +423,7 @@ class UmiTemplateLibrary:
                 store,
                 zone_conditionings={a.id: a for a in t.ZoneConditionings},
                 zone_construction_sets={a.id: a for a in t.ZoneConstructionSets},
-                domestic_hot_water_settings={
-                    a.id: a for a in t.DomesticHotWaterSettings
-                },
+                domestic_hot_water_settings={a.id: a for a in t.DomesticHotWaterSettings},
                 opaque_constructions={a.id: a for a in t.OpaqueConstructions},
                 zone_loads={a.id: a for a in t.ZoneLoads},
                 ventilation_settings={a.id: a for a in t.VentilationSettings},
@@ -644,9 +625,7 @@ class UmiTemplateLibrary:
 
         return data_dict
 
-    def unique_components(
-        self, *args: str, exceptions: List[str] = None, keep_orphaned=False
-    ):
+    def unique_components(self, *args: str, exceptions: List[str] = None, keep_orphaned=False):
         """Keep only unique components.
 
         Starts by clearing all objects in self except self.BuildingTemplates.
@@ -671,9 +650,7 @@ class UmiTemplateLibrary:
             for bldg in self.BuildingTemplates:
                 for obj in nx.dfs_preorder_nodes(G, bldg):
                     connected_to_building.add(obj)
-            orphans = [
-                obj for obj in self.object_list if obj not in connected_to_building
-            ]
+            orphans = [obj for obj in self.object_list if obj not in connected_to_building]
         self._clear_components_list(exceptions)  # First clear components
 
         # Inclusion is a set of object classes that will be unique.
@@ -695,9 +672,7 @@ class UmiTemplateLibrary:
                 for parent, key, obj in parent_key_child_traversal(component):
                     if obj.__class__.__name__ + "s" in inclusion:
                         if key:
-                            setattr(
-                                parent, key, obj.get_unique()
-                            )  # set unique object on key
+                            setattr(parent, key, obj.get_unique())  # set unique object on key
 
         self.update_components_list(exceptions=exceptions)  # Update the components list
         if keep_orphaned:
@@ -762,9 +737,7 @@ class UmiTemplateLibrary:
                     G.add_edge(parent, child)
 
         if include_orphans:
-            orphans = [
-                obj for obj in self.object_list if obj.id not in (n.id for n in G)
-            ]
+            orphans = [obj for obj in self.object_list if obj.id not in (n.id for n in G)]
             for orphan in orphans:
                 G.add_node(orphan)
                 for parent, child in parent_child_traversal(orphan):

@@ -57,14 +57,12 @@ class TransitionExe(EnergyPlusProgram):
         if not self.trans_exec[self.trans].exists():
             raise EnergyPlusProcessError(
                 cmd=self.trans_exec[self.trans],
-                stderr="The specified EnergyPlus version (v{}) does not have"
-                " the required transition program '{}' in the "
+                stderr=f"The specified EnergyPlus version (v{self.idf.as_version}) does not have"
+                f" the required transition program '{self.trans_exec[self.trans]}' in the "
                 "PreProcess folder. See the documentation "
                 "(archetypal.readthedocs.io/troubleshooting.html#missing"
                 "-transition-programs) "
-                "to solve this issue".format(
-                    self.idf.as_version, self.trans_exec[self.trans]
-                ),
+                "to solve this issue",
                 idf=self.idf,
             )
         return self.trans_exec[self.trans]
@@ -94,9 +92,7 @@ class TransitionExe(EnergyPlusProgram):
         if self._trans_exec is None:
             copytree(self.idf.idfversionupdater_dir, self.running_directory)
             self._trans_exec = {
-                EnergyPlusVersion(
-                    re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", exec).group(1)
-                ): exec
+                EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", exec).group(1)): exec
                 for exec in self.running_directory.files("Transition-V*")
             }
         return self._trans_exec
@@ -104,11 +100,7 @@ class TransitionExe(EnergyPlusProgram):
     @property
     def transitions(self) -> list:
         """Return a sorted list of necessary transitions."""
-        transitions = [
-            key
-            for key in self.trans_exec
-            if self.idf.as_version >= key > self.idf.file_version
-        ]
+        transitions = [key for key in self.trans_exec if self.idf.as_version >= key > self.idf.file_version]
         transitions.sort()
         return transitions
 
@@ -214,11 +206,7 @@ class TransitionThread(Thread):
                     # self.cancelled_callback(self.std_out, self.std_err)
                 else:
                     if self.p.returncode == 0:
-                        self.msg_callback(
-                            "Transition completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
-                        )
+                        self.msg_callback(f"Transition completed in {time.time() - start_time:,.2f} seconds")
                         last_successful_transition = trans.trans
                         self.success_callback()
                         for line in self.p.stderr:
@@ -230,24 +218,25 @@ class TransitionThread(Thread):
                         self.msg_callback("Transition failed")
                         self.failure_callback()
 
+    def stop(self):
+        if self.p.poll() is None:
+            self.msg_callback("Attempting to cancel simulation ...")
+            self.cancelled = True
+            self.p.kill()
+            self.cancelled_callback(self.std_out, self.std_err)
+
     @property
     def trans_exec(self) -> dict:
         """Return dict of {EnergyPlusVersion, executable} for each transitions."""
         return {
-            EnergyPlusVersion(
-                re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", exec).group(1)
-            ): exec
+            EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", exec).group(1)): exec
             for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
         }
 
     @property
     def transitions(self):
         """Return a sorted list of necessary transitions."""
-        transitions = [
-            key
-            for key in self.trans_exec
-            if self.idf.as_version >= key > self.idf.file_version
-        ]
+        transitions = [key for key in self.trans_exec if self.idf.as_version >= key > self.idf.file_version]
         transitions.sort()
         return transitions
 
@@ -284,9 +273,7 @@ class TransitionThread(Thread):
         """Read stderr and pass to logger."""
         for line in self.p.stderr:
             self.msg_callback(line.decode("utf-8"), level=lg.ERROR)
-        self.exception = CalledProcessError(
-            self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
-        )
+        self.exception = CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
 
     def cancelled_callback(self, stdin, stdout):
         """Call on cancelled."""
@@ -298,8 +285,7 @@ class TransitionThread(Thread):
         eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
         if not Path(eplus_home).exists():
             self.exception = EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
+                msg=f"No EnergyPlus Executable found for version " f"{EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)

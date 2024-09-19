@@ -5,9 +5,9 @@ import copy
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata, Idd, removecomment
 from eppy.idf_msequence import Idf_MSequence
-from geomeppy.patches import EpBunch
 
 from archetypal.utils import extend_class, log
+from geomeppy.patches import EpBunch
 
 
 @extend_class(EpBunch)
@@ -156,6 +156,6 @@ bunch2db = {
 
 def get_name_attribute(__o: EpBunch):
     try:
-        return getattr(__o, "Key_Name")
+        return __o.Key_Name
     except BadEPFieldError:  # Backwards compatibility
-        return getattr(__o, "Name")
+        return __o.Name

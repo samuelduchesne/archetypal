@@ -68,7 +68,7 @@ class BasementThread(Thread):
 
         # The BasementGHTin.idf file is copied from the self.include list
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
-        if "BasementGHTIn.idf" not in self.include:
+        if "BasementGHTIn.idf" not in [p.basename() for p in self.include]:
             self.cleanup_callback()
             return
 

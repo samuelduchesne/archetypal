@@ -354,20 +354,14 @@ class TestMeters:
 
 class TestThreads:
     @pytest.mark.xfail
-    def test_runslab(self, config, tmp_path):
+    def test_runslab(self, config):
         """Test the slab preprocessors. Makes a temp file so that permissions are ok."""
-        d = tmp_path / "sub"
-        d.mkdir()
-        p = d / "5ZoneAirCooledWithSlab.idf"
-        epw = (
-            EnergyPlusVersion.current().current_install_dir
-            / "WeatherData"
-            / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
+        idf = IDF.from_example_files(
+            "5ZoneAirCooledWithSlab.idf",
+            epw="USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw",
+            annual=False,
+            design_day=True,
         )
-        slab_idf = EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
-        with open(slab_idf) as f:
-            p.write_text(f.read())
-        idf = IDF(p, epw=epw, annual=False, design_day=True)
 
         assert idf.simulate()
 

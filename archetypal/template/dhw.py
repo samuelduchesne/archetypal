@@ -573,8 +573,8 @@ class DomesticHotWaterSetting(UmiBase):
                 Latent_Fraction_Schedule_Name="",
             )
         else:
-            infiltration_epbunch = None
             log("No 'WATERUSE:EQUIPMENT' created since DHW IsOn == False.")
+            dhw_epbunch = None
         return dhw_epbunch
 
 

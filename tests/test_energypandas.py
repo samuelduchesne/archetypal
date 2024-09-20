@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from energy_pandas import EnergyDataFrame, EnergySeries
 from numpy.testing import assert_almost_equal

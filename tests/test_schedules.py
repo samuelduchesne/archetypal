@@ -1,9 +1,9 @@
 import os
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
+from matplotlib import pyplot as plt
 
 from archetypal import IDF
 from archetypal.eplus_interface import EnergyPlusVersion
@@ -182,18 +182,14 @@ def test_ep_versus_schedule(schedule_parametrized):
 
     mask = expected.values.round(3) != orig.all_values.round(3)
 
-    # # region Plot
-    # fig, ax = plt.subplots(1, 1, figsize=(5, 4))
-    # orig.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
-    #           linestyle='dashed')
-    # new.plot(slice=slice_, ax=ax, legend=True, drawstyle='steps-post',
-    #          linestyle='dotted')
-    # expected.loc[slice_[0]:slice_[1]].plot(label='E+', legend=True, ax=ax,
-    #                                        drawstyle='steps-post',
-    #                                        linestyle='dashdot')
-    # ax.set_title(orig.Name.capitalize())
-    # plt.show()
-    # # endregion
+    fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+    orig.plot(slice=slice_, ax=ax, legend=True, drawstyle="steps-post", linestyle="dashed")
+    new.plot(slice=slice_, ax=ax, legend=True, drawstyle="steps-post", linestyle="dotted")
+    expected.loc[slice_[0] : slice_[1]].plot(
+        label="E+", legend=True, ax=ax, drawstyle="steps-post", linestyle="dashdot"
+    )
+    ax.set_title(orig.Name.capitalize())
+    plt.show()
 
     print(pd.DataFrame({"actual": orig.series[mask], "expected": expected[mask]}))
     np.testing.assert_array_almost_equal(orig.all_values, expected, verbose=True)

@@ -482,7 +482,6 @@ class ZoneGraph(networkx.Graph):
                     edgecolors=kwargs.get("linewidths", None),
                 )
                 paths_.extend(sc.get_paths())
-            scatter = matplotlib.collections.PathCollection(paths_)
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows, **kwargs)
             if with_labels:
                 networkx.draw_networkx_labels(

@@ -390,7 +390,6 @@ class BuildingTemplate(UmiBase):
         log("Initiating complexity reduction...")
         start_time = time.time()
 
-        zone: ZoneDefinition
         cores = list(
             chain.from_iterable([list(repeat(zone.duplicate(), zone.multiplier)) for zone in zones if zone.is_core])
         )

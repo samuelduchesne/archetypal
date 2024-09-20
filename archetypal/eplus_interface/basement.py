@@ -1,6 +1,5 @@
 """Slab module"""
 
-import logging
 import logging as lg
 import shutil
 import subprocess

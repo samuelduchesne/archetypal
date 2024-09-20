@@ -10,8 +10,7 @@ from threading import Thread
 
 from packaging.version import Version
 from path import Path
-from tqdm.auto import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm, tqdm_logging_redirect
+from tqdm.contrib.logging import tqdm_logging_redirect
 
 from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
 from archetypal.utils import log

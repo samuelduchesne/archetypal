@@ -5,7 +5,6 @@ from path import Path
 
 from archetypal import IDF, settings
 from archetypal.eplus_interface import (
-    EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
 )
 from archetypal.eplus_interface.version import EnergyPlusVersion
@@ -56,21 +55,6 @@ class TestIDF:
             epw=w,
             as_version="9-1-0",
         )
-
-    def test_copy_saveas(self, idf_model, tmp_path):
-        """Test making a copy of self and two ways of saving as (inplace or not)."""
-        idf_copy = idf_model.copy()  # make a copy of self
-
-        assert idf_copy is not idf_model
-
-        # assert saveas modifies self inplace.
-        id_before = id(idf_copy)
-        idf_copy.saveas(tmp_path / "in.idf", inplace=True)
-        id_after = id(idf_copy)
-        assert id_after == id_before
-
-        # assert saveas returns another object
-        assert idf_copy.saveas(tmp_path / "in.idf", inplace=False) is not idf_copy
 
     def test_copy_saveas(self, idf_model, tmp_path):
         """Test making a copy of self and two ways of saving as (inplace or not)."""

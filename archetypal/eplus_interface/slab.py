@@ -45,7 +45,6 @@ class SlabThread(Thread):
 
     def run(self):
         """Wrapper around the Slab command line interface."""
-        self.cancelled = False
 
         # Move files into place
         self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()

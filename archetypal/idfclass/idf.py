@@ -1389,6 +1389,8 @@ class IDF(GeomIDF):
             e = expandobjects_thread.exception
             if e is not None:
                 raise e
+            if expandobjects_thread.cancelled:
+                return self
 
         # Run the Basement preprocessor program if necessary
         tmp = (self.output_directory.makedirs_p() / "runBasement_run_" + str(uuid.uuid1())[0:8]).mkdir()
@@ -1406,6 +1408,8 @@ class IDF(GeomIDF):
             e = basement_thread.exception
             if e is not None:
                 raise e
+            if basement_thread.cancelled:
+                return self
 
         # Run the Slab preprocessor program if necessary
         tmp = (self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
@@ -1424,6 +1428,8 @@ class IDF(GeomIDF):
             e = slab_thread.exception
             if e is not None:
                 raise e
+            if slab_thread.cancelled:
+                return self
 
         # Run the energyplus program
         tmp = (self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()

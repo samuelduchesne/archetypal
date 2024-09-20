@@ -1,19 +1,19 @@
 """Slab module"""
 
+import logging
 import logging as lg
 import shutil
 import subprocess
 import time
+from io import StringIO
 from threading import Thread
 
 from packaging.version import Version
 from path import Path
-from tqdm.auto import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
-
-from archetypal.utils import log
+from tqdm.contrib.logging import tqdm_logging_redirect
 
 from ..eplus_interface.exceptions import EnergyPlusProcessError
+from ..utils import log
 
 
 class BasementThread(Thread):
@@ -27,8 +27,8 @@ class BasementThread(Thread):
 
     def __init__(self, idf, tmp):
         """Constructor."""
-        super(BasementThread, self).__init__()
-        self.p = None
+        super().__init__()
+        self.p: subprocess.Popen
         self.std_out = None
         self.std_err = None
         self.idf = idf
@@ -42,7 +42,7 @@ class BasementThread(Thread):
     def cmd(self):
         """Get the command."""
         cmd_path = Path(shutil.which("Basement", path=self.run_dir))
-        return [cmd_path]
+        return [str(cmd_path.name)]
 
     def run(self):
         """Wrapper around the Basement command line interface."""
@@ -53,16 +53,8 @@ class BasementThread(Thread):
         self.idd = self.idf.iddname.copy(self.run_dir).expand()
 
         # Get executable using shutil.which
-        basemenet_exe = shutil.which("Basement", path=self.eplus_home)
-        if basemenet_exe is None:
-            log(
-                f"The Basement program could not be found at '{self.eplus_home}'",
-                lg.WARNING,
-            )
-            return
-        else:
-            basemenet_exe = (self.eplus_home / Path(basemenet_exe)).expand()
-        self.basement_exe = Path(basemenet_exe).copy(self.run_dir)
+        basement_exe = shutil.which("Basement", path=self.eplus_home)
+        self.basement_exe = Path(basement_exe).copy(self.run_dir)
         self.basement_idd = (self.eplus_home / "BasementGHT.idd").copy(self.run_dir)
         self.outfile = self.idf.name
 
@@ -72,104 +64,73 @@ class BasementThread(Thread):
             self.cleanup_callback()
             return
 
-        self.msg_callback("===== (Run Basement Temperature Generation) ===== Start =====")
-        self.msg_callback("Running Basement.exe")
-        self.msg_callback(f"Input File  : {self.idfname}")
-        self.msg_callback(
-            f"Output Files: {self.outfile}_bsmt.csv " f"{self.outfile}_bsmt.audit {self.outfile}_bsmt.out"
+        # Run Basement Program
+        self.p = subprocess.Popen(
+            self.cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=False,  # can use shell
+            cwd=self.run_dir,
         )
-        self.msg_callback(f"Weather File: {self.epw}")
+        start_time = time.time()
+        self.msg_callback("Begin Basement Temperature Calculation processing . . .")
 
-        # Run Slab Program
-        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
-            with tqdm(
-                unit_scale=True,
-                miniters=1,
-                desc=f"RunBasement #{self.idf.position}-{self.idf.name}",
-                position=self.idf.position,
-            ) as progress:
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=True,  # can use shell
-                    cwd=self.run_dir,
-                )
-                start_time = time.time()
-                self.msg_callback("Begin Basement Temperature Calculation processing . . .")
+        # Read stdout line by line
+        loggers = [lg.getLogger("archetypal")]
+        with tqdm_logging_redirect(desc=f"{basement_exe} {self.idf.name}", loggers=loggers) as pbar:
+            for line in iter(self.p.stdout.readline, b""):
+                decoded_line = line.decode("utf-8").strip()
+                self.msg_callback(decoded_line)
+                pbar.update()
 
-                # Read stdout line by line
-                for line in iter(self.p.stdout.readline, b""):
-                    decoded_line = line.decode("utf-8").strip()
-                    self.msg_callback(decoded_line)
-                    progress.update()
+        # Process stderr after stdout is fully read
+        stderr = self.p.stderr.read()
+        stderr_lines = stderr.decode("utf-8").splitlines()
 
-                # Process stderr after stdout is fully read
-                stderr = self.p.stderr.read()
-                stderr_lines = stderr.decode("utf-8").splitlines()
+        # We explicitly close stdout
+        self.p.stdout.close()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+        # Wait for process to complete
+        self.p.wait()
 
-                # Wait for process to complete
-                self.p.wait()
-
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("Basement cancelled")
-                else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(f"Basement completed in {time.time() - start_time:,.2f} seconds")
-                        self.success_callback()
-                        for line in stderr_lines:
-                            self.msg_callback(line)
-                    else:
-                        self.msg_callback("Basement failed")
-                        self.msg_callback("\n".join(stderr_lines), level=lg.ERROR)
-                        self.failure_callback()
+        # Communicate callbacks
+        if self.cancelled:
+            self.msg_callback("Basement cancelled")
+        else:
+            if self.p.returncode == 0:
+                self.msg_callback(f"Basement completed in {time.time() - start_time:,.2f} seconds")
+                self.success_callback()
+                for line in stderr_lines:
+                    self.msg_callback(line, level=lg.ERROR)
+            else:
+                self.msg_callback("Basement failed")
+                self.msg_callback("\n".join(stderr_lines), level=lg.ERROR)
+                self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         """Pass message to logger."""
-        log(*args, name=self.idf.name, **kwargs)
+        log(*args, **kwargs)
 
     def success_callback(self):
         """Parse surface temperature and append to IDF file."""
-        csv_ = self.run_dir / "MonthlyResults.csv"
-        if csv_.exists():
-            csv_ = csv_.rename(self.idf.output_directory / f"{self.outfile}_bsmt.csv")
-
-        input_ = self.run_dir / "RunINPUT.TXT"
-        if input_.exists():
-            input_ = input_.rename(self.idf.output_directory / f"{self.outfile}_bsmt.out")
-
-        debug_ = self.run_dir / "RunDEBUGOUT.txt"
-        if debug_.exists():
-            debug_ = debug_.rename(self.idf.output_directory / "basementout.audit")
-
-        err_ = self.run_dir / "eplusout.err"
-        if err_.exists():
-            with open(err_) as f:
-                with open(debug_, "a") as f1:
-                    for line in f:
-                        f1.write(line)
-
-        audit_ = self.run_dir / "audit.out"
-        if audit_.exists():
-            with open(audit_) as f:
-                with open(debug_, "a") as f1:
-                    for line in f:
-                        f1.write(line)
-
-        ep_objects = self.run_dir / "EPObjects.txt"
-        if ep_objects.exists():
-            with open(self.idf.idfname, "a") as outfile:
-                with open(ep_objects) as infile:
-                    next(infile)  # Skipping first line
-                    next(infile)  # Skipping second line
-                    for line in infile:
-                        outfile.write(line)
-            # invalidate attributes dependant on idfname, since it has changed
-            self.idf._reset_dependant_vars("idfname")
+        for ep_objects in self.run_dir.glob("EPObjects*"):
+            if ep_objects.exists():
+                basement_models = self.idf.__class__(
+                    StringIO(open(ep_objects).read()),
+                    file_version=self.idf.file_version,
+                    as_version=self.idf.as_version,
+                    prep_outputs=False,
+                )
+                # Loop on all objects and using self.newidfobject
+                added_objects = []
+                for sequence in basement_models.idfobjects.values():
+                    for obj in sequence:
+                        data = obj.to_dict()
+                        key = data.pop("key")
+                        added_objects.append(self.idf.newidfobject(key=key.upper(), **data))
+                del basement_models  # remove loaded_string model
+            else:
+                self.msg_callback("No EPObjects file found", level=lg.WARNING)
         self.cleanup_callback()
 
     def cleanup_callback(self):
@@ -182,7 +143,7 @@ class BasementThread(Thread):
                 self.idf.include.remove(ghtin)
                 ghtin.remove()
             except ValueError:
-                log("nothing to remove", lg.DEBUG)
+                self.msg_callback("nothing to remove", lg.DEBUG)
 
     def failure_callback(self):
         """Parse error file and log"""
@@ -207,8 +168,7 @@ class BasementThread(Thread):
         return install_dir.expand()
 
     def stop(self):
-        if self.p.poll() is None:
-            self.msg_callback("Attempting to cancel simulation ...")
-            self.cancelled = True
-            self.p.kill()
-            self.cancelled_callback(self.std_out, self.std_err)
+        self.msg_callback("Attempting to cancel Basement...")
+        self.p.terminate()
+        self.cancelled = True
+        self.cancelled_callback(self.std_out, self.std_err)

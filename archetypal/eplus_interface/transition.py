@@ -167,7 +167,7 @@ class TransitionThread(Thread):
         # set the initial version from which we are transitioning
         last_successful_transition = self.idf.file_version
 
-        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
             for trans in tqdm(
                 generator,
                 total=len(generator.transitions),

@@ -31,6 +31,17 @@ build: clean-build ## Build wheel file using poetry
 clean-build: ## clean build artifacts
 	@rm -rf dist
 
+.PHONY: publish
+publish: ## publish a release to pypi.
+	@echo "🚀 Publishing: Dry run."
+	@poetry config pypi-token.pypi $(PYPI_TOKEN)
+	@poetry publish --dry-run
+	@echo "🚀 Publishing."
+	@poetry publish
+
+.PHONY: build-and-publish
+build-and-publish: build publish ## Build and publish.
+
 .PHONY: docs-test
 docs-test: ## Test if documentation can be built without warnings or errors
 	@poetry run sphinx-build ./docs ./docs/_build $(O)

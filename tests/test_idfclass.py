@@ -1,10 +1,9 @@
-from subprocess import CalledProcessError
-
 import pytest
 from path import Path
 
 from archetypal import IDF, settings
 from archetypal.eplus_interface import (
+    EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
 )
 from archetypal.eplus_interface.version import EnergyPlusVersion
@@ -126,9 +125,8 @@ class TestIDF:
         natvent_v9_1_0.epw = "newepw.epw"
         assert natvent_v9_1_0.epw == Path("newepw.epw")
 
-    @pytest.mark.xfail(reason="Fails on Linux")
     def test_transition_error(self, config):
-        with pytest.raises(CalledProcessError):
+        with pytest.raises(EnergyPlusVersionError):
             file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7.2_5A_USA_IL_CHICAGO-OHARE.idf"
             wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
             IDF(file, epw=wf, as_version="8.9.0")

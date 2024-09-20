@@ -43,6 +43,17 @@ class TransitionExe(EnergyPlusProgram):
 
         self._trans_exec = None
 
+        # Check if the as_version is within the range of available transition programs
+        versions = self.trans_exec.keys()
+        lowest, highest = min(versions), max(versions)
+
+        if not (lowest <= self.idf.as_version <= highest):
+            msg = (
+                f"Cannot transition to a version outside the available range: "
+                f"{self.idf.as_version} not in [{lowest}, {highest}]"
+            )
+            raise EnergyPlusVersionError(msg)
+
     def __next__(self):
         """Return next transition."""
         self.trans = next(self.transitions_generator)
@@ -74,7 +85,7 @@ class TransitionExe(EnergyPlusProgram):
 
     @property
     def trans_exec(self) -> dict:
-        """Return dict of {EnergyPlusVersion: executable} for each transitions."""
+        """Return dict of {EnergyPlusVersion: executable} for each transition."""
 
         def copytree(src, dst, symlinks=False, ignore=None):
             for item in os.listdir(src):
@@ -100,9 +111,7 @@ class TransitionExe(EnergyPlusProgram):
     @property
     def transitions(self) -> list:
         """Return a sorted list of necessary transitions."""
-        transitions = [key for key in self.trans_exec if self.idf.as_version >= key > self.idf.file_version]
-        transitions.sort()
-        return transitions
+        return sorted(key for key in self.trans_exec if self.idf.as_version >= key > self.idf.file_version)
 
     @property
     def transitions_generator(self):

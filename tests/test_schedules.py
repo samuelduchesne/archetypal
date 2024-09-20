@@ -183,11 +183,10 @@ def test_ep_versus_schedule(schedule_parametrized):
     mask = expected.values.round(3) != orig.all_values.round(3)
 
     fig, ax = plt.subplots(1, 1, figsize=(5, 4))
-    orig.plot(slice=slice_, ax=ax, legend=True, drawstyle="steps-post", linestyle="dashed")
-    new.plot(slice=slice_, ax=ax, legend=True, drawstyle="steps-post", linestyle="dotted")
-    expected.loc[slice_[0] : slice_[1]].plot(
-        label="E+", legend=True, ax=ax, drawstyle="steps-post", linestyle="dashdot"
-    )
+    index_slice = pd.IndexSlice[slice_[0] : slice_[1]]
+    orig.series[index_slice].plot(ax=ax, legend=True, drawstyle="steps-post", linestyle="dashed")
+    new.series[index_slice].plot(ax=ax, legend=True, drawstyle="steps-post", linestyle="dotted")
+    expected.loc[index_slice].plot(label="E+", legend=True, ax=ax, drawstyle="steps-post", linestyle="dashdot")
     ax.set_title(orig.Name.capitalize())
     plt.show()
 

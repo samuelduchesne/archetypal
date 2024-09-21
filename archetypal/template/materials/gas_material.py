@@ -1,6 +1,7 @@
 """GasMaterial module."""
 
 import collections
+from typing import ClassVar
 
 import numpy as np
 from sigfig import round
@@ -15,7 +16,7 @@ class GasMaterial(MaterialBase):
     .. image:: ../images/template/materials-gas.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["GasMaterial"]] = []
 
     __slots__ = ("_type", "_conductivity", "_density")
 

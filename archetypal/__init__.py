@@ -6,7 +6,7 @@
 ################################################################################
 import logging as lg
 from pathlib import Path
-from typing import Any, List, Literal, Optional
+from typing import Any, ClassVar, List, Literal, Optional
 
 from energy_pandas.units import unit_registry
 
@@ -28,7 +28,7 @@ except ImportError:
 class ZoneWeight:
     """Zone weights for Umi Templates"""
 
-    weight_attr = {0: "area", 1: "volume"}
+    weight_attr: ClassVar[dict] = {0: "area", 1: "volume"}
 
     def __init__(self, n=0):
         self._weight_attr = self.weight_attr[n]
@@ -67,25 +67,27 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
     log_filename: str = Field("archetypal")
 
     # usual idfobjects
-    useful_idf_objects: List[str] = [
-        "WINDOWMATERIAL:GAS",
-        "WINDOWMATERIAL:GLAZING",
-        "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM",
-        "MATERIAL",
-        "MATERIAL:NOMASS",
-        "CONSTRUCTION",
-        "BUILDINGSURFACE:DETAILED",
-        "FENESTRATIONSURFACE:DETAILED",
-        "SCHEDULE:DAY:INTERVAL",
-        "SCHEDULE:WEEK:DAILY",
-        "SCHEDULE:YEAR",
-    ]
+    useful_idf_objects: List[str] = Field(
+        [
+            "WINDOWMATERIAL:GAS",
+            "WINDOWMATERIAL:GLAZING",
+            "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM",
+            "MATERIAL",
+            "MATERIAL:NOMASS",
+            "CONSTRUCTION",
+            "BUILDINGSURFACE:DETAILED",
+            "FENESTRATIONSURFACE:DETAILED",
+            "SCHEDULE:DAY:INTERVAL",
+            "SCHEDULE:WEEK:DAILY",
+            "SCHEDULE:YEAR",
+        ]
+    )
 
     # List of Available SQLite Tables
     # Ref: https://bigladdersoftware.com/epx/docs/8-3/output-details-and-examples
     # /eplusout.sql.html#schedules-table
 
-    available_sqlite_tables: dict = dict(
+    available_sqlite_tables: ClassVar[dict] = dict(
         ComponentSizes={"PrimaryKey": ["ComponentSizesIndex"], "ParseDates": []},
         ConstructionLayers={"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
         Constructions={"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
@@ -192,13 +194,13 @@ settings = Settings()
 settings.unit_registry = unit_registry
 
 # After settings are loaded, import other modules
-from .eplus_interface.version import EnergyPlusVersion  # noqa: E402
-from .idfclass import IDF  # noqa: E402
+from .eplus_interface.version import EnergyPlusVersion
+from .idfclass import IDF
 from .umi_template import (
-    BuildingTemplate,  # noqa: E402
-    UmiTemplateLibrary,  # noqa: E402
+    BuildingTemplate,
+    UmiTemplateLibrary,
 )
-from .utils import clear_cache, config, parallel_process  # noqa: E402
+from .utils import clear_cache, config, parallel_process
 
 try:
     __version__ = get_distribution("archetypal").version

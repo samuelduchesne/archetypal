@@ -2,6 +2,7 @@
 
 import collections
 import logging as lg
+from typing import ClassVar
 
 from validator_collection import validators
 
@@ -13,7 +14,7 @@ from archetypal.utils import log, reduce, timeit
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["ZoneConstructionSet"]] = []
 
     __slots__ = (
         "_facade",

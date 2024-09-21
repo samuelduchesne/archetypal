@@ -3,6 +3,7 @@
 import collections
 import logging as lg
 from enum import Enum
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -63,7 +64,7 @@ class VentilationSetting(UmiBase):
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["VentilationSetting"]] = []
 
     __slots__ = (
         "_infiltration",

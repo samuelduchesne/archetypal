@@ -4,6 +4,8 @@ Various functions for processing EnergyPlus models and retrieving results in
 different forms.
 """
 
+from __future__ import annotations
+
 import io
 import itertools
 import logging
@@ -22,6 +24,8 @@ from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
 from typing import IO, Iterable, Literal, Optional, Tuple, Union
+
+from typing_extensions import ClassVar
 
 ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
 
@@ -83,14 +87,14 @@ class IDF(GeomIDF):
     eppy.modeleditor.IDF class.
     """
 
-    IDD = {}
-    IDDINDEX = {}
-    BLOCK = {}
+    IDD: ClassVar[dict] = {}
+    IDDINDEX: ClassVar[dict] = {}
+    BLOCK: ClassVar[dict] = {}
 
     OUTPUTTYPES = ("standard", "nocomment1", "nocomment2", "compressed")
 
     # dependencies: dict of <dependant value: independent value>
-    _dependencies = {
+    _dependencies: ClassVar[dict] = {
         "idd_info": ["iddname", "idfname"],
         "idd_index": ["iddname", "idfname"],
         "idd_version": ["iddname", "idfname"],
@@ -145,8 +149,8 @@ class IDF(GeomIDF):
         "energyplus_its": ["annual", "design_day"],
         "tmp_dir": ["idfobjects"],
     }
-    _independant_vars = set(chain(*list(_dependencies.values())))
-    _dependant_vars = set(_dependencies.keys())
+    _independant_vars: ClassVar[set] = set(chain(*list(_dependencies.values())))
+    _dependant_vars: ClassVar[set] = set(_dependencies.keys())
 
     _initial_postition = itertools.count(start=1)
 
@@ -952,7 +956,7 @@ class IDF(GeomIDF):
         """Open .mtd file in browser.
 
         This file contains the “meter details” for the run. This shows what report
-        variables are on which meters and vice versa – which meters contain what
+        variables are on which meters and vice versa - which meters contain what
         report variables.
         """
         import webbrowser
@@ -2189,17 +2193,17 @@ class IDF(GeomIDF):
                         if idfobject[idfobject.objls[findex]].lower() == objname.lower():
                             idfobject[idfobject.objls[findex]] = newname
         theobject = self.getobject(objkey, objname)
-        fieldname = [item for item in theobject.objls if item.endswith("Name")][0]
+        fieldname = next(item for item in theobject.objls if item.endswith("Name"))
         theobject[fieldname] = newname
         return theobject
 
     def set_wwr(
         self,
-        wwr: float = None,
-        construction: Optional[str] = None,
+        wwr: float | None = None,
+        construction: str | None = None,
         force: bool = False,
-        wwr_map: Optional[dict] = None,
-        surfaces: Optional[Iterable] = None,
+        wwr_map: dict | None = None,
+        surfaces: Iterable | None = None,
     ):
         """Set Window-to-Wall Ratio of external walls.
 
@@ -2470,7 +2474,7 @@ class IDF(GeomIDF):
                 all_zone_origin_at_0 = False
         return ggr_asks_for_relative and not all_zone_origin_at_0
 
-    def rotate(self, angle: Optional[float] = None, anchor: Tuple[float, float, float] = None):
+    def rotate(self, angle: Optional[float] = None, anchor: Tuple[float, float, float] | None = None):
         """Rotate the IDF counterclockwise around `anchor` by the angle given (degrees).
 
         IF angle is None, rotates to Direction_of_Relative_North specified in Zone

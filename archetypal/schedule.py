@@ -674,7 +674,7 @@ class _ScheduleParser:
             elif keywords:
                 # get epBunch of the sizing period
                 statement = " ".join(keywords)
-                f_set = [s for s in field.split() if "for" in s.lower()][0]
+                f_set = next(s for s in field.split() if "for" in s.lower())
                 value = statement.strip()
                 hour = None
                 minute = None

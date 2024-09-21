@@ -1,10 +1,12 @@
 """UmiTemplateLibrary Module."""
 
+from __future__ import annotations
+
 import json
 import logging as lg
 from collections import OrderedDict
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import List
+from typing import ClassVar, List
 
 import networkx as nx
 from pandas.io.common import get_handle
@@ -47,7 +49,7 @@ class UmiTemplateLibrary:
     - See :meth:`from_idf_files` to create a library by converting existing IDF models.
     """
 
-    _LIB_GROUPS = [
+    _LIB_GROUPS: ClassVar[list[str]] = [
         "GasMaterials",
         "GlazingMaterials",
         "OpaqueMaterials",
@@ -625,7 +627,7 @@ class UmiTemplateLibrary:
 
         return data_dict
 
-    def unique_components(self, *args: str, exceptions: List[str] = None, keep_orphaned=False):
+    def unique_components(self, *args: str, exceptions: List[str] | None = None, keep_orphaned=False):
         """Keep only unique components.
 
         Starts by clearing all objects in self except self.BuildingTemplates.

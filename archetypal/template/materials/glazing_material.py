@@ -1,6 +1,7 @@
 """archetypal GlazingMaterial."""
 
 import collections
+from typing import ClassVar
 
 from sigfig import round
 from validator_collection import validators
@@ -18,7 +19,7 @@ class GlazingMaterial(MaterialBase):
 
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["GlazingMaterial"]] = []
 
     __slots__ = (
         "_ir_emissivity_back",

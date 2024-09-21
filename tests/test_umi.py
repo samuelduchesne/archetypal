@@ -1,6 +1,7 @@
 import collections
 import json
 import os
+from typing import ClassVar
 
 import pytest
 from path import Path
@@ -623,7 +624,7 @@ class TestUmiTemplate:
         assert no_duplicates(template.to_dict(), attribute="Name")
         assert no_duplicates(template.to_dict(), attribute="$id")
 
-    office = [
+    office: ClassVar[list[str]] = [
         data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         data_dir / "necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",

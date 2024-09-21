@@ -4,6 +4,7 @@ import collections
 import logging as lg
 from copy import copy
 from functools import reduce
+from typing import ClassVar
 
 from validator_collection import checkers, validators
 
@@ -36,7 +37,7 @@ class WindowSetting(UmiBase):
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["WindowSetting"]] = []
 
     __slots__ = (
         "_operable_area",

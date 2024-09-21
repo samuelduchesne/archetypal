@@ -2,6 +2,7 @@
 
 import collections
 from statistics import mean
+from typing import ClassVar
 
 import numpy as np
 from eppy import modeleditor
@@ -20,7 +21,7 @@ class DomesticHotWaterSetting(UmiBase):
     .. image:: ../images/template/zoneinfo-dhw.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["DomesticHotWaterSetting"]] = []
 
     __slots__ = (
         "_flow_rate_per_floor_area",

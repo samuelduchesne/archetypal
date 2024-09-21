@@ -111,9 +111,9 @@ def getoldiddfile(versionid):
 
     vlist = versionid.split(".")
     if len(vlist) == 1:
-        vlist = vlist + ["0", "0"]
+        vlist = [*vlist, "0", "0"]
     elif len(vlist) == 2:
-        vlist = vlist + ["0"]
+        vlist = [*vlist, "0"]
     ver_str = "-".join(vlist)
     eplus_exe, _ = eppy.runner.run_functions.install_paths(ver_str)
     eplusfolder = os.path.dirname(eplus_exe)

@@ -214,6 +214,17 @@ finally:
 
     warn_if_not_compatible()
 
-from .idfclass import IDF  # noqa: E402
-
-__all__ = ["settings", "Settings", "__version__", "utils", "dataportal", "IDF"]
+__all__ = [
+    "settings",
+    "Settings",
+    "__version__",
+    "utils",
+    "dataportal",
+    "IDF",
+    "EnergyPlusVersion",
+    "BuildingTemplate",
+    "UmiTemplateLibrary",
+    "clear_cache",
+    "config",
+    "parallel_process",
+]

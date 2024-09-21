@@ -14,7 +14,7 @@ from threading import Thread
 from eppy.runner.run_functions import paths_from_version
 from path import Path
 from tqdm.auto import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
+from tqdm.contrib.logging import tqdm_logging_redirect
 
 from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
 from archetypal.eplus_interface.exceptions import (
@@ -42,6 +42,17 @@ class TransitionExe(EnergyPlusProgram):
         self.running_directory = tmp_dir
 
         self._trans_exec = None
+
+    def validate(self):
+        # Check if the as_version is within the range of available transition programs
+        versions = self.trans_exec.keys()
+        lowest, highest = min(versions), max(versions)
+        if not (lowest <= self.idf.as_version <= highest):
+            msg = (
+                f"Cannot transition to a version outside the available range: "
+                f"{self.idf.as_version} not in [{lowest}, {highest}]"
+            )
+            raise EnergyPlusVersionError(msg)
 
     def __next__(self):
         """Return next transition."""
@@ -74,7 +85,7 @@ class TransitionExe(EnergyPlusProgram):
 
     @property
     def trans_exec(self) -> dict:
-        """Return dict of {EnergyPlusVersion: executable} for each transitions."""
+        """Return dict of {EnergyPlusVersion: executable} for each transition."""
 
         def copytree(src, dst, symlinks=False, ignore=None):
             for item in os.listdir(src):
@@ -100,9 +111,7 @@ class TransitionExe(EnergyPlusProgram):
     @property
     def transitions(self) -> list:
         """Return a sorted list of necessary transitions."""
-        transitions = [key for key in self.trans_exec if self.idf.as_version >= key > self.idf.file_version]
-        transitions.sort()
-        return transitions
+        return sorted(key for key in self.trans_exec if self.idf.as_version >= key > self.idf.file_version)
 
     @property
     def transitions_generator(self):
@@ -141,7 +150,7 @@ class TransitionThread(Thread):
         self.std_err = None
         self.idf = idf
         self.cancelled = False
-        self.run_dir = Path("")
+        self.run_dir = Path(tmp).expand()
         self.exception = None
         self.name = "Transition_" + self.idf.name
         self.tmp = tmp
@@ -150,73 +159,75 @@ class TransitionThread(Thread):
         self.cmd = None
 
     def run(self):
-        """Run.
-
-        Wrapper around the EnergyPlus command line interface.
-        """
-        self.cancelled = False
-        # get version from IDF object or by parsing the IDF file for it
+        """Wrapper around the TransitionProgram."""
 
         # Move files into place
-        tmp = self.tmp
-        self.idfname = Path(self.idf.savecopy(tmp / "in.idf")).expand()
-        self.idd = self.idf.iddname.copy(tmp).expand()
+        self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
+        self.idd = self.idf.iddname.copy(self.run_dir).expand()
 
-        generator = TransitionExe(self.idf, tmp_dir=tmp)
+        generator = TransitionExe(self.idf, tmp_dir=self.run_dir)
+        try:
+            generator.validate()
+        except EnergyPlusVersionError as e:
+            self.exception = e
+            return
 
         # set the initial version from which we are transitioning
         last_successful_transition = self.idf.file_version
 
-        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
-            for trans in tqdm(
-                generator,
-                total=len(generator.transitions),
-                unit_scale=True,
-                miniters=1,
-                position=self.idf.position,
-                desc=f"Transition #{self.idf.position}-{self.idf.name}",
-            ):
-                # Get executable using shutil.which (determines the extension
-                # based on the platform, eg: .exe. And copy the executable to tmp
-                self.run_dir = Path(tmp).expand()
+        for transition in tqdm(
+            generator,
+            total=len(generator.transitions),
+            unit_scale=True,
+            miniters=1,
+            position=self.idf.position,
+            desc=f"Transition v{self.idf.file_version} to v{self.idf.as_version} {self.idf.name}",
+        ):
+            # Get executable using shutil.which (determines the extension
+            # based on the platform, eg: .exe. And copy the executable to tmp
 
-                # Run Transition Program
-                self.cmd = trans.cmd()
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    shell=False,  # cannot use shell
-                    cwd=self.run_dir,
-                )
-                start_time = time.time()
-                self.msg_callback("Transition started")
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
+            # Run Transition Program
+            self.cmd = transition.cmd()
+            self.p = subprocess.Popen(
+                self.cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=False,  # cannot use shell
+                cwd=self.run_dir,
+            )
+            start_time = time.time()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+            # Read stdout line by line
+            loggers = [lg.getLogger("archetypal")]
+            with tqdm_logging_redirect(desc=f"To v{transition.trans}-{self.idf.name}", loggers=loggers) as pbar:
+                for line in iter(self.p.stdout.readline, b""):
+                    decoded_line = line.decode("utf-8").strip()
+                    self.msg_callback(decoded_line)
+                    pbar.update()
 
-                # Wait for process to complete
-                self.p.wait()
+            # We explicitly close stdout
+            self.p.stdout.close()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("Transition cancelled")
-                    # self.cancelled_callback(self.std_out, self.std_err)
+            # Wait for process to complete
+            self.p.wait()
+
+            # Communicate callbacks
+            if self.cancelled:
+                self.msg_callback("Transition cancelled")
+                # self.cancelled_callback(self.std_out, self.std_err)
+            else:
+                if self.p.returncode == 0:
+                    self.msg_callback(f"Transition completed in {time.time() - start_time:,.2f} seconds")
+                    last_successful_transition = transition.trans
+                    self.success_callback()
+                    for line in self.p.stderr:
+                        self.msg_callback(line.decode("utf-8"))
                 else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(f"Transition completed in {time.time() - start_time:,.2f} seconds")
-                        last_successful_transition = trans.trans
-                        self.success_callback()
-                        for line in self.p.stderr:
-                            self.msg_callback(line.decode("utf-8"))
-                    else:
-                        # set the version of the IDF the latest it was able to transition
-                        # to.
-                        self.idf.as_version = last_successful_transition
-                        self.msg_callback("Transition failed")
-                        self.failure_callback()
+                    # set the version of the IDF the latest it was able to
+                    # transition to.
+                    self.idf.as_version = last_successful_transition
+                    self.msg_callback("Transition failed")
+                    self.failure_callback()
 
     def stop(self):
         if self.p.poll() is None:

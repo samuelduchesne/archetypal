@@ -85,7 +85,7 @@ archetypal = "archetypal.cli:cli"
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py310"
 line-length = 120
 fix = true
 select = [
@@ -111,7 +111,7 @@ select = [
     #"E",
     "W",
     # pyflakes
-    # "F",
+     "F",
     # pygrep-hooks
     "PGH",
     # pyupgrade
@@ -129,7 +129,7 @@ ignore = [
     # Too Complex
     "C901"
 ]
-exclude = ["tests/input_data/*", "docker/trnsidf/*"]
+exclude = ["tests/input_data/*", "docker/trnsidf/*", "geomeppy"]
 
 [tool.ruff.format]
 preview = true

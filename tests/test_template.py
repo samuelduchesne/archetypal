@@ -1,6 +1,5 @@
 import itertools
 from copy import copy
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -366,6 +365,7 @@ class TestWeekSchedule:
             Type="Fraction",
             Name="OnOff_1",
         )
+        assert a.Name == "OnOff_1"
 
     @pytest.fixture(scope="class")
     def schedules_idf(self):
@@ -1713,6 +1713,7 @@ class TestZoneConstructionSet:
         zone = warehouse.getobject("ZONE", "Office")
         z = ZoneDefinition.from_epbunch(ep_bunch=zone, construct_parents=False)
         constrSet_ = ZoneConstructionSet.from_zone(z)
+        assert constrSet_.Name == "Office_ZoneConstructionSet"
 
     def test_zoneConstructionSet_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""
@@ -1935,15 +1936,19 @@ class TestZoneConditioning:
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
             zone_ep = idf.getobject("ZONE", "Core_mid")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep)
-            cond_ = ZoneConditioning.from_zone(z, zone_ep)
+            zone_condition = ZoneConditioning.from_zone(z, zone_ep)
+            assert zone_condition.EconomizerType == EconomizerTypes.DifferentialDryBulb
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone_ep = idf.getobject("ZONE", "West Zone")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep)
-            cond_HX = ZoneConditioning.from_zone(z, zone_ep)
+            zone_condition = ZoneConditioning.from_zone(z, zone_ep)
+            assert zone_condition.EconomizerType == EconomizerTypes.NoEconomizer
+
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf":
             zone_ep = idf.getobject("ZONE", "East Zone")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep)
-            cond_HX_eco = ZoneConditioning.from_zone(z, zone_ep)
+            zone_condition = ZoneConditioning.from_zone(z, zone_ep)
+            assert zone_condition.EconomizerType == EconomizerTypes.NoEconomizer
 
     def test_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""
@@ -2041,7 +2046,7 @@ class TestVentilationSetting:
 
     @pytest.fixture(
         scope="class",
-        params=["VentilationSimpleTest.idf"],
+        params=["VentilationSimpleTest.idf", "RefBldgWarehouseNew2004_Chicago.idf"],
     )
     def ventilatontests(self, config, request):
         """Create test cases with different ventilation definitions."""
@@ -2083,15 +2088,20 @@ class TestVentilationSetting:
         if idf_name == "VentilationSimpleTest.idf":
             zone_ep = idf.getobject("ZONE", "ZONE 1")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
-            natVent = VentilationSetting.from_zone(z, zone_ep)
+            ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
+            assert ventilation_setting.IsNatVentOn == False
         if idf_name == "VentilationSimpleTest.idf":
             zone_ep = idf.getobject("ZONE", "ZONE 2")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
-            schedVent = VentilationSetting.from_zone(z, zone_ep)
+            ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
+            assert ventilation_setting.IsNatVentOn == True
+            assert ventilation_setting.IsScheduledVentilationOn == True
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone_ep = idf.getobject("ZONE", "Office")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
-            infiltVent = VentilationSetting.from_zone(z, zone_ep)
+            ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
+            assert ventilation_setting.IsNatVentOn == False
+            assert ventilation_setting.IsScheduledVentilationOn == False
 
     def test_ventilationSetting_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""

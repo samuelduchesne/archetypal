@@ -81,7 +81,6 @@ class ReportData(DataFrame):
         # create database connection with sqlite3
         with sqlite3.connect(sqlite_file) as conn:
             # empty dict to hold all DataFrames
-            all_tables = {}
             # Iterate over all tables in the report_tables list
             sql_query = """
             SELECT rd.ReportDataIndex,

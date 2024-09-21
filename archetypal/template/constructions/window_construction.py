@@ -672,7 +672,7 @@ class WindowConstruction(LayeredConstruction):
         abs_1 = 0.0260  # [-]
         abs_2 = 0.0737  # [-]
         L_12 = self.Layers[0].Thickness  # [m]
-        L_23 = self.Layers[1].Thickness  # [m]  # included in Layers[1] used below
+        # L_23 = self.Layers[1].Thickness  # [m]  # included in Layers[1] used below
         L_34 = self.Layers[2].Thickness  # [m]
         # "Solar absorption distribution"
         Q_dot_abs_1 = abs_1 / self.glazing_count * G_t

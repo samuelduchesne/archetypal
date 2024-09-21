@@ -68,7 +68,7 @@ def get_coords(obj: EpBunch):
 
 
 @extend_class(Idf_MSequence)
-def to_dict(self: Idf_MSequence):
+def to_dict(self: Idf_MSequence):  # noqa: F811
     """Get the list of dict representation of the Idf_Msequence."""
     return [obj.to_dict() for obj in self]
 

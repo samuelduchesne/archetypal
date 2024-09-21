@@ -378,7 +378,8 @@ class IDF(GeomIDF):
         from pathlib import Path as Pathlib
 
         example_name = Path(example_name)
-        example_files_dir: Path = EnergyPlusVersion.current().current_install_dir / "ExampleFiles"
+        eplus_version = EnergyPlusVersion(kwargs.get("as_version", EnergyPlusVersion.current()))
+        example_files_dir: Path = eplus_version.current_install_dir / "ExampleFiles"
         try:
             file = next(iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf")))
         except StopIteration:
@@ -388,7 +389,7 @@ class IDF(GeomIDF):
             epw = Path(epw)
 
             if not epw.exists():
-                dir_weather_data_ = EnergyPlusVersion.current().current_install_dir / "WeatherData"
+                dir_weather_data_ = eplus_version.current_install_dir / "WeatherData"
                 try:
                     epw = next(iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw")))
                 except StopIteration:
@@ -1389,6 +1390,8 @@ class IDF(GeomIDF):
             e = expandobjects_thread.exception
             if e is not None:
                 raise e
+            if expandobjects_thread.cancelled:
+                return self
 
         # Run the Basement preprocessor program if necessary
         tmp = (self.output_directory.makedirs_p() / "runBasement_run_" + str(uuid.uuid1())[0:8]).mkdir()
@@ -1406,6 +1409,8 @@ class IDF(GeomIDF):
             e = basement_thread.exception
             if e is not None:
                 raise e
+            if basement_thread.cancelled:
+                return self
 
         # Run the Slab preprocessor program if necessary
         tmp = (self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
@@ -1424,6 +1429,8 @@ class IDF(GeomIDF):
             e = slab_thread.exception
             if e is not None:
                 raise e
+            if slab_thread.cancelled:
+                return self
 
         # Run the energyplus program
         tmp = (self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()
@@ -1607,7 +1614,7 @@ class IDF(GeomIDF):
         del loaded_string  # remove loaded_string model
         return added_objects
 
-    def upgrade(self, to_version=None, overwrite=True):
+    def upgrade(self, to_version=None, overwrite=False):
         """`EnergyPlus` idf version updater using local transition program.
 
         Update the EnergyPlus simulation file (.idf) to the latest available
@@ -1649,14 +1656,21 @@ class IDF(GeomIDF):
             # execute transitions
             tmp = (self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]).makedirs_p()
             transition_thread = TransitionThread(self, tmp, overwrite=overwrite)
-            transition_thread.start()
-            transition_thread.join()
-            while transition_thread.is_alive():
-                time.sleep(1)
-            tmp.rmtree(ignore_errors=True)
-            e = transition_thread.exception
-            if e is not None:
-                raise e
+            try:
+                transition_thread.start()
+                transition_thread.join()
+                # Give time to the subprocess to finish completely
+                while transition_thread.is_alive():
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                transition_thread.stop()
+            except EnergyPlusVersionError as e:
+                transition_thread.exception = e
+            finally:
+                tmp.rmtree(ignore_errors=True)
+                e = transition_thread.exception
+                if e is not None:
+                    raise e
 
     def wwr(self, azimuth_threshold=10, round_to=10):
         """Return the Window-to-Wall Ratio by major orientation.

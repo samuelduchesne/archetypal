@@ -140,8 +140,8 @@ class EnergyPlusThread(Thread):
             idf (IDF): The idf model.
             tmp (str or Path): The directory in which the process will be launched.
         """
-        super(EnergyPlusThread, self).__init__()
-        self.p = None
+        super().__init__()
+        self.p: subprocess.Popen
         self.std_out = None
         self.std_err = None
         self.idf = idf
@@ -196,7 +196,7 @@ class EnergyPlusThread(Thread):
             self.exception = e
             self.p.kill()  # kill process to be sure
             return
-        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
             # Start process with tqdm bar
             with tqdm(
                 unit_scale=False,

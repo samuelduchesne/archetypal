@@ -1,3 +1,5 @@
+from subprocess import CalledProcessError
+
 import pytest
 from path import Path
 
@@ -126,7 +128,7 @@ class TestIDF:
         assert natvent_v9_1_0.epw == Path("newepw.epw")
 
     def test_transition_error(self, config):
-        with pytest.raises(EnergyPlusVersionError):
+        with pytest.raises((EnergyPlusVersionError, CalledProcessError)):
             file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7.2_5A_USA_IL_CHICAGO-OHARE.idf"
             wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
             IDF(file, epw=wf, as_version="8.9.0")

@@ -3,6 +3,7 @@
 import itertools
 import math
 from collections.abc import Hashable, MutableSet
+from typing import ClassVar
 
 import numpy as np
 from validator_collection import validators
@@ -19,7 +20,7 @@ def _resolve_combined_names(predecessors):
     """
 
     # all_names = [obj.Name for obj in predecessors]
-    class_ = list(set([obj.__class__.__name__ for obj in predecessors]))[0]
+    class_ = next(iter(set(obj.__class__.__name__ for obj in predecessors)))
 
     return "Combined_%s_%s" % (
         class_,
@@ -472,7 +473,7 @@ class MetaData(UserSet):
 class UniqueName(str):
     """Attribute unique user-defined names for :class:`UmiBase`."""
 
-    existing = {}
+    existing: ClassVar[set[str]] = {}
 
     def __new__(cls, content):
         """Pick a name. Will increment the name if already used."""

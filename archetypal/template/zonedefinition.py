@@ -3,6 +3,7 @@
 import collections
 import sqlite3
 import time
+from typing import ClassVar
 
 from eppy.bunch_subclass import BadEPFieldError
 from sigfig import round
@@ -26,7 +27,7 @@ class ZoneDefinition(UmiBase):
     .. image:: ../images/template/zoneinfo-zone.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["ZoneDefinition"]] = []
 
     __slots__ = (
         "_internal_mass_exposed_per_floor_area",

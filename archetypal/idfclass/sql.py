@@ -1,5 +1,7 @@
 """Module for parsing EnergyPlus SQLite result files into DataFrames."""
 
+from __future__ import annotations
+
 import logging
 from datetime import timedelta
 from sqlite3 import connect
@@ -38,7 +40,7 @@ class SqlOutput:
         self.output_name = output_name
         self.reporting_frequency = reporting_frequency
 
-    def values(self, environment_type: int = 3, units: str = None) -> EnergyDataFrame:
+    def values(self, environment_type: int = 3, units: str | None = None) -> EnergyDataFrame:
         """Get the time series values as an EnergyDataFrame.
 
         Args:

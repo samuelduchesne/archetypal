@@ -4,7 +4,7 @@ import calendar
 import collections
 import hashlib
 from datetime import datetime
-from typing import List
+from typing import ClassVar, List
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ from archetypal.utils import log
 class UmiSchedule(Schedule, UmiBase):
     """Class that handles Schedules."""
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["UmiSchedule"]] = []
 
     __slots__ = ("_quantity",)
 

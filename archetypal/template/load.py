@@ -5,6 +5,7 @@ import logging as lg
 import math
 import sqlite3
 from enum import Enum
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -43,7 +44,7 @@ class ZoneLoad(UmiBase):
     .. image:: ../images/template/zoneinfo-loads.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["ZoneLoad"]] = []
 
     __slots__ = (
         "_dimming_type",

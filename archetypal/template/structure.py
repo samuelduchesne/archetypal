@@ -1,6 +1,7 @@
 """archetypal StructureInformation."""
 
 import collections
+from typing import ClassVar
 
 from validator_collection import validators
 
@@ -137,7 +138,7 @@ class StructureInformation(ConstructionBase):
     .. image:: ../images/template/constructions-structure.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["StructureInformation"]] = []
 
     __slots__ = ("_mass_ratios",)
 

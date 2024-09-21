@@ -9,6 +9,7 @@ import collections
 import logging as lg
 import time
 from itertools import chain, repeat
+from typing import ClassVar
 
 import networkx
 from path import Path
@@ -32,7 +33,7 @@ class BuildingTemplate(UmiBase):
     .. image:: ../images/template/buildingtemplate.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["BuildingTemplate"]] = []
 
     __slots__ = (
         "_partition_ratio",

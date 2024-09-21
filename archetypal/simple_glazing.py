@@ -76,7 +76,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
 
     # Step 4. Determine Layer Solar Transmittance
 
-    # The layer’s solar transmittance at normal incidence, `T_sol`,
+    # The layer's solar transmittance at normal incidence, `T_sol`,
     # is calculated using correlations that are a function of SHGC and U-Factor.
 
     T_sol = t_sol(shgc, u_factor)

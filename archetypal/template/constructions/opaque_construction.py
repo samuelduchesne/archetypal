@@ -2,6 +2,7 @@
 
 import collections
 import uuid
+from typing import ClassVar
 
 import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
@@ -31,7 +32,7 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["OpaqueConstruction"]] = []
 
     __slots__ = ("area",)
 
@@ -101,7 +102,7 @@ class OpaqueConstruction(LayeredConstruction):
             the n parallel layers of the composite wall." [ref]_
 
         .. [ref] Tsilingiris, P. T. (2004). On the thermal time constant of
-            structural walls. Applied Thermal Engineering, 24(5–6), 743–757.
+            structural walls. Applied Thermal Engineering, 24(5-6), 743-757.
             https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         return (1 / self.total_thickness) * sum(
@@ -224,7 +225,7 @@ class OpaqueConstruction(LayeredConstruction):
             other:
             weights:
         """
-        oc = [x for _, x in sorted(zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True)][0]
+        oc = next(x for _, x in sorted(zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True))
         return oc
 
     def _constant_ufactor(self, other, weights=None):

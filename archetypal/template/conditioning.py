@@ -5,6 +5,7 @@ import logging as lg
 import math
 import sqlite3
 from enum import Enum
+from typing import ClassVar
 
 import numpy as np
 from sigfig import round
@@ -89,7 +90,7 @@ class ZoneConditioning(UmiBase):
     .. image:: ../images/template/zoninfo-conditioning.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["ZoneConditioning"]] = []
 
     __slots__ = (
         "_cooling_setpoint",

@@ -4,7 +4,7 @@ import calendar
 import collections
 import hashlib
 from datetime import datetime
-from typing import ClassVar, List
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -30,7 +30,7 @@ class UmiSchedule(Schedule, UmiBase):
             quantity:
             **kwargs:
         """
-        super(UmiSchedule, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.quantity = quantity
 
         # Only at the end append self to _CREATED_OBJECTS
@@ -57,7 +57,7 @@ class UmiSchedule(Schedule, UmiBase):
             **kwargs:
         """
         value = validators.float(value)
-        return super(UmiSchedule, cls).constant_schedule(value=value, Name=Name, Type=Type, **kwargs)
+        return super().constant_schedule(value=value, Name=Name, Type=Type, **kwargs)
 
     @classmethod
     def random(cls, Name="AlwaysOn", Type="Fraction", **kwargs):
@@ -83,7 +83,7 @@ class UmiSchedule(Schedule, UmiBase):
             Type:
             **kwargs:
         """
-        return super(UmiSchedule, cls).from_values(Name=Name, Values=Values, Type=Type, **kwargs)
+        return super().from_values(Name=Name, Values=Values, Type=Type, **kwargs)
 
     def combine(self, other, weights=None, quantity=None):
         """Combine two UmiSchedule objects together.
@@ -114,10 +114,7 @@ class UmiSchedule(Schedule, UmiBase):
             return other
 
         if not isinstance(other, UmiSchedule):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # check if the schedule is the same
@@ -138,7 +135,7 @@ class UmiSchedule(Schedule, UmiBase):
         elif isinstance(weights, str):
             # get the attribute from self and other
             weights = [getattr(self, weights), getattr(other, weights)]
-        elif isinstance(weights, (list, tuple)):
+        elif isinstance(weights, list | tuple):
             # check if length is 2.
             length = len(weights)
             if length != 2:
@@ -171,7 +168,7 @@ class UmiSchedule(Schedule, UmiBase):
                     quantity(other.predecessors.data),
                 ],
             )
-        elif isinstance(quantity, (list, tuple)):
+        elif isinstance(quantity, list | tuple):
             # Multiplying the schedule values by the quantity for both self and other
             # and then using a weighted average. Finally, new values are normalized.
             self_quantity, other_quantity = quantity
@@ -469,8 +466,7 @@ class YearSchedulePart:
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for k, v in self.mapping().items():
-            yield k, v
+        yield from self.mapping().items()
 
     def __hash__(self):
         """Return the hash value of self."""
@@ -491,7 +487,7 @@ class DaySchedule(UmiSchedule):
             Category (str): category identification (default: "Day").
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
         """
-        super(DaySchedule, self).__init__(Category=Category, Name=Name, Values=Values, **kwargs)
+        super().__init__(Category=Category, Name=Name, Values=Values, **kwargs)
 
     @property
     def all_values(self) -> np.ndarray:
@@ -634,7 +630,7 @@ class DaySchedule(UmiSchedule):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return super(DaySchedule, self).__hash__()
+        return super().__hash__()
 
     def __copy__(self):
         """Create a copy of self."""
@@ -701,7 +697,7 @@ class WeekSchedule(UmiSchedule):
             Days (list of DaySchedule): list of :class:`DaySchedule`.
             **kwargs:
         """
-        super(WeekSchedule, self).__init__(Name, Category=Category, **kwargs)
+        super().__init__(Name, Category=Category, **kwargs)
         self.Days = Days
 
     @property
@@ -846,7 +842,7 @@ class WeekSchedule(UmiSchedule):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return super(WeekSchedule, self).__hash__()
+        return super().__hash__()
 
     def __copy__(self):
         """Create a copy of self."""
@@ -900,7 +896,7 @@ class YearSchedule(UmiSchedule):
             self.Parts = self._get_parts(self.epbunch)
         else:
             self.Parts = Parts
-        super(YearSchedule, self).__init__(Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs)
+        super().__init__(Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -911,7 +907,7 @@ class YearSchedule(UmiSchedule):
 
     def __hash__(self):
         """Return the hash value of self."""
-        return super(YearSchedule, self).__hash__()
+        return super().__hash__()
 
     @property
     def all_values(self) -> np.ndarray:
@@ -940,7 +936,7 @@ class YearSchedule(UmiSchedule):
                 keys.
             **kwargs: keywords passed to the constructor.
         """
-        Parts: List[YearSchedulePart] = [
+        Parts: list[YearSchedulePart] = [
             YearSchedulePart.from_dict(data, week_schedules) for data in data.pop("Parts", None)
         ]
         _id = data.pop("$id")

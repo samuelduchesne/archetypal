@@ -7,7 +7,6 @@ Notes:
 """
 
 import math
-from typing import List, Union
 
 from validator_collection import validators
 
@@ -52,7 +51,7 @@ class ConstructionBase(UmiBase):
             DisassemblyEnergy (float): disassembly energy [MJ/m2].
             **kwargs: keywords passed to UmiBase.
         """
-        super(ConstructionBase, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.AssemblyCarbon = AssemblyCarbon
         self.AssemblyCost = AssemblyCost
         self.AssemblyEnergy = AssemblyEnergy
@@ -153,18 +152,18 @@ class LayeredConstruction(ConstructionBase):
             **kwargs: Keywords passed to the :class:`ConstructionBase`
                 constructor.
         """
-        super(LayeredConstruction, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.Layers = Layers
 
     @property
-    def Layers(self) -> List[Union[MaterialLayer, GasLayer]]:
+    def Layers(self) -> list[MaterialLayer | GasLayer]:
         """Get or set the material layers."""
         return self._layers
 
     @Layers.setter
     def Layers(self, value):
         value = validators.iterable(value, minimum_length=1, maximum_length=10)
-        assert all(isinstance(a, (MaterialLayer, GasLayer)) for a in value), (
+        assert all(isinstance(a, MaterialLayer | GasLayer) for a in value), (
             f"Input error for '{value}'. Layers must be a list of MaterialLayer " f"or GasLayer objects only."
         )
         assert isinstance(value[0], MaterialLayer), "The outside layer cannot be a GasLayer"

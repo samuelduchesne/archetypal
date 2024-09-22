@@ -349,7 +349,7 @@ def set_filepaths(idf):
     Returns:
         set of Path: The set of a list of paths
     """
-    if not isinstance(idf, (list, tuple)):
+    if not isinstance(idf, list | tuple):
         raise TypeError("A list must be passed")
     idf = tuple(Path(file_or_path).expand() for file_or_path in idf)  # make Paths
     file_paths = ()  # Placeholder for tuple of paths

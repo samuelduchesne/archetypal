@@ -5,7 +5,6 @@ import io
 import os
 from collections import OrderedDict
 from io import StringIO
-from typing import List, Union
 
 from packaging.version import Version
 
@@ -60,7 +59,7 @@ def hash_model(idfname, **kwargs):
 
     # Hashing the kwargs as well
     for k, v in kwargs.items():
-        if isinstance(v, (str, bool)):
+        if isinstance(v, str | bool):
             hasher.update(v.__str__().encode("utf-8"))
         elif isinstance(v, list):
             # include files are Paths
@@ -71,7 +70,7 @@ def hash_model(idfname, **kwargs):
     return hasher.hexdigest()
 
 
-def get_idf_version(file: Union[str, io.StringIO], doted=True, encoding=None):
+def get_idf_version(file: str | io.StringIO, doted=True, encoding=None):
     """Get idf version quickly by reading first few lines of idf file containing
     the 'VERSION' identifier
 
@@ -92,7 +91,7 @@ def get_idf_version(file: Union[str, io.StringIO], doted=True, encoding=None):
         with open(file, encoding=encoding) as f:
             txt = f.read()
 
-    versions: List = re.findall(r"(?s)(?<=Version,).*?(?=;)", txt, re.IGNORECASE)
+    versions: list = re.findall(r"(?s)(?<=Version,).*?(?=;)", txt, re.IGNORECASE)
     for v in versions:
         version = Version(v.strip())
         if doted:

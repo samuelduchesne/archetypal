@@ -116,8 +116,7 @@ class TransitionExe(EnergyPlusProgram):
     @property
     def transitions_generator(self):
         """Generate transitions."""
-        for transition in self.transitions:
-            yield transition
+        yield from self.transitions
 
     def __str__(self):
         """Return string representation."""
@@ -143,7 +142,7 @@ class TransitionThread(Thread):
 
     def __init__(self, idf, tmp, overwrite=False):
         """Initialize Thread."""
-        super(TransitionThread, self).__init__()
+        super().__init__()
         self.overwrite = overwrite
         self.p = None
         self.std_out = None

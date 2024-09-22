@@ -264,7 +264,7 @@ class ZoneConditioning(UmiBase):
             **kwargs: Other arguments passed to the base class
                 :class:`archetypal.template.UmiBase`
         """
-        super(ZoneConditioning, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.MechVentSchedule = MechVentSchedule
         self.HeatingSchedule = HeatingSchedule
         self.CoolingSchedule = CoolingSchedule
@@ -1264,10 +1264,7 @@ class ZoneConditioning(UmiBase):
             return other
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -1334,7 +1331,7 @@ class ZoneConditioning(UmiBase):
         if validate:
             self.validate()
 
-        base = super(ZoneConditioning, self).mapping(validate=validate)
+        base = super().mapping(validate=validate)
         data = dict(
             CoolingSchedule=self.CoolingSchedule,
             CoolingCoeffOfPerf=self.CoolingCoeffOfPerf,

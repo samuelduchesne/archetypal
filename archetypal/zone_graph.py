@@ -125,7 +125,7 @@ class ZoneGraph(networkx.Graph):
                     else:
                         pass
             if log_adj_report:
-                msg = "Printing Adjacency Report for zone %s\n" % zone.Name
+                msg = f"Printing Adjacency Report for zone {zone.Name}\n"
                 msg += tabulate.tabulate(adj_report, headers="keys")
                 log(msg)
 
@@ -148,7 +148,7 @@ class ZoneGraph(networkx.Graph):
             attr: keyword arguments, optional (default= no attributes)
                 Attributes to add to graph as key=value pairs.
         """
-        super(ZoneGraph, self).__init__(incoming_graph_data=incoming_graph_data, **attr)
+        super().__init__(incoming_graph_data=incoming_graph_data, **attr)
 
     def plot_graph3d(
         self,

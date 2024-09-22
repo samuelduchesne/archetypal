@@ -6,7 +6,7 @@
 ################################################################################
 import logging as lg
 from pathlib import Path
-from typing import Any, ClassVar, List, Literal, Optional
+from typing import Any, ClassVar, Literal
 
 from energy_pandas.units import unit_registry
 
@@ -67,7 +67,7 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
     log_filename: str = Field("archetypal")
 
     # usual idfobjects
-    useful_idf_objects: List[str] = Field(
+    useful_idf_objects: list[str] = Field(
         [
             "WINDOWMATERIAL:GAS",
             "WINDOWMATERIAL:GLAZING",
@@ -169,7 +169,7 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
         "for ENERGYPLUS_VERSION in os.environ",
     )
 
-    energyplus_location: Optional[DirectoryPath] = Field(
+    energyplus_location: DirectoryPath | None = Field(
         None,
         validation_alias="ENERGYPLUS_LOCATION",
         description="Root directory of the EnergyPlus install.",

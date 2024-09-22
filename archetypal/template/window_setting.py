@@ -112,7 +112,7 @@ class WindowSetting(UmiBase):
                 Default = 0.001 m3/m2.
             **kwargs: other keywords passed to the constructor.
         """
-        super(WindowSetting, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
 
         self.ShadingSystemAvailabilitySchedule = ShadingSystemAvailabilitySchedule
         self.Construction = Construction
@@ -344,7 +344,7 @@ class WindowSetting(UmiBase):
 
     def __repr__(self):
         """Return a representation of self."""
-        return super(WindowSetting, self).__repr__()
+        return super().__repr__()
 
     def __str__(self):
         """Return string representation."""
@@ -671,10 +671,7 @@ class WindowSetting(UmiBase):
             return other
 
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self

@@ -101,7 +101,7 @@ class BuildingTemplate(UmiBase):
             Version (str): Version number.
             **kwargs: other optional keywords passed to other constructors.
         """
-        super(BuildingTemplate, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core
@@ -475,10 +475,10 @@ class BuildingTemplate(UmiBase):
             ZoneDefinition: The reduced zone
         """
         if len(G) < 1:
-            log("No zones for building graph %s" % G.name)
+            log(f"No zones for building graph {G.name}")
             return None
         else:
-            log("starting reduce process for building %s" % self.Name)
+            log(f"starting reduce process for building {self.Name}")
             start_time = time.time()
 
             # start from the highest degree node
@@ -537,14 +537,14 @@ class BuildingTemplate(UmiBase):
 
         def recursive_replace(umibase):
             for key, obj in umibase.mapping(validate=False).items():
-                if isinstance(obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)):
+                if isinstance(obj, UmiBase | MaterialLayer | YearSchedulePart | MassRatio):
                     recursive_replace(obj)
                     setattr(umibase, key, obj.get_unique())
                 elif isinstance(obj, list):
                     [
                         recursive_replace(obj)
                         for obj in obj
-                        if isinstance(obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio))
+                        if isinstance(obj, UmiBase | MaterialLayer | YearSchedulePart | MassRatio)
                     ]
 
         recursive_replace(self)

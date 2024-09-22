@@ -72,7 +72,7 @@ def pytest_runtest_setup(item):
     supported_platforms = ALL.intersection(mark.name for mark in item.iter_markers())
     plat = sys.platform
     if supported_platforms and plat not in supported_platforms:
-        pytest.skip("cannot run on platform %s" % (plat))
+        pytest.skip(f"cannot run on platform {plat}")
 
 
 # dynamically define files to be ignored

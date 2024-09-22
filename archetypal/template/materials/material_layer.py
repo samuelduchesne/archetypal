@@ -42,7 +42,7 @@ class MaterialLayer:
     def Material(self, value):
         from archetypal.template.materials import GlazingMaterial, OpaqueMaterial
 
-        assert isinstance(value, (OpaqueMaterial, GlazingMaterial)), (
+        assert isinstance(value, OpaqueMaterial | GlazingMaterial), (
             f"Input value error for '{value}'. Value must be "
             f"of type (OpaqueMaterial, GlazingMaterial), not {type(value)}"
         )
@@ -155,8 +155,7 @@ class MaterialLayer:
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for k, v in self.mapping().items():
-            yield k, v
+        yield from self.mapping().items()
 
     def duplicate(self):
         """Get copy of self."""

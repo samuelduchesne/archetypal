@@ -80,7 +80,7 @@ class WindowConstruction(LayeredConstruction):
             Category (str): "Single", "Double" or "Triple".
             **kwargs: Other keywords passed to the constructor.
         """
-        super(WindowConstruction, self).__init__(
+        super().__init__(
             Name,
             Layers,
             Category=Category,
@@ -223,7 +223,7 @@ class WindowConstruction(LayeredConstruction):
         _id = data.pop("$id")
         layers = [
             MaterialLayer(materials[layer["Material"]["$ref"]], layer["Thickness"])
-            if isinstance(materials[layer["Material"]["$ref"]], (MaterialLayer, GlazingMaterial))
+            if isinstance(materials[layer["Material"]["$ref"]], MaterialLayer | GlazingMaterial)
             else GasLayer(materials[layer["Material"]["$ref"]], layer["Thickness"])
             for layer in data.pop("Layers")
         ]

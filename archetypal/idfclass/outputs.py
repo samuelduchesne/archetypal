@@ -1,4 +1,4 @@
-from typing import Iterable
+from collections.abc import Iterable
 
 from archetypal.idfclass.end_use_balance import EndUseBalance
 from archetypal.idfclass.extensions import get_name_attribute
@@ -181,7 +181,7 @@ class Outputs:
     @output_variables.setter
     def output_variables(self, value):
         if value is not None:
-            assert not isinstance(value, (str, bytes)), f"Expected list or tuple. Got {type(value)}."
+            assert not isinstance(value, str | bytes), f"Expected list or tuple. Got {type(value)}."
             values = []
             # for each element
             for output in value:
@@ -202,7 +202,7 @@ class Outputs:
     @output_meters.setter
     def output_meters(self, value):
         if value is not None:
-            assert not isinstance(value, (str, bytes)), f"Expected list or tuple. Got {type(value)}."
+            assert not isinstance(value, str | bytes), f"Expected list or tuple. Got {type(value)}."
             values = []
             for output in value:
                 if isinstance(output, tuple):

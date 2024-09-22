@@ -115,7 +115,7 @@ select = [
     # pygrep-hooks
     "PGH",
     # pyupgrade
-    # "UP",
+    "UP",
     # ruff
     "RUF",
     # tryceratops

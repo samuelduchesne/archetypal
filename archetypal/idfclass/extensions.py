@@ -112,7 +112,7 @@ def makedict(self: Eplusdata, dictfile, fnamefobject):
             # scream
             if node == "":
                 continue
-            log("this node -%s-is not present in base dictionary" % node)
+            log(f"this node -{node}-is not present in base dictionary")
 
     self.dt, self.dtls = dt, dtls
     return dt, dtls

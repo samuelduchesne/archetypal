@@ -180,7 +180,7 @@ class VentilationSetting(UmiBase):
                 ventilation types which employ only a single fan.
             **kwargs: keywords passed to the constructor.
         """
-        super(VentilationSetting, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
 
         self.Infiltration = Infiltration
         self.IsInfiltrationOn = IsInfiltrationOn
@@ -599,10 +599,7 @@ class VentilationSetting(UmiBase):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         meta = self._get_predecessors_meta(other)

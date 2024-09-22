@@ -20,12 +20,11 @@ import time
 import uuid
 import warnings
 from collections import defaultdict
+from collections.abc import Iterable
 from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
-from typing import IO, Iterable, Literal, Optional, Tuple, Union
-
-from typing_extensions import ClassVar
+from typing import IO, ClassVar, Literal
 
 ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
 
@@ -205,13 +204,13 @@ class IDF(GeomIDF):
         if key in self._independant_vars:
             self._reset_dependant_vars(key)
             key = f"_{key}"
-        super(IDF, self).__setattr__(key, value)
+        super().__setattr__(key, value)
 
     def __init__(
         self,
-        idfname: Optional[Union[str, IO, Path]] = None,
+        idfname: str | IO | Path | None = None,
         epw=None,
-        as_version: Union[str, EnergyPlusVersion] = None,
+        as_version: str | EnergyPlusVersion = None,
         annual=False,
         design_day=False,
         expandobjects=False,
@@ -230,7 +229,7 @@ class IDF(GeomIDF):
         output_directory=None,
         outputtype="standard",
         encoding=None,
-        iddname: Optional[Union[str, IO, Path]] = None,
+        iddname: str | IO | Path | None = None,
         reporting_frequency: ReportingFrequency = "Monthly",
         **kwargs,
     ):
@@ -617,7 +616,7 @@ class IDF(GeomIDF):
         self._output_suffix = value
 
     @property
-    def idfname(self) -> Union[Path, StringIO]:
+    def idfname(self) -> Path | StringIO:
         """Path: The path of the active (parsed) idf model."""
         if self._idfname is None:
             if self.as_version is None:
@@ -636,9 +635,9 @@ class IDF(GeomIDF):
     def idfname(self, value):
         if not value:
             self._idfname = None
-        elif not isinstance(value, (str, os.PathLike, StringIO, IOBase)):
+        elif not isinstance(value, str | os.PathLike | StringIO | IOBase):
             raise ValueError(f"IDF path must be Path-Like, not {type(value)}")
-        elif isinstance(value, (str, os.PathLike)):
+        elif isinstance(value, str | os.PathLike):
             self._idfname = Path(value).expand()
         else:
             self._idfname = value
@@ -755,7 +754,7 @@ class IDF(GeomIDF):
 
     @prep_outputs.setter
     def prep_outputs(self, value):
-        assert isinstance(value, (bool, list)), (
+        assert isinstance(value, bool | list), (
             f"Expected bool or list of dict for " f"SimulationOutput outputs. Got {type(value)}."
         )
         self._prep_outputs = value
@@ -834,7 +833,7 @@ class IDF(GeomIDF):
 
     # endregion
     @property
-    def sim_info(self) -> Optional[DataFrame]:
+    def sim_info(self) -> DataFrame | None:
         """DataFrame: Unique number generated for a simulation."""
         if self.sql_file is not None:
             with sqlite3.connect(self.sql_file) as conn:
@@ -845,7 +844,7 @@ class IDF(GeomIDF):
             return None
 
     @property
-    def sim_timestamp(self) -> Union[str, Series]:
+    def sim_timestamp(self) -> str | Series:
         """Return the simulation timestamp or "Never" if not ran yet."""
         if self.sim_info is None:
             return "Never"
@@ -1488,7 +1487,7 @@ class IDF(GeomIDF):
         Returns:
             Path: The new file path.
         """
-        super(IDF, self).save(filename, lineendings, encoding)
+        super().save(filename, lineendings, encoding)
         return Path(filename)
 
     def copy(self):
@@ -1515,7 +1514,7 @@ class IDF(GeomIDF):
         Returns:
             IDF: The IDF model
         """
-        super(IDF, self).save(filename=self.idfname, lineendings=lineendings, encoding=encoding)
+        super().save(filename=self.idfname, lineendings=lineendings, encoding=encoding)
         log(f"saved '{self.name}' at '{self.idfname}'")
         return self
 
@@ -1538,7 +1537,7 @@ class IDF(GeomIDF):
         Returns:
             IDF: A new IDF object based on the new location file.
         """
-        super(IDF, self).save(filename=filename, lineendings=lineendings, encoding=encoding)
+        super().save(filename=filename, lineendings=lineendings, encoding=encoding)
 
         import inspect
 
@@ -1667,7 +1666,7 @@ class IDF(GeomIDF):
         # First, set versions
         if to_version is None:
             to_version = EnergyPlusVersion.latest()
-        elif isinstance(to_version, (str, tuple)):
+        elif isinstance(to_version, str | tuple):
             to_version = EnergyPlusVersion(to_version)
 
         # second check if upgrade needed
@@ -1719,7 +1718,6 @@ class IDF(GeomIDF):
 
         def roundto(x, to=10.0):
             """Round up to closest `to` number."""
-            from builtins import round
 
             if to and not math.isnan(x):
                 return int(round(x / to)) * to
@@ -1897,7 +1895,7 @@ class IDF(GeomIDF):
         log(f"Retrieved {name} in {time.time() - start_time:,.2f} seconds")
         return series
 
-    def newidfobject(self, key, **kwargs) -> Optional[EpBunch]:
+    def newidfobject(self, key, **kwargs) -> EpBunch | None:
         """Define EpBunch object and add to model.
 
         The function will test if the object exists to prevent duplicates.
@@ -2040,7 +2038,7 @@ class IDF(GeomIDF):
         abunch = obj2bunch(self.model, self.idd_info, obj)
         if aname:
             warnings.warn(
-                "The aname parameter should no longer be used (%s)." % aname,
+                f"The aname parameter should no longer be used ({aname}).",
                 UserWarning,
             )
             namebunch(abunch, aname)
@@ -2247,7 +2245,7 @@ class IDF(GeomIDF):
         # reviewed as of 2021-11-10.
 
         try:
-            ggr: Optional[Idf_MSequence] = self.idfobjects["GLOBALGEOMETRYRULES"][0]
+            ggr: Idf_MSequence | None = self.idfobjects["GLOBALGEOMETRYRULES"][0]
         except IndexError:
             ggr = None
 
@@ -2275,12 +2273,12 @@ class IDF(GeomIDF):
                     continue
                 # remove all subsurfaces
                 for ss in wall_subsurfaces:
-                    self.rename(ss.key.upper(), ss.Name, "%s window" % wall.Name)
+                    self.rename(ss.key.upper(), ss.Name, f"{wall.Name} window")
                     self.removeidfobject(ss)
                 coords = window_vertices_given_wall(wall, wwr)
                 window = self.newidfobject(
                     "FENESTRATIONSURFACE:DETAILED",
-                    Name="%s window" % wall.Name,
+                    Name=f"{wall.Name} window",
                     Surface_Type="Window",
                     Construction_Name=construction or "",
                     Building_Surface_Name=wall.Name,
@@ -2492,7 +2490,7 @@ class IDF(GeomIDF):
                 all_zone_origin_at_0 = False
         return ggr_asks_for_relative and not all_zone_origin_at_0
 
-    def rotate(self, angle: Optional[float] = None, anchor: Tuple[float, float, float] | None = None):
+    def rotate(self, angle: float | None = None, anchor: tuple[float, float, float] | None = None):
         """Rotate the IDF counterclockwise around `anchor` by the angle given (degrees).
 
         IF angle is None, rotates to Direction_of_Relative_North specified in Zone
@@ -2512,7 +2510,7 @@ class IDF(GeomIDF):
 
             anchor = Vector3D(*anchor)
         # Rotate the building
-        super(IDF, self).rotate(angle, anchor=anchor)
+        super().rotate(angle, anchor=anchor)
         log(f"Geometries rotated by {angle} degrees around " f"{anchor or 'building centroid'}")
 
         # after building is rotate, change the north axis and zone direction to zero.
@@ -2522,14 +2520,14 @@ class IDF(GeomIDF):
         # Mark the model as rotated
         self.rotated = True
 
-    def translate(self, vector: Tuple[float, float, float]):
+    def translate(self, vector: tuple[float, float, float]):
         """Move the IDF in the direction given by a vector."""
         if isinstance(vector, tuple):
             from geomeppy.geom.vectors import Vector2D
 
             vector = Vector2D(*vector)
 
-        super(IDF, self).translate(vector=vector)
+        super().translate(vector=vector)
         self.translated = True
 
     @property
@@ -2612,13 +2610,13 @@ def _process_csv(file, working_dir, simulname):
         tables_out.makedirs_p()
         file.copy(tables_out / "%s_%s.csv" % (file.basename().stripext(), simulname))
         return
-    log("try to store file %s in DataFrame" % file)
+    log(f"try to store file {file} in DataFrame")
     try:
         df = pd.read_csv(file, sep=",", encoding="us-ascii")
     except ParserError:
         pass
     else:
-        log("file %s stored" % file)
+        log(f"file {file} stored")
         return df
 
 

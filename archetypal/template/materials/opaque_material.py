@@ -99,7 +99,7 @@ class OpaqueMaterial(MaterialBase):
                 stagnant air [%].
             **kwargs: keywords passed to parent constructors.
         """
-        super(OpaqueMaterial, self).__init__(
+        super().__init__(
             Name,
             Cost=Cost,
             EmbodiedCarbon=EmbodiedCarbon,
@@ -253,10 +253,7 @@ class OpaqueMaterial(MaterialBase):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self

@@ -75,8 +75,7 @@ class MassRatio:
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for k, v in self.mapping().items():
-            yield k, v
+        yield from self.mapping().items()
 
     def to_dict(self):
         """Return MassRatio dictionary representation."""
@@ -149,7 +148,7 @@ class StructureInformation(ConstructionBase):
             MassRatios (list of MassRatio): MassRatio object.
             **kwargs: keywords passed to the ConstructionBase constructor.
         """
-        super(StructureInformation, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.MassRatios = MassRatios
 
         # Only at the end append self to _CREATED_OBJECTS

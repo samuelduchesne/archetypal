@@ -317,7 +317,7 @@ class UmiTemplateLibrary:
         return BuildingTemplate.from_idf(idf, **kwargs)
 
     @classmethod
-    def open(cls, filename):
+    def open(cls, filename):  # noqa: A003
         """Initialize an UmiTemplate object from an UMI Template Library File.
 
         Args:

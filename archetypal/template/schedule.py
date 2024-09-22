@@ -237,13 +237,13 @@ class UmiSchedule(Schedule, UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            Category=self.Category,
-            Type=self.Type,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Category": self.Category,
+            "Type": self.Type,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def get_ref(self, ref):
         """Get item matching reference id.
@@ -437,13 +437,13 @@ class YearSchedulePart:
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
-        return dict(
-            FromDay=self.FromDay,
-            FromMonth=self.FromMonth,
-            ToDay=self.ToDay,
-            ToMonth=self.ToMonth,
-            Schedule=self.Schedule,
-        )
+        return {
+            "FromDay": self.FromDay,
+            "FromMonth": self.FromMonth,
+            "ToDay": self.ToDay,
+            "ToMonth": self.ToMonth,
+            "Schedule": self.Schedule,
+        }
 
     def get_unique(self):
         """Return the first of all the created objects that is equivalent to self."""
@@ -599,14 +599,14 @@ class DaySchedule(UmiSchedule):
         if validate:
             self.validate()
 
-        return dict(
-            Category=self.Category,
-            Type=self.Type,
-            Values=self.all_values.round(3).tolist(),
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Category": self.Category,
+            "Type": self.Type,
+            "Values": self.all_values.round(3).tolist(),
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def to_ref(self):
         """Return a ref pointer to self."""
@@ -778,14 +778,14 @@ class WeekSchedule(UmiSchedule):
         if validate:
             self.validate()
 
-        return dict(
-            Category=self.Category,
-            Days=self.Days,
-            Type=self.Type,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Category": self.Category,
+            "Days": self.Days,
+            "Type": self.Type,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     @classmethod
     def get_days(cls, epbunch, **kwargs):
@@ -973,7 +973,7 @@ class YearSchedule(UmiSchedule):
         Returns:
             EpBunch: The EpBunch object added to the idf model.
         """
-        new_dict = dict(Name=self.Name, Schedule_Type_Limits_Name=self.Type.to_epbunch(idf).Name)
+        new_dict = {"Name": self.Name, "Schedule_Type_Limits_Name": self.Type.to_epbunch(idf).Name}
         for i, part in enumerate(self.Parts):
             new_dict.update(
                 {
@@ -997,14 +997,14 @@ class YearSchedule(UmiSchedule):
         if validate:
             self.validate()
 
-        return dict(
-            Category=self.Category,
-            Parts=self.Parts,
-            Type=self.Type,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Category": self.Category,
+            "Parts": self.Parts,
+            "Type": self.Type,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def _get_parts(self, epbunch):
         parts = []

@@ -64,7 +64,7 @@ class OpaqueConstruction(LayeredConstruction):
     def r_value(self, value):
         # First, find the insulation layer
         i = self.infer_insulation_layer()
-        all_layers_except_insulation_layer = [a for a in self.Layers]
+        all_layers_except_insulation_layer = list(self.Layers)
         all_layers_except_insulation_layer.pop(i)
         insulation_layer: MaterialLayer = self.Layers[i]
 
@@ -464,18 +464,18 @@ class OpaqueConstruction(LayeredConstruction):
         if validate:
             self.validate()
 
-        return dict(
-            Layers=self.Layers,
-            AssemblyCarbon=self.AssemblyCarbon,
-            AssemblyCost=self.AssemblyCost,
-            AssemblyEnergy=self.AssemblyEnergy,
-            DisassemblyCarbon=self.DisassemblyCarbon,
-            DisassemblyEnergy=self.DisassemblyEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Layers": self.Layers,
+            "AssemblyCarbon": self.AssemblyCarbon,
+            "AssemblyCost": self.AssemblyCost,
+            "AssemblyEnergy": self.AssemblyEnergy,
+            "DisassemblyCarbon": self.DisassemblyCarbon,
+            "DisassemblyEnergy": self.DisassemblyEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     @classmethod
     def generic(cls, **kwargs):
@@ -512,7 +512,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     def __copy__(self):
         """Create a copy of self."""
-        new_con = self.__class__(Name=self.Name, Layers=[a for a in self.Layers])
+        new_con = self.__class__(Name=self.Name, Layers=list(self.Layers))
         return new_con
 
     def to_epbunch(self, idf):

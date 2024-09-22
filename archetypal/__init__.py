@@ -87,78 +87,78 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
     # Ref: https://bigladdersoftware.com/epx/docs/8-3/output-details-and-examples
     # /eplusout.sql.html#schedules-table
 
-    available_sqlite_tables: ClassVar[dict] = dict(
-        ComponentSizes={"PrimaryKey": ["ComponentSizesIndex"], "ParseDates": []},
-        ConstructionLayers={"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
-        Constructions={"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
-        Materials={"PrimaryKey": ["MaterialIndex"], "ParseDates": []},
-        NominalBaseboardHeaters={
+    available_sqlite_tables: ClassVar[dict] = {
+        "ComponentSizes": {"PrimaryKey": ["ComponentSizesIndex"], "ParseDates": []},
+        "ConstructionLayers": {"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
+        "Constructions": {"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
+        "Materials": {"PrimaryKey": ["MaterialIndex"], "ParseDates": []},
+        "NominalBaseboardHeaters": {
             "PrimaryKey": ["NominalBaseboardHeaterIndex"],
             "ParseDates": [],
         },
-        NominalElectricEquipment={
+        "NominalElectricEquipment": {
             "PrimaryKey": ["NominalElectricEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalGasEquipment={
+        "NominalGasEquipment": {
             "PrimaryKey": ["NominalGasEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalHotWaterEquipment={
+        "NominalHotWaterEquipment": {
             "PrimaryKey": ["NominalHotWaterEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalInfiltration={
+        "NominalInfiltration": {
             "PrimaryKey": ["NominalInfiltrationIndex"],
             "ParseDates": [],
         },
-        NominalLighting={"PrimaryKey": ["NominalLightingIndex"], "ParseDates": []},
-        NominalOtherEquipment={
+        "NominalLighting": {"PrimaryKey": ["NominalLightingIndex"], "ParseDates": []},
+        "NominalOtherEquipment": {
             "PrimaryKey": ["NominalOtherEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalPeople={"PrimaryKey": ["NominalPeopleIndex"], "ParseDates": []},
-        NominalSteamEquipment={
+        "NominalPeople": {"PrimaryKey": ["NominalPeopleIndex"], "ParseDates": []},
+        "NominalSteamEquipment": {
             "PrimaryKey": ["NominalSteamEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalVentilation={
+        "NominalVentilation": {
             "PrimaryKey": ["NominalVentilationIndex"],
             "ParseDates": [],
         },
-        ReportData={"PrimaryKey": ["ReportDataIndex"], "ParseDates": []},
-        ReportDataDictionary={
+        "ReportData": {"PrimaryKey": ["ReportDataIndex"], "ParseDates": []},
+        "ReportDataDictionary": {
             "PrimaryKey": ["ReportDataDictionaryIndex"],
             "ParseDates": [],
         },
-        ReportExtendedData={
+        "ReportExtendedData": {
             "PrimaryKey": ["ReportExtendedDataIndex"],
             "ParseDates": [],
         },
-        RoomAirModels={"PrimaryKey": ["ZoneIndex"], "ParseDates": []},
-        Schedules={"PrimaryKey": ["ScheduleIndex"], "ParseDates": []},
-        Surfaces={"PrimaryKey": ["SurfaceIndex"], "ParseDates": []},
-        SystemSizes={
+        "RoomAirModels": {"PrimaryKey": ["ZoneIndex"], "ParseDates": []},
+        "Schedules": {"PrimaryKey": ["ScheduleIndex"], "ParseDates": []},
+        "Surfaces": {"PrimaryKey": ["SurfaceIndex"], "ParseDates": []},
+        "SystemSizes": {
             "PrimaryKey": ["SystemSizesIndex"],
             "ParseDates": {"PeakHrMin": "%m/%d %H:%M:%S"},
         },
-        Time={"PrimaryKey": ["TimeIndex"], "ParseDates": []},
-        ZoneGroups={"PrimaryKey": ["ZoneGroupIndex"], "ParseDates": []},
-        Zones={"PrimaryKey": ["ZoneIndex"], "ParseDates": []},
-        ZoneLists={"PrimaryKey": ["ZoneListIndex"], "ParseDates": []},
-        ZoneSizes={"PrimaryKey": ["ZoneSizesIndex"], "ParseDates": []},
-        ZoneInfoZoneLists={"PrimaryKey": ["ZoneListIndex"], "ParseDates": []},
-        Simulations={
+        "Time": {"PrimaryKey": ["TimeIndex"], "ParseDates": []},
+        "ZoneGroups": {"PrimaryKey": ["ZoneGroupIndex"], "ParseDates": []},
+        "Zones": {"PrimaryKey": ["ZoneIndex"], "ParseDates": []},
+        "ZoneLists": {"PrimaryKey": ["ZoneListIndex"], "ParseDates": []},
+        "ZoneSizes": {"PrimaryKey": ["ZoneSizesIndex"], "ParseDates": []},
+        "ZoneInfoZoneLists": {"PrimaryKey": ["ZoneListIndex"], "ParseDates": []},
+        "Simulations": {
             "PrimaryKey": ["SimulationIndex"],
             "ParseDates": {"TimeStamp": {"format": "YMD=%Y.%m.%d %H:%M"}},
         },
-        EnvironmentPeriods={"PrimaryKey": ["EnvironmentPeriodIndex"], "ParseDates": []},
-        TabularData={"PrimaryKey": ["TabularDataIndex"], "ParseDates": []},
-        Strings={"PrimaryKey": ["StringIndex"], "ParseDates": []},
-        StringTypes={"PrimaryKey": ["StringTypeIndex"], "ParseDates": []},
-        TabularDataWithStrings={"PrimaryKey": ["TabularDataIndex"], "ParseDates": []},
-        Errors={"PrimaryKey": ["ErrorIndex"], "ParseDates": []},
-    )
+        "EnvironmentPeriods": {"PrimaryKey": ["EnvironmentPeriodIndex"], "ParseDates": []},
+        "TabularData": {"PrimaryKey": ["TabularDataIndex"], "ParseDates": []},
+        "Strings": {"PrimaryKey": ["StringIndex"], "ParseDates": []},
+        "StringTypes": {"PrimaryKey": ["StringTypeIndex"], "ParseDates": []},
+        "TabularDataWithStrings": {"PrimaryKey": ["TabularDataIndex"], "ParseDates": []},
+        "Errors": {"PrimaryKey": ["ErrorIndex"], "ParseDates": []},
+    }
 
     zone_weight: ZoneWeight = ZoneWeight(n=0)
 

@@ -276,7 +276,7 @@ class UmiTemplateLibrary:
         umi_template.BuildingTemplates = [res for res in results.values() if not isinstance(res, Exception)]
 
         if keep_all_zones:
-            _zones = set(obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS)
+            _zones = {obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS}
             for zone in _zones:
                 umi_template.ZoneDefinitions.append(zone)
             exceptions = [ZoneDefinition.__name__]

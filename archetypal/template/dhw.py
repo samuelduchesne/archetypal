@@ -453,17 +453,17 @@ class DomesticHotWaterSetting(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            FlowRatePerFloorArea=self.FlowRatePerFloorArea,
-            IsOn=self.IsOn,
-            WaterSchedule=self.WaterSchedule,
-            WaterSupplyTemperature=self.WaterSupplyTemperature,
-            WaterTemperatureInlet=self.WaterTemperatureInlet,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "FlowRatePerFloorArea": self.FlowRatePerFloorArea,
+            "IsOn": self.IsOn,
+            "WaterSchedule": self.WaterSchedule,
+            "WaterSupplyTemperature": self.WaterSupplyTemperature,
+            "WaterTemperatureInlet": self.WaterTemperatureInlet,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""

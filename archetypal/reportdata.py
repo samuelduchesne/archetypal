@@ -135,7 +135,7 @@ class ReportData(DataFrame):
 
     @staticmethod
     def multiple_conditions(basename, cond_names, var_name):
-        if not isinstance(cond_names, (list, tuple)):
+        if not isinstance(cond_names, list | tuple):
             cond_names = [cond_names]
         cond_names = set(cond_names)
         cond_names = {f"{basename}_{i}": name for i, name in enumerate(cond_names)}

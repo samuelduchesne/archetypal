@@ -537,14 +537,14 @@ class BuildingTemplate(UmiBase):
 
         def recursive_replace(umibase):
             for key, obj in umibase.mapping(validate=False).items():
-                if isinstance(obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)):
+                if isinstance(obj, UmiBase | MaterialLayer | YearSchedulePart | MassRatio):
                     recursive_replace(obj)
                     setattr(umibase, key, obj.get_unique())
                 elif isinstance(obj, list):
                     [
                         recursive_replace(obj)
                         for obj in obj
-                        if isinstance(obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio))
+                        if isinstance(obj, UmiBase | MaterialLayer | YearSchedulePart | MassRatio)
                     ]
 
         recursive_replace(self)

@@ -254,7 +254,7 @@ class GlazingMaterial(MaterialBase):
         new_attr = {}
         for attr, value in self.mapping().items():
             if attr not in ["Comments", "DataSource"]:
-                if isinstance(value, (int, float)) or isinstance(other, (int, float)):
+                if isinstance(value, int | float) or isinstance(other, int | float):
                     new_attr[attr] = UmiBase.float_mean(self, other, attr=attr, weights=weights)
                 elif isinstance(value, str) or isinstance(other, str):
                     new_attr[attr] = UmiBase._str_mean(self, other, attr=attr, append=False)

@@ -135,7 +135,7 @@ class UmiSchedule(Schedule, UmiBase):
         elif isinstance(weights, str):
             # get the attribute from self and other
             weights = [getattr(self, weights), getattr(other, weights)]
-        elif isinstance(weights, (list, tuple)):
+        elif isinstance(weights, list | tuple):
             # check if length is 2.
             length = len(weights)
             if length != 2:
@@ -168,7 +168,7 @@ class UmiSchedule(Schedule, UmiBase):
                     quantity(other.predecessors.data),
                 ],
             )
-        elif isinstance(quantity, (list, tuple)):
+        elif isinstance(quantity, list | tuple):
             # Multiplying the schedule values by the quantity for both self and other
             # and then using a weighted average. Finally, new values are normalized.
             self_quantity, other_quantity = quantity

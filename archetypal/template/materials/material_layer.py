@@ -42,7 +42,7 @@ class MaterialLayer:
     def Material(self, value):
         from archetypal.template.materials import GlazingMaterial, OpaqueMaterial
 
-        assert isinstance(value, (OpaqueMaterial, GlazingMaterial)), (
+        assert isinstance(value, OpaqueMaterial | GlazingMaterial), (
             f"Input value error for '{value}'. Value must be "
             f"of type (OpaqueMaterial, GlazingMaterial), not {type(value)}"
         )

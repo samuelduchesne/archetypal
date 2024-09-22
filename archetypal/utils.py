@@ -223,10 +223,7 @@ def weighted_mean(series, df, weighting_variable):
     # of multipling them together.
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
-    try:
-        weights = df.loc[series.index, weighting_variable].astype("float").prod(axis=1)
-    except Exception:
-        raise
+    weights = df.loc[series.index, weighting_variable].astype("float").prod(axis=1)
 
     # Try to average
     try:
@@ -635,7 +632,7 @@ def parallel_process(
                 except Exception as e:
                     if debug:
                         lg.warning(str(e))
-                        raise e
+                        raise
                     result_done = e
                 # Append to the list of results
                 out[filename] = result_done

@@ -933,14 +933,12 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
                 epbunch = zone.idf.schedules_dict[schedule_name_.upper()]
                 NatVentSchedule = UmiSchedule.from_epbunch(epbunch, quantity=quantity)
             else:
-                raise KeyError
-        except KeyError:
-            # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
-            #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
-            #  in the nat_df. For the mean time, a zone containing such an
-            #  object will be turned on with an AlwaysOn schedule.
-            IsNatVentOn = True
-            NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
+                # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
+                #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
+                #  in the nat_df. For the mean time, a zone containing such an
+                #  object will be turned on with an AlwaysOn schedule.
+                IsNatVentOn = True
+                NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         except Exception:
             IsNatVentOn = False
             NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)

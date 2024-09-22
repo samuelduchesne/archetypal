@@ -78,6 +78,30 @@ def find_and_launch(app_name, app_path_guess, file_path):
     )
 
 
+class SimulationNotRunError(Exception):
+    """Exception raised when simulation has not been run."""
+
+    def __init__(self):
+        super().__init__("Call IDF.simulate() at least once to get a list of possible meters")
+
+
+class ScheduleNotFoundError(Exception):
+    """Exception raised when a schedule is not found in the IDF file."""
+
+    def __init__(self, name, sch_type, idf_name):
+        self.name = name
+        self.sch_type = sch_type
+        self.idf_name = idf_name
+        super().__init__(f'Unable to find schedule "{name}" of type "{sch_type}" in idf file "{idf_name}"')
+
+
+class ModelInRelativeCoordinatesError(Exception):
+    """Exception raised when the model is in relative coordinates and must be translated to world coordinates."""
+
+    def __init__(self):
+        super().__init__("Model is in relative coordinates and must be translated to world using IDF.to_world().")
+
+
 class IDF(GeomIDF):
     """Class for loading and parsing idf models.
 
@@ -299,33 +323,29 @@ class IDF(GeomIDF):
         self.outputtype = outputtype
         self.original_idfname = self.idfname  # Save original
 
-        try:
-            # load the idf object by asserting self.idd_info
-            assert self.idd_info
-        except Exception as e:
-            raise e
-        else:
-            self._original_cache = hash_model(self)
-            if self.as_version is not None:
-                if self.file_version < self.as_version:
-                    self.upgrade(to_version=self.as_version, overwrite=False)
-        finally:
-            # Set model outputs
-            self._outputs = Outputs(
-                idf=self,
-                include_html=False,
-                include_sqlite=False,
-                reporting_frequency=reporting_frequency,
-            )
-            if self.prep_outputs:
-                self._outputs.include_html = True
-                self._outputs.include_sqlite = True
-                self._outputs.add_basics()
-                if isinstance(self.prep_outputs, list):
-                    self._outputs.add_custom(outputs=self.prep_outputs)
-                self._outputs.add_profile_gas_elect_outputs()
-                self._outputs.add_umi_template_outputs()
-                self._outputs.apply()
+        if not self.idd_info:
+            raise ValueError("IDD info is not loaded")
+        self._original_cache = hash_model(self)
+        if self.as_version is not None:
+            if self.file_version < self.as_version:
+                self.upgrade(to_version=self.as_version, overwrite=False)
+
+        # Set model outputs
+        self._outputs = Outputs(
+            idf=self,
+            include_html=False,
+            include_sqlite=False,
+            reporting_frequency=reporting_frequency,
+        )
+        if self.prep_outputs:
+            self._outputs.include_html = True
+            self._outputs.include_sqlite = True
+            self._outputs.add_basics()
+            if isinstance(self.prep_outputs, list):
+                self._outputs.add_custom(outputs=self.prep_outputs)
+            self._outputs.add_profile_gas_elect_outputs()
+            self._outputs.add_umi_template_outputs()
+            self._outputs.apply()
 
     @property
     def outputtype(self):
@@ -386,9 +406,9 @@ class IDF(GeomIDF):
         example_files_dir: Path = eplus_version.current_install_dir / "ExampleFiles"
         try:
             file = next(iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf")))
-        except StopIteration:
+        except StopIteration as e:
             full_list = list(map(lambda x: str(x.name), example_files_dir.files("*.idf")))
-            raise ValueError(f"Choose from: {sorted(full_list)}")
+            raise ValueError(f"Choose from: {sorted(full_list)}") from e
         if epw is not None:
             epw = Path(epw)
 
@@ -396,9 +416,9 @@ class IDF(GeomIDF):
                 dir_weather_data_ = eplus_version.current_install_dir / "WeatherData"
                 try:
                     epw = next(iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw")))
-                except StopIteration:
+                except StopIteration as e:
                     full_list = list(map(lambda x: str(x.name), dir_weather_data_.files("*.epw")))
-                    raise ValueError(f"Choose EPW from: {sorted(full_list)}")
+                    raise ValueError(f"Choose EPW from: {sorted(full_list)}") from e
         return cls(file, epw=epw, **kwargs)
 
     def setiddname(self, iddname, testing=False):
@@ -877,8 +897,8 @@ class IDF(GeomIDF):
                 if sql_object not in self.idfobjects["Output:SQLite".upper()]:
                     self.addidfobject(sql_object)
                 return self.simulate().sql()
-            except Exception as e:
-                raise e
+            except Exception:
+                raise
             else:
                 self._sql = sql_dict
         return self._sql
@@ -1226,8 +1246,8 @@ class IDF(GeomIDF):
         if self._meters is None:
             try:
                 self.simulation_dir.files("*.mdd")
-            except FileNotFoundError:
-                raise Exception("call IDF.simulate() at least once to get a list of possible meters")
+            except FileNotFoundError as e:
+                raise SimulationNotRunError() from e
             else:
                 self._meters = Meters(self)
         return self._meters
@@ -1588,8 +1608,8 @@ class IDF(GeomIDF):
                         for file in self.simulation_dir.files(glob)
                     ]
                 )
-        except FileNotFoundError:
-            raise ValueError("No results to process. Have you called IDF.simulate()?")
+        except FileNotFoundError as e:
+            raise SimulationNotRunError() from e
         else:
             return results
 
@@ -1899,50 +1919,48 @@ class IDF(GeomIDF):
         Returns:
             EpBunch: the object, if successful
             None: If an error occured.
+        Raises:
+            BadEPFieldError: If a field is not valid.
         """
         # get list of objects
         existing_objs = self.idfobjects[key]  # a list
 
         # create new object
-        try:
-            new_object = self.anidfobject(key, **kwargs)
-        except BadEPFieldError as e:
-            raise e
-        else:
-            # If object is supposed to be 'unique-object', delete all objects to be
-            # sure there is only one of them when creating new object
-            # (see following line)
-            if "unique-object" in set().union(*(d.objidd[0].keys() for d in existing_objs)):
-                for obj in existing_objs:
-                    self.removeidfobject(obj)
-                    log(
-                        f"{obj} is a 'unique-object'; Removed and replaced with" f" {new_object}",
-                        lg.DEBUG,
-                    )
-                self.addidfobject(new_object)
-                return new_object
-            if new_object in existing_objs:
-                # If obj already exists, simply return the existing one.
-                log(
-                    f"object '{new_object}' already exists in {self.name}. " f"Skipping.",
-                    lg.DEBUG,
-                )
-                return next(x for x in existing_objs if x == new_object)
-            elif new_object not in existing_objs and new_object.nameexists():
-                # Object does not exist (because not equal) but Name exists.
-                obj = self.getobject(key=new_object.key.upper(), name=new_object.Name.upper())
+        new_object = self.anidfobject(key, **kwargs)
+        # If object is supposed to be 'unique-object', delete all objects to be
+        # sure there is only one of them when creating new object
+        # (see following line)
+        if "unique-object" in set().union(*(d.objidd[0].keys() for d in existing_objs)):
+            for obj in existing_objs:
                 self.removeidfobject(obj)
-                self.addidfobject(new_object)
                 log(
-                    f"{obj} exists but has different attributes; Removed and replaced " f"with {new_object}",
+                    f"{obj} is a 'unique-object'; Removed and replaced with" f" {new_object}",
                     lg.DEBUG,
                 )
-                return new_object
-            else:
-                # add to model and return
-                self.addidfobject(new_object)
-                log(f"object '{new_object}' added to '{self.name}'", lg.DEBUG)
-                return new_object
+            self.addidfobject(new_object)
+            return new_object
+        if new_object in existing_objs:
+            # If obj already exists, simply return the existing one.
+            log(
+                f"object '{new_object}' already exists in {self.name}. " f"Skipping.",
+                lg.DEBUG,
+            )
+            return next(x for x in existing_objs if x == new_object)
+        elif new_object not in existing_objs and new_object.nameexists():
+            # Object does not exist (because not equal) but Name exists.
+            obj = self.getobject(key=new_object.key.upper(), name=new_object.Name.upper())
+            self.removeidfobject(obj)
+            self.addidfobject(new_object)
+            log(
+                f"{obj} exists but has different attributes; Removed and replaced " f"with {new_object}",
+                lg.DEBUG,
+            )
+            return new_object
+        else:
+            # add to model and return
+            self.addidfobject(new_object)
+            log(f"object '{new_object}' added to '{self.name}'", lg.DEBUG)
+            return new_object
 
     def addidfobject(self, new_object) -> EpBunch:
         """Add an IDF object to the model.
@@ -2038,7 +2056,7 @@ class IDF(GeomIDF):
                 elif str(e) == "unknown field People_per_Zone_Floor_Area":
                     abunch["People_per_Floor_Area"] = v
                 else:
-                    raise e
+                    raise
         abunch.theidf = self
         return abunch
 
@@ -2075,8 +2093,8 @@ class IDF(GeomIDF):
         if sch_type is None:
             try:
                 return self.schedules_dict[name.upper()]
-            except KeyError:
-                raise KeyError(f'Unable to find schedule "{name}" of type "{sch_type}" ' f'in idf file "{self.name}"')
+            except KeyError as e:
+                raise ScheduleNotFoundError(name, sch_type, self.name) from e
         else:
             return self.getobject(sch_type.upper(), name)
 
@@ -2441,7 +2459,7 @@ class IDF(GeomIDF):
             "relative" in [o.Coordinate_System.lower() for o in self.idfobjects["GLOBALGEOMETRYRULES"]]
             and self.coords_are_truly_relative
         ):
-            raise Exception("Model is in relative coordinates and must be translated to world using IDF.to_world().")
+            raise ModelInRelativeCoordinatesError()
         view_idf(idf=self, test=~show)
 
         fig = plt.gcf()

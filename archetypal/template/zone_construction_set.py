@@ -584,7 +584,7 @@ class SurfaceDispatcher:
                 raise NotImplementedError(
                     "surface '%s' in zone '%s' not supported by surface dispatcher "
                     "with keys %s" % (self.surf.Name, self.zone.Name, e)
-                )
+                ) from e
 
     @staticmethod
     def _do_facade(surf):

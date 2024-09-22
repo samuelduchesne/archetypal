@@ -119,7 +119,7 @@ select = [
     # ruff
     "RUF",
     # tryceratops
-    # "TRY",
+     "TRY",
 ]
 ignore = [
     # LineTooLong
@@ -127,7 +127,9 @@ ignore = [
     # DoNotAssignLambda
     "E731",
     # Too Complex
-    "C901"
+    "C901",
+    # raise-vanilla-args
+    "TRY003",
 ]
 exclude = ["tests/input_data/*", "docker/trnsidf/*", "geomeppy"]
 

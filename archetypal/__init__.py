@@ -67,19 +67,21 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
     log_filename: str = Field("archetypal")
 
     # usual idfobjects
-    useful_idf_objects: ClassVar[List[str]] = [
-        "WINDOWMATERIAL:GAS",
-        "WINDOWMATERIAL:GLAZING",
-        "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM",
-        "MATERIAL",
-        "MATERIAL:NOMASS",
-        "CONSTRUCTION",
-        "BUILDINGSURFACE:DETAILED",
-        "FENESTRATIONSURFACE:DETAILED",
-        "SCHEDULE:DAY:INTERVAL",
-        "SCHEDULE:WEEK:DAILY",
-        "SCHEDULE:YEAR",
-    ]
+    useful_idf_objects: List[str] = Field(
+        [
+            "WINDOWMATERIAL:GAS",
+            "WINDOWMATERIAL:GLAZING",
+            "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM",
+            "MATERIAL",
+            "MATERIAL:NOMASS",
+            "CONSTRUCTION",
+            "BUILDINGSURFACE:DETAILED",
+            "FENESTRATIONSURFACE:DETAILED",
+            "SCHEDULE:DAY:INTERVAL",
+            "SCHEDULE:WEEK:DAILY",
+            "SCHEDULE:YEAR",
+        ]
+    )
 
     # List of Available SQLite Tables
     # Ref: https://bigladdersoftware.com/epx/docs/8-3/output-details-and-examples

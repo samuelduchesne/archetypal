@@ -6,6 +6,7 @@ different forms.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import itertools
 import logging
@@ -325,9 +326,8 @@ class IDF(GeomIDF):
         if not self.idd_info:
             raise ValueError("IDD info is not loaded")
         self._original_cache = hash_model(self)
-        if self.as_version is not None:
-            if self.file_version < self.as_version:
-                self.upgrade(to_version=self.as_version, overwrite=False)
+        if self.as_version is not None and self.file_version < self.as_version:
+            self.upgrade(to_version=self.as_version, overwrite=False)
 
         # Set model outputs
         self._outputs = Outputs(
@@ -529,12 +529,11 @@ class IDF(GeomIDF):
     def iddname(self) -> Path:
         """Get or set the iddname path used to parse the idf model."""
         if self._iddname is None:
-            if self.as_version is not None:
-                if self.file_version > self.as_version:
-                    raise EnergyPlusVersionError(
-                        f"{self.as_version} cannot be lower then "
-                        f"the version number set in the file: {self.file_version}"
-                    )
+            if self.as_version is not None and self.file_version > self.as_version:
+                raise EnergyPlusVersionError(
+                    f"{self.as_version} cannot be lower then "
+                    f"the version number set in the file: {self.file_version}"
+                )
             self._iddname = self.file_version.current_idd_path
         return self._iddname
 
@@ -1026,12 +1025,11 @@ class IDF(GeomIDF):
                 zone: EpBunch
                 for zone in zones:
                     for surface in zone.zonesurfaces:
-                        if hasattr(surface, "tilt"):
-                            if surface.tilt == 180.0:
-                                part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
-                                multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+                        if hasattr(surface, "tilt") and surface.tilt == 180.0:
+                            part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+                            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
 
-                                area += surface.area * multiplier * part_of
+                            area += surface.area * multiplier * part_of
                 self._area_conditioned = area
         return self._area_conditioned
 
@@ -1056,12 +1054,11 @@ class IDF(GeomIDF):
                 zone: EpBunch
                 for zone in zones:
                     for surface in zone.zonesurfaces:
-                        if hasattr(surface, "tilt"):
-                            if surface.tilt == 180.0:
-                                part_of = int(zone.Part_of_Total_Floor_Area.upper() == "NO")
-                                multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+                        if hasattr(surface, "tilt") and surface.tilt == 180.0:
+                            part_of = int(zone.Part_of_Total_Floor_Area.upper() == "NO")
+                            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
 
-                                area += surface.area * multiplier * part_of
+                            area += surface.area * multiplier * part_of
                 self._area_unconditioned = area
         return self._area_unconditioned
 
@@ -1085,11 +1082,10 @@ class IDF(GeomIDF):
                 zone: EpBunch
                 for zone in zones:
                     for surface in zone.zonesurfaces:
-                        if hasattr(surface, "tilt"):
-                            if surface.tilt == 180.0:
-                                multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+                        if hasattr(surface, "tilt") and surface.tilt == 180.0:
+                            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
 
-                                area += surface.area * multiplier
+                            area += surface.area * multiplier
                 self._area_total = area
         return self._area_total
 
@@ -1145,10 +1141,13 @@ class IDF(GeomIDF):
                     for surf in zone.zonesurfaces
                     if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
                 ]:
-                    if hasattr(surface, "tilt"):
-                        if surface.tilt == 90.0 and surface.Outside_Boundary_Condition != "Outdoors":
-                            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
-                            partition_lineal += surface.width * multiplier
+                    if (
+                        hasattr(surface, "tilt")
+                        and surface.tilt == 90.0
+                        and surface.Outside_Boundary_Condition != "Outdoors"
+                    ):
+                        multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+                        partition_lineal += surface.width * multiplier
             self._partition_ratio = partition_lineal / max(
                 self.net_conditioned_building_area, self.unconditioned_building_area
             )
@@ -1361,7 +1360,7 @@ class IDF(GeomIDF):
         """
         # First, update keys with new values
         for key, value in kwargs.items():
-            if f"_{key}" in self.__dict__.keys():
+            if f"_{key}" in self.__dict__:
                 setattr(self, key, value)
             else:
                 log(
@@ -1372,14 +1371,13 @@ class IDF(GeomIDF):
         if self.simulation_dir.exists() and not force:  # don't simulate if results exists
             return self
 
-        if self.as_version is not None:
-            if self.as_version != EnergyPlusVersion(self.idd_version):
-                raise EnergyPlusVersionError(
-                    None,
-                    self.idfname,
-                    EnergyPlusVersion(self.idd_version),
-                    self.as_version,
-                )
+        if self.as_version is not None and self.as_version != EnergyPlusVersion(self.idd_version):
+            raise EnergyPlusVersionError(
+                None,
+                self.idfname,
+                EnergyPlusVersion(self.idd_version),
+                self.as_version,
+            )
 
         include = self.include
         if isinstance(include, str):
@@ -1558,12 +1556,10 @@ class IDF(GeomIDF):
                     name = Path(name).basename()
                 else:
                     name = file.basename()
-                try:
-                    file.copy(as_idf.simulation_dir / name)
-                except shutil.SameFileError:
+                with contextlib.suppress(shutil.SameFileError):
                     # A copy of self would have the same files in the simdir and
                     # throw an error.
-                    pass
+                    file.copy(as_idf.simulation_dir / name)
         if inplace:
             # If inplace, replace content of self with content of as_idf.
             self.__dict__.update(as_idf.__dict__)
@@ -1734,16 +1730,14 @@ class IDF(GeomIDF):
             for surface in [
                 surf for surf in zone.zonesurfaces if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
             ]:
-                if isclose(surface.tilt, 90, abs_tol=10):
-                    if surface.Outside_Boundary_Condition.lower() == "outdoors":
-                        surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
-                        total_surface_area[surf_azim] += surface.area * multiplier
+                if isclose(surface.tilt, 90, abs_tol=10) and surface.Outside_Boundary_Condition.lower() == "outdoors":
+                    surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
+                    total_surface_area[surf_azim] += surface.area * multiplier
                 for subsurface in surface.subsurfaces:
                     if hasattr(subsurface, "tilt"):
-                        if isclose(subsurface.tilt, 90, abs_tol=10):
-                            if subsurface.Surface_Type.lower() == "window":
-                                surf_azim = roundto(subsurface.azimuth, to=azimuth_threshold)
-                                total_window_area[surf_azim] += subsurface.area * multiplier
+                        if isclose(subsurface.tilt, 90, abs_tol=10) and subsurface.Surface_Type.lower() == "window":
+                            surf_azim = roundto(subsurface.azimuth, to=azimuth_threshold)
+                            total_window_area[surf_azim] += subsurface.area * multiplier
                         if isclose(subsurface.tilt, 180, abs_tol=80):
                             total_window_area["sky"] += subsurface.area * multiplier
         # Fix azimuth = 360 which is the same as azimuth 0
@@ -2152,7 +2146,7 @@ class IDF(GeomIDF):
                 if obj.key.upper() not in schedule_types:
                     for fieldvalue in obj.fieldvalues:
                         try:
-                            if fieldvalue.upper() in all_schedules.keys() and fieldvalue not in used_schedules:
+                            if fieldvalue.upper() in all_schedules and fieldvalue not in used_schedules:
                                 used_schedules.append(fieldvalue)
                         except (KeyError, AttributeError):
                             pass
@@ -2581,11 +2575,10 @@ class IDF(GeomIDF):
         zone: EpBunch
         for zone in zones:
             for surface in zone.zonesurfaces:
-                if hasattr(surface, "tilt"):
-                    if surface.tilt == 180.0:
-                        multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+                if hasattr(surface, "tilt") and surface.tilt == 180.0:
+                    multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
 
-                        area += surface.area * multiplier
+                    area += surface.area * multiplier
         self._area_total = area
         for surface in self.getsurfaces():
             if surface.Outside_Boundary_Condition.lower() in ["adiabatic", "surface"]:

@@ -662,9 +662,8 @@ class UmiTemplateLibrary:
             for component in group:
                 # travers each object using generator
                 for parent, key, obj in parent_key_child_traversal(component):
-                    if obj.__class__.__name__ + "s" in inclusion:
-                        if key:
-                            setattr(parent, key, obj.get_unique())  # set unique object on key
+                    if obj.__class__.__name__ + "s" in inclusion and key:
+                        setattr(parent, key, obj.get_unique())  # set unique object on key
 
         self.update_components_list(exceptions=exceptions)  # Update the components list
         if keep_orphaned:
@@ -744,7 +743,8 @@ def no_duplicates(file, attribute="Name"):
     import json
     from collections import defaultdict
 
-    data = json.loads(open(file).read()) if isinstance(file, str) else file
+    with open(file) as f:
+        data = json.loads(f.read()) if isinstance(file, str) else file
     ids = defaultdict(lambda: defaultdict(int))
 
     for key, value in data.items():

@@ -77,10 +77,7 @@ class Variable:
                 # the environment_type is specified by the simulationcontrol.
                 try:
                     for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes":
-                            environment_type = 3
-                        else:
-                            environment_type = 1
+                        environment_type = 3 if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes" else 1
                 except (KeyError, IndexError, AttributeError):
                     reporting_frequency = 3
         report = ReportData.from_sqlite(

@@ -1504,13 +1504,13 @@ class TestWindowConstruction:
         temperature, r_values = triple.temperature_profile(
             outside_temperature=-18, inside_temperature=21, wind_speed=5.5
         )
-        assert [-18, -16.3, -16.1, 13.6, 13.8, 21.0] == pytest.approx(temperature, 1e-1)
+        assert pytest.approx(temperature, 1e-1) == [-18, -16.3, -16.1, 13.6, 13.8, 21.0]
         print(temperature, r_values)
 
         shgc = triple.shgc("summer")
         _, temperature = triple.heat_balance("summer")
         print("shgc:", shgc)
-        assert [32, 32.9, 32.9, 31.9, 31.8, 24.0] == pytest.approx(temperature, 1e-1)
+        assert pytest.approx(temperature, 1e-1) == [32, 32.9, 32.9, 31.9, 31.8, 24.0]
 
         print(temperature, r_values)  # m2-K/W
 

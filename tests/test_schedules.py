@@ -124,7 +124,7 @@ def schedules_idf():
 idf = schedules_idf()
 schedules_dict = idf._get_all_schedules(yearly_only=True)
 schedules = list(schedules_dict.values())
-ids = [key.replace(" ", "_") for key in schedules_dict.keys()]
+ids = [key.replace(" ", "_") for key in schedules_dict]
 
 schedules = [
     pytest.param(schedule, marks=pytest.mark.xfail(reason="Can't quite capture all possibilities with special days"))

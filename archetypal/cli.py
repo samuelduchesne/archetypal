@@ -292,10 +292,7 @@ def transition(idf, to_version, cores, yes):
     log(
         f"executing {len(file_paths)} file(s):\n{file_list}",
     )
-    if not yes:
-        overwrite = click.confirm("Would you like to overwrite the file(s)?")
-    else:
-        overwrite = False
+    overwrite = click.confirm("Would you like to overwrite the file(s)?") if not yes else False
     start_time = time.time()
 
     to_version = to_version.dash

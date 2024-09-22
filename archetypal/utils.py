@@ -460,10 +460,7 @@ def lcm(x, y):
     """This function takes two integers and returns the least common multiple."""
 
     # choose the greater number
-    if x > y:
-        greater = x
-    else:
-        greater = y
+    greater = x if x > y else y
 
     while True:
         if (greater % x == 0) and (greater % y == 0):

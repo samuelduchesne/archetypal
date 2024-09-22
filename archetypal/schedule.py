@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import io
 import logging as lg
@@ -817,12 +818,7 @@ class _ScheduleParser:
         elif field.lower() == "saturday":
             # return only Saturdays
             return lambda x: x.index.dayofweek == 5
-        elif field.lower() == "summerdesignday":
-            # return _ScheduleParser.design_day(
-            #     schedule_epbunch, field, slicer_, start_date, strict
-            # )
-            return None
-        elif field.lower() == "winterdesignday":
+        elif field.lower() == "summerdesignday" or field.lower() == "winterdesignday":
             # return _ScheduleParser.design_day(
             #     schedule_epbunch, field, slicer_, start_date, strict
             # )
@@ -1033,10 +1029,9 @@ class Schedule:
             Values (ndarray): A 24 or 8760 list of schedule values.
             **kwargs:
         """
-        try:
+        with contextlib.suppress(Exception):
+            # todo: make this more robust
             super().__init__(Name, **kwargs)
-        except Exception:
-            pass  # todo: make this more robust
         self.Name = Name
         self.strict = strict
         self.startDayOfTheWeek = start_day_of_the_week
@@ -1180,10 +1175,7 @@ class Schedule:
     def series(self):
         """Return an :class:`EnergySeries`."""
         index = pd.date_range(start=self.startDate, periods=self.all_values.size, freq="1h")
-        if self.Type is not None:
-            units = self.Type.UnitType
-        else:
-            units = None
+        units = self.Type.UnitType if self.Type is not None else None
         return EnergySeries(self.all_values, index=index, name=self.Name, units=units)
 
     @staticmethod
@@ -1488,16 +1480,8 @@ def _conjunction(*conditions, logical=np.logical_and):
 
 
 def _separator(sep):
-    if sep == "Comma":
-        return ","
-    elif sep == "Tab":
-        return "\t"
-    elif sep == "Fixed":
-        return None
-    elif sep == "Semicolon":
-        return ";"
-    else:
-        return ","
+    separators = {"Comma": ",", "Tab": "\t", "Fixed": None, "Semicolon": ";"}
+    return separators.get(sep, ",")
 
 
 def _how(how):

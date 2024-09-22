@@ -419,7 +419,7 @@ class EndUseBalance:
         Returns:
 
         """
-        assert component in self.__dict__.keys(), f"{component} is not a valid attribute of EndUseBalance."
+        assert component in self.__dict__, f"{component} is not a valid attribute of EndUseBalance."
         component_df = getattr(self, component)
         assert not component_df.empty, "Expected a component that is not empty."
         print(component)

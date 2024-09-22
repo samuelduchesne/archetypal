@@ -460,10 +460,7 @@ class ZoneGraph(networkx.Graph):
                 # choose nodes and color for each iteration
                 nlist = [nt]
                 label = getattr(nt, "Name", nt)
-                if color_nodes:
-                    node_color = [colors[nt]]
-                else:
-                    node_color = "#1f78b4"
+                node_color = [colors[nt]] if color_nodes else "#1f78b4"
                 # draw the graph
                 sc = networkx.draw_networkx_nodes(
                     tree,

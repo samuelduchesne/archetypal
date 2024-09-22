@@ -28,9 +28,6 @@ from typing import IO, ClassVar, Literal
 
 import numpy as np
 from sigfig import round
-
-ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
-
 import eppy
 import pandas as pd
 from energy_pandas import EnergySeries
@@ -66,6 +63,8 @@ from geomeppy import IDF as GeomIDF
 from geomeppy.geom.polygons import Polygon3D
 from geomeppy.patches import EpBunch, idfreader1, obj2bunch
 from geomeppy.recipes import _is_window, window_vertices_given_wall
+
+ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
 
 
 def find_and_launch(app_name, app_path_guess, file_path):

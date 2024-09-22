@@ -109,10 +109,10 @@ select = [
     # mccabe
     "C90",
     # pycodestyle
-    #"E",
+    "E",
     "W",
     # pyflakes
-     "F",
+    "F",
     # pygrep-hooks
     "PGH",
     # pyupgrade
@@ -120,7 +120,7 @@ select = [
     # ruff
     "RUF",
     # tryceratops
-     "TRY",
+    "TRY",
 ]
 ignore = [
     # LineTooLong

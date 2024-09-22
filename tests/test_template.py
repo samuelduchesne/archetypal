@@ -2101,8 +2101,8 @@ class TestVentilationSetting:
             zone_ep = idf.getobject("ZONE", "Office")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
             ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
-            assert ventilation_setting.IsNatVentOn == False
-            assert ventilation_setting.IsScheduledVentilationOn == False
+            assert ventilation_setting.IsNatVentOn is False
+            assert ventilation_setting.IsScheduledVentilationOn is False
 
     def test_ventilationSetting_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""

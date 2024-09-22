@@ -399,7 +399,7 @@ def angle(v1, v2, acute=True):
         angle (float): angle between the 2 vectors in degree
     """
     angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
-    if acute == True:
+    if acute is True:
         return angle
     else:
         return 2 * np.pi - angle
@@ -443,9 +443,9 @@ def timeit(method):
         try:
             try:
                 name = result.Name
-            except:
+            except Exception:
                 name = result.__qualname__
-        except:
+        except Exception:
             name = str(result)
         if tt > 0.001:
             log(f"Completed {method.__qualname__!r} for {name!r} in {tt:.3f} s")
@@ -512,23 +512,23 @@ def recursive_len(item):
     Returns:
         Total number of elements in nested list
     """
-    if type(item) == list:
+    if isinstance(item, list):
         return sum(recursive_len(subitem) for subitem in item)
     else:
         return 1
 
 
-def rotate(l, n):
+def rotate(items, n):
     """Shift list elements to the left
 
     Args:
-        l (list): list to rotate
+        items (list): list to rotate
         n (int): number to shift list to the left
 
     Returns:
         list: shifted list.
     """
-    return l[n:] + l[:n]
+    return items[n:] + items[:n]
 
 
 def parallel_process(

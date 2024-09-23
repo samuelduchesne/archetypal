@@ -1,5 +1,7 @@
 """archetypal Schedule module."""
 
+from __future__ import annotations
+
 import functools
 import io
 import logging as lg

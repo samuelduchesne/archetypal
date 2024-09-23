@@ -6,6 +6,8 @@ Notes:
     archetypal.template module.
 """
 
+from __future__ import annotations
+
 import math
 
 from validator_collection import validators
@@ -163,7 +165,7 @@ class LayeredConstruction(ConstructionBase):
     @Layers.setter
     def Layers(self, value):
         value = validators.iterable(value, minimum_length=1, maximum_length=10)
-        assert all(isinstance(a, MaterialLayer | GasLayer) for a in value), (
+        assert all(isinstance(a, (MaterialLayer, GasLayer)) for a in value), (
             f"Input error for '{value}'. Layers must be a list of MaterialLayer " f"or GasLayer objects only."
         )
         assert isinstance(value[0], MaterialLayer), "The outside layer cannot be a GasLayer"

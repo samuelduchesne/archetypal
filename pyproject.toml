@@ -85,7 +85,7 @@ archetypal = "archetypal.cli:cli"
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py39"
 line-length = 120
 fix = true
 select = [
@@ -130,6 +130,8 @@ ignore = [
     "C901",
     # raise-vanilla-args
     "TRY003",
+    # Checks for uses of isinstance and issubclass that take a tuple of types for comparison.
+    "UP038"
 ]
 exclude = ["tests/input_data/*", "docker/trnsidf/*", "geomeppy"]
 
@@ -148,3 +150,7 @@ source = ["archetypal"]
 
 [tool.ruff.lint]
 allowed-confusables = ["ρ"]
+
+[tool.ruff.lint.pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+keep-runtime-typing = true

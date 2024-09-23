@@ -2,13 +2,16 @@
 
 import collections
 import logging as lg
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from validator_collection import validators
 
 from archetypal.template.constructions.opaque_construction import OpaqueConstruction
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
+
+if TYPE_CHECKING:
+    from archetypal.template import ZoneDefinition
 
 
 class ZoneConstructionSet(UmiBase):
@@ -231,11 +234,11 @@ class ZoneConstructionSet(UmiBase):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone, **kwargs):
+    def from_zone(cls, zone: "ZoneDefinition", **kwargs):
         """Create a ZoneConstructionSet from a ZoneDefinition object.
 
         Args:
-            zone (ZoneDefinition):
+            zone (ZoneDefinition): The zone object.
         """
         name = zone.Name + "_ZoneConstructionSet"
         # dispatch surfaces

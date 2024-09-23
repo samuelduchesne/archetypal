@@ -1766,7 +1766,12 @@ class IDF(GeomIDF):
         df["wwr"] = (
             (df.window_area / df.wall_area).replace([np.inf, -np.inf], np.nan).fillna(0).apply(round, decimals=2)
         )
-        df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).fillna(0).apply(lambda x: roundto(x, to=round_to))
+        df["wwr_rounded_%"] = (
+            (df.window_area / df.wall_area * 100)
+            .replace([np.inf, -np.inf], np.nan)
+            .fillna(0)
+            .apply(lambda x: roundto(x, to=round_to))
+        )
         return df
 
     def space_heating_profile(

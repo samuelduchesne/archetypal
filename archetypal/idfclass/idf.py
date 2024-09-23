@@ -26,6 +26,9 @@ from itertools import chain
 from math import isclose
 from typing import IO, ClassVar, Literal
 
+import numpy as np
+from sigfig import round
+
 ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
 
 import eppy
@@ -1752,7 +1755,6 @@ class IDF(GeomIDF):
 
         # Create dataframe with wall_area, window_area and wwr as columns and azimuth
         # as indexes
-        from sigfig import round
 
         df = (
             pd.DataFrame({"wall_area": total_surface_area, "window_area": total_window_area})
@@ -1761,7 +1763,9 @@ class IDF(GeomIDF):
         )
         df.wall_area = df.wall_area.apply(round, decimals=1)
         df.window_area = df.window_area.apply(round, decimals=1)
-        df["wwr"] = (df.window_area / df.wall_area).fillna(0).apply(round, 2)
+        df["wwr"] = (
+            (df.window_area / df.wall_area).replace([np.inf, -np.inf], np.nan).fillna(0).apply(round, decimals=2)
+        )
         df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).fillna(0).apply(lambda x: roundto(x, to=round_to))
         return df
 

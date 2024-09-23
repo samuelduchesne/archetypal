@@ -168,23 +168,25 @@ def tabula_building_details_sheet(
                 code_num,
                 code_variantnumber,
             ) = code_building.split(".")
-        except ValueError:
+        except ValueError as e:
             msg = (
                 f'the query "{code_building}" is missing a parameter. Make sure the '
                 '"code_building" has the form: '
                 "AT.MT.AB.02.Gen.ReEx.001.001"
             )
             log(msg, lg.ERROR)
-            raise ValueError(msg)
+            raise ValueError(msg) from e
 
     # Check code country
     code_country = _resolve_codecountry(code_country)
 
     # Check code_buildingsizeclass
-    if code_buildingsizeclass.upper() not in ["SFH", "TH", "MFH", "AB"]:
-        raise ValueError(
-            'specified code_buildingsizeclass "{}" not supported. Available ' 'values are "SFH", "TH", ' '"MFH" or "AB"'
+    if code_buildingsizeclass.upper() not in {"SFH", "TH", "MFH", "AB"}:
+        msg = (
+            f'specified code_buildingsizeclass "{code_buildingsizeclass}" not supported. '
+            'Available values are "SFH", "TH", "MFH" or "AB"'
         )
+        raise ValueError(msg)
     # Check numericals
     if not isinstance(code_construcionyearclass, str):
         code_construcionyearclass = str(code_construcionyearclass).zfill(2)

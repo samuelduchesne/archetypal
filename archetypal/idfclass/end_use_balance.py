@@ -263,7 +263,7 @@ class EndUseBalance:
             multipliers = idf
             key = "KeyValue"
         else:
-            raise ValueError
+            raise TypeError
         return data.mul(multipliers, level=key, axis=1)
 
     @classmethod

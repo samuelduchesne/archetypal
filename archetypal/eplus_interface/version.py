@@ -71,7 +71,7 @@ class EnergyPlusVersion(Version):
 
         # check if any EnergyPlus install exists
         if not eplus_homes:
-            raise Exception(
+            raise EnergyPlusVersionError(
                 "No EnergyPlus installation found. Make sure you have EnergyPlus "
                 "installed. Go to https://energyplus.net/downloads to download the "
                 "latest version of EnergyPlus."
@@ -109,8 +109,8 @@ class EnergyPlusVersion(Version):
         """Get the current installation directory for this EnergyPlus version."""
         try:
             return self.install_locations[self.dash]
-        except KeyError:
-            raise EnergyPlusVersionError(f"EnergyPlusVersion {self.dash} is not installed.")
+        except KeyError as e:
+            raise EnergyPlusVersionError(f"EnergyPlusVersion {self.dash} is not installed.") from e
 
     @property
     def tuple(self) -> tuple:

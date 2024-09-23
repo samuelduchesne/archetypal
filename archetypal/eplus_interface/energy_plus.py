@@ -141,7 +141,7 @@ class EnergyPlusThread(Thread):
             tmp (str or Path): The directory in which the process will be launched.
         """
         super().__init__()
-        self.p: subprocess.Popen
+        self.p: subprocess.Popen = None
         self.std_out = None
         self.std_err = None
         self.idf = idf
@@ -152,11 +152,10 @@ class EnergyPlusThread(Thread):
         self.tmp = tmp
 
     def stop(self):
-        if self.p.poll() is None:
-            self.msg_callback("Attempting to cancel simulation ...")
-            self.cancelled = True
-            self.p.kill()
-            self.cancelled_callback(self.std_out, self.std_err)
+        self.msg_callback("Attempting to cancel simulation ...")
+        self.cancelled = True
+        self.p.kill()
+        self.cancelled_callback(self.std_out, self.std_err)
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
@@ -194,7 +193,8 @@ class EnergyPlusThread(Thread):
             self.cmd = eplus_exe.cmd()
         except EnergyPlusVersionError as e:
             self.exception = e
-            self.p.kill()  # kill process to be sure
+            if self.p:
+                self.p.terminate()  # terminate process to be sure
             return
         with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
             # Start process with tqdm bar

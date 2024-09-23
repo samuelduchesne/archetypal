@@ -929,19 +929,18 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
             IsNatVentOn = any(nat_df.loc[index, "Name"])
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             quantity = nat_df.loc[index, "Volume Flow Rate/Floor Area {m3/s/m2}"]
-            if schedule_name_.upper() in zone.idf.schedules_dict:
-                epbunch = zone.idf.schedules_dict[schedule_name_.upper()]
+            if schedule_name_.upper() in zone_ep.theidf.schedules_dict:
+                epbunch = zone_ep.theidf.schedules_dict[schedule_name_.upper()]
                 NatVentSchedule = UmiSchedule.from_epbunch(epbunch, quantity=quantity)
             else:
-                raise KeyError
-        except KeyError:
-            # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
-            #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
-            #  in the nat_df. For the mean time, a zone containing such an
-            #  object will be turned on with an AlwaysOn schedule.
-            IsNatVentOn = True
-            NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
+                # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
+                #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
+                #  in the nat_df. For the mean time, a zone containing such an
+                #  object will be turned on with an AlwaysOn schedule.
+                IsNatVentOn = True
+                NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         except Exception:
+            log("Error in reading the natural ventilation schedule. Reverting to defaults.", lg.ERROR)
             IsNatVentOn = False
             NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         finally:

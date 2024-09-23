@@ -635,9 +635,9 @@ class IDF(GeomIDF):
     def idfname(self, value):
         if not value:
             self._idfname = None
-        elif not isinstance(value, str | os.PathLike | StringIO | IOBase):
+        elif not isinstance(value, (str, os.PathLike, StringIO, IOBase)):
             raise ValueError(f"IDF path must be Path-Like, not {type(value)}")
-        elif isinstance(value, str | os.PathLike):
+        elif isinstance(value, (str, os.PathLike)):
             self._idfname = Path(value).expand()
         else:
             self._idfname = value
@@ -754,7 +754,7 @@ class IDF(GeomIDF):
 
     @prep_outputs.setter
     def prep_outputs(self, value):
-        assert isinstance(value, bool | list), (
+        assert isinstance(value, (bool, list)), (
             f"Expected bool or list of dict for " f"SimulationOutput outputs. Got {type(value)}."
         )
         self._prep_outputs = value
@@ -1666,7 +1666,7 @@ class IDF(GeomIDF):
         # First, set versions
         if to_version is None:
             to_version = EnergyPlusVersion.latest()
-        elif isinstance(to_version, str | tuple):
+        elif isinstance(to_version, (str, tuple)):
             to_version = EnergyPlusVersion(to_version)
 
         # second check if upgrade needed

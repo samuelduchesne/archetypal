@@ -1,5 +1,7 @@
 """IdfClass utilities."""
 
+from __future__ import annotations
+
 import hashlib
 import io
 import os
@@ -59,7 +61,7 @@ def hash_model(idfname, **kwargs):
 
     # Hashing the kwargs as well
     for k, v in kwargs.items():
-        if isinstance(v, str | bool):
+        if isinstance(v, (str, bool)):
             hasher.update(v.__str__().encode("utf-8"))
         elif isinstance(v, list):
             # include files are Paths

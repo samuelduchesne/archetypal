@@ -500,7 +500,7 @@ class EndUseBalance:
                 component_df = getattr(self, component)
                 if not component_df.empty:
                     summary_by_component[component] = component_df.sum(level=level, axis=1).sort_index(axis=1)
-            for (zone_name, surface_type), data in self.opaque_flow.groupby(
+            for (_zone_name, surface_type), data in self.opaque_flow.groupby(
                 level=["Zone_Name", "Surface_Type"], axis=1
             ):
                 summary_by_component[surface_type] = data.sum(level="Zone_Name", axis=1).sort_index(axis=1)

@@ -312,7 +312,7 @@ class ZoneGraph(networkx.Graph):
             # Loop on the list of edges to get the x,y,z, coordinates of the
             # connected nodes
             # Those two points are the extrema of the line to be plotted
-            for i, j in enumerate(self.edges()):
+            for _, j in enumerate(self.edges()):
                 x = np.array((pos[j[0]][0], pos[j[1]][0]))
                 y = np.array((pos[j[0]][1], pos[j[1]][1]))
                 z = np.array((pos[j[0]][2], pos[j[1]][2]))

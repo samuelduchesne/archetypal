@@ -722,5 +722,6 @@ class WindowConstruction(LayeredConstruction):
 
     def assert_almost_equal(self, temperatures_last, temperatures_next):
         return all(
-            abs(desired - actual) < 1.5 * 10 ** (-3) for desired, actual in zip(temperatures_last, temperatures_next)
+            abs(desired - actual) < 1.5 * 10 ** (-3)
+            for desired, actual in zip(temperatures_last, temperatures_next, strict=False)
         )

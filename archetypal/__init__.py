@@ -4,6 +4,8 @@
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
+from __future__ import annotations
+
 import logging as lg
 from pathlib import Path
 from typing import Any, ClassVar, Literal

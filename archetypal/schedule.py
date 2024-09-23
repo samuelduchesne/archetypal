@@ -287,7 +287,7 @@ class _ScheduleParser:
             if not weekly_schedules.loc[how].empty:
                 # Loop through days and replace with day:schedule values
                 days = []
-                for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(freq="D")):
+                for _name, day in weekly_schedules.loc[how].groupby(pd.Grouper(freq="D")):
                     if not day.empty:
                         ref = epbunch.get_referenced_object(f"ScheduleDay_Name_{i + 1}")
                         day.loc[:] = _ScheduleParser.get_schedule_values(
@@ -564,7 +564,7 @@ class _ScheduleParser:
             how = pd.IndexSlice[start_date:end_date]
 
             weeks = []
-            for name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168h")):
+            for _name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168h")):
                 if not week.empty:
                     try:
                         week.loc[:] = cls.get_schedule_values(
@@ -933,15 +933,18 @@ class _ScheduleParser:
         special_day_types = ["holiday", "customday1", "customday2"]
 
         dds = schedule_epbunch.theidf.idfobjects["RunPeriodControl:SpecialDays".upper()]
-        dd = [
-            dd for dd in dds if dd.Special_Day_Type.lower() == field or dd.Special_Day_Type.lower() in special_day_types
+        special_days = [
+            special_day
+            for special_day in dds
+            if special_day.Special_Day_Type.lower() == field
+            or special_day.Special_Day_Type.lower() in special_day_types
         ]
-        if len(dd) > 0:
-            for dd in dd:
+        if len(special_days) > 0:
+            for special_day in special_days:
                 # can have more than one special day types
-                field = dd.Start_Date
+                field = special_day.Start_Date
                 special_day_start_date = _ScheduleParser._date_field_interpretation(field, start_date)
-                duration = int(dd.Duration)
+                duration = int(special_day.Duration)
                 to_date = special_day_start_date + timedelta(days=duration) + timedelta(hours=-1)
 
                 sp_slicer_.loc[special_day_start_date:to_date] = True
@@ -969,12 +972,12 @@ class _ScheduleParser:
         sp_slicer_ = slicer_.copy()
         sp_slicer_.loc[:] = False
         dds = schedule_epbunch.theidf.idfobjects["SizingPeriod:DesignDay".upper()]
-        dd = [dd for dd in dds if dd.Day_Type.lower() == field]
-        if len(dd) > 0:
-            for dd in dd:
+        design_days = [dd for dd in dds if dd.Day_Type.lower() == field]
+        if len(design_days) > 0:
+            for design_day in design_days:
                 # should have found only one design day matching the Day Type
-                month = dd.Month
-                day = dd.Day_of_Month
+                month = design_day.Month
+                day = design_day.Day_of_Month
                 data = str(month) + "/" + str(day)
                 ep_start_date = _ScheduleParser._date_field_interpretation(data, start_date)
                 ep_orig = datetime(start_date.year, 1, 1)
@@ -993,7 +996,7 @@ class _ScheduleParser:
                 f"needed for schedule with Day Type '{field.capitalize()}'"
             )
             raise ValueError(msg)
-            data = [dd[0].Month, dd[0].Day_of_Month]
+            data = [design_days[0].Month, design_days[0].Day_of_Month]
             date = "/".join([str(item).zfill(2) for item in data])
             date = _ScheduleParser._date_field_interpretation(date, start_date)
             return lambda x: x.index == date
@@ -1157,12 +1160,12 @@ class Schedule:
         self._values = validators.iterable(value, maximum_length=8760)
 
     @property
-    def max(self):  # noqa: A003
+    def max(self):
         """Get the maximum value of the schedule."""
         return max(self.all_values)
 
     @property
-    def min(self):  # noqa: A003
+    def min(self):
         """Get the minimum value of the schedule."""
         return min(self.all_values)
 
@@ -1368,7 +1371,7 @@ class Schedule:
         from_date = datetime(self.year, 1, 1)
         bincount = [sum(1 for _ in group) for key, group in groupby(nws + 1) if key]
         week_order = dict(enumerate(np.array([key for key, group in groupby(nws + 1) if key]) - 1))
-        for i, (week_n, count) in enumerate(zip(week_order, bincount)):
+        for i, (_, count) in enumerate(zip(week_order, bincount)):
             week_id = list(dict_week)[week_order[i]]
             to_date = from_date + timedelta(days=int(count * 7), hours=-1)
             blocks[i] = YearSchedulePart(

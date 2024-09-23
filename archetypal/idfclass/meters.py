@@ -133,7 +133,7 @@ class MeterGroup:
         self._idf = idf
         self._properties = {}
 
-        for i, meter in meters_dict.items():
+        for _i, meter in meters_dict.items():
             meter_name = meter["Key_Name"].replace(":", "__").replace(" ", "_")
             self._properties[meter_name] = Meter(idf, meter)
             setattr(self, meter_name, self._properties[meter_name])

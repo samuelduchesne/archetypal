@@ -101,12 +101,12 @@ class UmiBase:
         self._name = validators.string(value, coerce_value=True)
 
     @property
-    def id(self):  # noqa: A003
+    def id(self):
         """Get or set the id."""
         return self._id
 
     @id.setter
-    def id(self, value):  # noqa: A003
+    def id(self, value):
         if value is None:
             value = id(self)
         self._id = validators.string(value, coerce_value=True)

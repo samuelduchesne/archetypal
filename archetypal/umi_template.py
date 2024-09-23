@@ -161,7 +161,7 @@ class UmiTemplateLibrary:
 
     def __add__(self, other: UmiTemplateLibrary):
         """Combined"""
-        for key, group in other:
+        for _, group in other:
             # for each group items
             for component in group:
                 component.id = None  # Reset the component's id
@@ -180,7 +180,7 @@ class UmiTemplateLibrary:
             except_groups = []
         exception = ["BuildingTemplates"]
         exception.extend(except_groups)
-        for key, group in self:
+        for key, _ in self:
             if key not in exception:
                 setattr(self, key, [])
 
@@ -188,7 +188,7 @@ class UmiTemplateLibrary:
     def object_list(self):
         """Get list of all objects in self, including orphaned objects."""
         objs = []
-        for name, group in self:
+        for _, group in self:
             objs.extend(group)
         return objs
 
@@ -317,7 +317,7 @@ class UmiTemplateLibrary:
         return BuildingTemplate.from_idf(idf, **kwargs)
 
     @classmethod
-    def open(cls, filename):  # noqa: A003
+    def open(cls, filename):
         """Initialize an UmiTemplate object from an UMI Template Library File.
 
         Args:

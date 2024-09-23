@@ -5,7 +5,7 @@ import logging as lg
 import math
 import sqlite3
 from enum import Enum
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 from sigfig import round
@@ -15,7 +15,11 @@ from validator_collection import checkers, validators
 from archetypal.reportdata import ReportData
 from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
-from archetypal.utils import float_round, log
+from archetypal.utils import log
+from geomeppy.patches import EpBunch
+
+if TYPE_CHECKING:
+    from archetypal.template import ZoneDefinition
 
 
 class UmiBaseEnum(Enum):
@@ -692,12 +696,12 @@ class ZoneConditioning(UmiBase):
         return data_dict
 
     @classmethod
-    def from_zone(cls, zone, zone_ep, nolimit=False, **kwargs):
+    def from_zone(cls, zone: "ZoneDefinition", zone_ep: EpBunch, nolimit: bool = False, **kwargs):
         """Create a ZoneConditioning object from a zone.
 
         Args:
-            zone_ep:
-            zone (archetypal.template.zone.Zone): zone to gets information from.
+            zone (ZoneDefinition): The zone object.
+            zone_ep (EpBunch): The EnergyPlus object.
         """
         # If Zone is not part of Conditioned Area, it should not have a ZoneLoad object.
         if zone.is_part_of_conditioned_floor_area and zone.is_part_of_total_floor_area:
@@ -714,7 +718,7 @@ class ZoneConditioning(UmiBase):
         else:
             return None
 
-    def _set_economizer(self, zone, zone_ep):
+    def _set_economizer(self, zone: "ZoneDefinition", zone_ep: EpBunch):
         """Set economizer parameters.
 
         Todo:
@@ -725,8 +729,8 @@ class ZoneConditioning(UmiBase):
               https://github.com/MITSustainableDesignLab/basilisk/issues/32
 
         Args:
-            zone_ep:
-            zone (Zone): The zone object.
+            zone (ZoneDefinition): The zone object.
+            zone_ep (EpBunch): The EnergyPlus object.
         """
         # Economizer
         controllers_in_idf = zone_ep.theidf.idfobjects["Controller:OutdoorAir".upper()]
@@ -750,7 +754,7 @@ class ZoneConditioning(UmiBase):
             elif object.Economizer_Control_Type == "DifferentialDryBulbAndEnthalpy":
                 self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
 
-    def _set_mechanical_ventilation(self, zone, zone_ep):
+    def _set_mechanical_ventilation(self, zone: "ZoneDefinition", zone_ep: EpBunch):
         """Set mechanical ventilation settings.
 
         Notes: Mechanical Ventilation in UMI (or Archsim-based models) is applied to
@@ -767,8 +771,8 @@ class ZoneConditioning(UmiBase):
         no `DesignSpecification:OutdoorAir`) and 2) models with
 
         Args:
-            zone_ep:
-            zone (Zone): The zone object.
+            zone (ZoneDefinition): The zone object.
+            zone_ep (EpBunch): The EnergyPlus object.
         """
         # For models with ZoneSizes
         try:
@@ -778,7 +782,7 @@ class ZoneConditioning(UmiBase):
                     self.MinFreshAirPerArea,
                     self.MinFreshAirPerPerson,
                     self.MechVentSchedule,
-                ) = self.fresh_air_from_zone_sizes(zone)
+                ) = self.fresh_air_from_zone_sizes(zone, zone_ep)
             except (ValueError, StopIteration):
                 (
                     self.IsMechVentOn,
@@ -794,11 +798,12 @@ class ZoneConditioning(UmiBase):
             self.MechVentSchedule = None
 
     @staticmethod
-    def get_equipment_list(zone, zone_ep):
+    def get_equipment_list(zone: "ZoneDefinition", zone_ep: EpBunch):
         """Get zone equipment list.
 
         Args:
-            zone_ep:
+            zone (ZoneDefinition): The zone object.
+            zone_ep (EpBunch): The EnergyPlus object.
         """
         connections = zone_ep.getreferingobjs(iddgroups=["Zone HVAC Equipment Connections"], fields=["Zone_Name"])
         referenced_object = next(iter(connections)).get_referenced_object("Zone_Conditioning_Equipment_List_Name")
@@ -808,7 +813,7 @@ class ZoneConditioning(UmiBase):
             [referenced_object.get_referenced_object(f"Zone_Equipment_{i}_Name") for i in range(1, 19)],
         )
 
-    def fresh_air_from_ideal_loads(self, zone, zone_ep):
+    def fresh_air_from_ideal_loads(self, zone: "ZoneDefinition", zone_ep: EpBunch):
         """Resolve fresh air requirements for Ideal Loads Air System.
 
         Args:
@@ -827,11 +832,12 @@ class ZoneConditioning(UmiBase):
         mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(oa_spec, zone)
         return True, oa_area, oa_person, mechvent_schedule
 
-    def fresh_air_from_zone_sizes(self, zone):
+    def fresh_air_from_zone_sizes(self, zone: "ZoneDefinition", zone_ep: EpBunch):
         """Return the Mechanical Ventilation from the ZoneSizes Table in the sql db.
 
         Args:
-            zone (ZoneDefinition):
+            zone (ZoneDefinition): The zone object.
+            zone_ep (EpBunch): The EnergyPlus object.
 
         Returns:
             4-tuple: (IsMechVentOn, MinFreshAirPerArea, MinFreshAirPerPerson, MechVentSchedule)
@@ -841,7 +847,7 @@ class ZoneConditioning(UmiBase):
         import pandas as pd
 
         # create database connection with sqlite3
-        with sqlite3.connect(zone.idf.sql_file) as conn:
+        with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
             sql_query = f"""
                         select t.ColumnName, t.Value
                         from TabularDataWithStrings t
@@ -856,18 +862,16 @@ class ZoneConditioning(UmiBase):
             else:
                 oa_person = np.nan
 
-            designobjs = zone._epbunch.getreferingobjs(
-                iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"]
-            )
-            obj = next(iter(eq for eq in designobjs if eq.key.lower() == "sizing:zone"))
-            oa_spec = obj.get_referenced_object("Design_Specification_Outdoor_Air_Object_Name")
+            designobjs = zone_ep.getreferingobjs(iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"])
+            obj: EpBunch = next(iter(eq for eq in designobjs if eq.key.lower() == "sizing:zone"))
+            oa_spec: EpBunch = obj.get_referenced_object("Design_Specification_Outdoor_Air_Object_Name")
             mechvent_schedule = self._mechanical_schedule_from_outdoorair_object(oa_spec, zone)
             return isoa, oa_area, oa_person, mechvent_schedule
 
-    def _mechanical_schedule_from_outdoorair_object(self, oa_spec, zone) -> UmiSchedule:
+    def _mechanical_schedule_from_outdoorair_object(self, oa_spec: EpBunch, zone: "ZoneDefinition") -> UmiSchedule:
         """Get mechanical ventilation schedule for zone and OutdoorAir:DesignSpec."""
         if oa_spec.Outdoor_Air_Schedule_Name != "":
-            epbunch = zone.idf.schedules_dict[oa_spec.Outdoor_Air_Schedule_Name.upper()]
+            epbunch = oa_spec.theidf.schedules_dict[oa_spec.Outdoor_Air_Schedule_Name.upper()]
             umi_schedule = UmiSchedule.from_epbunch(epbunch)
             log(
                 f"Mechanical Ventilation Schedule set as {UmiSchedule} for " f"zone {zone.Name}",
@@ -879,7 +883,7 @@ class ZoneConditioning(UmiBase):
             # Try to get
             try:
                 values = (
-                    self.idf.variables.OutputVariable["Air_System_Outdoor_Air_Minimum_Flow_Fraction"]
+                    oa_spec.theidf.variables.OutputVariable["Air_System_Outdoor_Air_Minimum_Flow_Fraction"]
                     .values()  # return values
                     .mean(axis=1)  # for more than one system, return mean
                     .values  # get numpy array
@@ -897,10 +901,10 @@ class ZoneConditioning(UmiBase):
                 return UmiSchedule.from_values(
                     Name="AirSystemOutdoorAirMinimumFlowFraction",
                     Values=values,
-                    idf=zone.idf,
+                    idf=oa_spec.theidf,
                 )
 
-    def _set_zone_cops(self, zone, zone_ep, nolimit=False):
+    def _set_zone_cops(self, zone: "ZoneDefinition", zone_ep: EpBunch, nolimit: bool = False):
         """Set the zone COPs.
 
         Todo:
@@ -1039,7 +1043,7 @@ class ZoneConditioning(UmiBase):
         if math.isnan(cooling_cop):
             self.CoolingCoeffOfPerf = 1
 
-    def _set_thermostat_setpoints(self, zone, zone_ep):
+    def _set_thermostat_setpoints(self, zone: "ZoneDefinition", zone_ep: EpBunch):
         """Set the thermostat settings and schedules for this zone.
 
         Args:
@@ -1112,7 +1116,7 @@ class ZoneConditioning(UmiBase):
         else:
             self.IsCoolingOn = True
 
-    def _set_heat_recovery(self, zone, zone_ep):
+    def _set_heat_recovery(self, zone: "ZoneDefinition", zone_ep: EpBunch):
         """Set the heat recovery parameters for this zone.
 
         Heat Recovery Parameters:
@@ -1238,32 +1242,6 @@ class ZoneConditioning(UmiBase):
             flow = 100
             LimitType = IdealSystemLimit.NoLimit
         return LimitType, cap, flow
-
-    @staticmethod
-    def _get_cop(zone, energy_in_list, energy_out_variable_name):
-        """Calculate COP for heating or cooling systems.
-
-        Args:
-            zone (archetypal.template.zone.Zone): zone to gets information from
-            energy_in_list (str or tuple): list of the energy sources for a
-                system (e.g. [Heating:Electricity, Heating:Gas] for heating
-                system)
-            energy_out_variable_name (str or tuple): Name of the output in the
-                sql for the energy given to the zone from the system (e.g. 'Air
-                System Total Heating Energy')
-        """
-        from archetypal.reportdata import ReportData
-
-        rd = ReportData.from_sql_dict(zone.idf.sql())
-        energy_out = rd.filter_report_data(name=tuple(energy_out_variable_name))
-        energy_in = rd.filter_report_data(name=tuple(energy_in_list))
-
-        outs = energy_out.groupby("KeyValue").Value.sum()
-        ins = energy_in.Value.sum()
-
-        cop = float_round(outs.sum() / ins, 3)
-
-        return cop
 
     def combine(self, other, weights=None):
         """Combine two ZoneConditioning objects together.

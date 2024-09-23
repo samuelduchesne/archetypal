@@ -365,7 +365,7 @@ class ZoneLoad(UmiBase):
         # Verify if Equipment in zone
 
         # create database connection with sqlite3
-        with sqlite3.connect(str(zone_ep.theidf.sql_file)) as conn:
+        with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
             sql_query = "select ifnull(ZoneIndex, null) from Zones where ZoneName=?"
             t = (zone.Name.upper(),)
             c = conn.cursor()

@@ -867,7 +867,7 @@ class _ScheduleParser:
                 date = _ScheduleParser._parse_fancy_string(field, start_date)
             except Exception as e:
                 msg = f"the schedule contains a " f"Field that is not understood: '{field}'"
-                raise ValueError(msg, e)
+                raise ValueError(msg, e) from e
             else:
                 return date
         else:
@@ -1338,8 +1338,8 @@ class Schedule:
                 return_inverse=True,
                 return_counts=True,
             )
-        except ValueError:
-            raise ValueError("Looks like the idf model needs to be rerun with 'annual=True'")
+        except ValueError as e:
+            raise ValueError("Looks like the idf model needs to be rerun with 'annual=True'") from e
 
         # We use the calendar module to set the week days order
         import calendar

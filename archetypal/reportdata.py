@@ -2,7 +2,6 @@
 
 import functools
 import time
-from sqlite3 import OperationalError
 
 import numpy as np
 from pandas import DataFrame, read_sql_query, to_numeric
@@ -145,15 +144,21 @@ class ReportData(DataFrame):
 
     @staticmethod
     def execute(conn, sql_query, params):
-        try:
-            # Try regular str read, could fail if wrong encoding
-            conn.text_factory = str
-            df = read_sql_query(sql_query, conn, params=params, coerce_float=True)
-        except OperationalError as e:
-            # Wring encoding found, the load bytes and decode object
-            # columns only
-            raise e
-        return df
+        """Execute a sql query and return a DataFrame.
+
+        Args:
+            conn (sqlite3.Connection): The connection to the sqlite3 database.
+            sql_query (str): The sql query to execute.
+            params (dict): The parameters to pass to the query.
+
+        Returns:
+            DataFrame: a pandas DataFrame.
+        Raises:
+            OperationalError: If the encoding is not correct.
+        """
+        # Try regular str read, could fail if wrong encoding
+        conn.text_factory = str
+        return read_sql_query(sql_query, conn, params=params, coerce_float=True)
 
     @property
     def _constructor(self):

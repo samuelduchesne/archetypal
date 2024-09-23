@@ -2089,12 +2089,13 @@ class TestVentilationSetting:
             zone_ep = idf.getobject("ZONE", "ZONE 1")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
             ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
-            assert ventilation_setting.IsNatVentOn == False
+            assert ventilation_setting.IsNatVentOn == True
+            assert ventilation_setting.IsScheduledVentilationOn == False
         if idf_name == "VentilationSimpleTest.idf":
             zone_ep = idf.getobject("ZONE", "ZONE 2")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
             ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
-            assert ventilation_setting.IsNatVentOn == True
+            assert ventilation_setting.IsNatVentOn == False
             assert ventilation_setting.IsScheduledVentilationOn == True
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone_ep = idf.getobject("ZONE", "Office")

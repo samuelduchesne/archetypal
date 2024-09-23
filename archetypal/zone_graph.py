@@ -428,8 +428,8 @@ class ZoneGraph(networkx.Graph):
         """
         try:
             import matplotlib.pyplot as plt
-        except ImportError:
-            raise ImportError("Matplotlib required for draw()")
+        except ImportError as e:
+            raise ImportError("Matplotlib required for draw()") from e
         except RuntimeError:
             log("Matplotlib unable to open display", lg.WARNING)
             raise

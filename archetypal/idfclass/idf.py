@@ -26,9 +26,8 @@ from itertools import chain
 from math import isclose
 from typing import IO, ClassVar, Literal
 
-import numpy as np
-from sigfig import round
 import eppy
+import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
@@ -38,6 +37,7 @@ from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
 from path import Path
+from sigfig import round
 from tabulate import tabulate
 from tqdm.auto import tqdm
 

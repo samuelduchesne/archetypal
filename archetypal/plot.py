@@ -56,7 +56,7 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi, axis_o
             os.makedirs(settings.imgs_folder)
         path_filename = os.path.join(settings.imgs_folder, os.extsep.join([filename, file_format]))
 
-        if not isinstance(ax, np.ndarray | list):
+        if not isinstance(ax, (np.ndarray, list)):
             ax = [ax]
         if file_format == "svg":
             fig.patch.set_alpha(0.0)

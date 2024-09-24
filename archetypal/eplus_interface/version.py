@@ -60,7 +60,7 @@ class EnergyPlusVersion(Version):
             version = ".".join(map(str, (version.major, version.minor, version.micro)))
         if isinstance(version, str) and "-" in version:
             version = version.replace("-", ".")
-        super(EnergyPlusVersion, self).__init__(version)
+        super().__init__(version)
         if self.dash not in self.valid_versions:
             raise InvalidEnergyPlusVersion()
 
@@ -228,8 +228,8 @@ def get_eplus_basedirs():
         return Path("/Applications").dirs("EnergyPlus*")
     else:
         warnings.warn(
-            "Archetypal is not compatible with %s. It is only compatible "
-            "with Windows, Linux or MacOs" % platform.system()
+            f"Archetypal is not compatible with {platform.system()}. It is only compatible "
+            "with Windows, Linux or MacOs"
         )
 
 

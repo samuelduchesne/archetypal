@@ -45,7 +45,7 @@ class OpaqueConstruction(LayeredConstruction):
             **kwargs: Other attributes passed to parent constructors such as
                 :class:`ConstructionBase`.
         """
-        super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
+        super().__init__(Name, Layers, **kwargs)
         self.area = 1
 
         # Only at the end append self to _CREATED_OBJECTS
@@ -58,7 +58,7 @@ class OpaqueConstruction(LayeredConstruction):
         Note that, when setting the R-value, the thickness of the inferred
         insulation layer will be adjusted.
         """
-        return super(OpaqueConstruction, self).r_value
+        return super().r_value
 
     @r_value.setter
     def r_value(self, value):
@@ -187,10 +187,7 @@ class OpaqueConstruction(LayeredConstruction):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self

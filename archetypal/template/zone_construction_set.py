@@ -72,7 +72,7 @@ class ZoneConstructionSet(UmiBase):
             IsSlabAdiabatic (bool): If True, surface is adiabatic.
             **kwargs:
         """
-        super(ZoneConstructionSet, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.Slab = Slab
         self.IsSlabAdiabatic = IsSlabAdiabatic
         self.Roof = Roof
@@ -386,10 +386,7 @@ class ZoneConstructionSet(UmiBase):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         meta = self._get_predecessors_meta(other)
@@ -585,14 +582,14 @@ class SurfaceDispatcher:
                 return self._dispatch[a, b](self.surf)
             except KeyError as e:
                 raise NotImplementedError(
-                    "surface '%s' in zone '%s' not supported by surface dispatcher "
-                    "with keys %s" % (self.surf.Name, self.zone.Name, e)
+                    f"surface '{self.surf.Name}' in zone '{self.zone.Name}' not supported by surface dispatcher "
+                    f"with keys {e}"
                 ) from e
 
     @staticmethod
     def _do_facade(surf):
         log(
-            'surface "%s" assigned as a Facade' % surf.Name,
+            f'surface "{surf.Name}" assigned as a Facade',
             lg.DEBUG,
             name=surf.theidf.name,
         )
@@ -604,7 +601,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_ground(surf):
         log(
-            'surface "%s" assigned as a Ground' % surf.Name,
+            f'surface "{surf.Name}" assigned as a Ground',
             lg.DEBUG,
             name=surf.theidf.name,
         )
@@ -621,7 +618,7 @@ class SurfaceDispatcher:
             oc.area = surf.area
             oc.Category = "Partition"
             log(
-                'surface "%s" assigned as a Partition' % surf.Name,
+                f'surface "{surf.Name}" assigned as a Partition',
                 lg.DEBUG,
                 name=surf.theidf.name,
             )
@@ -635,7 +632,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_roof(surf):
         log(
-            'surface "%s" assigned as a Roof' % surf.Name,
+            f'surface "{surf.Name}" assigned as a Roof',
             lg.DEBUG,
             name=surf.theidf.name,
         )
@@ -647,7 +644,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_slab(surf):
         log(
-            'surface "%s" assigned as a Slab' % surf.Name,
+            f'surface "{surf.Name}" assigned as a Slab',
             lg.DEBUG,
             name=surf.theidf.name,
         )
@@ -659,7 +656,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_basement(surf):
         log(
-            'surface "%s" ignored because basement facades are not supported' % surf.Name,
+            f'surface "{surf.Name}" ignored because basement facades are not supported',
             lg.WARNING,
             name=surf.theidf.name,
         )

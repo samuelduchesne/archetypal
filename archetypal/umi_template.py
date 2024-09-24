@@ -6,7 +6,7 @@ import json
 import logging as lg
 from collections import OrderedDict
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import ClassVar, List
+from typing import ClassVar
 
 import networkx as nx
 from pandas.io.common import get_handle
@@ -159,7 +159,7 @@ class UmiTemplateLibrary:
     def __getitem__(self, item):
         return self.__dict__[item]
 
-    def __add__(self, other: "UmiTemplateLibrary"):
+    def __add__(self, other: UmiTemplateLibrary):
         """Combined"""
         for key, group in other:
             # for each group items
@@ -617,7 +617,7 @@ class UmiTemplateLibrary:
 
         return data_dict
 
-    def unique_components(self, *args: str, exceptions: List[str] | None = None, keep_orphaned=False):
+    def unique_components(self, *args: str, exceptions: list[str] | None = None, keep_orphaned=False):
         """Keep only unique components.
 
         Starts by clearing all objects in self except self.BuildingTemplates.

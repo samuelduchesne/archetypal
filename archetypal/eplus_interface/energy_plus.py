@@ -255,7 +255,7 @@ class EnergyPlusThread(Thread):
                 pass
             else:
                 log(
-                    "Files generated at the end of the simulation: %s" % "\n".join(save_dir.files()),
+                    "Files generated at the end of the simulation: {}".format("\n".join(save_dir.files())),
                     lg.DEBUG,
                     name=self.name,
                 )

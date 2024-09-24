@@ -80,7 +80,7 @@ class WindowConstruction(LayeredConstruction):
             Category (str): "Single", "Double" or "Triple".
             **kwargs: Other keywords passed to the constructor.
         """
-        super(WindowConstruction, self).__init__(
+        super().__init__(
             Name,
             Layers,
             Category=Category,

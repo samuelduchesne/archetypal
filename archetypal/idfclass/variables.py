@@ -1,7 +1,7 @@
 """EnergyPlus variables module."""
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 import pandas as pd
 from energy_pandas import EnergyDataFrame

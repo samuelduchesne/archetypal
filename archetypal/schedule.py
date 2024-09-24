@@ -1,18 +1,19 @@
 """archetypal Schedule module."""
 
+from __future__ import annotations
+
 import functools
 import io
 import logging as lg
 from datetime import datetime, timedelta
 from itertools import groupby
-from typing import FrozenSet, List, Union
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
-from typing_extensions import Literal
 from validator_collection import checkers, validators
 
 from archetypal.utils import log
@@ -1008,10 +1009,10 @@ class Schedule:
     def __init__(
         self,
         Name: str,
-        start_day_of_the_week: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0,
+        start_day_of_the_week: frozenset[Literal[0, 1, 2, 3, 4, 5, 6]] = 0,
         strict: bool = False,
-        Type: Union[str, ScheduleTypeLimits] = None,
-        Values: Union[List[Union[int, float]], np.ndarray] = None,
+        Type: str | ScheduleTypeLimits = None,
+        Values: list[int | float] | np.ndarray = None,
         **kwargs,
     ):
         """Initialize object.
@@ -1033,7 +1034,7 @@ class Schedule:
             **kwargs:
         """
         try:
-            super(Schedule, self).__init__(Name, **kwargs)
+            super().__init__(Name, **kwargs)
         except Exception:
             pass  # todo: make this more robust
         self.Name = Name
@@ -1093,7 +1094,7 @@ class Schedule:
     def from_values(
         cls,
         Name: str,
-        Values: List[Union[float, int]],
+        Values: list[float | int],
         Type: str = "Fraction",
         **kwargs,
     ):
@@ -1209,7 +1210,7 @@ class Schedule:
         self.Values = new_values
         return self
 
-    def replace(self, new_values: Union[pd.Series]):
+    def replace(self, new_values: pd.Series):
         """Replace values with new values while keeping the full load hours constant.
 
         Time steps that are not specified in `new_values` will be adjusted to keep
@@ -1463,10 +1464,7 @@ class Schedule:
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # check if the schedule is the same
@@ -1513,7 +1511,7 @@ def _how(how):
         return "max"
 
 
-def get_year_for_first_weekday(weekday: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0):
+def get_year_for_first_weekday(weekday: frozenset[Literal[0, 1, 2, 3, 4, 5, 6]] = 0):
     """Get the year that starts on 'weekday', eg. Monday=0.
 
     Args:

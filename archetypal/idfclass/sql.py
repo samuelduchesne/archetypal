@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import timedelta
 from sqlite3 import connect
-from typing import List, Optional, Sequence, Union
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergyDataFrame
 from pandas import to_datetime
 from path import Path
-from typing_extensions import Literal
 
 from archetypal.utils import log
 
@@ -82,7 +82,7 @@ class SqlOutput:
 class _SqlOutputs:
     """Represents all the available outputs from the Sql file."""
 
-    def __init__(self, file_path: str, available_outputs: List[tuple]):
+    def __init__(self, file_path: str, available_outputs: list[tuple]):
         self._available_outputs = available_outputs
         self._properties = {}
 
@@ -148,7 +148,7 @@ class Sql:
         return self._tabular_data_keys
 
     @property
-    def available_outputs(self) -> List[tuple]:
+    def available_outputs(self) -> list[tuple]:
         """Get tuples (OutputName, ReportingFrequency) that can be requested.
 
         Any of these outputs when input to data_collections_by_output_name will
@@ -229,9 +229,9 @@ class Sql:
 
     def timeseries_by_name(
         self,
-        variable_or_meter: Union[str, Sequence],
-        reporting_frequency: Union[_REPORTING_FREQUENCIES] = "Hourly",
-        environment_type: Union[Literal[1, 2, 3]] = 3,
+        variable_or_meter: str | Sequence,
+        reporting_frequency: _REPORTING_FREQUENCIES = "Hourly",
+        environment_type: Literal[1, 2, 3] = 3,
     ) -> EnergyDataFrame:
         """Get an EnergyDataFrame for specified meters and/or variables.
 
@@ -325,7 +325,7 @@ class Sql:
         return data
 
     def tabular_data_by_name(
-        self, report_name: str, table_name: str, report_for_string: Optional[str] = None
+        self, report_name: str, table_name: str, report_for_string: str | None = None
     ) -> pd.DataFrame:
         """Get (ReportName, TableName) data as DataFrame.
 
@@ -371,7 +371,7 @@ class Sql:
             pivoted = pivoted.apply(pd.to_numeric, errors="ignore")
         return pivoted
 
-    def _extract_available_outputs(self) -> List:
+    def _extract_available_outputs(self) -> list:
         """Extract the list of all available outputs from the SQLite file."""
         with connect(self.file_path) as conn:
             cols = "Name, ReportingFrequency"

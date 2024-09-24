@@ -435,7 +435,7 @@ def timeit(method):
 
     def timed(*args, **kwargs):
         ts = time.time()
-        log("Executing %r..." % method.__qualname__)
+        log(f"Executing {method.__qualname__!r}...")
         result = method(*args, **kwargs)
         te = time.time()
 
@@ -448,9 +448,9 @@ def timeit(method):
         except:
             name = str(result)
         if tt > 0.001:
-            log("Completed %r for %r in %.3f s" % (method.__qualname__, name, tt))
+            log(f"Completed {method.__qualname__!r} for {name!r} in {tt:.3f} s")
         else:
-            log("Completed %r for %r in %.3f ms" % (method.__qualname__, name, tt * 1000))
+            log(f"Completed {method.__qualname__!r} for {name!r} in {tt * 1000:.3f} ms")
         return result
 
     return timed

@@ -6,8 +6,9 @@ Notes:
     archetypal.template module.
 """
 
+from __future__ import annotations
+
 import math
-from typing import List, Union
 
 from validator_collection import validators
 
@@ -52,7 +53,7 @@ class ConstructionBase(UmiBase):
             DisassemblyEnergy (float): disassembly energy [MJ/m2].
             **kwargs: keywords passed to UmiBase.
         """
-        super(ConstructionBase, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.AssemblyCarbon = AssemblyCarbon
         self.AssemblyCost = AssemblyCost
         self.AssemblyEnergy = AssemblyEnergy
@@ -153,11 +154,11 @@ class LayeredConstruction(ConstructionBase):
             **kwargs: Keywords passed to the :class:`ConstructionBase`
                 constructor.
         """
-        super(LayeredConstruction, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.Layers = Layers
 
     @property
-    def Layers(self) -> List[Union[MaterialLayer, GasLayer]]:
+    def Layers(self) -> list[MaterialLayer | GasLayer]:
         """Get or set the material layers."""
         return self._layers
 

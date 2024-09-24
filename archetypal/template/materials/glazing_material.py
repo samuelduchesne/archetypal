@@ -87,7 +87,7 @@ class GlazingMaterial(MaterialBase):
             **kwargs: keywords passed to the :class:`MaterialBase`
                 constructor. For more info, see :class:`MaterialBase`.
         """
-        super(GlazingMaterial, self).__init__(Name, Cost=Cost, **kwargs)
+        super().__init__(Name, Cost=Cost, **kwargs)
 
         self._solar_reflectance_front = 0
         self._solar_reflectance_back = None
@@ -238,10 +238,7 @@ class GlazingMaterial(MaterialBase):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self

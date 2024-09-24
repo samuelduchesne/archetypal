@@ -1,4 +1,4 @@
-from typing import Iterable
+from collections.abc import Iterable
 
 from archetypal.idfclass.end_use_balance import EndUseBalance
 from archetypal.idfclass.extensions import get_name_attribute

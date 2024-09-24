@@ -35,7 +35,7 @@ class GasMaterial(MaterialBase):
             **kwargs: keywords passed to the MaterialBase constructor.
         """
         self.Name = Name
-        super(GasMaterial, self).__init__(self.Name, Category=Category, **kwargs)
+        super().__init__(self.Name, Category=Category, **kwargs)
         self.Type = Name.upper()
         self.Conductivity = Conductivity
         self.Density = Density

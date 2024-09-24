@@ -71,7 +71,7 @@ class NoMassMaterial(MaterialBase):
                 stagnant air [%].
             **kwargs: keywords passed to parent constructors.
         """
-        super(NoMassMaterial, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.r_value = RValue
         self.Roughness = Roughness
         self.SolarAbsorptance = SolarAbsorptance
@@ -164,10 +164,7 @@ class NoMassMaterial(MaterialBase):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self

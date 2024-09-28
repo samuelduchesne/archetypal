@@ -110,7 +110,7 @@ class ZoneGraph(networkx.Graph):
                             this_cstr = surface["Construction_Name"]
                             their_cstr = adj_surf["Construction_Name"]
                             is_diff_cstr = surface["Construction_Name"] != adj_surf["Construction_Name"]
-                        except:
+                        except Exception:
                             this_cstr, their_cstr, is_diff_cstr = None, None, None
                         # create edge from this zone to the adjacent zone
                         G.add_edge(

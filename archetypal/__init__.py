@@ -196,13 +196,13 @@ settings = Settings()
 settings.unit_registry = unit_registry
 
 # After settings are loaded, import other modules
-from .eplus_interface.version import EnergyPlusVersion
-from .idfclass import IDF
-from .umi_template import (
+from .eplus_interface.version import EnergyPlusVersion  # noqa: E402
+from .idfclass import IDF  # noqa: E402
+from .umi_template import (  # noqa: E402
     BuildingTemplate,
     UmiTemplateLibrary,
 )
-from .utils import clear_cache, config, parallel_process
+from .utils import clear_cache, config, parallel_process  # noqa: E402
 
 try:
     __version__ = get_distribution("archetypal").version

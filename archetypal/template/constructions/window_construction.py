@@ -9,6 +9,7 @@ Notes:
 
 import collections
 from enum import Enum
+from typing import ClassVar
 
 from validator_collection import validators
 
@@ -63,7 +64,7 @@ class WindowConstruction(LayeredConstruction):
     .. image:: ../images/template/constructions-window.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["WindowConstruction"]] = []
 
     _CATEGORIES = ("single", "double", "triple", "quadruple")
 
@@ -79,7 +80,7 @@ class WindowConstruction(LayeredConstruction):
             Category (str): "Single", "Double" or "Triple".
             **kwargs: Other keywords passed to the constructor.
         """
-        super(WindowConstruction, self).__init__(
+        super().__init__(
             Name,
             Layers,
             Category=Category,

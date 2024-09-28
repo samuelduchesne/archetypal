@@ -5,6 +5,7 @@ import logging as lg
 import math
 import sqlite3
 from enum import Enum
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -43,7 +44,7 @@ class ZoneLoad(UmiBase):
     .. image:: ../images/template/zoneinfo-loads.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["ZoneLoad"]] = []
 
     __slots__ = (
         "_dimming_type",
@@ -118,7 +119,7 @@ class ZoneLoad(UmiBase):
             area (float): The floor area assiciated to this zone load object.
             **kwargs: Other keywords passed to the parent constructor :class:`UmiBase`.
         """
-        super(ZoneLoad, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
 
         self.EquipmentPowerDensity = EquipmentPowerDensity
         self.EquipmentAvailabilitySchedule = EquipmentAvailabilitySchedule
@@ -364,7 +365,7 @@ class ZoneLoad(UmiBase):
         # Verify if Equipment in zone
 
         # create database connection with sqlite3
-        with sqlite3.connect(str(zone_ep.theidf.sql_file)) as conn:
+        with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
             sql_query = "select ifnull(ZoneIndex, null) from Zones where ZoneName=?"
             t = (zone.Name.upper(),)
             c = conn.cursor()
@@ -507,10 +508,7 @@ class ZoneLoad(UmiBase):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self

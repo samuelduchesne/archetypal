@@ -2,6 +2,7 @@
 
 import collections
 import uuid
+from typing import ClassVar
 
 import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
@@ -31,7 +32,7 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["OpaqueConstruction"]] = []
 
     __slots__ = ("area",)
 
@@ -44,7 +45,7 @@ class OpaqueConstruction(LayeredConstruction):
             **kwargs: Other attributes passed to parent constructors such as
                 :class:`ConstructionBase`.
         """
-        super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
+        super().__init__(Name, Layers, **kwargs)
         self.area = 1
 
         # Only at the end append self to _CREATED_OBJECTS
@@ -57,7 +58,7 @@ class OpaqueConstruction(LayeredConstruction):
         Note that, when setting the R-value, the thickness of the inferred
         insulation layer will be adjusted.
         """
-        return super(OpaqueConstruction, self).r_value
+        return super().r_value
 
     @r_value.setter
     def r_value(self, value):
@@ -101,7 +102,7 @@ class OpaqueConstruction(LayeredConstruction):
             the n parallel layers of the composite wall." [ref]_
 
         .. [ref] Tsilingiris, P. T. (2004). On the thermal time constant of
-            structural walls. Applied Thermal Engineering, 24(5–6), 743–757.
+            structural walls. Applied Thermal Engineering, 24(5-6), 743-757.
             https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         return (1 / self.total_thickness) * sum(
@@ -186,10 +187,7 @@ class OpaqueConstruction(LayeredConstruction):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -224,7 +222,7 @@ class OpaqueConstruction(LayeredConstruction):
             other:
             weights:
         """
-        oc = [x for _, x in sorted(zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True)][0]
+        oc = next(x for _, x in sorted(zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True))
         return oc
 
     def _constant_ufactor(self, other, weights=None):

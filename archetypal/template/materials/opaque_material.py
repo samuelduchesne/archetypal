@@ -1,6 +1,7 @@
 """archetypal OpaqueMaterial."""
 
 import collections
+from typing import ClassVar
 
 from eppy.bunch_subclass import EpBunch
 from validator_collection import validators
@@ -16,7 +17,7 @@ class OpaqueMaterial(MaterialBase):
     .. image:: ../images/template/materials-opaque.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["OpaqueMaterial"]] = []
 
     _ROUGHNESS_TYPES = (
         "VeryRough",
@@ -98,7 +99,7 @@ class OpaqueMaterial(MaterialBase):
                 stagnant air [%].
             **kwargs: keywords passed to parent constructors.
         """
-        super(OpaqueMaterial, self).__init__(
+        super().__init__(
             Name,
             Cost=Cost,
             EmbodiedCarbon=EmbodiedCarbon,
@@ -252,10 +253,7 @@ class OpaqueMaterial(MaterialBase):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -374,7 +372,7 @@ class OpaqueMaterial(MaterialBase):
             material into EnergyPlus, internally the properties of this layer
             are converted to approximate the properties of air (density,
             specific heat, and conductivity) with the thickness adjusted to
-            maintain the user’s desired R-Value. This allowed such layers to be
+            maintain the user's desired R-Value. This allowed such layers to be
             handled internally in the same way as other layers without any
             additional changes to the code. This solution was deemed accurate
             enough as air has very little thermal mass and it made the coding of

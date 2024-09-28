@@ -34,6 +34,7 @@ numpy = [
     {version = "^2.0.2", python = "<=3.9"},
     {version = "^2.1.1", python = "3.10"}
 ]
+eval-type-backport = {version = "^0.2.0", python = "3.9"}
 
 # geomeppy.dependencies
 shapely = "^2.0.4"
@@ -85,7 +86,7 @@ archetypal = "archetypal.cli:cli"
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py39"
 line-length = 120
 fix = true
 select = [
@@ -108,18 +109,18 @@ select = [
     # mccabe
     "C90",
     # pycodestyle
-    #"E",
+    "E",
     "W",
     # pyflakes
-     "F",
+    "F",
     # pygrep-hooks
     "PGH",
     # pyupgrade
-    # "UP",
+    "UP",
     # ruff
-    # "RUF",
+    "RUF",
     # tryceratops
-    # "TRY",
+    "TRY",
 ]
 ignore = [
     # LineTooLong
@@ -127,7 +128,11 @@ ignore = [
     # DoNotAssignLambda
     "E731",
     # Too Complex
-    "C901"
+    "C901",
+    # raise-vanilla-args
+    "TRY003",
+    # Checks for uses of isinstance and issubclass that take a tuple of types for comparison.
+    "UP038"
 ]
 exclude = ["tests/input_data/*", "docker/trnsidf/*", "geomeppy"]
 
@@ -143,3 +148,10 @@ source = ["archetypal"]
 
 [tool.ruff.per-file-ignores]
 "tests/*" = ["S101"]
+
+[tool.ruff.lint]
+allowed-confusables = ["ρ"]
+
+[tool.ruff.lint.pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+keep-runtime-typing = true

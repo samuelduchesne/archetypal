@@ -60,7 +60,7 @@ class EnergyPlusVersion(Version):
             version = ".".join(map(str, (version.major, version.minor, version.micro)))
         if isinstance(version, str) and "-" in version:
             version = version.replace("-", ".")
-        super(EnergyPlusVersion, self).__init__(version)
+        super().__init__(version)
         if self.dash not in self.valid_versions:
             raise InvalidEnergyPlusVersion()
 
@@ -71,7 +71,7 @@ class EnergyPlusVersion(Version):
 
         # check if any EnergyPlus install exists
         if not eplus_homes:
-            raise Exception(
+            raise EnergyPlusVersionError(
                 "No EnergyPlus installation found. Make sure you have EnergyPlus "
                 "installed. Go to https://energyplus.net/downloads to download the "
                 "latest version of EnergyPlus."
@@ -109,8 +109,8 @@ class EnergyPlusVersion(Version):
         """Get the current installation directory for this EnergyPlus version."""
         try:
             return self.install_locations[self.dash]
-        except KeyError:
-            raise EnergyPlusVersionError(f"EnergyPlusVersion {self.dash} is not installed.")
+        except KeyError as e:
+            raise EnergyPlusVersionError(f"EnergyPlusVersion {self.dash} is not installed.") from e
 
     @property
     def tuple(self) -> tuple:
@@ -228,8 +228,8 @@ def get_eplus_basedirs():
         return Path("/Applications").dirs("EnergyPlus*")
     else:
         warnings.warn(
-            "Archetypal is not compatible with %s. It is only compatible "
-            "with Windows, Linux or MacOs" % platform.system()
+            f"Archetypal is not compatible with {platform.system()}. It is only compatible "
+            "with Windows, Linux or MacOs"
         )
 
 

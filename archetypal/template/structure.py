@@ -1,6 +1,7 @@
 """archetypal StructureInformation."""
 
 import collections
+from typing import ClassVar
 
 from validator_collection import validators
 
@@ -74,8 +75,7 @@ class MassRatio:
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for k, v in self.mapping().items():
-            yield k, v
+        yield from self.mapping().items()
 
     def to_dict(self):
         """Return MassRatio dictionary representation."""
@@ -137,7 +137,7 @@ class StructureInformation(ConstructionBase):
     .. image:: ../images/template/constructions-structure.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["StructureInformation"]] = []
 
     __slots__ = ("_mass_ratios",)
 
@@ -148,7 +148,7 @@ class StructureInformation(ConstructionBase):
             MassRatios (list of MassRatio): MassRatio object.
             **kwargs: keywords passed to the ConstructionBase constructor.
         """
-        super(StructureInformation, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.MassRatios = MassRatios
 
         # Only at the end append self to _CREATED_OBJECTS

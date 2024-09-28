@@ -2,6 +2,7 @@
 
 import collections
 from statistics import mean
+from typing import ClassVar
 
 import numpy as np
 from eppy import modeleditor
@@ -20,7 +21,7 @@ class DomesticHotWaterSetting(UmiBase):
     .. image:: ../images/template/zoneinfo-dhw.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["DomesticHotWaterSetting"]] = []
 
     __slots__ = (
         "_flow_rate_per_floor_area",
@@ -55,7 +56,7 @@ class DomesticHotWaterSetting(UmiBase):
                 mains [degC].
             **kwargs: keywords passed to parent constructors.
         """
-        super(DomesticHotWaterSetting, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.FlowRatePerFloorArea = FlowRatePerFloorArea
         self.IsOn = IsOn
         self.WaterSupplyTemperature = WaterSupplyTemperature
@@ -357,10 +358,7 @@ class DomesticHotWaterSetting(UmiBase):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self

@@ -236,3 +236,5 @@ fabric.properties
 docs/reference/
 
 .idea/
+
+tests/tests/.temp/

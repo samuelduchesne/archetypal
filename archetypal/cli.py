@@ -234,17 +234,18 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
 def validate_energyplusversion(ctx, param, value):
     try:
         return EnergyPlusVersion(value)
-    except EnergyPlusVersionError:
-        raise click.BadParameter("invalid energyplus version")
+    except EnergyPlusVersionError as e:
+        raise click.BadParameter("invalid energyplus version") from e
 
 
 def validate_paths(ctx, param, value):
     try:
         file_paths = set_filepaths(value)
         file_list = "\n".join([f"{i}. " + str(file.name) for i, file in enumerate(file_paths)])
+    except FileNotFoundError as e:
+        raise click.BadParameter("no files were found.") from e
+    else:
         return file_paths, file_list
-    except FileNotFoundError:
-        raise click.BadParameter("no files were found.")
 
 
 @cli.command()
@@ -349,7 +350,7 @@ def set_filepaths(idf):
         set of Path: The set of a list of paths
     """
     if not isinstance(idf, (list, tuple)):
-        raise ValueError("A list must be passed")
+        raise TypeError("A list must be passed")
     idf = tuple(Path(file_or_path).expand() for file_or_path in idf)  # make Paths
     file_paths = ()  # Placeholder for tuple of paths
     for file_or_path in idf:

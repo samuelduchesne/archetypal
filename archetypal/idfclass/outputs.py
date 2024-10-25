@@ -115,10 +115,10 @@ class Outputs:
         """
         self.idf = idf
         self.reporting_frequency = reporting_frequency
-        self.output_variables = set(a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()])
-        self.output_meters = set(
+        self.output_variables = {a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]}
+        self.output_meters = {
             (get_name_attribute(a), a.Reporting_Frequency) for a in idf.idfobjects["Output:Meter".upper()]
-        )
+        }
         self.other_outputs = outputs
 
         self.output_variables += tuple((v, reporting_frequency) for v in variables)
@@ -289,7 +289,7 @@ class Outputs:
 
     def add_schedules(self):
         """Adds Schedules object"""
-        outputs = [{"key": "Output:Schedules".upper(), **dict(Key_Field="Hourly")}]
+        outputs = [{"key": "Output:Schedules".upper(), **{"Key_Field": "Hourly"}}]
         for output in outputs:
             self._other_outputs.append(output)
         return self
@@ -309,7 +309,7 @@ class Outputs:
         Returns:
             Outputs: self
         """
-        outputs = [dict(key="Output:VariableDictionary".upper(), Key_Field=format)]
+        outputs = [{"key": "Output:VariableDictionary".upper(), "Key_Field": format}]
         for output in outputs:
             self._other_outputs.append(output)
         return self
@@ -338,7 +338,7 @@ class Outputs:
         outputs = [
             {
                 "key": "Output:Table:SummaryReports".upper(),
-                **dict(Report_1_Name=summary),
+                **{"Report_1_Name": summary},
             }
         ]
         for output in outputs:
@@ -361,7 +361,7 @@ class Outputs:
         Returns:
             Outputs: self
         """
-        outputs = [{"key": "Output:SQLite".upper(), **dict(Option_Type=sql_output_style)}]
+        outputs = [{"key": "Output:SQLite".upper(), **{"Option_Type": sql_output_style}}]
 
         for output in outputs:
             self._other_outputs.append(output)
@@ -390,7 +390,7 @@ class Outputs:
         outputs = [
             {
                 "key": "OutputControl:Table:Style".upper(),
-                **dict(Column_Separator=output_control_table_style),
+                **{"Column_Separator": output_control_table_style},
             }
         ]
 
@@ -452,7 +452,7 @@ class Outputs:
         outputs = [
             {
                 "key": "Output:Surfaces:Drawing".upper(),
-                **dict(Report_Type="DXF", Report_Specifications_1="ThickPolyline"),
+                **{"Report_Type": "DXF", "Report_Specifications_1": "ThickPolyline"},
             }
         ]
         for output in outputs:
@@ -704,12 +704,12 @@ class Outputs:
         for variable, reporting_frequency in self.output_variables:
             self.idf.newidfobject(
                 key="Output:Variable".upper(),
-                **dict(Variable_Name=variable, Reporting_Frequency=reporting_frequency),
+                **{"Variable_Name": variable, "Reporting_Frequency": reporting_frequency},
             )
         for meter, reporting_frequency in self.output_meters:
             self.idf.newidfobject(
                 key="Output:Meter".upper(),
-                **dict(Key_Name=meter, Reporting_Frequency=reporting_frequency),
+                **{"Key_Name": meter, "Reporting_Frequency": reporting_frequency},
             )
         for output in self.other_outputs:
             key = output.pop("key", None)

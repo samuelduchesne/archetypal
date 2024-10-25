@@ -524,28 +524,28 @@ class OpaqueMaterial(MaterialBase):
         if validate:
             self.validate()
 
-        return dict(
-            MoistureDiffusionResistance=self.MoistureDiffusionResistance,
-            Roughness=self.Roughness,
-            SolarAbsorptance=self.SolarAbsorptance,
-            SpecificHeat=self.SpecificHeat,
-            ThermalEmittance=self.ThermalEmittance,
-            VisibleAbsorptance=self.VisibleAbsorptance,
-            Conductivity=self.Conductivity,
-            Cost=self.Cost,
-            Density=self.Density,
-            EmbodiedCarbon=self.EmbodiedCarbon,
-            EmbodiedEnergy=self.EmbodiedEnergy,
-            SubstitutionRatePattern=self.SubstitutionRatePattern,
-            SubstitutionTimestep=self.SubstitutionTimestep,
-            TransportCarbon=self.TransportCarbon,
-            TransportDistance=self.TransportDistance,
-            TransportEnergy=self.TransportEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "MoistureDiffusionResistance": self.MoistureDiffusionResistance,
+            "Roughness": self.Roughness,
+            "SolarAbsorptance": self.SolarAbsorptance,
+            "SpecificHeat": self.SpecificHeat,
+            "ThermalEmittance": self.ThermalEmittance,
+            "VisibleAbsorptance": self.VisibleAbsorptance,
+            "Conductivity": self.Conductivity,
+            "Cost": self.Cost,
+            "Density": self.Density,
+            "EmbodiedCarbon": self.EmbodiedCarbon,
+            "EmbodiedEnergy": self.EmbodiedEnergy,
+            "SubstitutionRatePattern": self.SubstitutionRatePattern,
+            "SubstitutionTimestep": self.SubstitutionTimestep,
+            "TransportCarbon": self.TransportCarbon,
+            "TransportDistance": self.TransportDistance,
+            "TransportEnergy": self.TransportEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""

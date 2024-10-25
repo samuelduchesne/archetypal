@@ -254,7 +254,7 @@ class GlazingMaterial(MaterialBase):
         new_attr = {}
         for attr, value in self.mapping().items():
             if attr not in ["Comments", "DataSource"]:
-                if isinstance(value, (int, float)) or isinstance(other, (int, float)):
+                if isinstance(value, int | float) or isinstance(other, int | float):
                     new_attr[attr] = UmiBase.float_mean(self, other, attr=attr, weights=weights)
                 elif isinstance(value, str) or isinstance(other, str):
                     new_attr[attr] = UmiBase._str_mean(self, other, attr=attr, append=False)
@@ -363,32 +363,32 @@ class GlazingMaterial(MaterialBase):
         if validate:
             self.validate()
 
-        return dict(
-            DirtFactor=self.DirtFactor,
-            IREmissivityBack=self.IREmissivityBack,
-            IREmissivityFront=self.IREmissivityFront,
-            IRTransmittance=self.IRTransmittance,
-            SolarReflectanceBack=self.SolarReflectanceBack,
-            SolarReflectanceFront=self.SolarReflectanceFront,
-            SolarTransmittance=self.SolarTransmittance,
-            VisibleReflectanceBack=self.VisibleReflectanceBack,
-            VisibleReflectanceFront=self.VisibleReflectanceFront,
-            VisibleTransmittance=self.VisibleTransmittance,
-            Conductivity=self.Conductivity,
-            Cost=self.Cost,
-            Density=self.Density,
-            EmbodiedCarbon=self.EmbodiedCarbon,
-            EmbodiedEnergy=self.EmbodiedEnergy,
-            SubstitutionRatePattern=self.SubstitutionRatePattern,
-            SubstitutionTimestep=self.SubstitutionTimestep,
-            TransportCarbon=self.TransportCarbon,
-            TransportDistance=self.TransportDistance,
-            TransportEnergy=self.TransportEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "DirtFactor": self.DirtFactor,
+            "IREmissivityBack": self.IREmissivityBack,
+            "IREmissivityFront": self.IREmissivityFront,
+            "IRTransmittance": self.IRTransmittance,
+            "SolarReflectanceBack": self.SolarReflectanceBack,
+            "SolarReflectanceFront": self.SolarReflectanceFront,
+            "SolarTransmittance": self.SolarTransmittance,
+            "VisibleReflectanceBack": self.VisibleReflectanceBack,
+            "VisibleReflectanceFront": self.VisibleReflectanceFront,
+            "VisibleTransmittance": self.VisibleTransmittance,
+            "Conductivity": self.Conductivity,
+            "Cost": self.Cost,
+            "Density": self.Density,
+            "EmbodiedCarbon": self.EmbodiedCarbon,
+            "EmbodiedEnergy": self.EmbodiedEnergy,
+            "SubstitutionRatePattern": self.SubstitutionRatePattern,
+            "SubstitutionTimestep": self.SubstitutionTimestep,
+            "TransportCarbon": self.TransportCarbon,
+            "TransportDistance": self.TransportDistance,
+            "TransportEnergy": self.TransportEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     @classmethod
     def from_dict(cls, data, **kwargs):

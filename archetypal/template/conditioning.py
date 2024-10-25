@@ -1268,31 +1268,33 @@ class ZoneConditioning(UmiBase):
         if not weights:
             weights = [self.area, other.area]
 
-        new_attr = dict(
-            CoolingCoeffOfPerf=UmiBase.float_mean(self, other, "CoolingCoeffOfPerf", weights),
-            CoolingLimitType=max(self.CoolingLimitType, other.CoolingLimitType),
-            CoolingSetpoint=UmiBase.float_mean(self, other, "CoolingSetpoint", weights),
-            EconomizerType=max(self.EconomizerType, other.EconomizerType),
-            HeatRecoveryEfficiencyLatent=UmiBase.float_mean(self, other, "HeatRecoveryEfficiencyLatent", weights),
-            HeatRecoveryEfficiencySensible=UmiBase.float_mean(self, other, "HeatRecoveryEfficiencySensible", weights),
-            HeatRecoveryType=max(self.HeatRecoveryType, other.HeatRecoveryType),
-            HeatingCoeffOfPerf=UmiBase.float_mean(self, other, "HeatingCoeffOfPerf", weights),
-            HeatingLimitType=max(self.HeatingLimitType, other.HeatingLimitType),
-            HeatingSetpoint=UmiBase.float_mean(self, other, "HeatingSetpoint", weights),
-            IsCoolingOn=any((self.IsCoolingOn, other.IsCoolingOn)),
-            IsHeatingOn=any((self.IsHeatingOn, other.IsHeatingOn)),
-            IsMechVentOn=any((self.IsMechVentOn, other.IsMechVentOn)),
-            MaxCoolFlow=UmiBase.float_mean(self, other, "MaxCoolFlow", weights),
-            MaxCoolingCapacity=UmiBase.float_mean(self, other, "MaxCoolingCapacity", weights),
-            MaxHeatFlow=UmiBase.float_mean(self, other, "MaxHeatFlow", weights),
-            MaxHeatingCapacity=UmiBase.float_mean(self, other, "MaxHeatingCapacity", weights),
-            MinFreshAirPerArea=UmiBase.float_mean(self, other, "MinFreshAirPerArea", weights),
-            MinFreshAirPerPerson=UmiBase.float_mean(self, other, "MinFreshAirPerPerson", weights),
-            HeatingSchedule=UmiSchedule.combine(self.HeatingSchedule, other.HeatingSchedule, weights),
-            CoolingSchedule=UmiSchedule.combine(self.CoolingSchedule, other.CoolingSchedule, weights),
-            MechVentSchedule=UmiSchedule.combine(self.MechVentSchedule, other.MechVentSchedule, weights),
-            area=1 if self.area + other.area == 2 else self.area + other.area,
-        )
+        new_attr = {
+            "CoolingCoeffOfPerf": UmiBase.float_mean(self, other, "CoolingCoeffOfPerf", weights),
+            "CoolingLimitType": max(self.CoolingLimitType, other.CoolingLimitType),
+            "CoolingSetpoint": UmiBase.float_mean(self, other, "CoolingSetpoint", weights),
+            "EconomizerType": max(self.EconomizerType, other.EconomizerType),
+            "HeatRecoveryEfficiencyLatent": UmiBase.float_mean(self, other, "HeatRecoveryEfficiencyLatent", weights),
+            "HeatRecoveryEfficiencySensible": UmiBase.float_mean(
+                self, other, "HeatRecoveryEfficiencySensible", weights
+            ),
+            "HeatRecoveryType": max(self.HeatRecoveryType, other.HeatRecoveryType),
+            "HeatingCoeffOfPerf": UmiBase.float_mean(self, other, "HeatingCoeffOfPerf", weights),
+            "HeatingLimitType": max(self.HeatingLimitType, other.HeatingLimitType),
+            "HeatingSetpoint": UmiBase.float_mean(self, other, "HeatingSetpoint", weights),
+            "IsCoolingOn": any((self.IsCoolingOn, other.IsCoolingOn)),
+            "IsHeatingOn": any((self.IsHeatingOn, other.IsHeatingOn)),
+            "IsMechVentOn": any((self.IsMechVentOn, other.IsMechVentOn)),
+            "MaxCoolFlow": UmiBase.float_mean(self, other, "MaxCoolFlow", weights),
+            "MaxCoolingCapacity": UmiBase.float_mean(self, other, "MaxCoolingCapacity", weights),
+            "MaxHeatFlow": UmiBase.float_mean(self, other, "MaxHeatFlow", weights),
+            "MaxHeatingCapacity": UmiBase.float_mean(self, other, "MaxHeatingCapacity", weights),
+            "MinFreshAirPerArea": UmiBase.float_mean(self, other, "MinFreshAirPerArea", weights),
+            "MinFreshAirPerPerson": UmiBase.float_mean(self, other, "MinFreshAirPerPerson", weights),
+            "HeatingSchedule": UmiSchedule.combine(self.HeatingSchedule, other.HeatingSchedule, weights),
+            "CoolingSchedule": UmiSchedule.combine(self.CoolingSchedule, other.CoolingSchedule, weights),
+            "MechVentSchedule": UmiSchedule.combine(self.MechVentSchedule, other.MechVentSchedule, weights),
+            "area": 1 if self.area + other.area == 2 else self.area + other.area,
+        }
         # create a new object with the previous attributes
         new_obj = self.__class__(**meta, **new_attr, allow_duplicates=self.allow_duplicates)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
@@ -1324,32 +1326,32 @@ class ZoneConditioning(UmiBase):
             self.validate()
 
         base = super().mapping(validate=validate)
-        data = dict(
-            CoolingSchedule=self.CoolingSchedule,
-            CoolingCoeffOfPerf=self.CoolingCoeffOfPerf,
-            CoolingSetpoint=self.CoolingSetpoint,
-            CoolingLimitType=self.CoolingLimitType,
-            CoolingFuelType=self.CoolingFuelType,
-            EconomizerType=self.EconomizerType,
-            HeatingCoeffOfPerf=self.HeatingCoeffOfPerf,
-            HeatingLimitType=self.HeatingLimitType,
-            HeatingFuelType=self.HeatingFuelType,
-            HeatingSchedule=self.HeatingSchedule,
-            HeatingSetpoint=self.HeatingSetpoint,
-            HeatRecoveryEfficiencyLatent=self.HeatRecoveryEfficiencyLatent,
-            HeatRecoveryEfficiencySensible=self.HeatRecoveryEfficiencySensible,
-            HeatRecoveryType=self.HeatRecoveryType,
-            IsCoolingOn=self.IsCoolingOn,
-            IsHeatingOn=self.IsHeatingOn,
-            IsMechVentOn=self.IsMechVentOn,
-            MaxCoolFlow=self.MaxCoolFlow,
-            MaxCoolingCapacity=self.MaxCoolingCapacity,
-            MaxHeatFlow=self.MaxHeatFlow,
-            MaxHeatingCapacity=self.MaxHeatingCapacity,
-            MechVentSchedule=self.MechVentSchedule,
-            MinFreshAirPerArea=self.MinFreshAirPerArea,
-            MinFreshAirPerPerson=self.MinFreshAirPerPerson,
-        )
+        data = {
+            "CoolingSchedule": self.CoolingSchedule,
+            "CoolingCoeffOfPerf": self.CoolingCoeffOfPerf,
+            "CoolingSetpoint": self.CoolingSetpoint,
+            "CoolingLimitType": self.CoolingLimitType,
+            "CoolingFuelType": self.CoolingFuelType,
+            "EconomizerType": self.EconomizerType,
+            "HeatingCoeffOfPerf": self.HeatingCoeffOfPerf,
+            "HeatingLimitType": self.HeatingLimitType,
+            "HeatingFuelType": self.HeatingFuelType,
+            "HeatingSchedule": self.HeatingSchedule,
+            "HeatingSetpoint": self.HeatingSetpoint,
+            "HeatRecoveryEfficiencyLatent": self.HeatRecoveryEfficiencyLatent,
+            "HeatRecoveryEfficiencySensible": self.HeatRecoveryEfficiencySensible,
+            "HeatRecoveryType": self.HeatRecoveryType,
+            "IsCoolingOn": self.IsCoolingOn,
+            "IsHeatingOn": self.IsHeatingOn,
+            "IsMechVentOn": self.IsMechVentOn,
+            "MaxCoolFlow": self.MaxCoolFlow,
+            "MaxCoolingCapacity": self.MaxCoolingCapacity,
+            "MaxHeatFlow": self.MaxHeatFlow,
+            "MaxHeatingCapacity": self.MaxHeatingCapacity,
+            "MechVentSchedule": self.MechVentSchedule,
+            "MinFreshAirPerArea": self.MinFreshAirPerArea,
+            "MinFreshAirPerPerson": self.MinFreshAirPerPerson,
+        }
         data.update(base)
         return data
 

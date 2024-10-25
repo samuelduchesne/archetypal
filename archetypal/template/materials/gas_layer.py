@@ -331,7 +331,7 @@ class GasLayer:
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
-        return dict(Material=self.Material, Thickness=self.Thickness)
+        return {"Material": self.Material, "Thickness": self.Thickness}
 
     def get_unique(self):
         """Return the first of all the created objects that is equivalent to self."""

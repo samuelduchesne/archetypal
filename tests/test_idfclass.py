@@ -9,6 +9,7 @@ from archetypal.eplus_interface import (
     InvalidEnergyPlusVersion,
 )
 from archetypal.eplus_interface.version import EnergyPlusVersion
+from archetypal.idfclass.idf import SimulationNotRunError
 from archetypal.utils import parallel_process
 
 from .conftest import data_dir
@@ -347,7 +348,8 @@ class TestMeters:
 
     def test_retrieve_meters_nosim(self, config, shoebox_res):
         shoebox_res.simulation_dir.rmtree_p()
-        print(shoebox_res.meters)
+        with pytest.raises(SimulationNotRunError):
+            print(shoebox_res.meters)
 
     def test_retrieve_meters(self, config, shoebox_res):
         if not shoebox_res.simulation_dir.exists():

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import logging as lg
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import ClassVar
+from typing import ClassVar, Union
 
 import networkx as nx
 from pandas.io.common import get_handle
@@ -738,13 +738,14 @@ class UmiTemplateLibrary:
         return G
 
 
-def no_duplicates(file, attribute="Name"):
+def no_duplicates(file: Union[str, dict], attribute="Name"):
     """Assert whether or not dict has duplicated Names."""
-    import json
-    from collections import defaultdict
 
-    with open(file) as f:
-        data = json.loads(f.read()) if isinstance(file, str) else file
+    if isinstance(file, str):
+        with open(file) as f:
+            data = json.loads(f.read())
+    else:
+        data = file
     ids = defaultdict(lambda: defaultdict(int))
 
     for key, value in data.items():

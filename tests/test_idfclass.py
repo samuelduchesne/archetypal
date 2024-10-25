@@ -148,6 +148,8 @@ class TestIDF:
         assert idf_model.sql_file.exists()
 
     def test_processed_results(self, idf_model):
+        if not idf_model.simulation_dir.exists():
+            idf_model.simulate()
         assert idf_model.process_results()
 
     def test_partition_ratio(self, idf_model):

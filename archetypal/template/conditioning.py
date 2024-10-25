@@ -1,6 +1,7 @@
 """archetypal ZoneConditioning."""
 
 import collections
+import contextlib
 import logging as lg
 import math
 import sqlite3
@@ -741,13 +742,15 @@ class ZoneConditioning(UmiBase):
                 self.EconomizerType = EconomizerTypes.NoEconomizer
             elif object.Economizer_Control_Type == "DifferentialEnthalphy":
                 self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
-            elif object.Economizer_Control_Type == "DifferentialDryBulb":
+            elif (
+                object.Economizer_Control_Type == "DifferentialDryBulb"
+                or object.Economizer_Control_Type == "FixedDryBulb"
+            ):
                 self.EconomizerType = EconomizerTypes.DifferentialDryBulb
-            elif object.Economizer_Control_Type == "FixedDryBulb":
-                self.EconomizerType = EconomizerTypes.DifferentialDryBulb
-            elif object.Economizer_Control_Type == "FixedEnthalpy":
-                self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
-            elif object.Economizer_Control_Type == "ElectronicEnthalpy":
+            elif (
+                object.Economizer_Control_Type == "FixedEnthalpy"
+                or object.Economizer_Control_Type == "ElectronicEnthalpy"
+            ):
                 self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
             elif object.Economizer_Control_Type == "FixedDewPointAndDryBulb":
                 self.EconomizerType = EconomizerTypes.DifferentialDryBulb
@@ -857,10 +860,7 @@ class ZoneConditioning(UmiBase):
             oa_design = oa["Minimum Outdoor Air Flow Rate"]  # m3/s
             isoa = oa["Calculated Design Air Flow"] > 0  # True if ach > 0
             oa_area = oa_design / zone.area
-            if zone.occupants > 0:
-                oa_person = oa_design / zone.occupants
-            else:
-                oa_person = np.nan
+            oa_person = oa_design / zone.occupants if zone.occupants > 0 else np.nan
 
             designobjs = zone_ep.getreferingobjs(iddgroups=["HVAC Design Objects"], fields=["Zone_or_ZoneList_Name"])
             obj: EpBunch = next(iter(eq for eq in designobjs if eq.key.lower() == "sizing:zone"))
@@ -926,10 +926,9 @@ class ZoneConditioning(UmiBase):
         )
         total_input_heating_energy = 0
         for meter in heating_meters:
-            try:
+            with contextlib.suppress(KeyError):
+                # pass if meter does not exist for model
                 total_input_heating_energy += zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
-            except KeyError:
-                pass  # pass if meter does not exist for model
 
         heating_energy_transfer_meters = (
             "HeatingCoils__EnergyTransfer",
@@ -937,17 +936,14 @@ class ZoneConditioning(UmiBase):
         )
         total_output_heating_energy = 0
         for meter in heating_energy_transfer_meters:
-            try:
+            with contextlib.suppress(KeyError):
+                # pass if meter does not exist for model
                 total_output_heating_energy += zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
-            except KeyError:
-                pass  # pass if meter does not exist for model
         if total_output_heating_energy == 0:  # IdealLoadsAirSystem
-            try:
+            with contextlib.suppress(KeyError):
                 total_output_heating_energy += (
                     zone_ep.theidf.meters.OutputMeter["Heating__EnergyTransfer"].values("kWh").sum()
                 )
-            except KeyError:
-                pass
 
         cooling_meters = (
             "Cooling__Electricity",
@@ -958,10 +954,9 @@ class ZoneConditioning(UmiBase):
         )
         total_input_cooling_energy = 0
         for meter in cooling_meters:
-            try:
+            with contextlib.suppress(KeyError):
+                # pass if meter does not exist for model
                 total_input_cooling_energy += zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
-            except KeyError:
-                pass  # pass if meter does not exist for model
 
         cooling_energy_transfer_meters = (
             "CoolingCoils__EnergyTransfer",
@@ -969,17 +964,14 @@ class ZoneConditioning(UmiBase):
         )
         total_output_cooling_energy = 0
         for meter in cooling_energy_transfer_meters:
-            try:
+            with contextlib.suppress(KeyError):
+                # pass if meter does not exist for model
                 total_output_cooling_energy += zone_ep.theidf.meters.OutputMeter[meter].values("kWh").sum()
-            except KeyError:
-                pass  # pass if meter does not exist for model
         if total_output_cooling_energy == 0:  # IdealLoadsAirSystem
-            try:
+            with contextlib.suppress(KeyError):
                 total_output_cooling_energy += (
                     zone_ep.theidf.meters.OutputMeter["Cooling__EnergyTransfer"].values("kWh").sum()
                 )
-            except KeyError:
-                pass
 
         ratio_cooling = total_output_cooling_energy / (total_output_cooling_energy + total_output_heating_energy)
         ratio_heating = total_output_heating_energy / (total_output_cooling_energy + total_output_heating_energy)

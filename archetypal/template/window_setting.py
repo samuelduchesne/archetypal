@@ -578,25 +578,12 @@ class WindowSetting(UmiBase):
                     f'defaults for object "{cls.mro()[0].__name__}"',
                     lg.WARNING,
                 )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK":
-                log(
-                    f'"{leak.key}" is not fully supported. Rerverting to '
-                    f'defaults for object "{cls.mro()[0].__name__}"',
-                    lg.WARNING,
-                )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING":
-                log(
-                    f'"{leak.key}" is not fully supported. Rerverting to '
-                    f'defaults for object "{cls.mro()[0].__name__}"',
-                    lg.WARNING,
-                )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN":
-                log(
-                    f'"{leak.key}" is not fully supported. Rerverting to '
-                    f'defaults for object "{cls.mro()[0].__name__}"',
-                    lg.WARNING,
-                )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING":
+            elif (
+                leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING"
+            ):
                 log(
                     f'"{leak.key}" is not fully supported. Rerverting to '
                     f'defaults for object "{cls.mro()[0].__name__}"',

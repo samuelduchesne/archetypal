@@ -265,30 +265,15 @@ class ZoneConstructionSet(UmiBase):
         # Returning a set() for each groups of Constructions.
 
         facades = set(facade)
-        if facades:
-            facade = reduce(OpaqueConstruction.combine, facades)
-        else:
-            facade = None
+        facade = reduce(OpaqueConstruction.combine, facades) if facades else None
         grounds = set(ground)
-        if grounds:
-            ground = reduce(OpaqueConstruction.combine, grounds)
-        else:
-            ground = None
+        ground = reduce(OpaqueConstruction.combine, grounds) if grounds else None
         partitions = set(partition)
-        if partitions:
-            partition = reduce(OpaqueConstruction.combine, partitions)
-        else:
-            partition = None
+        partition = reduce(OpaqueConstruction.combine, partitions) if partitions else None
         roofs = set(roof)
-        if roofs:
-            roof = reduce(OpaqueConstruction.combine, roofs)
-        else:
-            roof = None
+        roof = reduce(OpaqueConstruction.combine, roofs) if roofs else None
         slabs = set(slab)
-        if slabs:
-            slab = reduce(OpaqueConstruction.combine, slabs)
-        else:
-            slab = None
+        slab = reduce(OpaqueConstruction.combine, slabs) if slabs else None
 
         z_set = cls(
             Facade=facade,

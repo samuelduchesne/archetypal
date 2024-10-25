@@ -1,5 +1,6 @@
 """Eppy extensions module."""
 
+import contextlib
 import copy
 
 from eppy.bunch_subclass import BadEPFieldError
@@ -31,7 +32,7 @@ def nameexists(self: EpBunch):
 @extend_class(EpBunch)
 def get_default(self: EpBunch, name):
     """Return the default value of a field"""
-    if "default" in self.getfieldidd(name).keys():
+    if "default" in self.getfieldidd(name):
         _type = _parse_idd_type(self, name)
         default_ = next(iter(self.getfieldidd_item(name, "default")), None)
         return _type(default_)
@@ -85,10 +86,8 @@ def makedict(self: Eplusdata, dictfile, fnamefobject):
         dt, dtls = self.initdict(dictfile)
     fnamefobject.seek(0)  # make sure to read from the beginning
     astr = fnamefobject.read()
-    try:
+    with contextlib.suppress(AttributeError):
         astr = astr.decode("ISO-8859-2")
-    except AttributeError:
-        pass
     nocom = removecomment(astr, "!")
     idfst = nocom
     # alist = string.split(idfst, ';')
@@ -131,14 +130,8 @@ def _parse_idd_type(epbunch, name):
         - node -> str           (name used in connecting HVAC components)
     """
     _type = next(iter(epbunch.getfieldidd_item(name, "type")), "").lower()
-    if _type == "real":
-        return float
-    elif _type == "alpha":
-        return str
-    elif _type == "integer":
-        return int
-    else:
-        return str
+    type_mapping = {"real": float, "alpha": str, "integer": int}
+    return type_mapping.get(_type, str)
 
 
 # relationship between epbunch output frequency and db.

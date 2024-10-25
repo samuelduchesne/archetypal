@@ -188,23 +188,23 @@ class GasMaterial(MaterialBase):
         if validate:
             self.validate()
 
-        return dict(
-            Category=self.Category,
-            Type=self.Type,
-            Conductivity=self.Conductivity,
-            Cost=self.Cost,
-            Density=self.Density,
-            EmbodiedCarbon=self.EmbodiedCarbon,
-            EmbodiedEnergy=self.EmbodiedEnergy,
-            SubstitutionRatePattern=self.SubstitutionRatePattern,
-            SubstitutionTimestep=self.SubstitutionTimestep,
-            TransportCarbon=self.TransportCarbon,
-            TransportDistance=self.TransportDistance,
-            TransportEnergy=self.TransportEnergy,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Category": self.Category,
+            "Type": self.Type,
+            "Conductivity": self.Conductivity,
+            "Cost": self.Cost,
+            "Density": self.Density,
+            "EmbodiedCarbon": self.EmbodiedCarbon,
+            "EmbodiedEnergy": self.EmbodiedEnergy,
+            "SubstitutionRatePattern": self.SubstitutionRatePattern,
+            "SubstitutionTimestep": self.SubstitutionTimestep,
+            "TransportCarbon": self.TransportCarbon,
+            "TransportDistance": self.TransportDistance,
+            "TransportEnergy": self.TransportEnergy,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def density_at_temperature(self, t_kelvin, pressure=101325):
         """Get the density of the gas [kg/m3] at a given temperature and pressure.

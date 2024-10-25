@@ -87,11 +87,11 @@ class MassRatio:
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
-        return dict(
-            HighLoadRatio=self.HighLoadRatio,
-            Material=self.Material,
-            NormalRatio=self.NormalRatio,
-        )
+        return {
+            "HighLoadRatio": self.HighLoadRatio,
+            "Material": self.Material,
+            "NormalRatio": self.NormalRatio,
+        }
 
     def get_unique(self):
         """Return the first of all the created objects that is equivalent to self."""
@@ -220,18 +220,18 @@ class StructureInformation(ConstructionBase):
         if validate:
             self.validate()
 
-        return dict(
-            MassRatios=self.MassRatios,
-            AssemblyCarbon=self.AssemblyCarbon,
-            AssemblyCost=self.AssemblyCost,
-            AssemblyEnergy=self.AssemblyEnergy,
-            DisassemblyCarbon=self.DisassemblyCarbon,
-            DisassemblyEnergy=self.DisassemblyEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "MassRatios": self.MassRatios,
+            "AssemblyCarbon": self.AssemblyCarbon,
+            "AssemblyCost": self.AssemblyCost,
+            "AssemblyEnergy": self.AssemblyEnergy,
+            "DisassemblyCarbon": self.DisassemblyCarbon,
+            "DisassemblyEnergy": self.DisassemblyEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""

@@ -276,7 +276,7 @@ class UmiTemplateLibrary:
         umi_template.BuildingTemplates = [res for res in results.values() if not isinstance(res, Exception)]
 
         if keep_all_zones:
-            _zones = set(obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS)
+            _zones = {obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS}
             for zone in _zones:
                 umi_template.ZoneDefinitions.append(zone)
             exceptions = [ZoneDefinition.__name__]
@@ -739,14 +739,15 @@ class UmiTemplateLibrary:
 
 
 def no_duplicates(file: Union[str, dict], attribute="Name"):
-    """Assert whether dict has duplicated Names."""
+    """Assert whether or not dict has duplicated Names."""
+
     if isinstance(file, str):
         with open(file) as f:
             data = json.loads(f.read())
     else:
         data = file
-
     ids = defaultdict(lambda: defaultdict(int))
+
     for key, value in data.items():
         for component in value:
             _id = component.get(attribute)

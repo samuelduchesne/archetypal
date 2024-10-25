@@ -423,7 +423,7 @@ class _ScheduleParser:
         from_time = "00:00"
         how_interpolate = None
         for field in fields:
-            if any([spe in field.lower() for spe in field_sets]):
+            if any(spe in field.lower() for spe in field_sets):
                 f_set, hour, minute, value = _ScheduleParser._field_interpreter(field, epbunch.Name)
 
                 if f_set.lower() == "through":
@@ -1367,7 +1367,7 @@ class Schedule:
         blocks = {}
         from_date = datetime(self.year, 1, 1)
         bincount = [sum(1 for _ in group) for key, group in groupby(nws + 1) if key]
-        week_order = {i: v for i, v in enumerate(np.array([key for key, group in groupby(nws + 1) if key]) - 1)}
+        week_order = dict(enumerate(np.array([key for key, group in groupby(nws + 1) if key]) - 1))
         for i, (week_n, count) in enumerate(zip(week_order, bincount)):
             week_id = list(dict_week)[week_order[i]]
             to_date = from_date + timedelta(days=int(count * 7), hours=-1)

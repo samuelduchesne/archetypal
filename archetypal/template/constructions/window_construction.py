@@ -339,18 +339,18 @@ class WindowConstruction(LayeredConstruction):
         if validate:
             self.validate()
 
-        return dict(
-            Layers=self.Layers,
-            AssemblyCarbon=self.AssemblyCarbon,
-            AssemblyCost=self.AssemblyCost,
-            AssemblyEnergy=self.AssemblyEnergy,
-            DisassemblyCarbon=self.DisassemblyCarbon,
-            DisassemblyEnergy=self.DisassemblyEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Layers": self.Layers,
+            "AssemblyCarbon": self.AssemblyCarbon,
+            "AssemblyCost": self.AssemblyCost,
+            "AssemblyEnergy": self.AssemblyEnergy,
+            "DisassemblyCarbon": self.DisassemblyCarbon,
+            "DisassemblyEnergy": self.DisassemblyEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def combine(self, other, weights=None):
         """Append other to self. Return self + other as a new object.

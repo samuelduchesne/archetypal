@@ -560,25 +560,25 @@ class BuildingTemplate(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            Core=self.Core,
-            Lifespan=self.Lifespan,
-            PartitionRatio=self.PartitionRatio,
-            Perimeter=self.Perimeter,
-            Structure=self.Structure,
-            Windows=self.Windows,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-            YearFrom=self.YearFrom,
-            YearTo=self.YearTo,
-            Country=self.Country,
-            ClimateZone=self.ClimateZone,
-            Authors=self.Authors,
-            AuthorEmails=self.AuthorEmails,
-            Version=self.Version,
-        )
+        return {
+            "Core": self.Core,
+            "Lifespan": self.Lifespan,
+            "PartitionRatio": self.PartitionRatio,
+            "Perimeter": self.Perimeter,
+            "Structure": self.Structure,
+            "Windows": self.Windows,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+            "YearFrom": self.YearFrom,
+            "YearTo": self.YearTo,
+            "Country": self.Country,
+            "ClimateZone": self.ClimateZone,
+            "Authors": self.Authors,
+            "AuthorEmails": self.AuthorEmails,
+            "Version": self.Version,
+        }
 
     def get_ref(self, ref):
         """Get item matching reference id.

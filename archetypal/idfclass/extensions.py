@@ -43,7 +43,7 @@ def get_default(self: EpBunch, name):
 @extend_class(EpBunch)
 def to_dict(self: EpBunch):
     """Get the dict representation of the EpBunch."""
-    return {k: v for k, v in zip(self.fieldnames, self.fieldvalues)}
+    return dict(zip(self.fieldnames, self.fieldvalues))
 
 
 @extend_class(EpBunch)

@@ -408,7 +408,7 @@ class IDF(GeomIDF):
         try:
             file = next(iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf")))
         except StopIteration as e:
-            full_list = list(map(lambda x: str(x.name), example_files_dir.files("*.idf")))
+            full_list = [str(x.name) for x in example_files_dir.files("*.idf")]
             raise ValueError(f"Choose from: {sorted(full_list)}") from e
         if epw is not None:
             epw = Path(epw)
@@ -418,7 +418,7 @@ class IDF(GeomIDF):
                 try:
                     epw = next(iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw")))
                 except StopIteration as e:
-                    full_list = list(map(lambda x: str(x.name), dir_weather_data_.files("*.epw")))
+                    full_list = [str(x.name) for x in dir_weather_data_.files("*.epw")]
                     raise ValueError(f"Choose EPW from: {sorted(full_list)}") from e
         return cls(file, epw=epw, **kwargs)
 
@@ -1542,9 +1542,7 @@ class IDF(GeomIDF):
         import inspect
 
         sig = inspect.signature(IDF.__init__)
-        kwargs = {
-            key: getattr(self, key) for key in [a for a in sig.parameters] if key not in ["self", "idfname", "kwargs"]
-        }
+        kwargs = {key: getattr(self, key) for key in list(sig.parameters) if key not in ["self", "idfname", "kwargs"]}
 
         as_idf = IDF(filename, **kwargs)
         # copy simulation_dir over to new location
@@ -2375,7 +2373,7 @@ class IDF(GeomIDF):
         if "world" in [o.Coordinate_System.lower() for o in self.idfobjects["GLOBALGEOMETRYRULES"]] or self.translated:
             log("Model already set as World coordinates", level=lg.WARNING)
             return
-        zone_angles = set(z.Direction_of_Relative_North or 0 for z in self.idfobjects["ZONE"])
+        zone_angles = {z.Direction_of_Relative_North or 0 for z in self.idfobjects["ZONE"]}
         # If Zones have Direction_of_Relative_North != 0, model needs to be rotated
         # before translation.
         if all(angle != 0 for angle in zone_angles):
@@ -2397,7 +2395,7 @@ class IDF(GeomIDF):
         }
         surfaces = {s.Name.upper(): s for s in self.getsurfaces()}
         subsurfaces = self.getsubsurfaces()
-        daylighting_refpoints = [p for p in self.idfobjects["DAYLIGHTING:REFERENCEPOINT"]]
+        daylighting_refpoints = list(self.idfobjects["DAYLIGHTING:REFERENCEPOINT"])
         attached_shading_surf_names = []
         for g in self.idd_index["ref2names"]["AttachedShadingSurfNames"]:
             for item in self.idfobjects[g]:
@@ -2501,7 +2499,7 @@ class IDF(GeomIDF):
         if not angle:
             bldg_angle = self.idfobjects["BUILDING"][0].North_Axis or 0
             log(f"Building North Axis = {bldg_angle}", level=lg.DEBUG)
-            zone_angles = set(z.Direction_of_Relative_North for z in self.idfobjects["ZONE"])
+            zone_angles = {z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]}
             assert len(zone_angles) == 1, "Not all zone have the same Direction_of_Relative_North"
             zone_angle, *_ = zone_angles
             zone_angle = zone_angle or 0

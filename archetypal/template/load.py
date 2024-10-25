@@ -531,34 +531,34 @@ class ZoneLoad(UmiBase):
                 )
             )
 
-        new_attr = dict(
-            DimmingType=max(self.DimmingType, other.DimmingType),
-            EquipmentAvailabilitySchedule=UmiSchedule.combine(
+        new_attr = {
+            "DimmingType": max(self.DimmingType, other.DimmingType),
+            "EquipmentAvailabilitySchedule": UmiSchedule.combine(
                 self.EquipmentAvailabilitySchedule,
                 other.EquipmentAvailabilitySchedule,
                 weights=[self.area, other.area],
                 quantity=True,
             ),
-            EquipmentPowerDensity=self.float_mean(other, "EquipmentPowerDensity", weights),
-            IlluminanceTarget=self.float_mean(other, "IlluminanceTarget", weights),
-            LightingPowerDensity=self.float_mean(other, "LightingPowerDensity", weights),
-            LightsAvailabilitySchedule=UmiSchedule.combine(
+            "EquipmentPowerDensity": self.float_mean(other, "EquipmentPowerDensity", weights),
+            "IlluminanceTarget": self.float_mean(other, "IlluminanceTarget", weights),
+            "LightingPowerDensity": self.float_mean(other, "LightingPowerDensity", weights),
+            "LightsAvailabilitySchedule": UmiSchedule.combine(
                 self.LightsAvailabilitySchedule,
                 other.LightsAvailabilitySchedule,
                 weights=[self.area, other.area],
                 quantity=True,
             ),
-            OccupancySchedule=UmiSchedule.combine(
+            "OccupancySchedule": UmiSchedule.combine(
                 self.OccupancySchedule,
                 other.OccupancySchedule,
                 weights=[self.area, other.area],
                 quantity=True,
             ),
-            IsEquipmentOn=any([self.IsEquipmentOn, other.IsEquipmentOn]),
-            IsLightingOn=any([self.IsLightingOn, other.IsLightingOn]),
-            IsPeopleOn=any([self.IsPeopleOn, other.IsPeopleOn]),
-            PeopleDensity=self.float_mean(other, "PeopleDensity", weights),
-        )
+            "IsEquipmentOn": any([self.IsEquipmentOn, other.IsEquipmentOn]),
+            "IsLightingOn": any([self.IsLightingOn, other.IsLightingOn]),
+            "IsPeopleOn": any([self.IsPeopleOn, other.IsPeopleOn]),
+            "PeopleDensity": self.float_mean(other, "PeopleDensity", weights),
+        }
 
         new_obj = self.__class__(**meta, **new_attr, allow_duplicates=self.allow_duplicates)
         new_obj.area = self.area + other.area
@@ -602,23 +602,23 @@ class ZoneLoad(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            DimmingType=self.DimmingType,
-            EquipmentAvailabilitySchedule=self.EquipmentAvailabilitySchedule,
-            EquipmentPowerDensity=self.EquipmentPowerDensity,
-            IlluminanceTarget=self.IlluminanceTarget,
-            LightingPowerDensity=self.LightingPowerDensity,
-            LightsAvailabilitySchedule=self.LightsAvailabilitySchedule,
-            OccupancySchedule=self.OccupancySchedule,
-            IsEquipmentOn=self.IsEquipmentOn,
-            IsLightingOn=self.IsLightingOn,
-            IsPeopleOn=self.IsPeopleOn,
-            PeopleDensity=self.PeopleDensity,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "DimmingType": self.DimmingType,
+            "EquipmentAvailabilitySchedule": self.EquipmentAvailabilitySchedule,
+            "EquipmentPowerDensity": self.EquipmentPowerDensity,
+            "IlluminanceTarget": self.IlluminanceTarget,
+            "LightingPowerDensity": self.LightingPowerDensity,
+            "LightsAvailabilitySchedule": self.LightsAvailabilitySchedule,
+            "OccupancySchedule": self.OccupancySchedule,
+            "IsEquipmentOn": self.IsEquipmentOn,
+            "IsLightingOn": self.IsLightingOn,
+            "IsPeopleOn": self.IsPeopleOn,
+            "PeopleDensity": self.PeopleDensity,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def to_dict(self):
         """Return ZoneLoad dictionary representation."""

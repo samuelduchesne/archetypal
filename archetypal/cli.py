@@ -18,7 +18,7 @@ from archetypal.utils import config, docstring_parameter, log, parallel_process,
 from .eplus_interface.exceptions import EnergyPlusVersionError
 from .eplus_interface.version import EnergyPlusVersion
 
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 
 class CliConfig:
@@ -297,14 +297,14 @@ def transition(idf, to_version, cores, yes):
 
     to_version = to_version.dash
     rundict = {
-        file: dict(
-            idfname=file,
-            as_version=to_version,
-            check_required=False,
-            check_length=False,
-            overwrite=overwrite,
-            prep_outputs=False,
-        )
+        file: {
+            "idfname": file,
+            "as_version": to_version,
+            "check_required": False,
+            "check_length": False,
+            "overwrite": overwrite,
+            "prep_outputs": False,
+        }
         for i, file in enumerate(file_paths)
     }
     results = parallel_process(
@@ -352,7 +352,7 @@ def set_filepaths(idf):
     file_paths = ()  # Placeholder for tuple of paths
     for file_or_path in idf:
         if file_or_path.isfile():  # if a file, concatenate into file_paths
-            file_paths += tuple([file_or_path])
+            file_paths += (file_or_path,)
         elif file_or_path.isdir():  # if a directory, walkdir (recursive) and get *.idf
             file_paths += tuple(file_or_path.walkfiles("*.idf"))
         else:
@@ -368,7 +368,7 @@ def set_filepaths(idf):
                 pattern = file_or_path.basename()
                 file_paths += tuple(Path(root).files(pattern))
 
-    file_paths = set([f.relpath().expand() for f in file_paths])  # Only keep unique
+    file_paths = {f.relpath().expand() for f in file_paths}  # Only keep unique
     # values
     if file_paths:
         return file_paths

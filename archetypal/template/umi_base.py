@@ -20,7 +20,7 @@ def _resolve_combined_names(predecessors):
     """
 
     # all_names = [obj.Name for obj in predecessors]
-    class_ = next(iter(set(obj.__class__.__name__ for obj in predecessors)))
+    class_ = next(iter({obj.__class__.__name__ for obj in predecessors}))
 
     return "Combined_{}_{}".format(
         class_,
@@ -201,7 +201,7 @@ class UmiBase:
             "Name": _resolve_combined_names(predecessors),
             "Comments": (
                 "Object composed of a combination of these objects:\n{}".format(
-                    "\n- ".join(set(obj.Name for obj in predecessors))
+                    "\n- ".join({obj.Name for obj in predecessors})
                 )
             ),
             "Category": ", ".join(set(itertools.chain(*[obj.Category.split(", ") for obj in predecessors]))),
@@ -374,13 +374,13 @@ class UmiBase:
         if validate:
             self.validate()
 
-        return dict(
+        return {
             # id=self.id,
-            Name=self.Name,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-        )
+            "Name": self.Name,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+        }
 
     def get_unique(self):
         """Return first object matching equality in the list of instantiated objects."""
@@ -466,7 +466,7 @@ class MetaData(UserSet):
     @property
     def comments(self):
         """Get object comments."""
-        return f"Object composed of a combination of these objects:\n{set(obj.Name for obj in self)}"
+        return f"Object composed of a combination of these objects:\n{ {obj.Name for obj in self} }"
 
 
 class UniqueName(str):

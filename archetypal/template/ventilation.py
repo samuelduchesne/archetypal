@@ -657,27 +657,27 @@ class VentilationSetting(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            Afn=self.Afn,
-            IsBuoyancyOn=self.IsBuoyancyOn,
-            Infiltration=self.Infiltration,
-            IsInfiltrationOn=self.IsInfiltrationOn,
-            IsNatVentOn=self.IsNatVentOn,
-            IsScheduledVentilationOn=self.IsScheduledVentilationOn,
-            NatVentMaxRelHumidity=self.NatVentMaxRelHumidity,
-            NatVentMaxOutdoorAirTemp=self.NatVentMaxOutdoorAirTemp,
-            NatVentMinOutdoorAirTemp=self.NatVentMinOutdoorAirTemp,
-            NatVentSchedule=self.NatVentSchedule,
-            NatVentZoneTempSetpoint=self.NatVentZoneTempSetpoint,
-            ScheduledVentilationAch=self.ScheduledVentilationAch,
-            ScheduledVentilationSchedule=self.ScheduledVentilationSchedule,
-            ScheduledVentilationSetpoint=self.ScheduledVentilationSetpoint,
-            IsWindOn=self.IsWindOn,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Afn": self.Afn,
+            "IsBuoyancyOn": self.IsBuoyancyOn,
+            "Infiltration": self.Infiltration,
+            "IsInfiltrationOn": self.IsInfiltrationOn,
+            "IsNatVentOn": self.IsNatVentOn,
+            "IsScheduledVentilationOn": self.IsScheduledVentilationOn,
+            "NatVentMaxRelHumidity": self.NatVentMaxRelHumidity,
+            "NatVentMaxOutdoorAirTemp": self.NatVentMaxOutdoorAirTemp,
+            "NatVentMinOutdoorAirTemp": self.NatVentMinOutdoorAirTemp,
+            "NatVentSchedule": self.NatVentSchedule,
+            "NatVentZoneTempSetpoint": self.NatVentZoneTempSetpoint,
+            "ScheduledVentilationAch": self.ScheduledVentilationAch,
+            "ScheduledVentilationSchedule": self.ScheduledVentilationSchedule,
+            "ScheduledVentilationSetpoint": self.ScheduledVentilationSetpoint,
+            "IsWindOn": self.IsWindOn,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""

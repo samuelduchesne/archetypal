@@ -111,7 +111,7 @@ idf_file = data_dir / "schedules/test_multizone_EP.idf"
 
 
 def schedules_idf():
-    config(cache_folder=os.getenv("ARCHETYPAL_CACHE") or data_dir / ".temp/cache")
+    config(cache_folder=os.getenv("ARCHETYPAL_CACHE") or data_dir / "../.temp/cache")
     idf = IDF(
         idf_file,
         epw=data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",

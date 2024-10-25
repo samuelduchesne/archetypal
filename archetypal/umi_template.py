@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import logging as lg
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import ClassVar
+from typing import ClassVar, Union
 
 import networkx as nx
 from pandas.io.common import get_handle
@@ -693,7 +693,7 @@ class UmiTemplateLibrary:
             for component in group:
                 for parent, key, child in parent_key_child_traversal(component):
                     if isinstance(child, UmiSchedule) and not isinstance(
-                        child, DaySchedule | WeekSchedule | YearSchedule
+                        child, (DaySchedule, WeekSchedule, YearSchedule)
                     ):
                         y, ws, ds = child.to_year_week_day()
                         if not any(o.id == y.id for o in self.YearSchedules):
@@ -738,15 +738,15 @@ class UmiTemplateLibrary:
         return G
 
 
-def no_duplicates(file, attribute="Name"):
-    """Assert whether or not dict has duplicated Names."""
-    import json
-    from collections import defaultdict
+def no_duplicates(file: Union[str, dict], attribute="Name"):
+    """Assert whether dict has duplicated Names."""
+    if isinstance(file, str):
+        with open(file) as f:
+            data = json.loads(f.read())
+    else:
+        data = file
 
-    with open(file) as f:
-        data = json.loads(f.read()) if isinstance(file, str) else file
     ids = defaultdict(lambda: defaultdict(int))
-
     for key, value in data.items():
         for component in value:
             _id = component.get(attribute)

@@ -101,12 +101,12 @@ class UmiBase:
         self._name = validators.string(value, coerce_value=True)
 
     @property
-    def id(self):
+    def id(self):  # noqa: A003
         """Get or set the id."""
         return self._id
 
     @id.setter
-    def id(self, value):
+    def id(self, value):  # noqa: A003
         if value is None:
             value = id(self)
         self._id = validators.string(value, coerce_value=True)
@@ -353,9 +353,9 @@ class UmiBase:
         if other is None:
             return self
         self._CREATED_OBJECTS.remove(self)
-        id = self.id
+        uid = self.id
         new_obj = self.combine(other, allow_duplicates=allow_duplicates)
-        new_obj.id = id
+        new_obj.id = uid
         for key in self.mapping(validate=False):
             setattr(self, key, getattr(new_obj, key))
         return self

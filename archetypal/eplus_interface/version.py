@@ -113,7 +113,7 @@ class EnergyPlusVersion(Version):
             raise EnergyPlusVersionError(f"EnergyPlusVersion {self.dash} is not installed.") from e
 
     @property
-    def tuple(self) -> tuple:
+    def tuple(self) -> tuple:  # noqa: A003
         """Return the version number as a tuple: (major, minor, micro)."""
         return self.major, self.minor, self.micro
 

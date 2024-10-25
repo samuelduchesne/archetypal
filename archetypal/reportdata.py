@@ -1,5 +1,7 @@
 """"""
 
+from __future__ import annotations
+
 import functools
 import time
 
@@ -177,7 +179,7 @@ class ReportData(DataFrame):
         reportdatadictionaryindex=None,
         value=None,
         ismeter=None,
-        type=None,
+        report_type=None,
         indexgroup=None,
         timesteptype=None,
         keyvalue=None,
@@ -198,7 +200,7 @@ class ReportData(DataFrame):
             reportdatadictionaryindex (str or tuple):
             value (str or tuple):
             ismeter (str or tuple):
-            type (str or tuple):
+            report_type (str or tuple):
             indexgroup (str or tuple):
             timesteptype (str or tuple):
             keyvalue (str or tuple):
@@ -277,11 +279,11 @@ class ReportData(DataFrame):
                 else self[self.ISMETER] == ismeter
             )
             c_n.append(c_6)
-        if type:
+        if report_type:
             c_7 = (
-                conjunction(*[self[self.TYPE] == type for type in type], logical=np.logical_or)
-                if isinstance(type, tuple)
-                else self[self.TYPE] == type
+                conjunction(*[self[self.TYPE] == t for t in report_type], logical=np.logical_or)
+                if isinstance(report_type, tuple)
+                else self[self.TYPE] == report_type
             )
             c_n.append(c_7)
         if indexgroup:

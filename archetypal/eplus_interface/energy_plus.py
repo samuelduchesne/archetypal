@@ -45,7 +45,7 @@ class EnergyPlusExe:
         annual=False,
         convert=False,
         design_day=False,
-        help=False,
+        help=False,  # noqa: A002
         idd=None,
         epmacro=False,
         output_prefix="eplus",

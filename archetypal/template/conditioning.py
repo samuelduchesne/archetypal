@@ -737,24 +737,18 @@ class ZoneConditioning(UmiBase):
         controllers_in_idf = zone_ep.theidf.idfobjects["Controller:OutdoorAir".upper()]
         self.EconomizerType = EconomizerTypes.NoEconomizer  # default value
 
-        for object in controllers_in_idf:
-            if object.Economizer_Control_Type == "NoEconomizer":
+        for obj in controllers_in_idf:
+            if obj.Economizer_Control_Type == "NoEconomizer":
                 self.EconomizerType = EconomizerTypes.NoEconomizer
-            elif object.Economizer_Control_Type == "DifferentialEnthalphy":
+            elif obj.Economizer_Control_Type == "DifferentialEnthalphy":
                 self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
-            elif (
-                object.Economizer_Control_Type == "DifferentialDryBulb"
-                or object.Economizer_Control_Type == "FixedDryBulb"
-            ):
+            elif obj.Economizer_Control_Type == "DifferentialDryBulb" or obj.Economizer_Control_Type == "FixedDryBulb":
                 self.EconomizerType = EconomizerTypes.DifferentialDryBulb
-            elif (
-                object.Economizer_Control_Type == "FixedEnthalpy"
-                or object.Economizer_Control_Type == "ElectronicEnthalpy"
-            ):
+            elif obj.Economizer_Control_Type == "FixedEnthalpy" or obj.Economizer_Control_Type == "ElectronicEnthalpy":
                 self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
-            elif object.Economizer_Control_Type == "FixedDewPointAndDryBulb":
+            elif obj.Economizer_Control_Type == "FixedDewPointAndDryBulb":
                 self.EconomizerType = EconomizerTypes.DifferentialDryBulb
-            elif object.Economizer_Control_Type == "DifferentialDryBulbAndEnthalpy":
+            elif obj.Economizer_Control_Type == "DifferentialDryBulbAndEnthalpy":
                 self.EconomizerType = EconomizerTypes.DifferentialEnthalphy
 
     def _set_mechanical_ventilation(self, zone: "ZoneDefinition", zone_ep: EpBunch):
@@ -1149,13 +1143,13 @@ class ZoneConditioning(UmiBase):
         comment = ""
 
         # iterate over those objects. If the list is empty, it will simply pass.
-        for object in heat_recovery_in_idf:
-            if object.key.upper() == "HeatExchanger:AirToAir:FlatPlate".upper():
+        for obj in heat_recovery_in_idf:
+            if obj.key.upper() == "HeatExchanger:AirToAir:FlatPlate".upper():
                 # Do HeatExchanger:AirToAir:FlatPlate
 
-                nsaot = object.Nominal_Supply_Air_Outlet_Temperature
-                nsait = object.Nominal_Supply_Air_Inlet_Temperature
-                n2ait = object.Nominal_Secondary_Air_Inlet_Temperature
+                nsaot = obj.Nominal_Supply_Air_Outlet_Temperature
+                nsait = obj.Nominal_Supply_Air_Inlet_Temperature
+                n2ait = obj.Nominal_Secondary_Air_Inlet_Temperature
                 HeatRecoveryEfficiencySensible = (nsaot - nsait) / (n2ait - nsait)
                 # Hypotheses: HeatRecoveryEfficiencySensible - 0.05
                 HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencySensible - 0.05
@@ -1167,25 +1161,25 @@ class ZoneConditioning(UmiBase):
                     "Supply Air Inlet T°C)"
                 )
 
-            elif object.key.upper() == "HeatExchanger:AirToAir:SensibleAndLatent".upper():
+            elif obj.key.upper() == "HeatExchanger:AirToAir:SensibleAndLatent".upper():
                 # Do HeatExchanger:AirToAir:SensibleAndLatent calculation
 
-                HeatRecoveryEfficiencyLatent = object.Latent_Effectiveness_at_100_Heating_Air_Flow
-                HeatRecoveryEfficiencySensible = object.Sensible_Effectiveness_at_100_Heating_Air_Flow
+                HeatRecoveryEfficiencyLatent = obj.Latent_Effectiveness_at_100_Heating_Air_Flow
+                HeatRecoveryEfficiencySensible = obj.Sensible_Effectiveness_at_100_Heating_Air_Flow
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
-            elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow".upper():
+            elif obj.key.upper() == "HeatExchanger:Desiccant:BalancedFlow".upper():
                 # Do HeatExchanger:Dessicant:BalancedFlow
                 # Use default values
                 HeatRecoveryEfficiencyLatent = 0.65
                 HeatRecoveryEfficiencySensible = 0.7
                 HeatRecoveryType = HeatRecoveryTypes.Enthalpy
 
-            elif object.key.upper() == "HeatExchanger:Desiccant:BalancedFlow:PerformanceDataType1".upper():
+            elif obj.key.upper() == "HeatExchanger:Desiccant:BalancedFlow:PerformanceDataType1".upper():
                 # This is not an actual HeatExchanger, pass
                 pass
             else:
-                msg = f'Heat exchanger object "{object}" is not ' "implemented"
+                msg = f'Heat exchanger object "{obj}" is not ' "implemented"
                 raise NotImplementedError(msg)
 
         self.HeatRecoveryEfficiencyLatent = HeatRecoveryEfficiencyLatent
@@ -1194,7 +1188,7 @@ class ZoneConditioning(UmiBase):
         self.Comments += comment
 
     @staticmethod
-    def _get_recoverty_effectiveness(object, zone, zone_ep):
+    def _get_recoverty_effectiveness(obj, zone, zone_ep):
         rd = ReportData.from_sql_dict(zone_ep.theidf.sql())
         effectiveness = (
             rd.filter_report_data(
@@ -1208,8 +1202,8 @@ class ZoneConditioning(UmiBase):
             .Value.mean()
             .unstack(level=-1)
         )
-        HeatRecoveryEfficiencySensible = effectiveness.loc[object.Name.upper(), "Heat Exchanger Sensible Effectiveness"]
-        HeatRecoveryEfficiencyLatent = effectiveness.loc[object.Name.upper(), "Heat Exchanger Latent Effectiveness"]
+        HeatRecoveryEfficiencySensible = effectiveness.loc[obj.Name.upper(), "Heat Exchanger Sensible Effectiveness"]
+        HeatRecoveryEfficiencyLatent = effectiveness.loc[obj.Name.upper(), "Heat Exchanger Latent Effectiveness"]
         return HeatRecoveryEfficiencyLatent, HeatRecoveryEfficiencySensible
 
     @staticmethod

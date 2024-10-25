@@ -268,13 +268,13 @@ class UmiSchedule(Schedule, UmiBase):
         """Return a representation of self."""
         name = self.Name
         resample = self.series.resample("D")
-        min = resample.min().mean()
+        low = resample.min().mean()
         mean = resample.mean().mean()
-        max = resample.max().mean()
+        high = resample.max().mean()
         return (
             name
             + ": "
-            + f"mean daily min:{min:.2f} mean:{mean:.2f} max:{max:.2f} "
+            + f"mean daily min:{low:.2f} mean:{mean:.2f} max:{high:.2f} "
             + (f"quantity {self.quantity}" if self.quantity is not None else "")
         )
 

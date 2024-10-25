@@ -530,12 +530,11 @@ def nrel_bcl_api_request(data):
         return response_json
 
 
-def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
-    """Send a request to the StatCan API via HTTP GET and return the JSON
-    response.
+def stat_can_request(response_format, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
+    """Send a request to the StatCan API via HTTP GET and return the JSON response.
 
     Args:
-        type (str): "json" or "xml". json = json response format and xml = xml
+        response_format (str): "json" or "xml". json = json response format and xml = xml
             response format.
         lang (str): "E" or "F". E = English and F = French.
         dguid (str): Dissemination Geography Unique Identifier - DGUID. It is an
@@ -560,7 +559,7 @@ def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, s
     """
     prepared_url = (
         "https://www12.statcan.gc.ca/rest/census-recensement"
-        f"/CPR2016.{type}?lang={lang}&dguid={dguid}&topic="
+        f"/CPR2016.{response_format}?lang={lang}&dguid={dguid}&topic="
         f"{topic}&notes={notes}&stat={stat}"
     )
 
@@ -612,10 +611,11 @@ def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, s
             return response_json
 
 
-def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
-    """
+def stat_can_geo_request(response_format="json", lang="E", geos="PR", cpt="00"):
+    """Send a request to the StatCan API via HTTP GET and return the JSON response.
+
     Args:
-        type (str): "json" or "xml". json = json response format and xml = xml
+        response_format (str): "json" or "xml". json = json response format and xml = xml
             response format.
         lang (str): "E" or "F". where: E = English F = French.
         geos (str): one geographic level code (default = PR). where: CD = Census
@@ -632,9 +632,7 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
             35 = Ontario 46 = Manitoba 47 = Saskatchewan 48 = Alberta 59 =
             British Columbia 60 = Yukon 61 = Northwest Territories 62 = Nunavut.
     """
-    prepared_url = (
-        f"https://www12.statcan.gc.ca/rest/census-recensement/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}"
-    )
+    prepared_url = f"https://www12.statcan.gc.ca/rest/census-recensement/CR2016Geo.{response_format}?lang={lang}&geos={geos}&cpt={cpt}"
 
     cached_response_json = get_from_cache(prepared_url)
 

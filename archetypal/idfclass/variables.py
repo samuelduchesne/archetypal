@@ -110,7 +110,7 @@ class VariableGroup:
         self._idf = idf
         self._properties = {}
 
-        for i, variable in variables_dict.items():
+        for _i, variable in variables_dict.items():
             variable_name = self.normalize_output_name(variable["Variable_Name"])
             self._properties[variable_name] = Variable(idf, variable)
             setattr(self, variable_name, self._properties[variable_name])

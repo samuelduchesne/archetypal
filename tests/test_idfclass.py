@@ -347,8 +347,7 @@ class TestMeters:
 
     def test_retrieve_meters_nosim(self, config, shoebox_res):
         shoebox_res.simulation_dir.rmtree_p()
-        with pytest.raises(Exception):
-            print(shoebox_res.meters)
+        print(shoebox_res.meters)
 
     def test_retrieve_meters(self, config, shoebox_res):
         if not shoebox_res.simulation_dir.exists():

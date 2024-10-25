@@ -71,10 +71,10 @@ def save_and_show(fig, ax, save, show, close, filename, file_format, dpi, axis_o
             if extent is None:
                 if len(ax) == 1:
                     if axis_off:
-                        for ax in ax:
+                        for _ax in ax:
                             # if axis is turned off, constrain the saved
                             # figure's extent to the interior of the axis
-                            extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                            extent = _ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
                 else:
                     pass
             fig.savefig(

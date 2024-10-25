@@ -28,6 +28,7 @@ from math import isclose
 from typing import IO, ClassVar, Literal
 
 import eppy
+import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
@@ -37,6 +38,7 @@ from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
 from path import Path
+from sigfig import round
 from tabulate import tabulate
 from tqdm.auto import tqdm
 
@@ -1744,7 +1746,6 @@ class IDF(GeomIDF):
 
         # Create dataframe with wall_area, window_area and wwr as columns and azimuth
         # as indexes
-        from sigfig import round
 
         df = (
             pd.DataFrame({"wall_area": total_surface_area, "window_area": total_window_area})
@@ -1753,8 +1754,15 @@ class IDF(GeomIDF):
         )
         df.wall_area = df.wall_area.apply(round, decimals=1)
         df.window_area = df.window_area.apply(round, decimals=1)
-        df["wwr"] = (df.window_area / df.wall_area).fillna(0).apply(round, 2)
-        df["wwr_rounded_%"] = (df.window_area / df.wall_area * 100).fillna(0).apply(lambda x: roundto(x, to=round_to))
+        df["wwr"] = (
+            (df.window_area / df.wall_area).replace([np.inf, -np.inf], np.nan).fillna(0).apply(round, decimals=2)
+        )
+        df["wwr_rounded_%"] = (
+            (df.window_area / df.wall_area * 100)
+            .replace([np.inf, -np.inf], np.nan)
+            .fillna(0)
+            .apply(lambda x: roundto(x, to=round_to))
+        )
         return df
 
     def space_heating_profile(

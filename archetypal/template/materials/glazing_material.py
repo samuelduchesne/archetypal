@@ -264,7 +264,7 @@ class GlazingMaterial(MaterialBase):
                     pass
                 else:
                     raise NotImplementedError
-        [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
+        [new_attr.pop(key, None) for key in meta]  # meta handles these
         # keywords.
         # create a new object from combined attributes
         new_obj = self.__class__(**meta, **new_attr)

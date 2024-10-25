@@ -96,10 +96,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     # as one of the simple performance indices.
     # If the user does not enter a value, then the visible properties are the
     # same as the solar properties.
-    if visible_transmittance:
-        T_vis = visible_transmittance
-    else:
-        T_vis = T_sol
+    T_vis = visible_transmittance if visible_transmittance else T_sol
 
     R_vis_b = r_vis_b(T_vis)
     R_vis_f = r_vis_f(T_vis)

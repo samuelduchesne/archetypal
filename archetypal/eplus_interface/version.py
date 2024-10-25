@@ -120,14 +120,7 @@ class EnergyPlusVersion(Version):
     @property
     def valid_versions(self) -> set:
         """List the idd file version found on this machine."""
-        if not self.valid_idd_paths:
-            # Little hack in case E+ is not installed
-            _choices = {
-                settings.ep_version,
-            }
-        else:
-            _choices = set(self.valid_idd_paths.keys())
-
+        _choices = {settings.ep_version} if not self.valid_idd_paths else set(self.valid_idd_paths.keys())
         return _choices
 
     @property

@@ -114,12 +114,13 @@ class SlabThread(Thread):
         """Parse surface temperature and append to IDF file."""
         for temp_schedule in self.run_dir.glob("SLABSurfaceTemps*"):
             if temp_schedule.exists():
-                slab_models = self.idf.__class__(
-                    StringIO(open(temp_schedule).read()),
-                    file_version=self.idf.file_version,
-                    as_version=self.idf.as_version,
-                    prep_outputs=False,
-                )
+                with open(temp_schedule) as f:
+                    slab_models = self.idf.__class__(
+                        StringIO(f.read()),
+                        file_version=self.idf.file_version,
+                        as_version=self.idf.as_version,
+                        prep_outputs=False,
+                    )
                 # Loop on all objects and using self.newidfobject
                 added_objects = []
                 for sequence in slab_models.idfobjects.values():

@@ -111,7 +111,7 @@ idf_file = data_dir / "schedules/test_multizone_EP.idf"
 
 
 def schedules_idf():
-    config(cache_folder=os.getenv("ARCHETYPAL_CACHE") or data_dir / "../.temp/cache")
+    config(cache_folder=os.getenv("ARCHETYPAL_CACHE") or (data_dir / "../.temp/cache").resolve())
     idf = IDF(
         idf_file,
         epw=data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
@@ -124,7 +124,7 @@ def schedules_idf():
 idf = schedules_idf()
 schedules_dict = idf._get_all_schedules(yearly_only=True)
 schedules = list(schedules_dict.values())
-ids = [key.replace(" ", "_") for key in schedules_dict.keys()]
+ids = [key.replace(" ", "_") for key in schedules_dict]
 
 schedules = [
     pytest.param(schedule, marks=pytest.mark.xfail(reason="Can't quite capture all possibilities with special days"))
@@ -188,7 +188,6 @@ def test_ep_versus_schedule(schedule_parametrized):
     new.series[index_slice].plot(ax=ax, legend=True, drawstyle="steps-post", linestyle="dotted")
     expected.loc[index_slice].plot(label="E+", legend=True, ax=ax, drawstyle="steps-post", linestyle="dashdot")
     ax.set_title(orig.Name.capitalize())
-    plt.show()
 
     print(pd.DataFrame({"actual": orig.series[mask], "expected": expected[mask]}))
     np.testing.assert_array_almost_equal(orig.all_values, expected, verbose=True)

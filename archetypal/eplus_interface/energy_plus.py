@@ -196,48 +196,47 @@ class EnergyPlusThread(Thread):
             if self.p:
                 self.p.terminate()  # terminate process to be sure
             return
-        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]), tqdm(
+            unit_scale=False,
+            total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
+            miniters=1,
+            desc=f"{eplus_exe.eplus_exe_path} #{self.idf.position}-{self.idf.name}"
+            if self.idf.position
+            else f"{eplus_exe.eplus_exe_path} {self.idf.name}",
+            position=self.idf.position,
+        ) as progress:
             # Start process with tqdm bar
-            with tqdm(
-                unit_scale=False,
-                total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
-                miniters=1,
-                desc=f"{eplus_exe.eplus_exe_path} #{self.idf.position}-{self.idf.name}"
-                if self.idf.position
-                else f"{eplus_exe.eplus_exe_path} {self.idf.name}",
-                position=self.idf.position,
-            ) as progress:
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    shell=False,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                start_time = time.time()
-                self.msg_callback("Simulation started")
-                self.idf._energyplus_its = 0  # reset counter
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
-                    self.idf._energyplus_its += 1
-                    progress.update()
+            self.p = subprocess.Popen(
+                self.cmd,
+                shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            start_time = time.time()
+            self.msg_callback("Simulation started")
+            self.idf._energyplus_its = 0  # reset counter
+            for line in self.p.stdout:
+                self.msg_callback(line.decode("utf-8").strip("\n"))
+                self.idf._energyplus_its += 1
+                progress.update()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+            # We explicitly close stdout
+            self.p.stdout.close()
 
-                # Wait for process to complete
-                self.p.wait()
+            # Wait for process to complete
+            self.p.wait()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("Simulation cancelled")
-                    self.cancelled_callback(self.std_out, self.std_err)
+            # Communicate callbacks
+            if self.cancelled:
+                self.msg_callback("Simulation cancelled")
+                self.cancelled_callback(self.std_out, self.std_err)
+            else:
+                if self.p.returncode == 0:
+                    self.msg_callback(f"EnergyPlus Completed in {time.time() - start_time:,.2f} seconds")
+                    self.success_callback()
                 else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(f"EnergyPlus Completed in {time.time() - start_time:,.2f} seconds")
-                        self.success_callback()
-                    else:
-                        self.msg_callback("Simulation failed")
-                        self.failure_callback()
+                    self.msg_callback("Simulation failed")
+                    self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         msg, *_ = args

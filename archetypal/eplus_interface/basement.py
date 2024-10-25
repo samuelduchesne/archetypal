@@ -114,12 +114,13 @@ class BasementThread(Thread):
         """Parse surface temperature and append to IDF file."""
         for ep_objects in self.run_dir.glob("EPObjects*"):
             if ep_objects.exists():
-                basement_models = self.idf.__class__(
-                    StringIO(open(ep_objects).read()),
-                    file_version=self.idf.file_version,
-                    as_version=self.idf.as_version,
-                    prep_outputs=False,
-                )
+                with open(ep_objects) as f:
+                    basement_models = self.idf.__class__(
+                        StringIO(f.read()),
+                        file_version=self.idf.file_version,
+                        as_version=self.idf.as_version,
+                        prep_outputs=False,
+                    )
                 # Loop on all objects and using self.newidfobject
                 added_objects = []
                 for sequence in basement_models.idfobjects.values():

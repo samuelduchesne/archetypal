@@ -1473,6 +1473,7 @@ class IDF(GeomIDF):
                 raise e
             elif running_simulation_thread.cancelled:
                 return self
+        return self
 
     def savecopy(self, filename, lineendings="default", encoding="latin-1"):
         """Save a copy of the file with the filename passed.

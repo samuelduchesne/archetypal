@@ -17,14 +17,14 @@ def main():
 
     # setup the runner. We'll use the DataFrame index as keys (k).
     rundict = {
-        k: dict(
-            eplus_file=str(file),
-            prep_outputs=True,
-            epw=str(epw),
-            expandobjects=False,
-            verbose="v",
-            design_day=True,
-        )
+        k: {
+            "eplus_file": str(file),
+            "prep_outputs": True,
+            "epw": str(epw),
+            "expandobjects": False,
+            "verbose": "v",
+            "design_day": True,
+        }
         for k, file in idfs.file.to_dict().items()
     }
 

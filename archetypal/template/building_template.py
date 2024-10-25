@@ -9,6 +9,7 @@ import collections
 import logging as lg
 import time
 from itertools import chain, repeat
+from typing import ClassVar
 
 import networkx
 from path import Path
@@ -32,7 +33,7 @@ class BuildingTemplate(UmiBase):
     .. image:: ../images/template/buildingtemplate.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["BuildingTemplate"]] = []
 
     __slots__ = (
         "_partition_ratio",
@@ -100,7 +101,7 @@ class BuildingTemplate(UmiBase):
             Version (str): Version number.
             **kwargs: other optional keywords passed to other constructors.
         """
-        super(BuildingTemplate, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core
@@ -474,10 +475,10 @@ class BuildingTemplate(UmiBase):
             ZoneDefinition: The reduced zone
         """
         if len(G) < 1:
-            log("No zones for building graph %s" % G.name)
+            log(f"No zones for building graph {G.name}")
             return None
         else:
-            log("starting reduce process for building %s" % self.Name)
+            log(f"starting reduce process for building {self.Name}")
             start_time = time.time()
 
             # start from the highest degree node
@@ -559,25 +560,25 @@ class BuildingTemplate(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            Core=self.Core,
-            Lifespan=self.Lifespan,
-            PartitionRatio=self.PartitionRatio,
-            Perimeter=self.Perimeter,
-            Structure=self.Structure,
-            Windows=self.Windows,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-            YearFrom=self.YearFrom,
-            YearTo=self.YearTo,
-            Country=self.Country,
-            ClimateZone=self.ClimateZone,
-            Authors=self.Authors,
-            AuthorEmails=self.AuthorEmails,
-            Version=self.Version,
-        )
+        return {
+            "Core": self.Core,
+            "Lifespan": self.Lifespan,
+            "PartitionRatio": self.PartitionRatio,
+            "Perimeter": self.Perimeter,
+            "Structure": self.Structure,
+            "Windows": self.Windows,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+            "YearFrom": self.YearFrom,
+            "YearTo": self.YearTo,
+            "Country": self.Country,
+            "ClimateZone": self.ClimateZone,
+            "Authors": self.Authors,
+            "AuthorEmails": self.AuthorEmails,
+            "Version": self.Version,
+        }
 
     def get_ref(self, ref):
         """Get item matching reference id.

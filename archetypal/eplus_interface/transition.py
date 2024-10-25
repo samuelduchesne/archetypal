@@ -103,8 +103,8 @@ class TransitionExe(EnergyPlusProgram):
         if self._trans_exec is None:
             copytree(self.idf.idfversionupdater_dir, self.running_directory)
             self._trans_exec = {
-                EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", exec).group(1)): exec
-                for exec in self.running_directory.files("Transition-V*")
+                EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", execution).group(1)): execution
+                for execution in self.running_directory.files("Transition-V*")
             }
         return self._trans_exec
 
@@ -116,8 +116,7 @@ class TransitionExe(EnergyPlusProgram):
     @property
     def transitions_generator(self):
         """Generate transitions."""
-        for transition in self.transitions:
-            yield transition
+        yield from self.transitions
 
     def __str__(self):
         """Return string representation."""
@@ -143,7 +142,7 @@ class TransitionThread(Thread):
 
     def __init__(self, idf, tmp, overwrite=False):
         """Initialize Thread."""
-        super(TransitionThread, self).__init__()
+        super().__init__()
         self.overwrite = overwrite
         self.p = None
         self.std_out = None
@@ -240,8 +239,8 @@ class TransitionThread(Thread):
     def trans_exec(self) -> dict:
         """Return dict of {EnergyPlusVersion, executable} for each transitions."""
         return {
-            EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", exec).group(1)): exec
-            for exec in self.idf.idfversionupdater_dir.files("Transition-V*")
+            EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", execution).group(1)): execution
+            for execution in self.idf.idfversionupdater_dir.files("Transition-V*")
         }
 
     @property

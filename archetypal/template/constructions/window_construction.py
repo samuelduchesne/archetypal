@@ -9,6 +9,7 @@ Notes:
 
 import collections
 from enum import Enum
+from typing import ClassVar
 
 from validator_collection import validators
 
@@ -63,7 +64,7 @@ class WindowConstruction(LayeredConstruction):
     .. image:: ../images/template/constructions-window.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["WindowConstruction"]] = []
 
     _CATEGORIES = ("single", "double", "triple", "quadruple")
 
@@ -79,7 +80,7 @@ class WindowConstruction(LayeredConstruction):
             Category (str): "Single", "Double" or "Triple".
             **kwargs: Other keywords passed to the constructor.
         """
-        super(WindowConstruction, self).__init__(
+        super().__init__(
             Name,
             Layers,
             Category=Category,
@@ -338,18 +339,18 @@ class WindowConstruction(LayeredConstruction):
         if validate:
             self.validate()
 
-        return dict(
-            Layers=self.Layers,
-            AssemblyCarbon=self.AssemblyCarbon,
-            AssemblyCost=self.AssemblyCost,
-            AssemblyEnergy=self.AssemblyEnergy,
-            DisassemblyCarbon=self.DisassemblyCarbon,
-            DisassemblyEnergy=self.DisassemblyEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Layers": self.Layers,
+            "AssemblyCarbon": self.AssemblyCarbon,
+            "AssemblyCost": self.AssemblyCost,
+            "AssemblyEnergy": self.AssemblyEnergy,
+            "DisassemblyCarbon": self.DisassemblyCarbon,
+            "DisassemblyEnergy": self.DisassemblyEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def combine(self, other, weights=None):
         """Append other to self. Return self + other as a new object.

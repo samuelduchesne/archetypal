@@ -1,6 +1,7 @@
 """GasMaterial module."""
 
 import collections
+from typing import ClassVar
 
 import numpy as np
 from sigfig import round
@@ -15,7 +16,7 @@ class GasMaterial(MaterialBase):
     .. image:: ../images/template/materials-gas.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["GasMaterial"]] = []
 
     __slots__ = ("_type", "_conductivity", "_density")
 
@@ -34,7 +35,7 @@ class GasMaterial(MaterialBase):
             **kwargs: keywords passed to the MaterialBase constructor.
         """
         self.Name = Name
-        super(GasMaterial, self).__init__(self.Name, Category=Category, **kwargs)
+        super().__init__(self.Name, Category=Category, **kwargs)
         self.Type = Name.upper()
         self.Conductivity = Conductivity
         self.Density = Density
@@ -187,23 +188,23 @@ class GasMaterial(MaterialBase):
         if validate:
             self.validate()
 
-        return dict(
-            Category=self.Category,
-            Type=self.Type,
-            Conductivity=self.Conductivity,
-            Cost=self.Cost,
-            Density=self.Density,
-            EmbodiedCarbon=self.EmbodiedCarbon,
-            EmbodiedEnergy=self.EmbodiedEnergy,
-            SubstitutionRatePattern=self.SubstitutionRatePattern,
-            SubstitutionTimestep=self.SubstitutionTimestep,
-            TransportCarbon=self.TransportCarbon,
-            TransportDistance=self.TransportDistance,
-            TransportEnergy=self.TransportEnergy,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Category": self.Category,
+            "Type": self.Type,
+            "Conductivity": self.Conductivity,
+            "Cost": self.Cost,
+            "Density": self.Density,
+            "EmbodiedCarbon": self.EmbodiedCarbon,
+            "EmbodiedEnergy": self.EmbodiedEnergy,
+            "SubstitutionRatePattern": self.SubstitutionRatePattern,
+            "SubstitutionTimestep": self.SubstitutionTimestep,
+            "TransportCarbon": self.TransportCarbon,
+            "TransportDistance": self.TransportDistance,
+            "TransportEnergy": self.TransportEnergy,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def density_at_temperature(self, t_kelvin, pressure=101325):
         """Get the density of the gas [kg/m3] at a given temperature and pressure.

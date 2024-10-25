@@ -263,7 +263,7 @@ class EndUseBalance:
             multipliers = idf
             key = "KeyValue"
         else:
-            raise ValueError
+            raise TypeError
         return data.mul(multipliers, level=key, axis=1)
 
     @classmethod
@@ -419,7 +419,7 @@ class EndUseBalance:
         Returns:
 
         """
-        assert component in self.__dict__.keys(), f"{component} is not a valid attribute of EndUseBalance."
+        assert component in self.__dict__, f"{component} is not a valid attribute of EndUseBalance."
         component_df = getattr(self, component)
         assert not component_df.empty, "Expected a component that is not empty."
         print(component)
@@ -500,7 +500,7 @@ class EndUseBalance:
                 component_df = getattr(self, component)
                 if not component_df.empty:
                     summary_by_component[component] = component_df.sum(level=level, axis=1).sort_index(axis=1)
-            for (zone_name, surface_type), data in self.opaque_flow.groupby(
+            for (_zone_name, surface_type), data in self.opaque_flow.groupby(
                 level=["Zone_Name", "Surface_Type"], axis=1
             ):
                 summary_by_component[surface_type] = data.sum(level="Zone_Name", axis=1).sort_index(axis=1)

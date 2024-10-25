@@ -1,6 +1,7 @@
 """archetypal GlazingMaterial."""
 
 import collections
+from typing import ClassVar
 
 from sigfig import round
 from validator_collection import validators
@@ -18,7 +19,7 @@ class GlazingMaterial(MaterialBase):
 
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["GlazingMaterial"]] = []
 
     __slots__ = (
         "_ir_emissivity_back",
@@ -86,7 +87,7 @@ class GlazingMaterial(MaterialBase):
             **kwargs: keywords passed to the :class:`MaterialBase`
                 constructor. For more info, see :class:`MaterialBase`.
         """
-        super(GlazingMaterial, self).__init__(Name, Cost=Cost, **kwargs)
+        super().__init__(Name, Cost=Cost, **kwargs)
 
         self._solar_reflectance_front = 0
         self._solar_reflectance_back = None
@@ -237,10 +238,7 @@ class GlazingMaterial(MaterialBase):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -266,7 +264,7 @@ class GlazingMaterial(MaterialBase):
                     pass
                 else:
                     raise NotImplementedError
-        [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
+        [new_attr.pop(key, None) for key in meta]  # meta handles these
         # keywords.
         # create a new object from combined attributes
         new_obj = self.__class__(**meta, **new_attr)
@@ -365,32 +363,32 @@ class GlazingMaterial(MaterialBase):
         if validate:
             self.validate()
 
-        return dict(
-            DirtFactor=self.DirtFactor,
-            IREmissivityBack=self.IREmissivityBack,
-            IREmissivityFront=self.IREmissivityFront,
-            IRTransmittance=self.IRTransmittance,
-            SolarReflectanceBack=self.SolarReflectanceBack,
-            SolarReflectanceFront=self.SolarReflectanceFront,
-            SolarTransmittance=self.SolarTransmittance,
-            VisibleReflectanceBack=self.VisibleReflectanceBack,
-            VisibleReflectanceFront=self.VisibleReflectanceFront,
-            VisibleTransmittance=self.VisibleTransmittance,
-            Conductivity=self.Conductivity,
-            Cost=self.Cost,
-            Density=self.Density,
-            EmbodiedCarbon=self.EmbodiedCarbon,
-            EmbodiedEnergy=self.EmbodiedEnergy,
-            SubstitutionRatePattern=self.SubstitutionRatePattern,
-            SubstitutionTimestep=self.SubstitutionTimestep,
-            TransportCarbon=self.TransportCarbon,
-            TransportDistance=self.TransportDistance,
-            TransportEnergy=self.TransportEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "DirtFactor": self.DirtFactor,
+            "IREmissivityBack": self.IREmissivityBack,
+            "IREmissivityFront": self.IREmissivityFront,
+            "IRTransmittance": self.IRTransmittance,
+            "SolarReflectanceBack": self.SolarReflectanceBack,
+            "SolarReflectanceFront": self.SolarReflectanceFront,
+            "SolarTransmittance": self.SolarTransmittance,
+            "VisibleReflectanceBack": self.VisibleReflectanceBack,
+            "VisibleReflectanceFront": self.VisibleReflectanceFront,
+            "VisibleTransmittance": self.VisibleTransmittance,
+            "Conductivity": self.Conductivity,
+            "Cost": self.Cost,
+            "Density": self.Density,
+            "EmbodiedCarbon": self.EmbodiedCarbon,
+            "EmbodiedEnergy": self.EmbodiedEnergy,
+            "SubstitutionRatePattern": self.SubstitutionRatePattern,
+            "SubstitutionTimestep": self.SubstitutionTimestep,
+            "TransportCarbon": self.TransportCarbon,
+            "TransportDistance": self.TransportDistance,
+            "TransportEnergy": self.TransportEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     @classmethod
     def from_dict(cls, data, **kwargs):

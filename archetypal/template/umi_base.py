@@ -3,6 +3,7 @@
 import itertools
 import math
 from collections.abc import Hashable, MutableSet
+from typing import ClassVar
 
 import numpy as np
 from validator_collection import validators
@@ -19,9 +20,9 @@ def _resolve_combined_names(predecessors):
     """
 
     # all_names = [obj.Name for obj in predecessors]
-    class_ = list(set([obj.__class__.__name__ for obj in predecessors]))[0]
+    class_ = next(iter({obj.__class__.__name__ for obj in predecessors}))
 
-    return "Combined_%s_%s" % (
+    return "Combined_{}_{}".format(
         class_,
         str(hash(pre.Name for pre in predecessors)).strip("-"),
     )
@@ -200,7 +201,7 @@ class UmiBase:
             "Name": _resolve_combined_names(predecessors),
             "Comments": (
                 "Object composed of a combination of these objects:\n{}".format(
-                    "\n- ".join(set(obj.Name for obj in predecessors))
+                    "\n- ".join({obj.Name for obj in predecessors})
                 )
             ),
             "Category": ", ".join(set(itertools.chain(*[obj.Category.split(", ") for obj in predecessors]))),
@@ -243,8 +244,7 @@ class UmiBase:
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for attr, value in self.mapping().items():
-            yield attr, value
+        yield from self.mapping().items()
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -353,9 +353,9 @@ class UmiBase:
         if other is None:
             return self
         self._CREATED_OBJECTS.remove(self)
-        id = self.id
+        uid = self.id
         new_obj = self.combine(other, allow_duplicates=allow_duplicates)
-        new_obj.id = id
+        new_obj.id = uid
         for key in self.mapping(validate=False):
             setattr(self, key, getattr(new_obj, key))
         return self
@@ -374,13 +374,13 @@ class UmiBase:
         if validate:
             self.validate()
 
-        return dict(
+        return {
             # id=self.id,
-            Name=self.Name,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-        )
+            "Name": self.Name,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+        }
 
     def get_unique(self):
         """Return first object matching equality in the list of instantiated objects."""
@@ -466,13 +466,13 @@ class MetaData(UserSet):
     @property
     def comments(self):
         """Get object comments."""
-        return f"Object composed of a combination of these objects:\n{set(obj.Name for obj in self)}"
+        return f"Object composed of a combination of these objects:\n{ {obj.Name for obj in self} }"
 
 
 class UniqueName(str):
     """Attribute unique user-defined names for :class:`UmiBase`."""
 
-    existing = {}
+    existing: ClassVar[set[str]] = {}
 
     def __new__(cls, content):
         """Pick a name. Will increment the name if already used."""

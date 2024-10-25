@@ -4,9 +4,11 @@
 # License: MIT, see full license in LICENSE.txt
 # Web: https://github.com/samuelduchesne/archetypal
 ################################################################################
+from __future__ import annotations
+
 import logging as lg
 from pathlib import Path
-from typing import Any, List, Literal, Optional
+from typing import Any, ClassVar, Literal
 
 from energy_pandas.units import unit_registry
 
@@ -28,7 +30,7 @@ except ImportError:
 class ZoneWeight:
     """Zone weights for Umi Templates"""
 
-    weight_attr = {0: "area", 1: "volume"}
+    weight_attr: ClassVar[dict] = {0: "area", 1: "volume"}
 
     def __init__(self, n=0):
         self._weight_attr = self.weight_attr[n]
@@ -67,96 +69,98 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
     log_filename: str = Field("archetypal")
 
     # usual idfobjects
-    useful_idf_objects: List[str] = [
-        "WINDOWMATERIAL:GAS",
-        "WINDOWMATERIAL:GLAZING",
-        "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM",
-        "MATERIAL",
-        "MATERIAL:NOMASS",
-        "CONSTRUCTION",
-        "BUILDINGSURFACE:DETAILED",
-        "FENESTRATIONSURFACE:DETAILED",
-        "SCHEDULE:DAY:INTERVAL",
-        "SCHEDULE:WEEK:DAILY",
-        "SCHEDULE:YEAR",
-    ]
+    useful_idf_objects: list[str] = Field(
+        [
+            "WINDOWMATERIAL:GAS",
+            "WINDOWMATERIAL:GLAZING",
+            "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM",
+            "MATERIAL",
+            "MATERIAL:NOMASS",
+            "CONSTRUCTION",
+            "BUILDINGSURFACE:DETAILED",
+            "FENESTRATIONSURFACE:DETAILED",
+            "SCHEDULE:DAY:INTERVAL",
+            "SCHEDULE:WEEK:DAILY",
+            "SCHEDULE:YEAR",
+        ]
+    )
 
     # List of Available SQLite Tables
     # Ref: https://bigladdersoftware.com/epx/docs/8-3/output-details-and-examples
     # /eplusout.sql.html#schedules-table
 
-    available_sqlite_tables: dict = dict(
-        ComponentSizes={"PrimaryKey": ["ComponentSizesIndex"], "ParseDates": []},
-        ConstructionLayers={"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
-        Constructions={"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
-        Materials={"PrimaryKey": ["MaterialIndex"], "ParseDates": []},
-        NominalBaseboardHeaters={
+    available_sqlite_tables: ClassVar[dict] = {
+        "ComponentSizes": {"PrimaryKey": ["ComponentSizesIndex"], "ParseDates": []},
+        "ConstructionLayers": {"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
+        "Constructions": {"PrimaryKey": ["ConstructionIndex"], "ParseDates": []},
+        "Materials": {"PrimaryKey": ["MaterialIndex"], "ParseDates": []},
+        "NominalBaseboardHeaters": {
             "PrimaryKey": ["NominalBaseboardHeaterIndex"],
             "ParseDates": [],
         },
-        NominalElectricEquipment={
+        "NominalElectricEquipment": {
             "PrimaryKey": ["NominalElectricEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalGasEquipment={
+        "NominalGasEquipment": {
             "PrimaryKey": ["NominalGasEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalHotWaterEquipment={
+        "NominalHotWaterEquipment": {
             "PrimaryKey": ["NominalHotWaterEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalInfiltration={
+        "NominalInfiltration": {
             "PrimaryKey": ["NominalInfiltrationIndex"],
             "ParseDates": [],
         },
-        NominalLighting={"PrimaryKey": ["NominalLightingIndex"], "ParseDates": []},
-        NominalOtherEquipment={
+        "NominalLighting": {"PrimaryKey": ["NominalLightingIndex"], "ParseDates": []},
+        "NominalOtherEquipment": {
             "PrimaryKey": ["NominalOtherEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalPeople={"PrimaryKey": ["NominalPeopleIndex"], "ParseDates": []},
-        NominalSteamEquipment={
+        "NominalPeople": {"PrimaryKey": ["NominalPeopleIndex"], "ParseDates": []},
+        "NominalSteamEquipment": {
             "PrimaryKey": ["NominalSteamEquipmentIndex"],
             "ParseDates": [],
         },
-        NominalVentilation={
+        "NominalVentilation": {
             "PrimaryKey": ["NominalVentilationIndex"],
             "ParseDates": [],
         },
-        ReportData={"PrimaryKey": ["ReportDataIndex"], "ParseDates": []},
-        ReportDataDictionary={
+        "ReportData": {"PrimaryKey": ["ReportDataIndex"], "ParseDates": []},
+        "ReportDataDictionary": {
             "PrimaryKey": ["ReportDataDictionaryIndex"],
             "ParseDates": [],
         },
-        ReportExtendedData={
+        "ReportExtendedData": {
             "PrimaryKey": ["ReportExtendedDataIndex"],
             "ParseDates": [],
         },
-        RoomAirModels={"PrimaryKey": ["ZoneIndex"], "ParseDates": []},
-        Schedules={"PrimaryKey": ["ScheduleIndex"], "ParseDates": []},
-        Surfaces={"PrimaryKey": ["SurfaceIndex"], "ParseDates": []},
-        SystemSizes={
+        "RoomAirModels": {"PrimaryKey": ["ZoneIndex"], "ParseDates": []},
+        "Schedules": {"PrimaryKey": ["ScheduleIndex"], "ParseDates": []},
+        "Surfaces": {"PrimaryKey": ["SurfaceIndex"], "ParseDates": []},
+        "SystemSizes": {
             "PrimaryKey": ["SystemSizesIndex"],
             "ParseDates": {"PeakHrMin": "%m/%d %H:%M:%S"},
         },
-        Time={"PrimaryKey": ["TimeIndex"], "ParseDates": []},
-        ZoneGroups={"PrimaryKey": ["ZoneGroupIndex"], "ParseDates": []},
-        Zones={"PrimaryKey": ["ZoneIndex"], "ParseDates": []},
-        ZoneLists={"PrimaryKey": ["ZoneListIndex"], "ParseDates": []},
-        ZoneSizes={"PrimaryKey": ["ZoneSizesIndex"], "ParseDates": []},
-        ZoneInfoZoneLists={"PrimaryKey": ["ZoneListIndex"], "ParseDates": []},
-        Simulations={
+        "Time": {"PrimaryKey": ["TimeIndex"], "ParseDates": []},
+        "ZoneGroups": {"PrimaryKey": ["ZoneGroupIndex"], "ParseDates": []},
+        "Zones": {"PrimaryKey": ["ZoneIndex"], "ParseDates": []},
+        "ZoneLists": {"PrimaryKey": ["ZoneListIndex"], "ParseDates": []},
+        "ZoneSizes": {"PrimaryKey": ["ZoneSizesIndex"], "ParseDates": []},
+        "ZoneInfoZoneLists": {"PrimaryKey": ["ZoneListIndex"], "ParseDates": []},
+        "Simulations": {
             "PrimaryKey": ["SimulationIndex"],
             "ParseDates": {"TimeStamp": {"format": "YMD=%Y.%m.%d %H:%M"}},
         },
-        EnvironmentPeriods={"PrimaryKey": ["EnvironmentPeriodIndex"], "ParseDates": []},
-        TabularData={"PrimaryKey": ["TabularDataIndex"], "ParseDates": []},
-        Strings={"PrimaryKey": ["StringIndex"], "ParseDates": []},
-        StringTypes={"PrimaryKey": ["StringTypeIndex"], "ParseDates": []},
-        TabularDataWithStrings={"PrimaryKey": ["TabularDataIndex"], "ParseDates": []},
-        Errors={"PrimaryKey": ["ErrorIndex"], "ParseDates": []},
-    )
+        "EnvironmentPeriods": {"PrimaryKey": ["EnvironmentPeriodIndex"], "ParseDates": []},
+        "TabularData": {"PrimaryKey": ["TabularDataIndex"], "ParseDates": []},
+        "Strings": {"PrimaryKey": ["StringIndex"], "ParseDates": []},
+        "StringTypes": {"PrimaryKey": ["StringTypeIndex"], "ParseDates": []},
+        "TabularDataWithStrings": {"PrimaryKey": ["TabularDataIndex"], "ParseDates": []},
+        "Errors": {"PrimaryKey": ["ErrorIndex"], "ParseDates": []},
+    }
 
     zone_weight: ZoneWeight = ZoneWeight(n=0)
 
@@ -167,7 +171,7 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
         "for ENERGYPLUS_VERSION in os.environ",
     )
 
-    energyplus_location: Optional[DirectoryPath] = Field(
+    energyplus_location: DirectoryPath | None = Field(
         None,
         validation_alias="ENERGYPLUS_LOCATION",
         description="Root directory of the EnergyPlus install.",
@@ -194,9 +198,9 @@ settings.unit_registry = unit_registry
 # After settings are loaded, import other modules
 from .eplus_interface.version import EnergyPlusVersion  # noqa: E402
 from .idfclass import IDF  # noqa: E402
-from .umi_template import (
-    BuildingTemplate,  # noqa: E402
-    UmiTemplateLibrary,  # noqa: E402
+from .umi_template import (  # noqa: E402
+    BuildingTemplate,
+    UmiTemplateLibrary,
 )
 from .utils import clear_cache, config, parallel_process  # noqa: E402
 

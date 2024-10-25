@@ -1,4 +1,3 @@
-import glob
 import os
 import sys
 from pathlib import Path
@@ -28,14 +27,6 @@ def scratch_then_cache(request):
         ]
         for d in dirs:
             d.rmtree_p()
-
-
-samples_ = ["regular", "umi_samples"]  # ['problematic', 'regular', 'umi_samples']
-
-
-@pytest.fixture(params=samples_, ids=samples_, scope="session")
-def idf_source(request):
-    return glob.glob(f"tests/input_data/{request.param}/*.idf")
 
 
 @pytest.fixture(scope="session")
@@ -72,7 +63,7 @@ def pytest_runtest_setup(item):
     supported_platforms = ALL.intersection(mark.name for mark in item.iter_markers())
     plat = sys.platform
     if supported_platforms and plat not in supported_platforms:
-        pytest.skip("cannot run on platform %s" % (plat))
+        pytest.skip(f"cannot run on platform {plat}")
 
 
 # dynamically define files to be ignored

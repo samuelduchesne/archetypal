@@ -9,6 +9,7 @@ from archetypal.eplus_interface import (
     InvalidEnergyPlusVersion,
 )
 from archetypal.eplus_interface.version import EnergyPlusVersion
+from archetypal.idfclass.idf import SimulationNotRunError
 from archetypal.utils import parallel_process
 
 from .conftest import data_dir
@@ -110,8 +111,10 @@ class TestIDF:
         assert natvent_v9_1_0.idd_version == (9, 1, 0)
         assert natvent_v9_1_0.file_version == EnergyPlusVersion("9-1-0")
 
-    def test_specific_version_error_simulate(self, natvent_v9_1_0):
-        with pytest.raises(EnergyPlusVersionError):
+    def test_specific_version_error_simulate(self, natvent_v9_1_0, mocker):
+        with mocker.patch(
+            "archetypal.eplus_interface.energy_plus.EnergyPlusExe.get_exe_path", side_effect=EnergyPlusVersionError()
+        ), pytest.raises(EnergyPlusVersionError):
             natvent_v9_1_0.simulate()
 
     def test_version(self, natvent_v9_1_0):
@@ -145,6 +148,8 @@ class TestIDF:
         assert idf_model.sql_file.exists()
 
     def test_processed_results(self, idf_model):
+        if not idf_model.simulation_dir.exists():
+            idf_model.simulate()
         assert idf_model.process_results()
 
     def test_partition_ratio(self, idf_model):
@@ -345,7 +350,7 @@ class TestMeters:
 
     def test_retrieve_meters_nosim(self, config, shoebox_res):
         shoebox_res.simulation_dir.rmtree_p()
-        with pytest.raises(Exception):
+        with pytest.raises(SimulationNotRunError):
             print(shoebox_res.meters)
 
     def test_retrieve_meters(self, config, shoebox_res):

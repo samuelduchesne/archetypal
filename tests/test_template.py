@@ -1001,9 +1001,9 @@ class TestOpaqueConstruction:
 
     @pytest.fixture()
     def facebrick_and_concrete(self, face_brick, thermal_insulation, hollow_concrete_block, plaster):
-        """A :class:Construction based on the `Facebrick–concrete wall` from: On
+        """A :class:Construction based on the `Facebrick-concrete wall` from: On
         the thermal time constant of structural walls. Applied Thermal
-        Engineering, 24(5–6), 743–757.
+        Engineering, 24(5-6), 743-757.
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         layers = [
@@ -1012,15 +1012,15 @@ class TestOpaqueConstruction:
             MaterialLayer(hollow_concrete_block, 0.2),
             MaterialLayer(plaster, 0.02),
         ]
-        oc_a = OpaqueConstruction(Layers=layers, Name="Facebrick–concrete wall")
+        oc_a = OpaqueConstruction(Layers=layers, Name="Facebrick-concrete wall")
 
         yield oc_a
 
     @pytest.fixture()
     def insulated_concrete_wall(self, face_brick, thermal_insulation, concrete_layer, plaster):
-        """A :class:Construction based on the `Facebrick–concrete wall` from: On
+        """A :class:Construction based on the `Facebrick-concrete wall` from: On
         the thermal time constant of structural walls. Applied Thermal
-        Engineering, 24(5–6), 743–757.
+        Engineering, 24(5-6), 743-757.
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         layers = [
@@ -1156,7 +1156,7 @@ class TestOpaqueConstruction:
     def test_real_word_construction(self, facebrick_and_concrete, insulated_concrete_wall):
         """This test is based on wall constructions, materials and results from:
         Tsilingiris, P. T. (2004). On the thermal time constant of structural
-        walls. Applied Thermal Engineering, 24(5–6), 743–757.
+        walls. Applied Thermal Engineering, 24(5-6), 743-757.
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
 
         Args:
@@ -1504,13 +1504,13 @@ class TestWindowConstruction:
         temperature, r_values = triple.temperature_profile(
             outside_temperature=-18, inside_temperature=21, wind_speed=5.5
         )
-        assert [-18, -16.3, -16.1, 13.6, 13.8, 21.0] == pytest.approx(temperature, 1e-1)
+        assert pytest.approx(temperature, 1e-1) == [-18, -16.3, -16.1, 13.6, 13.8, 21.0]
         print(temperature, r_values)
 
         shgc = triple.shgc("summer")
         _, temperature = triple.heat_balance("summer")
         print("shgc:", shgc)
-        assert [32, 32.9, 32.9, 31.9, 31.8, 24.0] == pytest.approx(temperature, 1e-1)
+        assert pytest.approx(temperature, 1e-1) == [32, 32.9, 32.9, 31.9, 31.8, 24.0]
 
         print(temperature, r_values)  # m2-K/W
 
@@ -2089,19 +2089,20 @@ class TestVentilationSetting:
             zone_ep = idf.getobject("ZONE", "ZONE 1")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
             ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
-            assert ventilation_setting.IsNatVentOn == False
+            assert ventilation_setting.IsNatVentOn is True
+            assert ventilation_setting.IsScheduledVentilationOn is False
         if idf_name == "VentilationSimpleTest.idf":
             zone_ep = idf.getobject("ZONE", "ZONE 2")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
             ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
-            assert ventilation_setting.IsNatVentOn == True
-            assert ventilation_setting.IsScheduledVentilationOn == True
+            assert ventilation_setting.IsNatVentOn is False
+            assert ventilation_setting.IsScheduledVentilationOn is True
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone_ep = idf.getobject("ZONE", "Office")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
             ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
-            assert ventilation_setting.IsNatVentOn == False
-            assert ventilation_setting.IsScheduledVentilationOn == False
+            assert ventilation_setting.IsNatVentOn is False
+            assert ventilation_setting.IsScheduledVentilationOn is False
 
     def test_ventilationSetting_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""

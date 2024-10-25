@@ -1,8 +1,9 @@
 """"""
 
+from __future__ import annotations
+
 import functools
 import time
-from sqlite3 import OperationalError
 
 import numpy as np
 from pandas import DataFrame, read_sql_query, to_numeric
@@ -119,17 +120,17 @@ class ReportData(DataFrame):
             params = {"warmup_flag": warmup_flag}
             if table_name:
                 conditions, table_name = cls.multiple_conditions("table_name", table_name, "Name")
-                sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
+                sql_query = sql_query.replace(";", f""" AND ({conditions});""")
                 params.update(table_name)
             if environment_type:
                 conditions, env_name = cls.multiple_conditions("env_name", environment_type, "EnvironmentType")
-                sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
+                sql_query = sql_query.replace(";", f""" AND ({conditions});""")
                 params.update(env_name)
             if reporting_frequency:
                 conditions, reporting_frequency = cls.multiple_conditions(
                     "reporting_frequency", reporting_frequency, "ReportingFrequency"
                 )
-                sql_query = sql_query.replace(";", """ AND (%s);""" % conditions)
+                sql_query = sql_query.replace(";", f""" AND ({conditions});""")
                 params.update(reporting_frequency)
             df = cls.execute(conn, sql_query, params)
             return cls(df)
@@ -139,21 +140,27 @@ class ReportData(DataFrame):
         if not isinstance(cond_names, (list, tuple)):
             cond_names = [cond_names]
         cond_names = set(cond_names)
-        cond_names = {"%s_%s" % (basename, i): name for i, name in enumerate(cond_names)}
-        conditions = " OR ".join(["%s = @%s" % (var_name, cond_name) for cond_name in cond_names])
+        cond_names = {f"{basename}_{i}": name for i, name in enumerate(cond_names)}
+        conditions = " OR ".join([f"{var_name} = @{cond_name}" for cond_name in cond_names])
         return conditions, cond_names
 
     @staticmethod
     def execute(conn, sql_query, params):
-        try:
-            # Try regular str read, could fail if wrong encoding
-            conn.text_factory = str
-            df = read_sql_query(sql_query, conn, params=params, coerce_float=True)
-        except OperationalError as e:
-            # Wring encoding found, the load bytes and decode object
-            # columns only
-            raise e
-        return df
+        """Execute a sql query and return a DataFrame.
+
+        Args:
+            conn (sqlite3.Connection): The connection to the sqlite3 database.
+            sql_query (str): The sql query to execute.
+            params (dict): The parameters to pass to the query.
+
+        Returns:
+            DataFrame: a pandas DataFrame.
+        Raises:
+            OperationalError: If the encoding is not correct.
+        """
+        # Try regular str read, could fail if wrong encoding
+        conn.text_factory = str
+        return read_sql_query(sql_query, conn, params=params, coerce_float=True)
 
     @property
     def _constructor(self):
@@ -172,7 +179,7 @@ class ReportData(DataFrame):
         reportdatadictionaryindex=None,
         value=None,
         ismeter=None,
-        type=None,
+        report_type=None,
         indexgroup=None,
         timesteptype=None,
         keyvalue=None,
@@ -193,7 +200,7 @@ class ReportData(DataFrame):
             reportdatadictionaryindex (str or tuple):
             value (str or tuple):
             ismeter (str or tuple):
-            type (str or tuple):
+            report_type (str or tuple):
             indexgroup (str or tuple):
             timesteptype (str or tuple):
             keyvalue (str or tuple):
@@ -272,11 +279,11 @@ class ReportData(DataFrame):
                 else self[self.ISMETER] == ismeter
             )
             c_n.append(c_6)
-        if type:
+        if report_type:
             c_7 = (
-                conjunction(*[self[self.TYPE] == type for type in type], logical=np.logical_or)
-                if isinstance(type, tuple)
-                else self[self.TYPE] == type
+                conjunction(*[self[self.TYPE] == t for t in report_type], logical=np.logical_or)
+                if isinstance(report_type, tuple)
+                else self[self.TYPE] == report_type
             )
             c_n.append(c_7)
         if indexgroup:

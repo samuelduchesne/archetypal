@@ -1,18 +1,20 @@
 """archetypal Schedule module."""
 
+from __future__ import annotations
+
+import contextlib
 import functools
 import io
 import logging as lg
 from datetime import datetime, timedelta
 from itertools import groupby
-from typing import FrozenSet, List, Union
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
-from typing_extensions import Literal
 from validator_collection import checkers, validators
 
 from archetypal.utils import log
@@ -285,7 +287,7 @@ class _ScheduleParser:
             if not weekly_schedules.loc[how].empty:
                 # Loop through days and replace with day:schedule values
                 days = []
-                for name, day in weekly_schedules.loc[how].groupby(pd.Grouper(freq="D")):
+                for _name, day in weekly_schedules.loc[how].groupby(pd.Grouper(freq="D")):
                     if not day.empty:
                         ref = epbunch.get_referenced_object(f"ScheduleDay_Name_{i + 1}")
                         day.loc[:] = _ScheduleParser.get_schedule_values(
@@ -421,7 +423,7 @@ class _ScheduleParser:
         from_time = "00:00"
         how_interpolate = None
         for field in fields:
-            if any([spe in field.lower() for spe in field_sets]):
+            if any(spe in field.lower() for spe in field_sets):
                 f_set, hour, minute, value = _ScheduleParser._field_interpreter(field, epbunch.Name)
 
                 if f_set.lower() == "through":
@@ -562,7 +564,7 @@ class _ScheduleParser:
             how = pd.IndexSlice[start_date:end_date]
 
             weeks = []
-            for name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168h")):
+            for _name, week in hourly_values.loc[how].groupby(pd.Grouper(freq="168h")):
                 if not week.empty:
                     try:
                         week.loc[:] = cls.get_schedule_values(
@@ -674,7 +676,7 @@ class _ScheduleParser:
             elif keywords:
                 # get epBunch of the sizing period
                 statement = " ".join(keywords)
-                f_set = [s for s in field.split() if "for" in s.lower()][0]
+                f_set = next(s for s in field.split() if "for" in s.lower())
                 value = statement.strip()
                 hour = None
                 minute = None
@@ -816,12 +818,7 @@ class _ScheduleParser:
         elif field.lower() == "saturday":
             # return only Saturdays
             return lambda x: x.index.dayofweek == 5
-        elif field.lower() == "summerdesignday":
-            # return _ScheduleParser.design_day(
-            #     schedule_epbunch, field, slicer_, start_date, strict
-            # )
-            return None
-        elif field.lower() == "winterdesignday":
+        elif field.lower() == "summerdesignday" or field.lower() == "winterdesignday":
             # return _ScheduleParser.design_day(
             #     schedule_epbunch, field, slicer_, start_date, strict
             # )
@@ -867,7 +864,7 @@ class _ScheduleParser:
                 date = _ScheduleParser._parse_fancy_string(field, start_date)
             except Exception as e:
                 msg = f"the schedule contains a " f"Field that is not understood: '{field}'"
-                raise ValueError(msg, e)
+                raise ValueError(msg, e) from e
             else:
                 return date
         else:
@@ -936,15 +933,18 @@ class _ScheduleParser:
         special_day_types = ["holiday", "customday1", "customday2"]
 
         dds = schedule_epbunch.theidf.idfobjects["RunPeriodControl:SpecialDays".upper()]
-        dd = [
-            dd for dd in dds if dd.Special_Day_Type.lower() == field or dd.Special_Day_Type.lower() in special_day_types
+        special_days = [
+            special_day
+            for special_day in dds
+            if special_day.Special_Day_Type.lower() == field
+            or special_day.Special_Day_Type.lower() in special_day_types
         ]
-        if len(dd) > 0:
-            for dd in dd:
+        if len(special_days) > 0:
+            for special_day in special_days:
                 # can have more than one special day types
-                field = dd.Start_Date
+                field = special_day.Start_Date
                 special_day_start_date = _ScheduleParser._date_field_interpretation(field, start_date)
-                duration = int(dd.Duration)
+                duration = int(special_day.Duration)
                 to_date = special_day_start_date + timedelta(days=duration) + timedelta(hours=-1)
 
                 sp_slicer_.loc[special_day_start_date:to_date] = True
@@ -972,12 +972,12 @@ class _ScheduleParser:
         sp_slicer_ = slicer_.copy()
         sp_slicer_.loc[:] = False
         dds = schedule_epbunch.theidf.idfobjects["SizingPeriod:DesignDay".upper()]
-        dd = [dd for dd in dds if dd.Day_Type.lower() == field]
-        if len(dd) > 0:
-            for dd in dd:
+        design_days = [dd for dd in dds if dd.Day_Type.lower() == field]
+        if len(design_days) > 0:
+            for design_day in design_days:
                 # should have found only one design day matching the Day Type
-                month = dd.Month
-                day = dd.Day_of_Month
+                month = design_day.Month
+                day = design_day.Day_of_Month
                 data = str(month) + "/" + str(day)
                 ep_start_date = _ScheduleParser._date_field_interpretation(data, start_date)
                 ep_orig = datetime(start_date.year, 1, 1)
@@ -996,7 +996,7 @@ class _ScheduleParser:
                 f"needed for schedule with Day Type '{field.capitalize()}'"
             )
             raise ValueError(msg)
-            data = [dd[0].Month, dd[0].Day_of_Month]
+            data = [design_days[0].Month, design_days[0].Day_of_Month]
             date = "/".join([str(item).zfill(2) for item in data])
             date = _ScheduleParser._date_field_interpretation(date, start_date)
             return lambda x: x.index == date
@@ -1008,10 +1008,10 @@ class Schedule:
     def __init__(
         self,
         Name: str,
-        start_day_of_the_week: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0,
+        start_day_of_the_week: frozenset[Literal[0, 1, 2, 3, 4, 5, 6]] = 0,
         strict: bool = False,
-        Type: Union[str, ScheduleTypeLimits] = None,
-        Values: Union[List[Union[int, float]], np.ndarray] = None,
+        Type: str | ScheduleTypeLimits = None,
+        Values: list[int | float] | np.ndarray = None,
         **kwargs,
     ):
         """Initialize object.
@@ -1032,10 +1032,9 @@ class Schedule:
             Values (ndarray): A 24 or 8760 list of schedule values.
             **kwargs:
         """
-        try:
-            super(Schedule, self).__init__(Name, **kwargs)
-        except Exception:
-            pass  # todo: make this more robust
+        with contextlib.suppress(Exception):
+            # todo: make this more robust
+            super().__init__(Name, **kwargs)
         self.Name = Name
         self.strict = strict
         self.startDayOfTheWeek = start_day_of_the_week
@@ -1093,7 +1092,7 @@ class Schedule:
     def from_values(
         cls,
         Name: str,
-        Values: List[Union[float, int]],
+        Values: list[float | int],
         Type: str = "Fraction",
         **kwargs,
     ):
@@ -1179,10 +1178,7 @@ class Schedule:
     def series(self):
         """Return an :class:`EnergySeries`."""
         index = pd.date_range(start=self.startDate, periods=self.all_values.size, freq="1h")
-        if self.Type is not None:
-            units = self.Type.UnitType
-        else:
-            units = None
+        units = self.Type.UnitType if self.Type is not None else None
         return EnergySeries(self.all_values, index=index, name=self.Name, units=units)
 
     @staticmethod
@@ -1209,7 +1205,7 @@ class Schedule:
         self.Values = new_values
         return self
 
-    def replace(self, new_values: Union[pd.Series]):
+    def replace(self, new_values: pd.Series):
         """Replace values with new values while keeping the full load hours constant.
 
         Time steps that are not specified in `new_values` will be adjusted to keep
@@ -1338,8 +1334,8 @@ class Schedule:
                 return_inverse=True,
                 return_counts=True,
             )
-        except ValueError:
-            raise ValueError("Looks like the idf model needs to be rerun with 'annual=True'")
+        except ValueError as e:
+            raise ValueError("Looks like the idf model needs to be rerun with 'annual=True'") from e
 
         # We use the calendar module to set the week days order
         import calendar
@@ -1374,8 +1370,8 @@ class Schedule:
         blocks = {}
         from_date = datetime(self.year, 1, 1)
         bincount = [sum(1 for _ in group) for key, group in groupby(nws + 1) if key]
-        week_order = {i: v for i, v in enumerate(np.array([key for key, group in groupby(nws + 1) if key]) - 1)}
-        for i, (week_n, count) in enumerate(zip(week_order, bincount)):
+        week_order = dict(enumerate(np.array([key for key, group in groupby(nws + 1) if key]) - 1))
+        for i, (_, count) in enumerate(zip(week_order, bincount)):
             week_id = list(dict_week)[week_order[i]]
             to_date = from_date + timedelta(days=int(count * 7), hours=-1)
             blocks[i] = YearSchedulePart(
@@ -1463,10 +1459,7 @@ class Schedule:
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # check if the schedule is the same
@@ -1490,16 +1483,8 @@ def _conjunction(*conditions, logical=np.logical_and):
 
 
 def _separator(sep):
-    if sep == "Comma":
-        return ","
-    elif sep == "Tab":
-        return "\t"
-    elif sep == "Fixed":
-        return None
-    elif sep == "Semicolon":
-        return ";"
-    else:
-        return ","
+    separators = {"Comma": ",", "Tab": "\t", "Fixed": None, "Semicolon": ";"}
+    return separators.get(sep, ",")
 
 
 def _how(how):
@@ -1513,7 +1498,7 @@ def _how(how):
         return "max"
 
 
-def get_year_for_first_weekday(weekday: FrozenSet[Literal[0, 1, 2, 3, 4, 5, 6]] = 0):
+def get_year_for_first_weekday(weekday: frozenset[Literal[0, 1, 2, 3, 4, 5, 6]] = 0):
     """Get the year that starts on 'weekday', eg. Monday=0.
 
     Args:

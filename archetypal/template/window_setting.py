@@ -4,6 +4,7 @@ import collections
 import logging as lg
 from copy import copy
 from functools import reduce
+from typing import ClassVar
 
 from validator_collection import checkers, validators
 
@@ -36,7 +37,7 @@ class WindowSetting(UmiBase):
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["WindowSetting"]] = []
 
     __slots__ = (
         "_operable_area",
@@ -111,7 +112,7 @@ class WindowSetting(UmiBase):
                 Default = 0.001 m3/m2.
             **kwargs: other keywords passed to the constructor.
         """
-        super(WindowSetting, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
 
         self.ShadingSystemAvailabilitySchedule = ShadingSystemAvailabilitySchedule
         self.Construction = Construction
@@ -343,7 +344,7 @@ class WindowSetting(UmiBase):
 
     def __repr__(self):
         """Return a representation of self."""
-        return super(WindowSetting, self).__repr__()
+        return super().__repr__()
 
     def __str__(self):
         """Return string representation."""
@@ -577,25 +578,12 @@ class WindowSetting(UmiBase):
                     f'defaults for object "{cls.mro()[0].__name__}"',
                     lg.WARNING,
                 )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK":
-                log(
-                    f'"{leak.key}" is not fully supported. Rerverting to '
-                    f'defaults for object "{cls.mro()[0].__name__}"',
-                    lg.WARNING,
-                )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING":
-                log(
-                    f'"{leak.key}" is not fully supported. Rerverting to '
-                    f'defaults for object "{cls.mro()[0].__name__}"',
-                    lg.WARNING,
-                )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN":
-                log(
-                    f'"{leak.key}" is not fully supported. Rerverting to '
-                    f'defaults for object "{cls.mro()[0].__name__}"',
-                    lg.WARNING,
-                )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING":
+            elif (
+                leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING"
+            ):
                 log(
                     f'"{leak.key}" is not fully supported. Rerverting to '
                     f'defaults for object "{cls.mro()[0].__name__}"',
@@ -670,10 +658,7 @@ class WindowSetting(UmiBase):
             return other
 
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -684,32 +669,34 @@ class WindowSetting(UmiBase):
             log(f'using 1 as weighting factor in "{self.__class__.__name__}" ' "combine.")
             weights = [1.0, 1.0]
         meta = self._get_predecessors_meta(other)
-        new_attr = dict(
-            Construction=WindowConstruction.combine(self.Construction, other.Construction, weights),
-            AfnDischargeC=self.float_mean(other, "AfnDischargeC", weights),
-            AfnTempSetpoint=self.float_mean(other, "AfnTempSetpoint", weights),
-            AfnWindowAvailability=UmiSchedule.combine(self.AfnWindowAvailability, other.AfnWindowAvailability, weights),
-            IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
-            IsVirtualPartition=any([self.IsVirtualPartition, other.IsVirtualPartition]),
-            IsZoneMixingOn=any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
-            OperableArea=self.float_mean(other, "OperableArea", weights),
-            ShadingSystemSetpoint=self.float_mean(other, "ShadingSystemSetpoint", weights),
-            ShadingSystemTransmittance=self.float_mean(other, "ShadingSystemTransmittance", weights),
-            ShadingSystemType=max(self.ShadingSystemType, other.ShadingSystemType),
-            ZoneMixingDeltaTemperature=self.float_mean(other, "ZoneMixingDeltaTemperature", weights),
-            ZoneMixingFlowRate=self.float_mean(other, "ZoneMixingFlowRate", weights),
-            ZoneMixingAvailabilitySchedule=UmiSchedule.combine(
+        new_attr = {
+            "Construction": WindowConstruction.combine(self.Construction, other.Construction, weights),
+            "AfnDischargeC": self.float_mean(other, "AfnDischargeC", weights),
+            "AfnTempSetpoint": self.float_mean(other, "AfnTempSetpoint", weights),
+            "AfnWindowAvailability": UmiSchedule.combine(
+                self.AfnWindowAvailability, other.AfnWindowAvailability, weights
+            ),
+            "IsShadingSystemOn": any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
+            "IsVirtualPartition": any([self.IsVirtualPartition, other.IsVirtualPartition]),
+            "IsZoneMixingOn": any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
+            "OperableArea": self.float_mean(other, "OperableArea", weights),
+            "ShadingSystemSetpoint": self.float_mean(other, "ShadingSystemSetpoint", weights),
+            "ShadingSystemTransmittance": self.float_mean(other, "ShadingSystemTransmittance", weights),
+            "ShadingSystemType": max(self.ShadingSystemType, other.ShadingSystemType),
+            "ZoneMixingDeltaTemperature": self.float_mean(other, "ZoneMixingDeltaTemperature", weights),
+            "ZoneMixingFlowRate": self.float_mean(other, "ZoneMixingFlowRate", weights),
+            "ZoneMixingAvailabilitySchedule": UmiSchedule.combine(
                 self.ZoneMixingAvailabilitySchedule,
                 other.ZoneMixingAvailabilitySchedule,
                 weights,
             ),
-            ShadingSystemAvailabilitySchedule=UmiSchedule.combine(
+            "ShadingSystemAvailabilitySchedule": UmiSchedule.combine(
                 self.ShadingSystemAvailabilitySchedule,
                 other.ShadingSystemAvailabilitySchedule,
                 weights,
             ),
-            Type=max(self.Type, other.Type),
-        )
+            "Type": max(self.Type, other.Type),
+        }
         new_obj = WindowSetting(**meta, **new_attr)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -820,28 +807,28 @@ class WindowSetting(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            AfnDischargeC=self.AfnDischargeC,
-            AfnTempSetpoint=self.AfnTempSetpoint,
-            AfnWindowAvailability=self.AfnWindowAvailability,
-            Construction=self.Construction,
-            IsShadingSystemOn=self.IsShadingSystemOn,
-            IsVirtualPartition=self.IsVirtualPartition,
-            IsZoneMixingOn=self.IsZoneMixingOn,
-            OperableArea=self.OperableArea,
-            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule,
-            ShadingSystemSetpoint=self.ShadingSystemSetpoint,
-            ShadingSystemTransmittance=self.ShadingSystemTransmittance,
-            ShadingSystemType=self.ShadingSystemType,
-            Type=self.Type,
-            ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule,
-            ZoneMixingDeltaTemperature=self.ZoneMixingDeltaTemperature,
-            ZoneMixingFlowRate=self.ZoneMixingFlowRate,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "AfnDischargeC": self.AfnDischargeC,
+            "AfnTempSetpoint": self.AfnTempSetpoint,
+            "AfnWindowAvailability": self.AfnWindowAvailability,
+            "Construction": self.Construction,
+            "IsShadingSystemOn": self.IsShadingSystemOn,
+            "IsVirtualPartition": self.IsVirtualPartition,
+            "IsZoneMixingOn": self.IsZoneMixingOn,
+            "OperableArea": self.OperableArea,
+            "ShadingSystemAvailabilitySchedule": self.ShadingSystemAvailabilitySchedule,
+            "ShadingSystemSetpoint": self.ShadingSystemSetpoint,
+            "ShadingSystemTransmittance": self.ShadingSystemTransmittance,
+            "ShadingSystemType": self.ShadingSystemType,
+            "Type": self.Type,
+            "ZoneMixingAvailabilitySchedule": self.ZoneMixingAvailabilitySchedule,
+            "ZoneMixingDeltaTemperature": self.ZoneMixingDeltaTemperature,
+            "ZoneMixingFlowRate": self.ZoneMixingFlowRate,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     @property
     def children(self):

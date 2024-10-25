@@ -55,7 +55,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
             "various resistances can be negative."
         )
 
-    dict = {}
+    glazing = {}
 
     # Step 1. Determine glass-to-glass Resistance.
 
@@ -76,7 +76,7 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
 
     # Step 4. Determine Layer Solar Transmittance
 
-    # The layer’s solar transmittance at normal incidence, `T_sol`,
+    # The layer's solar transmittance at normal incidence, `T_sol`,
     # is calculated using correlations that are a function of SHGC and U-Factor.
 
     T_sol = t_sol(shgc, u_factor)
@@ -96,58 +96,55 @@ def calc_simple_glazing(shgc, u_factor, visible_transmittance=None):
     # as one of the simple performance indices.
     # If the user does not enter a value, then the visible properties are the
     # same as the solar properties.
-    if visible_transmittance:
-        T_vis = visible_transmittance
-    else:
-        T_vis = T_sol
+    T_vis = visible_transmittance if visible_transmittance else T_sol
 
     R_vis_b = r_vis_b(T_vis)
     R_vis_f = r_vis_f(T_vis)
 
     # sanity checks
     if T_vis + R_vis_f >= 1.0:
-        warnings.warn("T_vis + R_vis_f > 1", UserWarning)
+        warnings.warn("T_vis + R_vis_f > 1", UserWarning, stacklevel=2)
         T_vis -= (T_vis + R_vis_f - 1) * 1.1
     if T_vis + R_vis_b >= 1.0:
-        warnings.warn("T_vis + R_vis_b > 1", UserWarning)
+        warnings.warn("T_vis + R_vis_b > 1", UserWarning, stacklevel=2)
         T_vis -= (T_vis + R_vis_b - 1) * 1.1
 
     # Last Step. Saving results to dict
-    dict["SolarHeatGainCoefficient"] = shgc
-    dict["UFactor"] = u_factor
-    dict["Conductivity"] = Lambda_eff
-    dict["Thickness"] = Thickness
-    dict["SolarTransmittance"] = T_sol
-    dict["SolarReflectanceFront"] = R_s_f
-    dict["SolarReflectanceBack"] = R_s_b
-    dict["IRTransmittance"] = 0.0
-    dict["VisibleTransmittance"] = T_vis
-    dict["VisibleReflectanceFront"] = R_vis_f
-    dict["VisibleReflectanceBack"] = R_vis_b
-    dict["IREmissivityFront"] = 0.84
-    dict["IREmissivityBack"] = 0.84
-    dict["DirtFactor"] = 1.0  # Clean glass
+    glazing["SolarHeatGainCoefficient"] = shgc
+    glazing["UFactor"] = u_factor
+    glazing["Conductivity"] = Lambda_eff
+    glazing["Thickness"] = Thickness
+    glazing["SolarTransmittance"] = T_sol
+    glazing["SolarReflectanceFront"] = R_s_f
+    glazing["SolarReflectanceBack"] = R_s_b
+    glazing["IRTransmittance"] = 0.0
+    glazing["VisibleTransmittance"] = T_vis
+    glazing["VisibleReflectanceFront"] = R_vis_f
+    glazing["VisibleReflectanceBack"] = R_vis_b
+    glazing["IREmissivityFront"] = 0.84
+    glazing["IREmissivityBack"] = 0.84
+    glazing["DirtFactor"] = 1.0  # Clean glass
 
-    dict["Cost"] = 0
-    dict["Density"] = 2500
-    dict["EmbodiedCarbon"] = 0
-    dict["EmbodiedCarbonStdDev"] = 0
-    dict["EmbodiedEnergy"] = 0
-    dict["EmbodiedEnergyStdDev"] = 0
-    dict["Life"] = 1
-    dict["SubstitutionRatePattern"] = [1.0]
-    dict["SubstitutionTimestep"] = 0
-    dict["TransportCarbon"] = 0
-    dict["TransportDistance"] = 0
-    dict["TransportEnergy"] = 0
-    dict["Type"] = "Uncoated"  # TODO Further investigation necessary
+    glazing["Cost"] = 0
+    glazing["Density"] = 2500
+    glazing["EmbodiedCarbon"] = 0
+    glazing["EmbodiedCarbonStdDev"] = 0
+    glazing["EmbodiedEnergy"] = 0
+    glazing["EmbodiedEnergyStdDev"] = 0
+    glazing["Life"] = 1
+    glazing["SubstitutionRatePattern"] = [1.0]
+    glazing["SubstitutionTimestep"] = 0
+    glazing["TransportCarbon"] = 0
+    glazing["TransportDistance"] = 0
+    glazing["TransportEnergy"] = 0
+    glazing["Type"] = "Uncoated"  # TODO Further investigation necessary
 
-    dict["Comments"] = (
+    glazing["Comments"] = (
         "Properties calculated from Simple Glazing System with "
         f"SHGC={shgc:.3f}, UFactor={u_factor:.3f} and Tvis={T_vis:.3f}"
     )
 
-    return dict
+    return glazing
 
 
 # region Step 1. Determine glass-to-glass Resistance

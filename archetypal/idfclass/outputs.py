@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
+from typing import Literal
 
 from archetypal.idfclass.end_use_balance import EndUseBalance
 from archetypal.idfclass.extensions import get_name_attribute
@@ -294,7 +297,7 @@ class Outputs:
             self._other_outputs.append(output)
         return self
 
-    def add_meter_variables(self, format="IDF"):
+    def add_meter_variables(self, key_field: Literal["IDF", "regular"] = "IDF"):
         """Generate .mdd file at end of simulation. This file (from the
         Output:VariableDictionary, regular; and Output:VariableDictionary,
         IDF; commands) shows all the report meters along with their “availability”
@@ -304,12 +307,12 @@ class Outputs:
         Output Reference) and IDF (ready to be copied and pasted into your Input File).
 
         Args:
-            format (str): Choices are "IDF" and "regul
+            key_field (str): Choices are IDF, regular
 
         Returns:
             Outputs: self
         """
-        outputs = [{"key": "Output:VariableDictionary".upper(), "Key_Field": format}]
+        outputs = [{"key": "Output:VariableDictionary".upper(), "Key_Field": key_field}]
         for output in outputs:
             self._other_outputs.append(output)
         return self

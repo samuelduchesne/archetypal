@@ -1157,12 +1157,12 @@ class Schedule:
         self._values = validators.iterable(value, maximum_length=8760)
 
     @property
-    def max(self):
+    def max(self):  # noqa: A003
         """Get the maximum value of the schedule."""
         return max(self.all_values)
 
     @property
-    def min(self):
+    def min(self):  # noqa: A003
         """Get the minimum value of the schedule."""
         return min(self.all_values)
 

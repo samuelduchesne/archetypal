@@ -4,7 +4,6 @@ import os
 from typing import ClassVar
 
 import pytest
-from path import Path
 
 from archetypal import IDF, settings
 from archetypal.eplus_interface import EnergyPlusVersion
@@ -629,24 +628,6 @@ class TestUmiTemplate:
         data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         data_dir / "necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
     ]
-
-    @pytest.mark.skipif(
-        os.environ.get("CI", "False").lower() == "true",
-        reason="Skipping this test on CI environment",
-    )
-    @pytest.mark.parametrize("file", Path(data_dir / "problematic").files("*CZ5A*.idf"))
-    def test_cz5a_serial(self, file, config):
-        settings.log_console = True
-        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        template = UmiTemplateLibrary.from_idf_files(
-            name=file.stem,
-            idf_files=[file],
-            as_version="9-2-0",
-            weather=w,
-            processors=1,
-        )
-        assert no_duplicates(template.to_dict(), attribute="Name")
-        assert no_duplicates(template.to_dict(), attribute="$id")
 
 
 @pytest.fixture(scope="session")

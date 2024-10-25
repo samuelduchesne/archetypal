@@ -29,7 +29,7 @@ class TestZoneGraph:
         assert G
 
     @pytest.fixture(scope="class")
-    def G(self, config, small_office):
+    def G(self, small_office):
         """
         Args:
             config:
@@ -40,7 +40,7 @@ class TestZoneGraph:
         yield ZoneGraph.from_idf(idf)
 
     @pytest.mark.parametrize("adj_report", [True, False])
-    def test_graph(self, config, small_office, adj_report):
+    def test_graph(self, small_office, adj_report):
         """Test the creation of a BuildingTemplate zone graph. Parametrize the
         creation of the adjacency report
 
@@ -61,7 +61,7 @@ class TestZoneGraph:
             EpBunch,
         )
 
-    def test_graph_info(self, config, G):
+    def test_graph_info(self, G):
         """test the info method on a ZoneGraph
 
         Args:
@@ -69,7 +69,7 @@ class TestZoneGraph:
         """
         G.info()
 
-    def test_viewgraph2d(self, config, G):
+    def test_viewgraph2d(self, G):
         """test the visualization of the zonegraph in 2d
 
         Args:
@@ -92,7 +92,7 @@ class TestZoneGraph:
         )
 
     @pytest.mark.parametrize("annotate", [True, "Name", ("core", None)])
-    def test_viewgraph3d(self, config, G, annotate):
+    def test_viewgraph3d(self, G, annotate):
         """test the visualization of the zonegraph in 3d
 
         Args:
@@ -106,7 +106,7 @@ class TestZoneGraph:
             show=False,
         )
 
-    def test_core_graph(self, config, G):
+    def test_core_graph(self, G):
         """
         Args:
             G:
@@ -116,7 +116,7 @@ class TestZoneGraph:
         assert len(H) == 1  # assert G has no nodes since Warehouse does not have a
         # core zone
 
-    def test_perim_graph(self, config, G):
+    def test_perim_graph(self, G):
         """
         Args:
             G:

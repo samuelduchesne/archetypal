@@ -96,7 +96,7 @@ select = [
     # flake8-bandit
     # "S",
     # flake8-bugbear
-    # "B",
+    "B",
     # flake8-builtins
     "A",
     # flake8-comprehensions
@@ -133,7 +133,9 @@ ignore = [
     # raise-vanilla-args
     "TRY003",
     # Checks for uses of isinstance and issubclass that take a tuple of types for comparison.
-    "UP038"
+    "UP038",
+    # Python builtin is shadowed by class attribute {name} from {row}
+    "A003"
 ]
 exclude = ["tests/input_data/*", "docker/trnsidf/*", "geomeppy"]
 

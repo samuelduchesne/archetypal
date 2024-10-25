@@ -60,7 +60,7 @@ def hash_model(idfname, **kwargs):
     hasher.update(buf)
 
     # Hashing the kwargs as well
-    for k, v in kwargs.items():
+    for _k, v in kwargs.items():
         if isinstance(v, (str, bool)):
             hasher.update(v.__str__().encode("utf-8"))
         elif isinstance(v, list):

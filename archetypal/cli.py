@@ -364,7 +364,7 @@ def set_filepaths(idf):
                 settings.logs_folder,
             ]
             top = file_or_path.abspath().dirname()
-            for root, dirs, files in walkdirs(top, excluded_dirs):
+            for root, _, _ in walkdirs(top, excluded_dirs):
                 pattern = file_or_path.basename()
                 file_paths += tuple(Path(root).files(pattern))
 

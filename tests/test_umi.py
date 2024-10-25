@@ -33,7 +33,7 @@ class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
 
     @pytest.fixture(scope="function")
-    def two_identical_libraries(self):
+    def two_identical_libraries(self, config):
         """Yield two identical libraries. Scope of this fixture is `function`."""
         file = data_dir / "umi_samples/BostonTemplateLibrary_nodup.json"
         yield UmiTemplateLibrary.open(file), UmiTemplateLibrary.open(file)
@@ -74,7 +74,7 @@ class TestUmiTemplate:
             # missing S.
             c.unique_components("OpaqueMaterial")
 
-    def test_graph(self):
+    def test_graph(self, config):
         """Test initialization of networkx DiGraph"""
         file = data_dir / "umi_samples/BostonTemplateLibrary_2.json"
 
@@ -86,7 +86,7 @@ class TestUmiTemplate:
         G = a.to_graph(include_orphans=True)
         assert len(G) > n_nodes
 
-    def test_template_to_template(self):
+    def test_template_to_template(self, config):
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""
 
@@ -160,7 +160,7 @@ class TestUmiTemplate:
             return data_dict
 
     @pytest.fixture()
-    def idf(self):
+    def idf(self, config):
         yield IDF(prep_outputs=False)
 
     @pytest.fixture()

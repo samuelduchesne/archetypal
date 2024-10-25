@@ -1413,7 +1413,7 @@ class IDF(GeomIDF):
             e = expandobjects_thread.exception
             if e is not None:
                 raise e
-            if expandobjects_thread.cancelled:
+            elif expandobjects_thread.cancelled:
                 return self
 
         # Run the Basement preprocessor program if necessary
@@ -1432,7 +1432,7 @@ class IDF(GeomIDF):
             e = basement_thread.exception
             if e is not None:
                 raise e
-            if basement_thread.cancelled:
+            elif basement_thread.cancelled:
                 return self
 
         # Run the Slab preprocessor program if necessary
@@ -1452,7 +1452,7 @@ class IDF(GeomIDF):
             e = slab_thread.exception
             if e is not None:
                 raise e
-            if slab_thread.cancelled:
+            elif slab_thread.cancelled:
                 return self
 
         # Run the energyplus program
@@ -1471,7 +1471,9 @@ class IDF(GeomIDF):
             e = running_simulation_thread.exception
             if e is not None:
                 raise e
-            return self
+            elif running_simulation_thread.cancelled:
+                return self
+        return self
 
     def savecopy(self, filename, lineendings="default", encoding="latin-1"):
         """Save a copy of the file with the filename passed.
@@ -2040,6 +2042,7 @@ class IDF(GeomIDF):
             warnings.warn(
                 f"The aname parameter should no longer be used ({aname}).",
                 UserWarning,
+                stacklevel=2,
             )
             namebunch(abunch, aname)
         for k, v in kwargs.items():
@@ -2202,7 +2205,7 @@ class IDF(GeomIDF):
         for refname in refnames:
             objlists = eppy.modeleditor.getallobjlists(self, refname)
             # [('OBJKEY', refname, fieldindexlist), ...]
-            for robjkey, refname, fieldindexlist in objlists:
+            for robjkey, _refname, fieldindexlist in objlists:
                 idfobjects = self.idfobjects[robjkey]
                 for idfobject in idfobjects:
                     for findex in fieldindexlist:  # for each field
@@ -2405,7 +2408,7 @@ class IDF(GeomIDF):
         for subsurf in subsurfaces:
             zone_name = surfaces[subsurf.Building_Surface_Name.upper()].Zone_Name
             translate([subsurf], zone_origin[zone_name.upper()])
-        for surf_name, surf in surfaces.items():
+        for _surf_name, surf in surfaces.items():
             translate([surf], zone_origin[surf.Zone_Name.upper()])
         for day in daylighting_refpoints:
             zone_name = day.Zone_or_Space_Name

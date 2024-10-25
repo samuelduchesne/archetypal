@@ -693,7 +693,7 @@ class UmiTemplateLibrary:
             for component in group:
                 for parent, key, child in parent_key_child_traversal(component):
                     if isinstance(child, UmiSchedule) and not isinstance(
-                        child, DaySchedule | WeekSchedule | YearSchedule
+                        child, (DaySchedule, WeekSchedule, YearSchedule)
                     ):
                         y, ws, ds = child.to_year_week_day()
                         if not any(o.id == y.id for o in self.YearSchedules):

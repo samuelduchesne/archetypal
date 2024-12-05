@@ -37,7 +37,7 @@ numpy = [
 eval-type-backport = {version = "^0.2.0", python = "3.9"}
 
 # geomeppy.dependencies
-shapely = "^2.0.4"
+shapely = "^2.0.6"
 beautifulsoup4 = "<=4.8"
 contourpy = "^1.2.1"
 cycler = "^0.12.1"

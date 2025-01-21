@@ -18,10 +18,10 @@ from archetypal.utils import config, docstring_parameter, log, parallel_process,
 from .eplus_interface.exceptions import EnergyPlusVersionError
 from .eplus_interface.version import EnergyPlusVersion
 
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 
 
-class CliConfig(object):
+class CliConfig:
     def __init__(self):
         self.data_folder = settings.data_folder
         self.logs_folder = settings.logs_folder
@@ -70,8 +70,7 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     "--cache-responses",
     is_flag=True,
     default=False,
-    help="Use a local cache to save/retrieve DataPortal API calls for the same "
-    "requests.",
+    help="Use a local cache to save/retrieve DataPortal API calls for the same requests.",
 )
 @click.option(
     "-l",
@@ -96,14 +95,12 @@ pass_config = click.make_pass_decorator(CliConfig, ensure=True)
     default=settings.log_level,
 )
 @click.option("--log-name", help="name of the logger", default=settings.log_name)
-@click.option(
-    "--log-filename", help="name of the log file", default=settings.log_filename
-)
+@click.option("--log-filename", help="name of the log file", default=settings.log_filename)
 @click.option(
     "--ep_version",
     type=click.STRING,
     default=settings.ep_version,
-    help='the EnergyPlus version to use. eg. "{}"'.format(settings.ep_version),
+    help=f'the EnergyPlus version to use. eg. "{settings.ep_version}"',
 )
 @click.option(
     "-d",
@@ -180,7 +177,7 @@ def cli(
     "--all_zones",
     is_flag=True,
     default=False,
-    help="Include all zones in the " "output template",
+    help="Include all zones in the output template",
 )
 @click.option(
     "-v",
@@ -209,9 +206,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     dir_ = output.dirname()
 
     file_paths = list(set_filepaths(idf))
-    file_list = "\n".join(
-        [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
-    )
+    file_list = "\n".join([f"{i}. " + str(file.name) for i, file in enumerate(file_paths)])
     log(
         f"executing {len(file_paths)} file(s):\n{file_list}",
     )
@@ -239,19 +234,18 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
 def validate_energyplusversion(ctx, param, value):
     try:
         return EnergyPlusVersion(value)
-    except EnergyPlusVersionError:
-        raise click.BadParameter("invalid energyplus version")
+    except EnergyPlusVersionError as e:
+        raise click.BadParameter("invalid energyplus version") from e
 
 
 def validate_paths(ctx, param, value):
     try:
         file_paths = set_filepaths(value)
-        file_list = "\n".join(
-            [f"{i}. " + str(file.name) for i, file in enumerate(file_paths)]
-        )
+        file_list = "\n".join([f"{i}. " + str(file.name) for i, file in enumerate(file_paths)])
+    except FileNotFoundError as e:
+        raise click.BadParameter("no files were found.") from e
+    else:
         return file_paths, file_list
-    except FileNotFoundError:
-        raise click.BadParameter("no files were found.")
 
 
 @cli.command()
@@ -298,22 +292,19 @@ def transition(idf, to_version, cores, yes):
     log(
         f"executing {len(file_paths)} file(s):\n{file_list}",
     )
-    if not yes:
-        overwrite = click.confirm("Would you like to overwrite the file(s)?")
-    else:
-        overwrite = False
+    overwrite = click.confirm("Would you like to overwrite the file(s)?") if not yes else False
     start_time = time.time()
 
     to_version = to_version.dash
     rundict = {
-        file: dict(
-            idfname=file,
-            as_version=to_version,
-            check_required=False,
-            check_length=False,
-            overwrite=overwrite,
-            prep_outputs=False,
-        )
+        file: {
+            "idfname": file,
+            "as_version": to_version,
+            "check_required": False,
+            "check_length": False,
+            "overwrite": overwrite,
+            "prep_outputs": False,
+        }
         for i, file in enumerate(file_paths)
     }
     results = parallel_process(
@@ -333,10 +324,7 @@ def transition(idf, to_version, cores, yes):
                 file_list.append(idf.original_idfname)
                 idf.saveas(str(idf.original_idfname))
             else:
-                full_path = (
-                    idf.original_idfname.dirname() / idf.original_idfname.stem
-                    + f"V{to_version}.idf"
-                )
+                full_path = idf.original_idfname.dirname() / idf.original_idfname.stem + f"V{to_version}.idf"
                 file_list.append(full_path)
                 idf.saveas(full_path)
     log(
@@ -359,12 +347,12 @@ def set_filepaths(idf):
         set of Path: The set of a list of paths
     """
     if not isinstance(idf, (list, tuple)):
-        raise ValueError("A list must be passed")
+        raise TypeError("A list must be passed")
     idf = tuple(Path(file_or_path).expand() for file_or_path in idf)  # make Paths
     file_paths = ()  # Placeholder for tuple of paths
     for file_or_path in idf:
         if file_or_path.isfile():  # if a file, concatenate into file_paths
-            file_paths += tuple([file_or_path])
+            file_paths += (file_or_path,)
         elif file_or_path.isdir():  # if a directory, walkdir (recursive) and get *.idf
             file_paths += tuple(file_or_path.walkfiles("*.idf"))
         else:
@@ -376,11 +364,11 @@ def set_filepaths(idf):
                 settings.logs_folder,
             ]
             top = file_or_path.abspath().dirname()
-            for root, dirs, files in walkdirs(top, excluded_dirs):
+            for root, _, _ in walkdirs(top, excluded_dirs):
                 pattern = file_or_path.basename()
                 file_paths += tuple(Path(root).files(pattern))
 
-    file_paths = set([f.relpath().expand() for f in file_paths])  # Only keep unique
+    file_paths = {f.relpath().expand() for f in file_paths}  # Only keep unique
     # values
     if file_paths:
         return file_paths

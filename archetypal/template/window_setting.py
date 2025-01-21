@@ -4,9 +4,9 @@ import collections
 import logging as lg
 from copy import copy
 from functools import reduce
+from typing import ClassVar
 
 from validator_collection import checkers, validators
-from validator_collection.errors import EmptyValueError
 
 from archetypal.template.constructions.window_construction import (
     ShadingType,
@@ -36,7 +36,8 @@ class WindowSetting(UmiBase):
 
     .. _eppy : https://eppy.readthedocs.io/en/latest/
     """
-    _CREATED_OBJECTS = []
+
+    _CREATED_OBJECTS: ClassVar[list["WindowSetting"]] = []
 
     __slots__ = (
         "_operable_area",
@@ -111,7 +112,7 @@ class WindowSetting(UmiBase):
                 Default = 0.001 m3/m2.
             **kwargs: other keywords passed to the constructor.
         """
-        super(WindowSetting, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
 
         self.ShadingSystemAvailabilitySchedule = ShadingSystemAvailabilitySchedule
         self.Construction = Construction
@@ -180,8 +181,7 @@ class WindowSetting(UmiBase):
     def AfnWindowAvailability(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. AfnWindowAvailability must "
-                f"be an UmiSchedule, not a {type(value)}"
+                f"Input error with value {value}. AfnWindowAvailability must " f"be an UmiSchedule, not a {type(value)}"
             )
         self._afn_window_availability = value
 
@@ -194,14 +194,12 @@ class WindowSetting(UmiBase):
     def ShadingSystemType(self, value):
         if checkers.is_string(value):
             assert ShadingType[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in ShadingType)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in ShadingType)}"
             )
             self._shading_system_type = ShadingType[value]
         elif checkers.is_numeric(value):
             assert ShadingType(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in ShadingType)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in ShadingType)}"
             )
             self._shading_system_type = ShadingType(value)
         elif isinstance(value, ShadingType):
@@ -223,9 +221,7 @@ class WindowSetting(UmiBase):
 
     @ShadingSystemTransmittance.setter
     def ShadingSystemTransmittance(self, value):
-        self._shading_system_transmittance = validators.float(
-            value, minimum=0, maximum=1
-        )
+        self._shading_system_transmittance = validators.float(value, minimum=0, maximum=1)
 
     @property
     def ShadingSystemAvailabilitySchedule(self):
@@ -249,8 +245,7 @@ class WindowSetting(UmiBase):
     @IsShadingSystemOn.setter
     def IsShadingSystemOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsShadingSystemOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsShadingSystemOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_shading_system_on = value
 
@@ -286,8 +281,7 @@ class WindowSetting(UmiBase):
     def Construction(self, value):
         if value is not None:
             assert isinstance(value, WindowConstruction), (
-                f"Input error with value {value}. Construction must "
-                f"be an WindowConstruction, not a {type(value)}"
+                f"Input error with value {value}. Construction must " f"be an WindowConstruction, not a {type(value)}"
             )
         self._construction = value
 
@@ -299,8 +293,7 @@ class WindowSetting(UmiBase):
     @IsVirtualPartition.setter
     def IsVirtualPartition(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsVirtualPartition must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsVirtualPartition must " f"be a boolean, not a {type(value)}"
         )
         self._is_virtual_partition = value
 
@@ -312,8 +305,7 @@ class WindowSetting(UmiBase):
     @IsZoneMixingOn.setter
     def IsZoneMixingOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsZoneMixingOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsZoneMixingOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_zone_mixing_on = value
 
@@ -335,14 +327,12 @@ class WindowSetting(UmiBase):
     def Type(self, value):
         if checkers.is_string(value):
             assert WindowType[value], (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in WindowType)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in WindowType)}"
             )
             self._type = WindowType[value]
         elif checkers.is_numeric(value):
             assert WindowType(value), (
-                f"Input value error for '{value}'. "
-                f"Expected one of {tuple(a for a in WindowType)}"
+                f"Input value error for '{value}'. " f"Expected one of {tuple(a for a in WindowType)}"
             )
             self._type = WindowType(value)
         elif isinstance(value, WindowType):
@@ -354,7 +344,7 @@ class WindowSetting(UmiBase):
 
     def __repr__(self):
         """Return a representation of self."""
-        return super(WindowSetting, self).__repr__()
+        return super().__repr__()
 
     def __str__(self):
         """Return string representation."""
@@ -378,15 +368,13 @@ class WindowSetting(UmiBase):
                     self.AfnTempSetpoint == other.AfnTempSetpoint,
                     self.IsVirtualPartition == other.IsVirtualPartition,
                     self.IsShadingSystemOn == other.IsShadingSystemOn,
-                    self.ShadingSystemAvailabilitySchedule
-                    == other.ShadingSystemAvailabilitySchedule,
+                    self.ShadingSystemAvailabilitySchedule == other.ShadingSystemAvailabilitySchedule,
                     self.ShadingSystemSetpoint == other.ShadingSystemSetpoint,
                     self.ShadingSystemTransmittance == other.ShadingSystemTransmittance,
                     self.ShadingSystemType == other.ShadingSystemType,
                     self.Type == other.Type,
                     self.IsZoneMixingOn == other.IsZoneMixingOn,
-                    self.ZoneMixingAvailabilitySchedule
-                    == other.ZoneMixingAvailabilitySchedule,
+                    self.ZoneMixingAvailabilitySchedule == other.ZoneMixingAvailabilitySchedule,
                     self.ZoneMixingDeltaTemperature == other.ZoneMixingDeltaTemperature,
                     self.ZoneMixingFlowRate == other.ZoneMixingFlowRate,
                 ]
@@ -484,13 +472,11 @@ class WindowSetting(UmiBase):
             (WindowSetting): The window setting object.
         """
         if surface.key.upper() == "FENESTRATIONSURFACE:DETAILED":
-            if not surface.Surface_Type.lower() == "window":
+            if surface.Surface_Type.lower() != "window":
                 return  # Other surface types (Doors, GlassDoors, etc.) are ignored.
             construction = surface.get_referenced_object("Construction_Name")
             if construction is None:
-                construction = surface.theidf.getobject(
-                    "CONSTRUCTION", surface.Construction_Name
-                )
+                construction = surface.theidf.getobject("CONSTRUCTION", surface.Construction_Name)
             construction = WindowConstruction.from_epbunch(construction)
             shading_control = surface.get_referenced_object("Shading_Control_Name")
         elif surface.key.upper() == "WINDOW":
@@ -508,10 +494,7 @@ class WindowSetting(UmiBase):
         elif surface.key.upper() == "DOOR":
             return  # Simply skip doors.
         else:
-            raise ValueError(
-                f"A window of type {surface.key} is not yet supported. "
-                f"Please contact developers"
-            )
+            raise ValueError(f"A window of type {surface.key} is not yet supported. " f"Please contact developers")
 
         attr = {}
         if shading_control:
@@ -520,9 +503,7 @@ class WindowSetting(UmiBase):
             attr["IsShadingSystemOn"] = True
             if shading_control["Setpoint"] != "":
                 attr["ShadingSystemSetpoint"] = shading_control["Setpoint"]
-            shade_mat = shading_control.get_referenced_object(
-                "Shading_Device_Material_Name"
-            )
+            shade_mat = shading_control.get_referenced_object("Shading_Device_Material_Name")
             # get shading transmittance
             if shade_mat:
                 attr["ShadingSystemTransmittance"] = shade_mat["Visible_Transmittance"]
@@ -536,23 +517,17 @@ class WindowSetting(UmiBase):
                 # Determine which behavior of control
                 shade_ctrl_type = shading_control["Shading_Control_Type"]
                 if shade_ctrl_type.lower() == "alwaysoff":
-                    attr[
-                        "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule(value=0, name="AlwaysOff")
+                    attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule(value=0, name="AlwaysOff")
                 elif shade_ctrl_type.lower() == "alwayson":
-                    attr[
-                        "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule()
+                    attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule()
                 else:
                     log(
-                        'Window "{}" uses a  window control type that '
-                        'is not supported: "{}". Reverting to '
-                        '"AlwaysOn"'.format(surface.Name, shade_ctrl_type),
+                        f'Window "{surface.Name}" uses a  window control type that '
+                        f'is not supported: "{shade_ctrl_type}". Reverting to '
+                        '"AlwaysOn"',
                         lg.WARN,
                     )
-                    attr[
-                        "ShadingSystemAvailabilitySchedule"
-                    ] = UmiSchedule.constant_schedule()
+                    attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule()
             # get shading type
             if shading_control["Shading_Type"] != "":
                 mapping = {
@@ -586,69 +561,38 @@ class WindowSetting(UmiBase):
             leak = afn.get_referenced_object("Leakage_Component_Name")
             name = afn["Venting_Availability_Schedule_Name"]
             if name != "":
-                attr["AfnWindowAvailability"] = UmiSchedule.from_epbunch(
-                    surface.theidf.schedules_dict[name.upper()]
-                )
+                attr["AfnWindowAvailability"] = UmiSchedule.from_epbunch(surface.theidf.schedules_dict[name.upper()])
             else:
                 attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule()
             name = afn["Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name"]
             if name != "":
-                attr["AfnTempSetpoint"] = UmiSchedule(
-                    Name=name, idf=surface.theidf
-                ).mean
+                attr["AfnTempSetpoint"] = UmiSchedule(Name=name, idf=surface.theidf).mean
             else:
                 pass  # uses default
 
-            if (
-                leak.key.upper()
-                == "AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA"
-            ):
+            if leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA":
                 attr["AfnDischargeC"] = leak["Discharge_Coefficient"]
-            elif (
-                leak.key.upper()
-                == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING"
-            ):
+            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING":
                 log(
-                    '"{}" is not fully supported. Reverting to '
-                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
-                    lg.WARNING,
-                )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK":
-                log(
-                    '"{}" is not fully supported. Rerverting to '
-                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
+                    f'"{leak.key}" is not fully supported. Reverting to '
+                    f'defaults for object "{cls.mro()[0].__name__}"',
                     lg.WARNING,
                 )
             elif (
-                leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING"
+                leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN"
+                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING"
             ):
                 log(
-                    '"{}" is not fully supported. Rerverting to '
-                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
-                    lg.WARNING,
-                )
-            elif (
-                leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN"
-            ):
-                log(
-                    '"{}" is not fully supported. Rerverting to '
-                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
-                    lg.WARNING,
-                )
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING":
-                log(
-                    '"{}" is not fully supported. Rerverting to '
-                    'defaults for object "{}"'.format(leak.key, cls.mro()[0].__name__),
+                    f'"{leak.key}" is not fully supported. Rerverting to '
+                    f'defaults for object "{cls.mro()[0].__name__}"',
                     lg.WARNING,
                 )
         else:
-            attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(
-                value=0, Name="AlwaysOff"
-            )
+            attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
         # Todo: Zone Mixing is always off
-        attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(
-            value=0, Name="AlwaysOff"
-        )
+        attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
         DataSource = kwargs.pop("DataSource", surface.theidf.name)
         Category = kwargs.pop("Category", surface.theidf.name)
         w = cls(
@@ -714,10 +658,7 @@ class WindowSetting(UmiBase):
             return other
 
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -725,48 +666,37 @@ class WindowSetting(UmiBase):
             return self
 
         if not weights:
-            log(
-                'using 1 as weighting factor in "{}" '
-                "combine.".format(self.__class__.__name__)
-            )
+            log(f'using 1 as weighting factor in "{self.__class__.__name__}" ' "combine.")
             weights = [1.0, 1.0]
         meta = self._get_predecessors_meta(other)
-        new_attr = dict(
-            Construction=WindowConstruction.combine(
-                self.Construction, other.Construction, weights
-            ),
-            AfnDischargeC=self.float_mean(other, "AfnDischargeC", weights),
-            AfnTempSetpoint=self.float_mean(other, "AfnTempSetpoint", weights),
-            AfnWindowAvailability=UmiSchedule.combine(
+        new_attr = {
+            "Construction": WindowConstruction.combine(self.Construction, other.Construction, weights),
+            "AfnDischargeC": self.float_mean(other, "AfnDischargeC", weights),
+            "AfnTempSetpoint": self.float_mean(other, "AfnTempSetpoint", weights),
+            "AfnWindowAvailability": UmiSchedule.combine(
                 self.AfnWindowAvailability, other.AfnWindowAvailability, weights
             ),
-            IsShadingSystemOn=any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
-            IsVirtualPartition=any([self.IsVirtualPartition, other.IsVirtualPartition]),
-            IsZoneMixingOn=any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
-            OperableArea=self.float_mean(other, "OperableArea", weights),
-            ShadingSystemSetpoint=self.float_mean(
-                other, "ShadingSystemSetpoint", weights
-            ),
-            ShadingSystemTransmittance=self.float_mean(
-                other, "ShadingSystemTransmittance", weights
-            ),
-            ShadingSystemType=max(self.ShadingSystemType, other.ShadingSystemType),
-            ZoneMixingDeltaTemperature=self.float_mean(
-                other, "ZoneMixingDeltaTemperature", weights
-            ),
-            ZoneMixingFlowRate=self.float_mean(other, "ZoneMixingFlowRate", weights),
-            ZoneMixingAvailabilitySchedule=UmiSchedule.combine(
+            "IsShadingSystemOn": any([self.IsShadingSystemOn, other.IsShadingSystemOn]),
+            "IsVirtualPartition": any([self.IsVirtualPartition, other.IsVirtualPartition]),
+            "IsZoneMixingOn": any([self.IsZoneMixingOn, other.IsZoneMixingOn]),
+            "OperableArea": self.float_mean(other, "OperableArea", weights),
+            "ShadingSystemSetpoint": self.float_mean(other, "ShadingSystemSetpoint", weights),
+            "ShadingSystemTransmittance": self.float_mean(other, "ShadingSystemTransmittance", weights),
+            "ShadingSystemType": max(self.ShadingSystemType, other.ShadingSystemType),
+            "ZoneMixingDeltaTemperature": self.float_mean(other, "ZoneMixingDeltaTemperature", weights),
+            "ZoneMixingFlowRate": self.float_mean(other, "ZoneMixingFlowRate", weights),
+            "ZoneMixingAvailabilitySchedule": UmiSchedule.combine(
                 self.ZoneMixingAvailabilitySchedule,
                 other.ZoneMixingAvailabilitySchedule,
                 weights,
             ),
-            ShadingSystemAvailabilitySchedule=UmiSchedule.combine(
+            "ShadingSystemAvailabilitySchedule": UmiSchedule.combine(
                 self.ShadingSystemAvailabilitySchedule,
                 other.ShadingSystemAvailabilitySchedule,
                 weights,
             ),
-            Type=max(self.Type, other.Type),
-        )
+            "Type": max(self.Type, other.Type),
+        }
         new_obj = WindowSetting(**meta, **new_attr)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -786,16 +716,12 @@ class WindowSetting(UmiBase):
         data_dict["IsVirtualPartition"] = self.IsVirtualPartition
         data_dict["IsZoneMixingOn"] = self.IsZoneMixingOn
         data_dict["OperableArea"] = self.OperableArea
-        data_dict[
-            "ShadingSystemAvailabilitySchedule"
-        ] = self.ShadingSystemAvailabilitySchedule.to_ref()
+        data_dict["ShadingSystemAvailabilitySchedule"] = self.ShadingSystemAvailabilitySchedule.to_ref()
         data_dict["ShadingSystemSetpoint"] = self.ShadingSystemSetpoint
         data_dict["ShadingSystemTransmittance"] = self.ShadingSystemTransmittance
         data_dict["ShadingSystemType"] = self.ShadingSystemType.value
         data_dict["Type"] = self.Type.value
-        data_dict[
-            "ZoneMixingAvailabilitySchedule"
-        ] = self.ZoneMixingAvailabilitySchedule.to_ref()
+        data_dict["ZoneMixingAvailabilitySchedule"] = self.ZoneMixingAvailabilitySchedule.to_ref()
         data_dict["ZoneMixingDeltaTemperature"] = self.ZoneMixingDeltaTemperature
         data_dict["ZoneMixingFlowRate"] = self.ZoneMixingFlowRate
         data_dict["Category"] = self.Category
@@ -820,12 +746,8 @@ class WindowSetting(UmiBase):
         _id = data.pop("$id")
         afn_availability_schedule = schedules[data.pop("AfnWindowAvailability")["$ref"]]
         construction = window_constructions[data.pop("Construction")["$ref"]]
-        shading_system_availability_schedule = schedules[
-            data.pop("ShadingSystemAvailabilitySchedule")["$ref"]
-        ]
-        zone_mixing_availability_schedule = schedules[
-            data.pop("ZoneMixingAvailabilitySchedule")["$ref"]
-        ]
+        shading_system_availability_schedule = schedules[data.pop("ShadingSystemAvailabilitySchedule")["$ref"]]
+        zone_mixing_availability_schedule = schedules[data.pop("ZoneMixingAvailabilitySchedule")["$ref"]]
         return cls(
             id=_id,
             Construction=construction,
@@ -837,9 +759,7 @@ class WindowSetting(UmiBase):
         )
 
     @classmethod
-    def from_ref(
-        cls, ref, building_templates, schedules, window_constructions, **kwargs
-    ):
+    def from_ref(cls, ref, building_templates, schedules, window_constructions, **kwargs):
         """Initialize :class:`WindowSetting` object from a reference id.
 
         Hint:
@@ -869,17 +789,11 @@ class WindowSetting(UmiBase):
     def validate(self):
         """Validate object and fill in missing values."""
         if self.AfnWindowAvailability is None:
-            self.AfnWindowAvailability = UmiSchedule.constant_schedule(
-                value=0, Name="AlwaysOff"
-            )
+            self.AfnWindowAvailability = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
         if self.ShadingSystemAvailabilitySchedule is None:
-            self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(
-                value=0, Name="AlwaysOff"
-            )
+            self.ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
         if self.ZoneMixingAvailabilitySchedule is None:
-            self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(
-                value=0, Name="AlwaysOff"
-            )
+            self.ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
 
         return self
 
@@ -893,28 +807,28 @@ class WindowSetting(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            AfnDischargeC=self.AfnDischargeC,
-            AfnTempSetpoint=self.AfnTempSetpoint,
-            AfnWindowAvailability=self.AfnWindowAvailability,
-            Construction=self.Construction,
-            IsShadingSystemOn=self.IsShadingSystemOn,
-            IsVirtualPartition=self.IsVirtualPartition,
-            IsZoneMixingOn=self.IsZoneMixingOn,
-            OperableArea=self.OperableArea,
-            ShadingSystemAvailabilitySchedule=self.ShadingSystemAvailabilitySchedule,
-            ShadingSystemSetpoint=self.ShadingSystemSetpoint,
-            ShadingSystemTransmittance=self.ShadingSystemTransmittance,
-            ShadingSystemType=self.ShadingSystemType,
-            Type=self.Type,
-            ZoneMixingAvailabilitySchedule=self.ZoneMixingAvailabilitySchedule,
-            ZoneMixingDeltaTemperature=self.ZoneMixingDeltaTemperature,
-            ZoneMixingFlowRate=self.ZoneMixingFlowRate,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "AfnDischargeC": self.AfnDischargeC,
+            "AfnTempSetpoint": self.AfnTempSetpoint,
+            "AfnWindowAvailability": self.AfnWindowAvailability,
+            "Construction": self.Construction,
+            "IsShadingSystemOn": self.IsShadingSystemOn,
+            "IsVirtualPartition": self.IsVirtualPartition,
+            "IsZoneMixingOn": self.IsZoneMixingOn,
+            "OperableArea": self.OperableArea,
+            "ShadingSystemAvailabilitySchedule": self.ShadingSystemAvailabilitySchedule,
+            "ShadingSystemSetpoint": self.ShadingSystemSetpoint,
+            "ShadingSystemTransmittance": self.ShadingSystemTransmittance,
+            "ShadingSystemType": self.ShadingSystemType,
+            "Type": self.Type,
+            "ZoneMixingAvailabilitySchedule": self.ZoneMixingAvailabilitySchedule,
+            "ZoneMixingDeltaTemperature": self.ZoneMixingDeltaTemperature,
+            "ZoneMixingFlowRate": self.ZoneMixingFlowRate,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     @property
     def children(self):

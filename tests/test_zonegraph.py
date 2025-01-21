@@ -3,17 +3,16 @@ import pytest
 from archetypal import IDF
 from archetypal.zone_graph import ZoneGraph
 
+from .conftest import data_dir
+
 
 class TestZoneGraph:
     """Series of tests for the :class:`ZoneGraph` class"""
 
     @pytest.fixture(scope="class")
-    def small_office(config):
-        file = (
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-        )
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    def small_office(self, config):
+        file = data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=w)
         yield idf
 
@@ -30,7 +29,7 @@ class TestZoneGraph:
         assert G
 
     @pytest.fixture(scope="class")
-    def G(self, config, small_office):
+    def G(self, small_office):
         """
         Args:
             config:
@@ -58,9 +57,7 @@ class TestZoneGraph:
         from eppy.bunch_subclass import EpBunch
 
         assert isinstance(
-            G1.nodes["Sp-Attic Sys-0 Flr-2 Sch-- undefined - HPlcmt-core ZN"][
-                "epbunch"
-            ],
+            G1.nodes["Sp-Attic Sys-0 Flr-2 Sch-- undefined - HPlcmt-core ZN"]["epbunch"],
             EpBunch,
         )
 

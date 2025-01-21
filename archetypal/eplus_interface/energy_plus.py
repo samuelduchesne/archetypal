@@ -45,7 +45,7 @@ class EnergyPlusExe:
         annual=False,
         convert=False,
         design_day=False,
-        help=False,
+        help=False,  # noqa: A002
         idd=None,
         epmacro=False,
         output_prefix="eplus",
@@ -99,13 +99,10 @@ class EnergyPlusExe:
         self.get_exe_path()
 
     def get_exe_path(self):
-        (eplus_exe_path, eplus_weather_path) = eppy.runner.run_functions.install_paths(
-            self.ep_version.dash, self.i
-        )
+        (eplus_exe_path, eplus_weather_path) = eppy.runner.run_functions.install_paths(self.ep_version.dash, self.i)
         if not Path(eplus_exe_path).exists():
             raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.ep_version)}"
+                msg=f"No EnergyPlus Executable found for version " f"{EnergyPlusVersion(self.ep_version)}"
             )
         self.eplus_exe_path = Path(eplus_exe_path).expand()
         self.eplus_weather_path = Path(eplus_weather_path).expand()
@@ -143,8 +140,8 @@ class EnergyPlusThread(Thread):
             idf (IDF): The idf model.
             tmp (str or Path): The directory in which the process will be launched.
         """
-        super(EnergyPlusThread, self).__init__()
-        self.p = None
+        super().__init__()
+        self.p: subprocess.Popen = None
         self.std_out = None
         self.std_err = None
         self.idf = idf
@@ -155,17 +152,16 @@ class EnergyPlusThread(Thread):
         self.tmp = tmp
 
     def stop(self):
-        if self.p.poll() is None:
-            self.msg_callback("Attempting to cancel simulation ...")
-            self.cancelled = True
-            self.p.kill()
+        self.msg_callback("Attempting to cancel simulation ...")
+        self.cancelled = True
+        self.p.kill()
+        self.cancelled_callback(self.std_out, self.std_err)
 
     def run(self):
         """Wrapper around the EnergyPlus command line interface.
 
         Adapted from :func:`eppy.runner.runfunctions.run`.
         """
-        self.cancelled = False
         # get version from IDF object or by parsing the IDF file for it
 
         tmp = self.tmp
@@ -197,54 +193,50 @@ class EnergyPlusThread(Thread):
             self.cmd = eplus_exe.cmd()
         except EnergyPlusVersionError as e:
             self.exception = e
-            self.p.kill()  # kill process to be sure
+            if self.p:
+                self.p.terminate()  # terminate process to be sure
             return
-        with logging_redirect_tqdm(loggers=[lg.getLogger(self.idf.name)]):
+        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]), tqdm(
+            unit_scale=False,
+            total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
+            miniters=1,
+            desc=f"{eplus_exe.eplus_exe_path} #{self.idf.position}-{self.idf.name}"
+            if self.idf.position
+            else f"{eplus_exe.eplus_exe_path} {self.idf.name}",
+            position=self.idf.position,
+        ) as progress:
             # Start process with tqdm bar
-            with tqdm(
-                unit_scale=False,
-                total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
-                miniters=1,
-                desc=f"{eplus_exe.eplus_exe_path} #{self.idf.position}-{self.idf.name}"
-                if self.idf.position
-                else f"{eplus_exe.eplus_exe_path} {self.idf.name}",
-                position=self.idf.position,
-            ) as progress:
-                self.p = subprocess.Popen(
-                    self.cmd,
-                    shell=False,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                start_time = time.time()
-                self.msg_callback("Simulation started")
-                self.idf._energyplus_its = 0  # reset counter
-                for line in self.p.stdout:
-                    self.msg_callback(line.decode("utf-8").strip("\n"))
-                    self.idf._energyplus_its += 1
-                    progress.update()
+            self.p = subprocess.Popen(
+                self.cmd,
+                shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            start_time = time.time()
+            self.msg_callback("Simulation started")
+            self.idf._energyplus_its = 0  # reset counter
+            for line in self.p.stdout:
+                self.msg_callback(line.decode("utf-8").strip("\n"))
+                self.idf._energyplus_its += 1
+                progress.update()
 
-                # We explicitly close stdout
-                self.p.stdout.close()
+            # We explicitly close stdout
+            self.p.stdout.close()
 
-                # Wait for process to complete
-                self.p.wait()
+            # Wait for process to complete
+            self.p.wait()
 
-                # Communicate callbacks
-                if self.cancelled:
-                    self.msg_callback("Simulation cancelled")
-                    self.cancelled_callback(self.std_out, self.std_err)
+            # Communicate callbacks
+            if self.cancelled:
+                self.msg_callback("Simulation cancelled")
+                self.cancelled_callback(self.std_out, self.std_err)
+            else:
+                if self.p.returncode == 0:
+                    self.msg_callback(f"EnergyPlus Completed in {time.time() - start_time:,.2f} seconds")
+                    self.success_callback()
                 else:
-                    if self.p.returncode == 0:
-                        self.msg_callback(
-                            "EnergyPlus Completed in {:,.2f} seconds".format(
-                                time.time() - start_time
-                            )
-                        )
-                        self.success_callback()
-                    else:
-                        self.msg_callback("Simulation failed")
-                        self.failure_callback()
+                    self.msg_callback("Simulation failed")
+                    self.failure_callback()
 
     def msg_callback(self, *args, **kwargs):
         msg, *_ = args
@@ -258,12 +250,11 @@ class EnergyPlusThread(Thread):
             try:
                 save_dir.rmtree_p()  # purge target dir
                 self.run_dir.copytree(save_dir)  # copy files
-            except PermissionError as e:
+            except PermissionError:
                 pass
             else:
                 log(
-                    "Files generated at the end of the simulation: %s"
-                    % "\n".join(save_dir.files()),
+                    "Files generated at the end of the simulation: {}".format("\n".join(save_dir.files())),
                     lg.DEBUG,
                     name=self.name,
                 )
@@ -271,23 +262,19 @@ class EnergyPlusThread(Thread):
     def failure_callback(self):
         error_filename = self.run_dir / self.idf.output_prefix + "out.err"
         try:
-            with open(error_filename, "r") as stderr:
+            with open(error_filename) as stderr:
                 stderr_r = stderr.read()
             if self.idf.keep_data_err:
                 failed_dir = self.idf.simulation_dir.mkdir_p()
                 try:
                     failed_dir.rmtree_p()
-                except PermissionError as e:
+                except PermissionError:
                     log(f"Could not remove {failed_dir}")
                 else:
                     self.run_dir.copytree(failed_dir)  # no need to create folder before
-            self.exception = EnergyPlusProcessError(
-                cmd=self.cmd, stderr=stderr_r, idf=self.idf
-            )
+            self.exception = EnergyPlusProcessError(cmd=self.cmd, stderr=stderr_r, idf=self.idf)
         except FileNotFoundError:
-            self.exception = CalledProcessError(
-                self.p.returncode, cmd=self.cmd, stderr=self.p.stderr
-            )
+            self.exception = CalledProcessError(self.p.returncode, cmd=self.cmd, stderr=self.p.stderr)
 
     def cancelled_callback(self, stdin, stdout):
         pass
@@ -297,8 +284,7 @@ class EnergyPlusThread(Thread):
         eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version "
-                f"{EnergyPlusVersion(self.idf.as_version)}"
+                msg=f"No EnergyPlus Executable found for version " f"{EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)

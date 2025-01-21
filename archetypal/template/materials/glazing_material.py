@@ -1,6 +1,7 @@
 """archetypal GlazingMaterial."""
 
 import collections
+from typing import ClassVar
 
 from sigfig import round
 from validator_collection import validators
@@ -18,7 +19,7 @@ class GlazingMaterial(MaterialBase):
 
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["GlazingMaterial"]] = []
 
     __slots__ = (
         "_ir_emissivity_back",
@@ -86,7 +87,7 @@ class GlazingMaterial(MaterialBase):
             **kwargs: keywords passed to the :class:`MaterialBase`
                 constructor. For more info, see :class:`MaterialBase`.
         """
-        super(GlazingMaterial, self).__init__(Name, Cost=Cost, **kwargs)
+        super().__init__(Name, Cost=Cost, **kwargs)
 
         self._solar_reflectance_front = 0
         self._solar_reflectance_back = None
@@ -191,13 +192,11 @@ class GlazingMaterial(MaterialBase):
     @VisibleTransmittance.setter
     def VisibleTransmittance(self, value):
         assert value + self._visible_reflectance_front <= 1, (
-            f"Sum of window transmittance and reflectance '"
-            f"{self._visible_reflectance_front}' is greater than 1."
+            f"Sum of window transmittance and reflectance '" f"{self._visible_reflectance_front}' is greater than 1."
         )
         if self._visible_reflectance_back is not None:
             assert value + self._visible_reflectance_back <= 1, (
-                f"Sum of window transmittance and reflectance '"
-                f"{self._visible_reflectance_back}' is greater than 1."
+                f"Sum of window transmittance and reflectance '" f"{self._visible_reflectance_back}' is greater than 1."
             )
         self._visible_transmittance = validators.float(value, False, 0.0, 1.0)
 
@@ -239,10 +238,7 @@ class GlazingMaterial(MaterialBase):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -252,32 +248,23 @@ class GlazingMaterial(MaterialBase):
         meta = self._get_predecessors_meta(other)
 
         if not weights:
-            log(
-                'using GlazingMaterial density as weighting factor in "{}" '
-                "combine.".format(self.__class__.__name__)
-            )
+            log(f'using GlazingMaterial density as weighting factor in "{self.__class__.__name__}" ' "combine.")
             weights = [self.Density, other.Density]
         # iterate over attributes and apply either float_mean or str_mean.
         new_attr = {}
         for attr, value in self.mapping().items():
             if attr not in ["Comments", "DataSource"]:
                 if isinstance(value, (int, float)) or isinstance(other, (int, float)):
-                    new_attr[attr] = UmiBase.float_mean(
-                        self, other, attr=attr, weights=weights
-                    )
+                    new_attr[attr] = UmiBase.float_mean(self, other, attr=attr, weights=weights)
                 elif isinstance(value, str) or isinstance(other, str):
-                    new_attr[attr] = UmiBase._str_mean(
-                        self, other, attr=attr, append=False
-                    )
+                    new_attr[attr] = UmiBase._str_mean(self, other, attr=attr, append=False)
                 elif isinstance(value, list) or isinstance(other, list):
                     new_attr[attr] = getattr(self, attr) + getattr(other, attr)
-                elif isinstance(value, collections.UserList) or isinstance(
-                    other, collections.UserList
-                ):
+                elif isinstance(value, collections.UserList) or isinstance(other, collections.UserList):
                     pass
                 else:
                     raise NotImplementedError
-        [new_attr.pop(key, None) for key in meta.keys()]  # meta handles these
+        [new_attr.pop(key, None) for key in meta]  # meta handles these
         # keywords.
         # create a new object from combined attributes
         new_obj = self.__class__(**meta, **new_attr)
@@ -376,32 +363,32 @@ class GlazingMaterial(MaterialBase):
         if validate:
             self.validate()
 
-        return dict(
-            DirtFactor=self.DirtFactor,
-            IREmissivityBack=self.IREmissivityBack,
-            IREmissivityFront=self.IREmissivityFront,
-            IRTransmittance=self.IRTransmittance,
-            SolarReflectanceBack=self.SolarReflectanceBack,
-            SolarReflectanceFront=self.SolarReflectanceFront,
-            SolarTransmittance=self.SolarTransmittance,
-            VisibleReflectanceBack=self.VisibleReflectanceBack,
-            VisibleReflectanceFront=self.VisibleReflectanceFront,
-            VisibleTransmittance=self.VisibleTransmittance,
-            Conductivity=self.Conductivity,
-            Cost=self.Cost,
-            Density=self.Density,
-            EmbodiedCarbon=self.EmbodiedCarbon,
-            EmbodiedEnergy=self.EmbodiedEnergy,
-            SubstitutionRatePattern=self.SubstitutionRatePattern,
-            SubstitutionTimestep=self.SubstitutionTimestep,
-            TransportCarbon=self.TransportCarbon,
-            TransportDistance=self.TransportDistance,
-            TransportEnergy=self.TransportEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "DirtFactor": self.DirtFactor,
+            "IREmissivityBack": self.IREmissivityBack,
+            "IREmissivityFront": self.IREmissivityFront,
+            "IRTransmittance": self.IRTransmittance,
+            "SolarReflectanceBack": self.SolarReflectanceBack,
+            "SolarReflectanceFront": self.SolarReflectanceFront,
+            "SolarTransmittance": self.SolarTransmittance,
+            "VisibleReflectanceBack": self.VisibleReflectanceBack,
+            "VisibleReflectanceFront": self.VisibleReflectanceFront,
+            "VisibleTransmittance": self.VisibleTransmittance,
+            "Conductivity": self.Conductivity,
+            "Cost": self.Cost,
+            "Density": self.Density,
+            "EmbodiedCarbon": self.EmbodiedCarbon,
+            "EmbodiedEnergy": self.EmbodiedEnergy,
+            "SubstitutionRatePattern": self.SubstitutionRatePattern,
+            "SubstitutionTimestep": self.SubstitutionTimestep,
+            "TransportCarbon": self.TransportCarbon,
+            "TransportDistance": self.TransportDistance,
+            "TransportEnergy": self.TransportEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     @classmethod
     def from_dict(cls, data, **kwargs):

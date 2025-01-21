@@ -1,4 +1,7 @@
-from typing import Iterable
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Literal
 
 from archetypal.idfclass.end_use_balance import EndUseBalance
 from archetypal.idfclass.extensions import get_name_attribute
@@ -115,13 +118,10 @@ class Outputs:
         """
         self.idf = idf
         self.reporting_frequency = reporting_frequency
-        self.output_variables = set(
-            a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]
-        )
-        self.output_meters = set(
-            (get_name_attribute(a), a.Reporting_Frequency)
-            for a in idf.idfobjects["Output:Meter".upper()]
-        )
+        self.output_variables = {a.Variable_Name for a in idf.idfobjects["Output:Variable".upper()]}
+        self.output_meters = {
+            (get_name_attribute(a), a.Reporting_Frequency) for a in idf.idfobjects["Output:Meter".upper()]
+        }
         self.other_outputs = outputs
 
         self.output_variables += tuple((v, reporting_frequency) for v in variables)
@@ -184,9 +184,7 @@ class Outputs:
     @output_variables.setter
     def output_variables(self, value):
         if value is not None:
-            assert not isinstance(
-                value, (str, bytes)
-            ), f"Expected list or tuple. Got {type(value)}."
+            assert not isinstance(value, (str, bytes)), f"Expected list or tuple. Got {type(value)}."
             values = []
             # for each element
             for output in value:
@@ -207,9 +205,7 @@ class Outputs:
     @output_meters.setter
     def output_meters(self, value):
         if value is not None:
-            assert not isinstance(
-                value, (str, bytes)
-            ), f"Expected list or tuple. Got {type(value)}."
+            assert not isinstance(value, (str, bytes)), f"Expected list or tuple. Got {type(value)}."
             values = []
             for output in value:
                 if isinstance(output, tuple):
@@ -229,9 +225,7 @@ class Outputs:
     @other_outputs.setter
     def other_outputs(self, value):
         if value is not None:
-            assert all(
-                isinstance(item, dict) for item in value
-            ), f"Expected list of dict. Got {type(value)}."
+            assert all(isinstance(item, dict) for item in value), f"Expected list of dict. Got {type(value)}."
             values = []
             for output in value:
                 values.append(output)
@@ -285,34 +279,25 @@ class Outputs:
         assert isinstance(outputs, Iterable), "outputs must be some sort of iterable"
         for output in outputs:
             if "meter" in output["key"].lower():
-                self._output_meters.add(
-                    (output["Key_Name"], output["Reporting_Frequency"].title())
-                )
+                self._output_meters.add((output["Key_Name"], output["Reporting_Frequency"].title()))
             elif "variable" in output["key"].lower():
-                self._output_variables.add(
-                    (output["Variable_Name"], output["Reporting_Frequency"].title())
-                )
+                self._output_variables.add((output["Variable_Name"], output["Reporting_Frequency"].title()))
             else:
                 self._other_outputs.append(output)
         return self
 
     def add_basics(self):
         """Adds the summary report and the sql file to the idf outputs"""
-        return (
-            self.add_summary_report()
-            .add_output_control()
-            .add_schedules()
-            .add_meter_variables()
-        )
+        return self.add_summary_report().add_output_control().add_schedules().add_meter_variables()
 
     def add_schedules(self):
         """Adds Schedules object"""
-        outputs = [{"key": "Output:Schedules".upper(), **dict(Key_Field="Hourly")}]
+        outputs = [{"key": "Output:Schedules".upper(), **{"Key_Field": "Hourly"}}]
         for output in outputs:
             self._other_outputs.append(output)
         return self
 
-    def add_meter_variables(self, format="IDF"):
+    def add_meter_variables(self, key_field: Literal["IDF", "regular"] = "IDF"):
         """Generate .mdd file at end of simulation. This file (from the
         Output:VariableDictionary, regular; and Output:VariableDictionary,
         IDF; commands) shows all the report meters along with their “availability”
@@ -322,12 +307,12 @@ class Outputs:
         Output Reference) and IDF (ready to be copied and pasted into your Input File).
 
         Args:
-            format (str): Choices are "IDF" and "regul
+            key_field (str): Choices are IDF, regular
 
         Returns:
             Outputs: self
         """
-        outputs = [dict(key="Output:VariableDictionary".upper(), Key_Field=format)]
+        outputs = [{"key": "Output:VariableDictionary".upper(), "Key_Field": key_field}]
         for output in outputs:
             self._other_outputs.append(output)
         return self
@@ -356,7 +341,7 @@ class Outputs:
         outputs = [
             {
                 "key": "Output:Table:SummaryReports".upper(),
-                **dict(Report_1_Name=summary),
+                **{"Report_1_Name": summary},
             }
         ]
         for output in outputs:
@@ -379,9 +364,7 @@ class Outputs:
         Returns:
             Outputs: self
         """
-        outputs = [
-            {"key": "Output:SQLite".upper(), **dict(Option_Type=sql_output_style)}
-        ]
+        outputs = [{"key": "Output:SQLite".upper(), **{"Option_Type": sql_output_style}}]
 
         for output in outputs:
             self._other_outputs.append(output)
@@ -410,7 +393,7 @@ class Outputs:
         outputs = [
             {
                 "key": "OutputControl:Table:Style".upper(),
-                **dict(Column_Separator=output_control_table_style),
+                **{"Column_Separator": output_control_table_style},
             }
         ]
 
@@ -441,9 +424,7 @@ class Outputs:
             "Zone Thermostat Heating Setpoint Temperature",
         ]
         for output in variables:
-            self._output_variables.add(
-                (output, reporting_frequency or self.reporting_frequency)
-            )
+            self._output_variables.add((output, reporting_frequency or self.reporting_frequency))
 
         meters = [
             "Baseboard:EnergyTransfer",
@@ -474,7 +455,7 @@ class Outputs:
         outputs = [
             {
                 "key": "Output:Surfaces:Drawing".upper(),
-                **dict(Report_Type="DXF", Report_Specifications_1="ThickPolyline"),
+                **{"Report_Type": "DXF", "Report_Specifications_1": "ThickPolyline"},
             }
         ]
         for output in outputs:
@@ -533,17 +514,13 @@ class Outputs:
             "Zone Other Equipment Convective Heating Energy",
         ]
 
-        window_heat_addition_and_window_heat_removal = [
-            "Zone Windows Total Heat Gain Energy"
-        ]
+        window_heat_addition_and_window_heat_removal = ["Zone Windows Total Heat Gain Energy"]
 
         interzone_air_transfer_heat_addition_and_interzone_air_transfer_heat_removal = [
             "Zone Air Heat Balance Interzone Air Transfer Rate"
         ]
 
-        infiltration_heat_addition_and_infiltration_heat_removal = [
-            "Zone Air Heat Balance Outdoor Air Transfer Rate"
-        ]
+        infiltration_heat_addition_and_infiltration_heat_removal = ["Zone Air Heat Balance Outdoor Air Transfer Rate"]
 
         tuple(
             map(
@@ -730,12 +707,12 @@ class Outputs:
         for variable, reporting_frequency in self.output_variables:
             self.idf.newidfobject(
                 key="Output:Variable".upper(),
-                **dict(Variable_Name=variable, Reporting_Frequency=reporting_frequency),
+                **{"Variable_Name": variable, "Reporting_Frequency": reporting_frequency},
             )
         for meter, reporting_frequency in self.output_meters:
             self.idf.newidfobject(
                 key="Output:Meter".upper(),
-                **dict(Key_Name=meter, Reporting_Frequency=reporting_frequency),
+                **{"Key_Name": meter, "Reporting_Frequency": reporting_frequency},
             )
         for output in self.other_outputs:
             key = output.pop("key", None)
@@ -745,11 +722,7 @@ class Outputs:
         return self
 
     def __repr__(self):
-        variables = "OutputVariables:\n {}".format(
-            "\n ".join(map(str, self.output_variables))
-        )
+        variables = "OutputVariables:\n {}".format("\n ".join(map(str, self.output_variables)))
         meters = "OutputMeters:\n {}".format("\n ".join(map(str, self.output_meters)))
-        outputs = "Outputs:\n {}".format(
-            "\n ".join((a["key"] for a in self.other_outputs))
-        )
+        outputs = "Outputs:\n {}".format("\n ".join(a["key"] for a in self.other_outputs))
         return "\n".join([variables, meters, outputs])

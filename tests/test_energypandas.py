@@ -5,14 +5,15 @@ from pandas import read_csv
 
 from archetypal import IDF, settings
 
+from .conftest import data_dir
+
 
 @pytest.fixture(scope="module")
 def idf(config):
-    idfname = "tests/input_data/umi_samples/B_Off_0.idf"
-    epw = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    idfname = data_dir / "umi_samples/B_Off_0.idf"
+    epw = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     _idf = IDF(idfname, epw)
     yield _idf
-    _idf.save()
 
 
 @pytest.fixture(scope="class")
@@ -33,7 +34,7 @@ def rd_edf(idf):
 
 class TestEnergySeries:
     def test_from_csv(self):
-        file = "tests/input_data/test_profile.csv"
+        file = data_dir / "test_profile.csv"
         df = read_csv(file, index_col=[0], names=["Heat"])
         ep = EnergySeries.with_timeindex(df.Heat, frequency="1H", units="BTU/hour")
         assert ep.units == settings.unit_registry.parse_expression("BTU/hour").units
@@ -46,7 +47,8 @@ class TestEnergySeries:
     def test_plot_3d(self, rd_es, kind):
         fig, ax = rd_es.plot3d(
             save=False,
-            show=True,
+            show=False,
+            close=True,
             axis_off=False,
             kind=kind,
             cmap="Reds",
@@ -60,8 +62,9 @@ class TestEnergySeries:
             axis_off=False,
             cmap="Reds",
             figsize=(2, 6),
-            show=True,
+            show=False,
             save=False,
+            close=True,
             filename=rd_es.name + "_heatmap",
         )
 
@@ -71,7 +74,7 @@ class TestEnergySeries:
         rd_es.discretize_tsam(noTypicalPeriods=1, inplace=True)
         assert_almost_equal(res.sum(), 2.118713381170598, decimal=3)
         # check that the type is maintained
-        assert type(rd_es) == EnergySeries
+        assert isinstance(res, EnergySeries)
 
 
 class TestEnergyDataFrame:
@@ -85,14 +88,15 @@ class TestEnergyDataFrame:
         rd_edf.discretize_tsam(noTypicalPeriods=1, inplace=True)
         assert hasattr(rd_edf, "agg")
         # check that the type is maintained
-        assert type(rd_edf) == EnergyDataFrame
+        assert isinstance(rd_edf, EnergyDataFrame)
 
     def test_plot_2d(self, rd_edf):
         fig, ax = rd_edf.plot2d(
             axis_off=False,
             cmap="Reds",
             figsize=(4, 6),
-            show=True,
+            show=False,
             save=False,
+            close=True,
             extent="tight",
         )

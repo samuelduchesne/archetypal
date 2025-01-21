@@ -3,6 +3,10 @@
 Various functions for processing EnergyPlus models and retrieving results in
 different forms.
 """
+
+from __future__ import annotations
+
+import contextlib
 import io
 import itertools
 import logging
@@ -17,27 +21,24 @@ import time
 import uuid
 import warnings
 from collections import defaultdict
+from collections.abc import Iterable
 from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
-from typing import IO, Iterable, Optional, Tuple, Union, Literal
-
-ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
+from typing import IO, ClassVar, Literal
 
 import eppy
+import numpy as np
 import pandas as pd
 from energy_pandas import EnergySeries
 from eppy.bunch_subclass import BadEPFieldError
 from eppy.EPlusInterfaceFunctions.eplusdata import Eplusdata
 from eppy.idf_msequence import Idf_MSequence
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
-from geomeppy import IDF as GeomIDF
-from geomeppy.geom.polygons import Polygon3D
-from geomeppy.patches import EpBunch, idfreader1, obj2bunch
-from geomeppy.recipes import _is_window, window_vertices_given_wall
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
 from path import Path
+from sigfig import round
 from tabulate import tabulate
 from tqdm.auto import tqdm
 
@@ -59,6 +60,12 @@ from archetypal.idfclass.util import get_idf_version, hash_model
 from archetypal.idfclass.variables import Variables
 from archetypal.reportdata import ReportData
 from archetypal.utils import log, settings
+from geomeppy import IDF as GeomIDF
+from geomeppy.geom.polygons import Polygon3D
+from geomeppy.patches import EpBunch, idfreader1, obj2bunch
+from geomeppy.recipes import _is_window, window_vertices_given_wall
+
+ReportingFrequency = Literal["Annual", "Monthly", "Daily", "Hourly", "Timestep"]
 
 
 def find_and_launch(app_name, app_path_guess, file_path):
@@ -73,6 +80,30 @@ def find_and_launch(app_name, app_path_guess, file_path):
     )
 
 
+class SimulationNotRunError(Exception):
+    """Exception raised when simulation has not been run."""
+
+    def __init__(self):
+        super().__init__("Call IDF.simulate() at least once to get a list of possible meters")
+
+
+class ScheduleNotFoundError(Exception):
+    """Exception raised when a schedule is not found in the IDF file."""
+
+    def __init__(self, name, sch_type, idf_name):
+        self.name = name
+        self.sch_type = sch_type
+        self.idf_name = idf_name
+        super().__init__(f'Unable to find schedule "{name}" of type "{sch_type}" in idf file "{idf_name}"')
+
+
+class ModelInRelativeCoordinatesError(Exception):
+    """Exception raised when the model is in relative coordinates and must be translated to world coordinates."""
+
+    def __init__(self):
+        super().__init__("Model is in relative coordinates and must be translated to world using IDF.to_world().")
+
+
 class IDF(GeomIDF):
     """Class for loading and parsing idf models.
 
@@ -82,14 +113,14 @@ class IDF(GeomIDF):
     eppy.modeleditor.IDF class.
     """
 
-    IDD = {}
-    IDDINDEX = {}
-    BLOCK = {}
+    IDD: ClassVar[dict] = {}
+    IDDINDEX: ClassVar[dict] = {}
+    BLOCK: ClassVar[dict] = {}
 
     OUTPUTTYPES = ("standard", "nocomment1", "nocomment2", "compressed")
 
     # dependencies: dict of <dependant value: independent value>
-    _dependencies = {
+    _dependencies: ClassVar[dict] = {
         "idd_info": ["iddname", "idfname"],
         "idd_index": ["iddname", "idfname"],
         "idd_version": ["iddname", "idfname"],
@@ -144,8 +175,8 @@ class IDF(GeomIDF):
         "energyplus_its": ["annual", "design_day"],
         "tmp_dir": ["idfobjects"],
     }
-    _independant_vars = set(chain(*list(_dependencies.values())))
-    _dependant_vars = set(_dependencies.keys())
+    _independant_vars: ClassVar[set] = set(chain(*list(_dependencies.values())))
+    _dependant_vars: ClassVar[set] = set(_dependencies.keys())
 
     _initial_postition = itertools.count(start=1)
 
@@ -176,13 +207,13 @@ class IDF(GeomIDF):
         if key in self._independant_vars:
             self._reset_dependant_vars(key)
             key = f"_{key}"
-        super(IDF, self).__setattr__(key, value)
+        super().__setattr__(key, value)
 
     def __init__(
         self,
-        idfname: Optional[Union[str, IO, Path]] = None,
+        idfname: str | IO | Path | None = None,
         epw=None,
-        as_version: Union[str, EnergyPlusVersion] = None,
+        as_version: str | EnergyPlusVersion = None,
         annual=False,
         design_day=False,
         expandobjects=False,
@@ -195,13 +226,13 @@ class IDF(GeomIDF):
         output_suffix="L",
         epmacro=False,
         keep_data=True,
-        keep_data_err=True,
+        keep_data_err=False,
         position=0,
         name=None,
         output_directory=None,
         outputtype="standard",
         encoding=None,
-        iddname: Optional[Union[str, IO, Path]] = None,
+        iddname: str | IO | Path | None = None,
         reporting_frequency: ReportingFrequency = "Monthly",
         **kwargs,
     ):
@@ -263,13 +294,7 @@ class IDF(GeomIDF):
         self._file_encoding = encoding
         self._reporting_frequency = reporting_frequency
         self.output_prefix = None
-        self.name = (
-            name
-            if name is not None
-            else self.idfname.basename()
-            if isinstance(self.idfname, Path)
-            else None
-        )
+        self.name = name if name is not None else self.idfname.basename() if isinstance(self.idfname, Path) else None
         self.output_directory = output_directory
 
         # Set dependants to None
@@ -300,33 +325,28 @@ class IDF(GeomIDF):
         self.outputtype = outputtype
         self.original_idfname = self.idfname  # Save original
 
-        try:
-            # load the idf object by asserting self.idd_info
-            assert self.idd_info
-        except Exception as e:
-            raise e
-        else:
-            self._original_cache = hash_model(self)
-            if self.as_version is not None:
-                if self.file_version < self.as_version:
-                    self.upgrade(to_version=self.as_version, overwrite=False)
-        finally:
-            # Set model outputs
-            self._outputs = Outputs(
-                idf=self,
-                include_html=False,
-                include_sqlite=False,
-                reporting_frequency=reporting_frequency,
-            )
-            if self.prep_outputs:
-                self._outputs.include_html = True
-                self._outputs.include_sqlite = True
-                self._outputs.add_basics()
-                if isinstance(self.prep_outputs, list):
-                    self._outputs.add_custom(outputs=self.prep_outputs)
-                self._outputs.add_profile_gas_elect_outputs()
-                self._outputs.add_umi_template_outputs()
-                self._outputs.apply()
+        if not self.idd_info:
+            raise ValueError("IDD info is not loaded")
+        self._original_cache = hash_model(self)
+        if self.as_version is not None and self.file_version < self.as_version:
+            self.upgrade(to_version=self.as_version, overwrite=False)
+
+        # Set model outputs
+        self._outputs = Outputs(
+            idf=self,
+            include_html=False,
+            include_sqlite=False,
+            reporting_frequency=reporting_frequency,
+        )
+        if self.prep_outputs:
+            self._outputs.include_html = True
+            self._outputs.include_sqlite = True
+            self._outputs.add_basics()
+            if isinstance(self.prep_outputs, list):
+                self._outputs.add_custom(outputs=self.prep_outputs)
+            self._outputs.add_profile_gas_elect_outputs()
+            self._outputs.add_umi_template_outputs()
+            self._outputs.apply()
 
     @property
     def outputtype(self):
@@ -383,33 +403,23 @@ class IDF(GeomIDF):
         from pathlib import Path as Pathlib
 
         example_name = Path(example_name)
-        eplus_version = EnergyPlusVersion(
-            kwargs.get("as_version", EnergyPlusVersion.current())
-        )
+        eplus_version = EnergyPlusVersion(kwargs.get("as_version", EnergyPlusVersion.current()))
         example_files_dir: Path = eplus_version.current_install_dir / "ExampleFiles"
         try:
-            file = next(
-                iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf"))
-            )
-        except StopIteration:
-            full_list = list(
-                map(lambda x: str(x.name), example_files_dir.files("*.idf"))
-            )
-            raise ValueError(f"Choose from: {sorted(full_list)}")
+            file = next(iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf")))
+        except StopIteration as e:
+            full_list = [str(x.name) for x in example_files_dir.files("*.idf")]
+            raise ValueError(f"Choose from: {sorted(full_list)}") from e
         if epw is not None:
             epw = Path(epw)
 
             if not epw.exists():
                 dir_weather_data_ = eplus_version.current_install_dir / "WeatherData"
                 try:
-                    epw = next(
-                        iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw"))
-                    )
-                except StopIteration:
-                    full_list = list(
-                        map(lambda x: str(x.name), dir_weather_data_.files("*.epw"))
-                    )
-                    raise ValueError(f"Choose EPW from: {sorted(full_list)}")
+                    epw = next(iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw")))
+                except StopIteration as e:
+                    full_list = [str(x.name) for x in dir_weather_data_.files("*.epw")]
+                    raise ValueError(f"Choose EPW from: {sorted(full_list)}") from e
         return cls(file, epw=epw, **kwargs)
 
     def setiddname(self, iddname, testing=False):
@@ -437,14 +447,9 @@ class IDF(GeomIDF):
             - idd_index : dict
         """
         if self.getiddname() is None:
-            errortxt = (
-                "IDD file needed to read the idf file. "
-                "Set it using IDF.setiddname(iddfile)"
-            )
+            errortxt = "IDD file needed to read the idf file. Set it using IDF.setiddname(iddfile)"
             raise IDDNotSetError(errortxt)
-        readout = idfreader1(
-            self.idfname, self.iddname, self, commdct=self.idd_info, block=self.block
-        )
+        readout = idfreader1(self.idfname, self.iddname, self, commdct=self.idd_info, block=self.block)
         (self.idfobjects, block, self.model, idd_info, idd_index, idd_version) = readout
         self.setidd(idd_info, idd_index, block, idd_version)
 
@@ -526,12 +531,11 @@ class IDF(GeomIDF):
     def iddname(self) -> Path:
         """Get or set the iddname path used to parse the idf model."""
         if self._iddname is None:
-            if self.as_version is not None:
-                if self.file_version > self.as_version:
-                    raise EnergyPlusVersionError(
-                        f"{self.as_version} cannot be lower then "
-                        f"the version number set in the file: {self.file_version}"
-                    )
+            if self.as_version is not None and self.file_version > self.as_version:
+                raise EnergyPlusVersionError(
+                    f"{self.as_version} cannot be lower then "
+                    f"the version number set in the file: {self.file_version}"
+                )
             self._iddname = self.file_version.current_idd_path
         return self._iddname
 
@@ -545,9 +549,7 @@ class IDF(GeomIDF):
     def file_version(self) -> EnergyPlusVersion:
         """Return the :class:`EnergyPlusVersion` of the idf text file."""
         if self._file_version is None:
-            return EnergyPlusVersion(
-                get_idf_version(self.idfname, encoding=self.encoding)
-            )
+            return EnergyPlusVersion(get_idf_version(self.idfname, encoding=self.encoding))
         else:
             return self._file_version
 
@@ -615,7 +617,7 @@ class IDF(GeomIDF):
         self._output_suffix = value
 
     @property
-    def idfname(self) -> Union[Path, StringIO]:
+    def idfname(self) -> Path | StringIO:
         """Path: The path of the active (parsed) idf model."""
         if self._idfname is None:
             if self.as_version is None:
@@ -754,8 +756,7 @@ class IDF(GeomIDF):
     @prep_outputs.setter
     def prep_outputs(self, value):
         assert isinstance(value, (bool, list)), (
-            f"Expected bool or list of dict for "
-            f"SimulationOutput outputs. Got {type(value)}."
+            f"Expected bool or list of dict for " f"SimulationOutput outputs. Got {type(value)}."
         )
         self._prep_outputs = value
 
@@ -833,7 +834,7 @@ class IDF(GeomIDF):
 
     # endregion
     @property
-    def sim_info(self) -> Optional[DataFrame]:
+    def sim_info(self) -> DataFrame | None:
         """DataFrame: Unique number generated for a simulation."""
         if self.sql_file is not None:
             with sqlite3.connect(self.sql_file) as conn:
@@ -844,7 +845,7 @@ class IDF(GeomIDF):
             return None
 
     @property
-    def sim_timestamp(self) -> Union[str, Series]:
+    def sim_timestamp(self) -> str | Series:
         """Return the simulation timestamp or "Never" if not ran yet."""
         if self.sim_info is None:
             return "Never"
@@ -862,11 +863,7 @@ class IDF(GeomIDF):
 
         Uses the current module's ep_version.
         """
-        return (
-            EnergyPlusVersion.latest().current_install_dir
-            / "PreProcess"
-            / "IDFVersionUpdater"
-        ).expand()
+        return (EnergyPlusVersion.latest().current_install_dir / "PreProcess" / "IDFVersionUpdater").expand()
 
     @property
     def name(self) -> str:
@@ -896,14 +893,12 @@ class IDF(GeomIDF):
                 )
             except FileNotFoundError:
                 # check if htm output is in file
-                sql_object = self.anidfobject(
-                    key="Output:SQLite".upper(), Option_Type="SimpleAndTabular"
-                )
+                sql_object = self.anidfobject(key="Output:SQLite".upper(), Option_Type="SimpleAndTabular")
                 if sql_object not in self.idfobjects["Output:SQLite".upper()]:
                     self.addidfobject(sql_object)
                 return self.simulate().sql()
-            except Exception as e:
-                raise e
+            except Exception:
+                raise
             else:
                 self._sql = sql_dict
         return self._sql
@@ -947,9 +942,7 @@ class IDF(GeomIDF):
         else:
             filepath = self.idfname
 
-        app_path_guess = (
-            self.file_version.current_install_dir / "PreProcess" / "IDFEditor"
-        )
+        app_path_guess = self.file_version.current_install_dir / "PreProcess" / "IDFEditor"
         find_and_launch("IDFEditor", app_path_guess, filepath.abspath())
 
     def open_last_simulation(self):
@@ -983,7 +976,7 @@ class IDF(GeomIDF):
         """Open .mtd file in browser.
 
         This file contains the “meter details” for the run. This shows what report
-        variables are on which meters and vice versa – which meters contain what
+        variables are on which meters and vice versa - which meters contain what
         report variables.
         """
         import webbrowser
@@ -1034,16 +1027,11 @@ class IDF(GeomIDF):
                 zone: EpBunch
                 for zone in zones:
                     for surface in zone.zonesurfaces:
-                        if hasattr(surface, "tilt"):
-                            if surface.tilt == 180.0:
-                                part_of = int(
-                                    zone.Part_of_Total_Floor_Area.upper() != "NO"
-                                )
-                                multiplier = float(
-                                    zone.Multiplier if zone.Multiplier != "" else 1
-                                )
+                        if hasattr(surface, "tilt") and surface.tilt == 180.0:
+                            part_of = int(zone.Part_of_Total_Floor_Area.upper() != "NO")
+                            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
 
-                                area += surface.area * multiplier * part_of
+                            area += surface.area * multiplier * part_of
                 self._area_conditioned = area
         return self._area_conditioned
 
@@ -1068,16 +1056,11 @@ class IDF(GeomIDF):
                 zone: EpBunch
                 for zone in zones:
                     for surface in zone.zonesurfaces:
-                        if hasattr(surface, "tilt"):
-                            if surface.tilt == 180.0:
-                                part_of = int(
-                                    zone.Part_of_Total_Floor_Area.upper() == "NO"
-                                )
-                                multiplier = float(
-                                    zone.Multiplier if zone.Multiplier != "" else 1
-                                )
+                        if hasattr(surface, "tilt") and surface.tilt == 180.0:
+                            part_of = int(zone.Part_of_Total_Floor_Area.upper() == "NO")
+                            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
 
-                                area += surface.area * multiplier * part_of
+                            area += surface.area * multiplier * part_of
                 self._area_unconditioned = area
         return self._area_unconditioned
 
@@ -1101,13 +1084,10 @@ class IDF(GeomIDF):
                 zone: EpBunch
                 for zone in zones:
                     for surface in zone.zonesurfaces:
-                        if hasattr(surface, "tilt"):
-                            if surface.tilt == 180.0:
-                                multiplier = float(
-                                    zone.Multiplier if zone.Multiplier != "" else 1
-                                )
+                        if hasattr(surface, "tilt") and surface.tilt == 180.0:
+                            multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
 
-                                area += surface.area * multiplier
+                            area += surface.area * multiplier
                 self._area_total = area
         return self._area_total
 
@@ -1146,12 +1126,7 @@ class IDF(GeomIDF):
                 z1 = v1.z
                 # Add volume of tetrahedron formed by triangle and origin
                 vol += math.fabs(
-                    x0 * y1 * z2
-                    + x1 * y2 * z0
-                    + x2 * y0 * z1
-                    - x0 * y2 * z1
-                    - x1 * y0 * z2
-                    - x2 * y1 * z0
+                    x0 * y1 * z2 + x1 * y2 * z0 + x2 * y0 * z1 - x0 * y2 * z1 - x1 * y0 * z2 - x2 * y1 * z0
                 )
         return vol / 6.0
 
@@ -1168,15 +1143,13 @@ class IDF(GeomIDF):
                     for surf in zone.zonesurfaces
                     if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
                 ]:
-                    if hasattr(surface, "tilt"):
-                        if (
-                            surface.tilt == 90.0
-                            and surface.Outside_Boundary_Condition != "Outdoors"
-                        ):
-                            multiplier = float(
-                                zone.Multiplier if zone.Multiplier != "" else 1
-                            )
-                            partition_lineal += surface.width * multiplier
+                    if (
+                        hasattr(surface, "tilt")
+                        and surface.tilt == 90.0
+                        and surface.Outside_Boundary_Condition != "Outdoors"
+                    ):
+                        multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
+                        partition_lineal += surface.width * multiplier
             self._partition_ratio = partition_lineal / max(
                 self.net_conditioned_building_area, self.unconditioned_building_area
             )
@@ -1273,11 +1246,8 @@ class IDF(GeomIDF):
         if self._meters is None:
             try:
                 self.simulation_dir.files("*.mdd")
-            except FileNotFoundError:
-                raise Exception(
-                    "call IDF.simulate() at least once to get a list of "
-                    "possible meters"
-                )
+            except FileNotFoundError as e:
+                raise SimulationNotRunError() from e
             else:
                 self._meters = Meters(self)
         return self._meters
@@ -1392,7 +1362,7 @@ class IDF(GeomIDF):
         """
         # First, update keys with new values
         for key, value in kwargs.items():
-            if f"_{key}" in self.__dict__.keys():
+            if f"_{key}" in self.__dict__:
                 setattr(self, key, value)
             else:
                 log(
@@ -1400,19 +1370,16 @@ class IDF(GeomIDF):
                     level=logging.WARNING,
                 )
 
-        if (
-            self.simulation_dir.exists() and not force
-        ):  # don't simulate if results exists
+        if self.simulation_dir.exists() and not force:  # don't simulate if results exists
             return self
 
-        if self.as_version is not None:
-            if self.as_version != EnergyPlusVersion(self.idd_version):
-                raise EnergyPlusVersionError(
-                    None,
-                    self.idfname,
-                    EnergyPlusVersion(self.idd_version),
-                    self.as_version,
-                )
+        if self.as_version is not None and self.as_version != EnergyPlusVersion(self.idd_version):
+            raise EnergyPlusVersionError(
+                None,
+                self.idfname,
+                EnergyPlusVersion(self.idd_version),
+                self.as_version,
+            )
 
         include = self.include
         if isinstance(include, str):
@@ -1430,10 +1397,7 @@ class IDF(GeomIDF):
 
         # Todo: Add EpMacro Thread -> if exist in.imf "%program_path%EPMacro"
         # Run the expandobjects program if necessary
-        tmp = (
-            self.output_directory.makedirs_p() / "expandobjects_run_"
-            + str(uuid.uuid1())[0:8]
-        ).mkdir()
+        tmp = (self.output_directory.makedirs_p() / "expandobjects_run_" + str(uuid.uuid1())[0:8]).mkdir()
         # Run the ExpandObjects preprocessor program
         expandobjects_thread = ExpandObjectsThread(self, tmp)
         try:
@@ -1449,12 +1413,11 @@ class IDF(GeomIDF):
             e = expandobjects_thread.exception
             if e is not None:
                 raise e
+            elif expandobjects_thread.cancelled:
+                return self
 
         # Run the Basement preprocessor program if necessary
-        tmp = (
-            self.output_directory.makedirs_p() / "runBasement_run_"
-            + str(uuid.uuid1())[0:8]
-        ).mkdir()
+        tmp = (self.output_directory.makedirs_p() / "runBasement_run_" + str(uuid.uuid1())[0:8]).mkdir()
         basement_thread = BasementThread(self, tmp)
         try:
             basement_thread.start()
@@ -1469,11 +1432,11 @@ class IDF(GeomIDF):
             e = basement_thread.exception
             if e is not None:
                 raise e
+            elif basement_thread.cancelled:
+                return self
 
         # Run the Slab preprocessor program if necessary
-        tmp = (
-            self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]
-        ).mkdir()
+        tmp = (self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
         slab_thread = SlabThread(self, tmp)
         try:
             slab_thread.start()
@@ -1489,11 +1452,11 @@ class IDF(GeomIDF):
             e = slab_thread.exception
             if e is not None:
                 raise e
+            elif slab_thread.cancelled:
+                return self
 
         # Run the energyplus program
-        tmp = (
-            self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]
-        ).mkdir()
+        tmp = (self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()
         running_simulation_thread = EnergyPlusThread(self, tmp)
         try:
             running_simulation_thread.start()
@@ -1508,7 +1471,9 @@ class IDF(GeomIDF):
             e = running_simulation_thread.exception
             if e is not None:
                 raise e
-            return self
+            elif running_simulation_thread.cancelled:
+                return self
+        return self
 
     def savecopy(self, filename, lineendings="default", encoding="latin-1"):
         """Save a copy of the file with the filename passed.
@@ -1524,7 +1489,7 @@ class IDF(GeomIDF):
         Returns:
             Path: The new file path.
         """
-        super(IDF, self).save(filename, lineendings, encoding)
+        super().save(filename, lineendings, encoding)
         return Path(filename)
 
     def copy(self):
@@ -1551,15 +1516,11 @@ class IDF(GeomIDF):
         Returns:
             IDF: The IDF model
         """
-        super(IDF, self).save(
-            filename=self.idfname, lineendings=lineendings, encoding=encoding
-        )
+        super().save(filename=self.idfname, lineendings=lineendings, encoding=encoding)
         log(f"saved '{self.name}' at '{self.idfname}'")
         return self
 
-    def saveas(
-        self, filename, lineendings="default", encoding="latin-1", inplace=False
-    ):
+    def saveas(self, filename, lineendings="default", encoding="latin-1", inplace=False):
         """Save the IDF model as.
 
         Writes a new text file and load a new instance of the IDF class (new object).
@@ -1578,18 +1539,12 @@ class IDF(GeomIDF):
         Returns:
             IDF: A new IDF object based on the new location file.
         """
-        super(IDF, self).save(
-            filename=filename, lineendings=lineendings, encoding=encoding
-        )
+        super().save(filename=filename, lineendings=lineendings, encoding=encoding)
 
         import inspect
 
         sig = inspect.signature(IDF.__init__)
-        kwargs = {
-            key: getattr(self, key)
-            for key in [a for a in sig.parameters]
-            if key not in ["self", "idfname", "kwargs"]
-        }
+        kwargs = {key: getattr(self, key) for key in list(sig.parameters) if key not in ["self", "idfname", "kwargs"]}
 
         as_idf = IDF(filename, **kwargs)
         # copy simulation_dir over to new location
@@ -1603,12 +1558,10 @@ class IDF(GeomIDF):
                     name = Path(name).basename()
                 else:
                     name = file.basename()
-                try:
-                    file.copy(as_idf.simulation_dir / name)
-                except shutil.SameFileError:
+                with contextlib.suppress(shutil.SameFileError):
                     # A copy of self would have the same files in the simdir and
                     # throw an error.
-                    pass
+                    file.copy(as_idf.simulation_dir / name)
         if inplace:
             # If inplace, replace content of self with content of as_idf.
             self.__dict__.update(as_idf.__dict__)
@@ -1652,8 +1605,8 @@ class IDF(GeomIDF):
                         for file in self.simulation_dir.files(glob)
                     ]
                 )
-        except FileNotFoundError:
-            raise ValueError("No results to process. Have you called IDF.simulate()?")
+        except FileNotFoundError as e:
+            raise SimulationNotRunError() from e
         else:
             return results
 
@@ -1682,7 +1635,7 @@ class IDF(GeomIDF):
         del loaded_string  # remove loaded_string model
         return added_objects
 
-    def upgrade(self, to_version=None, overwrite=True):
+    def upgrade(self, to_version=None, overwrite=False):
         """`EnergyPlus` idf version updater using local transition program.
 
         Update the EnergyPlus simulation file (.idf) to the latest available
@@ -1722,18 +1675,23 @@ class IDF(GeomIDF):
         else:
             self.as_version = to_version  # set version number
             # execute transitions
-            tmp = (
-                self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]
-            ).makedirs_p()
+            tmp = (self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]).makedirs_p()
             transition_thread = TransitionThread(self, tmp, overwrite=overwrite)
-            transition_thread.start()
-            transition_thread.join()
-            while transition_thread.is_alive():
-                time.sleep(1)
-            tmp.rmtree(ignore_errors=True)
-            e = transition_thread.exception
-            if e is not None:
-                raise e
+            try:
+                transition_thread.start()
+                transition_thread.join()
+                # Give time to the subprocess to finish completely
+                while transition_thread.is_alive():
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                transition_thread.stop()
+            except EnergyPlusVersionError as e:
+                transition_thread.exception = e
+            finally:
+                tmp.rmtree(ignore_errors=True)
+                e = transition_thread.exception
+                if e is not None:
+                    raise e
 
     def wwr(self, azimuth_threshold=10, round_to=10):
         """Return the Window-to-Wall Ratio by major orientation.
@@ -1758,7 +1716,6 @@ class IDF(GeomIDF):
 
         def roundto(x, to=10.0):
             """Round up to closest `to` number."""
-            from builtins import round
 
             if to and not math.isnan(x):
                 return int(round(x / to)) * to
@@ -1773,24 +1730,16 @@ class IDF(GeomIDF):
         for zone in zones:
             multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
             for surface in [
-                surf
-                for surf in zone.zonesurfaces
-                if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
+                surf for surf in zone.zonesurfaces if surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]
             ]:
-                if isclose(surface.tilt, 90, abs_tol=10):
-                    if surface.Outside_Boundary_Condition.lower() == "outdoors":
-                        surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
-                        total_surface_area[surf_azim] += surface.area * multiplier
+                if isclose(surface.tilt, 90, abs_tol=10) and surface.Outside_Boundary_Condition.lower() == "outdoors":
+                    surf_azim = roundto(surface.azimuth, to=azimuth_threshold)
+                    total_surface_area[surf_azim] += surface.area * multiplier
                 for subsurface in surface.subsurfaces:
                     if hasattr(subsurface, "tilt"):
-                        if isclose(subsurface.tilt, 90, abs_tol=10):
-                            if subsurface.Surface_Type.lower() == "window":
-                                surf_azim = roundto(
-                                    subsurface.azimuth, to=azimuth_threshold
-                                )
-                                total_window_area[surf_azim] += (
-                                    subsurface.area * multiplier
-                                )
+                        if isclose(subsurface.tilt, 90, abs_tol=10) and subsurface.Surface_Type.lower() == "window":
+                            surf_azim = roundto(subsurface.azimuth, to=azimuth_threshold)
+                            total_window_area[surf_azim] += subsurface.area * multiplier
                         if isclose(subsurface.tilt, 180, abs_tol=80):
                             total_window_area["sky"] += subsurface.area * multiplier
         # Fix azimuth = 360 which is the same as azimuth 0
@@ -1799,20 +1748,20 @@ class IDF(GeomIDF):
 
         # Create dataframe with wall_area, window_area and wwr as columns and azimuth
         # as indexes
-        from sigfig import round
 
         df = (
-            pd.DataFrame(
-                {"wall_area": total_surface_area, "window_area": total_window_area}
-            )
+            pd.DataFrame({"wall_area": total_surface_area, "window_area": total_window_area})
             .rename_axis("Azimuth")
             .fillna(0)
         )
         df.wall_area = df.wall_area.apply(round, decimals=1)
         df.window_area = df.window_area.apply(round, decimals=1)
-        df["wwr"] = (df.window_area / df.wall_area).fillna(0).apply(round, 2)
+        df["wwr"] = (
+            (df.window_area / df.wall_area).replace([np.inf, -np.inf], np.nan).fillna(0).apply(round, decimals=2)
+        )
         df["wwr_rounded_%"] = (
             (df.window_area / df.wall_area * 100)
+            .replace([np.inf, -np.inf], np.nan)
             .fillna(0)
             .apply(lambda x: roundto(x, to=round_to))
         )
@@ -1847,14 +1796,8 @@ class IDF(GeomIDF):
                 "Air System Total Heating Energy",
                 "Zone Ideal Loads Zone Total Heating Energy",
             )
-        series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
-        )
-        log(
-            "Retrieved Space Heating Profile in {:,.2f} seconds".format(
-                time.time() - start_time
-            )
-        )
+        series = self._energy_series(energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds)
+        log(f"Retrieved Space Heating Profile in {time.time() - start_time:,.2f} seconds")
         return series
 
     def space_cooling_profile(
@@ -1885,14 +1828,8 @@ class IDF(GeomIDF):
                 "Air System Total Cooling Energy",
                 "Zone Ideal Loads Zone Total Cooling Energy",
             )
-        series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
-        )
-        log(
-            "Retrieved Space Cooling Profile in {:,.2f} seconds".format(
-                time.time() - start_time
-            )
-        )
+        series = self._energy_series(energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds)
+        log(f"Retrieved Space Cooling Profile in {time.time() - start_time:,.2f} seconds")
         return series
 
     def service_water_heating_profile(
@@ -1921,14 +1858,8 @@ class IDF(GeomIDF):
         start_time = time.time()
         if energy_out_variable_name is None:
             energy_out_variable_name = ("WaterSystems:EnergyTransfer",)
-        series = self._energy_series(
-            energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds
-        )
-        log(
-            "Retrieved Service Water Heating Profile in {:,.2f} seconds".format(
-                time.time() - start_time
-            )
-        )
+        series = self._energy_series(energy_out_variable_name, units, name, EnergySeries_kwds=EnergySeries_kwds)
+        log(f"Retrieved Service Water Heating Profile in {time.time() - start_time:,.2f} seconds")
         return series
 
     def custom_profile(
@@ -1963,10 +1894,10 @@ class IDF(GeomIDF):
             prep_outputs,
             EnergySeries_kwds=EnergySeries_kwds,
         )
-        log("Retrieved {} in {:,.2f} seconds".format(name, time.time() - start_time))
+        log(f"Retrieved {name} in {time.time() - start_time:,.2f} seconds")
         return series
 
-    def newidfobject(self, key, **kwargs) -> Optional[EpBunch]:
+    def newidfobject(self, key, **kwargs) -> EpBunch | None:
         """Define EpBunch object and add to model.
 
         The function will test if the object exists to prevent duplicates.
@@ -1988,57 +1919,48 @@ class IDF(GeomIDF):
         Returns:
             EpBunch: the object, if successful
             None: If an error occured.
+        Raises:
+            BadEPFieldError: If a field is not valid.
         """
         # get list of objects
         existing_objs = self.idfobjects[key]  # a list
 
         # create new object
-        try:
-            new_object = self.anidfobject(key, **kwargs)
-        except BadEPFieldError as e:
-            raise e
-        else:
-            # If object is supposed to be 'unique-object', delete all objects to be
-            # sure there is only one of them when creating new object
-            # (see following line)
-            if "unique-object" in set().union(
-                *(d.objidd[0].keys() for d in existing_objs)
-            ):
-                for obj in existing_objs:
-                    self.removeidfobject(obj)
-                    log(
-                        f"{obj} is a 'unique-object'; Removed and replaced with"
-                        f" {new_object}",
-                        lg.DEBUG,
-                    )
-                self.addidfobject(new_object)
-                return new_object
-            if new_object in existing_objs:
-                # If obj already exists, simply return the existing one.
-                log(
-                    f"object '{new_object}' already exists in {self.name}. "
-                    f"Skipping.",
-                    lg.DEBUG,
-                )
-                return next(x for x in existing_objs if x == new_object)
-            elif new_object not in existing_objs and new_object.nameexists():
-                # Object does not exist (because not equal) but Name exists.
-                obj = self.getobject(
-                    key=new_object.key.upper(), name=new_object.Name.upper()
-                )
+        new_object = self.anidfobject(key, **kwargs)
+        # If object is supposed to be 'unique-object', delete all objects to be
+        # sure there is only one of them when creating new object
+        # (see following line)
+        if "unique-object" in set().union(*(d.objidd[0].keys() for d in existing_objs)):
+            for obj in existing_objs:
                 self.removeidfobject(obj)
-                self.addidfobject(new_object)
                 log(
-                    f"{obj} exists but has different attributes; Removed and replaced "
-                    f"with {new_object}",
+                    f"{obj} is a 'unique-object'; Removed and replaced with" f" {new_object}",
                     lg.DEBUG,
                 )
-                return new_object
-            else:
-                # add to model and return
-                self.addidfobject(new_object)
-                log(f"object '{new_object}' added to '{self.name}'", lg.DEBUG)
-                return new_object
+            self.addidfobject(new_object)
+            return new_object
+        if new_object in existing_objs:
+            # If obj already exists, simply return the existing one.
+            log(
+                f"object '{new_object}' already exists in {self.name}. " f"Skipping.",
+                lg.DEBUG,
+            )
+            return next(x for x in existing_objs if x == new_object)
+        elif new_object not in existing_objs and new_object.nameexists():
+            # Object does not exist (because not equal) but Name exists.
+            obj = self.getobject(key=new_object.key.upper(), name=new_object.Name.upper())
+            self.removeidfobject(obj)
+            self.addidfobject(new_object)
+            log(
+                f"{obj} exists but has different attributes; Removed and replaced " f"with {new_object}",
+                lg.DEBUG,
+            )
+            return new_object
+        else:
+            # add to model and return
+            self.addidfobject(new_object)
+            log(f"object '{new_object}' added to '{self.name}'", lg.DEBUG)
+            return new_object
 
     def addidfobject(self, new_object) -> EpBunch:
         """Add an IDF object to the model.
@@ -2118,8 +2040,9 @@ class IDF(GeomIDF):
         abunch = obj2bunch(self.model, self.idd_info, obj)
         if aname:
             warnings.warn(
-                "The aname parameter should no longer be used (%s)." % aname,
+                f"The aname parameter should no longer be used ({aname}).",
                 UserWarning,
+                stacklevel=2,
             )
             namebunch(abunch, aname)
         for k, v in kwargs.items():
@@ -2134,7 +2057,7 @@ class IDF(GeomIDF):
                 elif str(e) == "unknown field People_per_Zone_Floor_Area":
                     abunch["People_per_Floor_Area"] = v
                 else:
-                    raise e
+                    raise
         abunch.theidf = self
         return abunch
 
@@ -2171,11 +2094,8 @@ class IDF(GeomIDF):
         if sch_type is None:
             try:
                 return self.schedules_dict[name.upper()]
-            except KeyError:
-                raise KeyError(
-                    'Unable to find schedule "{}" of type "{}" '
-                    'in idf file "{}"'.format(name, sch_type, self.name)
-                )
+            except KeyError as e:
+                raise ScheduleNotFoundError(name, sch_type, self.name) from e
         else:
             return self.getobject(sch_type.upper(), name)
 
@@ -2235,10 +2155,7 @@ class IDF(GeomIDF):
                 if obj.key.upper() not in schedule_types:
                     for fieldvalue in obj.fieldvalues:
                         try:
-                            if (
-                                fieldvalue.upper() in all_schedules.keys()
-                                and fieldvalue not in used_schedules
-                            ):
+                            if fieldvalue.upper() in all_schedules and fieldvalue not in used_schedules:
                                 used_schedules.append(fieldvalue)
                         except (KeyError, AttributeError):
                             pass
@@ -2288,27 +2205,24 @@ class IDF(GeomIDF):
         for refname in refnames:
             objlists = eppy.modeleditor.getallobjlists(self, refname)
             # [('OBJKEY', refname, fieldindexlist), ...]
-            for robjkey, refname, fieldindexlist in objlists:
+            for robjkey, _refname, fieldindexlist in objlists:
                 idfobjects = self.idfobjects[robjkey]
                 for idfobject in idfobjects:
                     for findex in fieldindexlist:  # for each field
-                        if (
-                            idfobject[idfobject.objls[findex]].lower()
-                            == objname.lower()
-                        ):
+                        if idfobject[idfobject.objls[findex]].lower() == objname.lower():
                             idfobject[idfobject.objls[findex]] = newname
         theobject = self.getobject(objkey, objname)
-        fieldname = [item for item in theobject.objls if item.endswith("Name")][0]
+        fieldname = next(item for item in theobject.objls if item.endswith("Name"))
         theobject[fieldname] = newname
         return theobject
 
     def set_wwr(
         self,
-        wwr: float = None,
-        construction: Optional[str] = None,
+        wwr: float | None = None,
+        construction: str | None = None,
         force: bool = False,
-        wwr_map: Optional[dict] = None,
-        surfaces: Optional[Iterable] = None,
+        wwr_map: dict | None = None,
+        surfaces: Iterable | None = None,
     ):
         """Set Window-to-Wall Ratio of external walls.
 
@@ -2334,7 +2248,7 @@ class IDF(GeomIDF):
         # reviewed as of 2021-11-10.
 
         try:
-            ggr: Optional[Idf_MSequence] = self.idfobjects["GLOBALGEOMETRYRULES"][0]
+            ggr: Idf_MSequence | None = self.idfobjects["GLOBALGEOMETRYRULES"][0]
         except IndexError:
             ggr = None
 
@@ -2346,42 +2260,28 @@ class IDF(GeomIDF):
                 lambda x: x.Outside_Boundary_Condition.lower() == "outdoors",
                 surfaces or self.getsurfaces("wall"),
             )
-            external_walls = filter(
-                lambda x: closest_cardinal_angle(x.azimuth) == degrees, external_walls
-            )
+            external_walls = filter(lambda x: closest_cardinal_angle(x.azimuth) == degrees, external_walls)
             subsurfaces = self.getsubsurfaces()
             for wall in external_walls:
                 # get any subsurfaces on the wall
-                wall_subsurfaces = list(
-                    filter(lambda x: x.Building_Surface_Name == wall.Name, subsurfaces)
-                )
+                wall_subsurfaces = list(filter(lambda x: x.Building_Surface_Name == wall.Name, subsurfaces))
 
                 if wall_subsurfaces and not construction:
-                    constructions = list(
-                        {
-                            wss.Construction_Name
-                            for wss in wall_subsurfaces
-                            if _is_window(wss)
-                        }
-                    )
+                    constructions = list({wss.Construction_Name for wss in wall_subsurfaces if _is_window(wss)})
                     if len(constructions) > 1:
-                        raise ValueError(
-                            'Not all subsurfaces on wall "{name}" have the same construction'.format(
-                                name=wall.Name
-                            )
-                        )
+                        raise ValueError(f'Not all subsurfaces on wall "{wall.Name}" have the same construction')
                     construction = constructions[0]
                 if len(wall_subsurfaces) == 0 and not force:
                     # Don't create windows on walls that don't have any windows already.
                     continue
                 # remove all subsurfaces
                 for ss in wall_subsurfaces:
-                    self.rename(ss.key.upper(), ss.Name, "%s window" % wall.Name)
+                    self.rename(ss.key.upper(), ss.Name, f"{wall.Name} window")
                     self.removeidfobject(ss)
                 coords = window_vertices_given_wall(wall, wwr)
                 window = self.newidfobject(
                     "FENESTRATIONSURFACE:DETAILED",
-                    Name="%s window" % wall.Name,
+                    Name=f"{wall.Name} window",
                     Surface_Type="Window",
                     Construction_Name=construction or "",
                     Building_Surface_Name=wall.Name,
@@ -2410,22 +2310,16 @@ class IDF(GeomIDF):
             self.outputs.add_custom(prep_outputs).apply()
             self.simulate()
         rd = ReportData.from_sqlite(self.sql_file, table_name=energy_out_variable_name)
-        profile = EnergySeries.from_reportdata(
-            rd, to_units=units, name=name, **EnergySeries_kwds
-        )
+        profile = EnergySeries.from_reportdata(rd, to_units=units, name=name, **EnergySeries_kwds)
         return profile
 
     def _execute_transitions(self, idf_file, to_version, **kwargs):
         trans_exec = {
-            EnergyPlusVersion(
-                re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", executable).group(1)
-            ): executable
+            EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", executable).group(1)): executable
             for executable in self.idfversionupdater_dir.files("Transition-V*")
         }
 
-        transitions = [
-            key for key in trans_exec if to_version >= key > self.file_version
-        ]
+        transitions = [key for key in trans_exec if to_version >= key > self.file_version]
         transitions.sort()
 
         for trans in tqdm(
@@ -2436,12 +2330,12 @@ class IDF(GeomIDF):
             if not trans_exec[trans].exists():
                 raise EnergyPlusProcessError(
                     cmd=trans_exec[trans],
-                    stderr="The specified EnergyPlus version (v{}) does not have"
-                    " the required transition program '{}' in the "
+                    stderr=f"The specified EnergyPlus version (v{to_version}) does not have"
+                    f" the required transition program '{trans_exec[trans]}' in the "
                     "PreProcess folder. See the documentation "
                     "(archetypal.readthedocs.io/troubleshooting.html#missing"
                     "-transition-programs) "
-                    "to solve this issue".format(to_version, trans_exec[trans]),
+                    "to solve this issue",
                     idf=self,
                 )
             else:
@@ -2479,19 +2373,10 @@ class IDF(GeomIDF):
         from geomeppy.geom.vectors import Vector3D
         from geomeppy.recipes import translate, translate_coords
 
-        if (
-            "world"
-            in [
-                o.Coordinate_System.lower()
-                for o in self.idfobjects["GLOBALGEOMETRYRULES"]
-            ]
-            or self.translated
-        ):
+        if "world" in [o.Coordinate_System.lower() for o in self.idfobjects["GLOBALGEOMETRYRULES"]] or self.translated:
             log("Model already set as World coordinates", level=lg.WARNING)
             return
-        zone_angles = set(
-            z.Direction_of_Relative_North or 0 for z in self.idfobjects["ZONE"]
-        )
+        zone_angles = {z.Direction_of_Relative_North or 0 for z in self.idfobjects["ZONE"]}
         # If Zones have Direction_of_Relative_North != 0, model needs to be rotated
         # before translation.
         if all(angle != 0 for angle in zone_angles):
@@ -2508,16 +2393,12 @@ class IDF(GeomIDF):
             self.translate(anchor)
 
         zone_origin = {
-            zone.Name.upper(): Vector3D(
-                zone.X_Origin or 0, zone.Y_Origin or 0, zone.Z_Origin or 0
-            )
+            zone.Name.upper(): Vector3D(zone.X_Origin or 0, zone.Y_Origin or 0, zone.Z_Origin or 0)
             for zone in self.idfobjects["ZONE"]
         }
         surfaces = {s.Name.upper(): s for s in self.getsurfaces()}
         subsurfaces = self.getsubsurfaces()
-        daylighting_refpoints = [
-            p for p in self.idfobjects["DAYLIGHTING:REFERENCEPOINT"]
-        ]
+        daylighting_refpoints = list(self.idfobjects["DAYLIGHTING:REFERENCEPOINT"])
         attached_shading_surf_names = []
         for g in self.idd_index["ref2names"]["AttachedShadingSurfNames"]:
             for item in self.idfobjects[g]:
@@ -2527,7 +2408,7 @@ class IDF(GeomIDF):
         for subsurf in subsurfaces:
             zone_name = surfaces[subsurf.Building_Surface_Name.upper()].Zone_Name
             translate([subsurf], zone_origin[zone_name.upper()])
-        for surf_name, surf in surfaces.items():
+        for _surf_name, surf in surfaces.items():
             translate([surf], zone_origin[surf.Zone_Name.upper()])
         for day in daylighting_refpoints:
             zone_name = day.Zone_or_Space_Name
@@ -2571,21 +2452,15 @@ class IDF(GeomIDF):
     ):
         """Show a zoomable, rotatable representation of the IDF."""
         from matplotlib import pyplot as plt
-        from geomeppy.view_geometry import view_idf
+
         from archetypal.plot import save_and_show
+        from geomeppy.view_geometry import view_idf
 
         if (
-            "relative"
-            in [
-                o.Coordinate_System.lower()
-                for o in self.idfobjects["GLOBALGEOMETRYRULES"]
-            ]
+            "relative" in [o.Coordinate_System.lower() for o in self.idfobjects["GLOBALGEOMETRYRULES"]]
             and self.coords_are_truly_relative
         ):
-            raise Exception(
-                "Model is in relative coordinates and must be translated to world using "
-                "IDF.to_world()."
-            )
+            raise ModelInRelativeCoordinatesError()
         view_idf(idf=self, test=~show)
 
         fig = plt.gcf()
@@ -2618,9 +2493,7 @@ class IDF(GeomIDF):
                 all_zone_origin_at_0 = False
         return ggr_asks_for_relative and not all_zone_origin_at_0
 
-    def rotate(
-        self, angle: Optional[float] = None, anchor: Tuple[float, float, float] = None
-    ):
+    def rotate(self, angle: float | None = None, anchor: tuple[float, float, float] | None = None):
         """Rotate the IDF counterclockwise around `anchor` by the angle given (degrees).
 
         IF angle is None, rotates to Direction_of_Relative_North specified in Zone
@@ -2629,12 +2502,8 @@ class IDF(GeomIDF):
         if not angle:
             bldg_angle = self.idfobjects["BUILDING"][0].North_Axis or 0
             log(f"Building North Axis = {bldg_angle}", level=lg.DEBUG)
-            zone_angles = set(
-                z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]
-            )
-            assert (
-                len(zone_angles) == 1
-            ), "Not all zone have the same Direction_of_Relative_North"
+            zone_angles = {z.Direction_of_Relative_North for z in self.idfobjects["ZONE"]}
+            assert len(zone_angles) == 1, "Not all zone have the same Direction_of_Relative_North"
             zone_angle, *_ = zone_angles
             zone_angle = zone_angle or 0
             log(f"Zone(s) North Axis = {zone_angle}", level=lg.DEBUG)
@@ -2644,11 +2513,8 @@ class IDF(GeomIDF):
 
             anchor = Vector3D(*anchor)
         # Rotate the building
-        super(IDF, self).rotate(angle, anchor=anchor)
-        log(
-            f"Geometries rotated by {angle} degrees around "
-            f"{anchor or 'building centroid'}"
-        )
+        super().rotate(angle, anchor=anchor)
+        log(f"Geometries rotated by {angle} degrees around " f"{anchor or 'building centroid'}")
 
         # after building is rotate, change the north axis and zone direction to zero.
         self.idfobjects["BUILDING"][0].North_Axis = 0
@@ -2657,14 +2523,14 @@ class IDF(GeomIDF):
         # Mark the model as rotated
         self.rotated = True
 
-    def translate(self, vector: Tuple[float, float, float]):
+    def translate(self, vector: tuple[float, float, float]):
         """Move the IDF in the direction given by a vector."""
         if isinstance(vector, tuple):
             from geomeppy.geom.vectors import Vector2D
 
             vector = Vector2D(*vector)
 
-        super(IDF, self).translate(vector=vector)
+        super().translate(vector=vector)
         self.translated = True
 
     @property
@@ -2694,16 +2560,12 @@ class IDF(GeomIDF):
         self._reporting_frequency = value
 
     def getsiteshadingsurfaces(self, surface_type=""):
-        site_shading_types = self.idd_index["ref2names"][
-            "AllShadingSurfNames"
-        ].difference(self.idd_index["ref2names"]["AttachedShadingSurfNames"])
-        surfaces = itertools.chain.from_iterable(
-            [self.idfobjects[key.upper()] for key in site_shading_types]
+        site_shading_types = self.idd_index["ref2names"]["AllShadingSurfNames"].difference(
+            self.idd_index["ref2names"]["AttachedShadingSurfNames"]
         )
+        surfaces = itertools.chain.from_iterable([self.idfobjects[key.upper()] for key in site_shading_types])
         if surface_type:
-            surfaces = filter(
-                lambda x: x.Surface_Type.lower() == surface_type.lower(), surfaces
-            )
+            surfaces = filter(lambda x: x.Surface_Type.lower() == surface_type.lower(), surfaces)
         return list(surfaces)
 
     @property
@@ -2722,13 +2584,10 @@ class IDF(GeomIDF):
         zone: EpBunch
         for zone in zones:
             for surface in zone.zonesurfaces:
-                if hasattr(surface, "tilt"):
-                    if surface.tilt == 180.0:
-                        multiplier = float(
-                            zone.Multiplier if zone.Multiplier != "" else 1
-                        )
+                if hasattr(surface, "tilt") and surface.tilt == 180.0:
+                    multiplier = float(zone.Multiplier if zone.Multiplier != "" else 1)
 
-                        area += surface.area * multiplier
+                    area += surface.area * multiplier
         self._area_total = area
         for surface in self.getsurfaces():
             if surface.Outside_Boundary_Condition.lower() in ["adiabatic", "surface"]:
@@ -2753,13 +2612,13 @@ def _process_csv(file, working_dir, simulname):
         tables_out.makedirs_p()
         file.copy(tables_out / "%s_%s.csv" % (file.basename().stripext(), simulname))
         return
-    log("try to store file %s in DataFrame" % file)
+    log(f"try to store file {file} in DataFrame")
     try:
         df = pd.read_csv(file, sep=",", encoding="us-ascii")
     except ParserError:
         pass
     else:
-        log("file %s stored" % file)
+        log(f"file {file} stored")
         return df
 
 

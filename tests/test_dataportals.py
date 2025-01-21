@@ -7,6 +7,8 @@ from archetypal import IDF, dataportal
 from archetypal.dataportal import download_bld_window, tabula_building_details_sheet
 from archetypal.template.window_setting import WindowSetting
 
+from .conftest import data_dir
+
 
 def test_tabula_available_country(config):
     # First, let's try the API call
@@ -52,9 +54,7 @@ def test_tabula_building_sheet(config):
 
 def test_tabula_building_sheet_code_building(config):
     # Test with code_building not None
-    sheet = tabula_building_details_sheet(
-        code_building="AT.MT.AB.02.Gen.ReEx.001.001", code_country="Austria"
-    )
+    sheet = tabula_building_details_sheet(code_building="AT.MT.AB.02.Gen.ReEx.001.001", code_country="Austria")
 
     # Makes sure result is not empty
     assert list(sheet["val"])
@@ -65,17 +65,13 @@ def test_tabula_building_sheet_code_building(config):
 def test_tabula_building_sheet_valueerror(config):
     # Test with wrong code_building
     with pytest.raises(ValueError):
-        sheet = tabula_building_details_sheet(
-            code_building="wrong_string", code_country="Austria"
-        )
+        sheet = tabula_building_details_sheet(code_building="wrong_string", code_country="Austria")
     # Makes sure sheet not in locals
     assert "sheet" not in locals()
 
     # Test with wrong code_buildingsizeclass
     with pytest.raises(ValueError):
-        sheet = tabula_building_details_sheet(
-            code_buildingsizeclass="wrong_string", code_country="Austria"
-        )
+        sheet = tabula_building_details_sheet(code_buildingsizeclass="wrong_string", code_country="Austria")
     # Makes sure sheet not in locals
     assert "sheet" not in locals()
 
@@ -98,9 +94,7 @@ def test_tabula_system(config):
 def test_tabula_system_valueerror(config):
     # Test with wrong code_boundarycond
     with pytest.raises(ValueError):
-        res = dataportal.tabula_system(
-            code_country="FR", code_boundarycond="wrong_string"
-        )
+        res = dataportal.tabula_system(code_country="FR", code_boundarycond="wrong_string")
     # Makes sure res not in locals
     assert "res" not in locals()
 
@@ -148,10 +142,7 @@ def test_tabula_multiple(config):
     archetypes = pd.concat(
         ab.apply(
             lambda x: tabula_building_details_sheet(
-                code_building=x.code_buildingtype_column1
-                + "."
-                + x.suffix_building_column1
-                + ".001"
+                code_building=x.code_buildingtype_column1 + "." + x.suffix_building_column1 + ".001"
             ),
             axis=1,
         ).values.tolist(),
@@ -219,7 +210,7 @@ def test_download_and_load_bld_window(config):
     )
     idf = IDF(
         response[0],
-        epw="tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
+        epw=data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw",
         prep_outputs=False,
     )
     construct = idf.getobject("CONSTRUCTION", "AEDG-SmOffice 1A Window Fixed")
@@ -229,7 +220,7 @@ def test_download_and_load_bld_window(config):
 
 
 def test_statcan(config):
-    data = dict(type="json", lang="E", dguid="2016A000011124", topic=5, notes=0)
+    data = {"response_format": "json", "lang": "E", "dguid": "2016A000011124", "topic": 5, "notes": 0}
     response = dataportal.stat_can_request(**data)
     print(response)
 
@@ -239,7 +230,7 @@ def test_statcan(config):
 
 def test_statcan_error(config):
     # Tests statcan with error in inputs
-    data = dict(type="json", lang="E", dguid="wrong_string", topic=5, notes=0)
+    data = {"response_format": "json", "lang": "E", "dguid": "wrong_string", "topic": 5, "notes": 0}
     response = dataportal.stat_can_request(**data)
     print(response)
 
@@ -248,7 +239,7 @@ def test_statcan_error(config):
 
 
 def test_statcan_geo(config):
-    data = dict(type="json", lang="E", geos="PR", cpt="00")
+    data = {"response_format": "json", "lang": "E", "geos": "PR", "cpt": "00"}
     response = dataportal.stat_can_geo_request(**data)
     print(response)
 
@@ -258,7 +249,7 @@ def test_statcan_geo(config):
 
 def test_statcan_geo_error(config):
     # Tests statcan_geo with error in inputs
-    data = dict(type="json", lang="E", geos="wrong_string", cpt="00")
+    data = {"response_format": "json", "lang": "E", "geos": "wrong_string", "cpt": "00"}
     response = dataportal.stat_can_geo_request(**data)
     print(response)
 

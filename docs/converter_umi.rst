@@ -89,4 +89,3 @@ EnergyPlus.
     >>>     name="my_umi_template",
     >>>     BuildingTemplates=[template_obj]
     >>> ).to_dict()
-

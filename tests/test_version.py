@@ -18,11 +18,7 @@ class TestEnergyPlusVersion:
         assert isinstance(eplus_version.valid_versions, set)
 
         # initialized 3 different ways, should return equivalent objects.
-        assert (
-            EnergyPlusVersion("9.2.0")
-            == EnergyPlusVersion((9, 2, 0))
-            == EnergyPlusVersion("9-2-0")
-        )
+        assert EnergyPlusVersion("9.2.0") == EnergyPlusVersion((9, 2, 0)) == EnergyPlusVersion("9-2-0")
 
         copy_of_idd_version = eplus_version.duplicate()
         assert copy_of_idd_version == eplus_version
@@ -40,10 +36,12 @@ class TestEnergyPlusVersion:
     def test_eplusversion_err_init(self):
         """Test initialization of VersionIDd which produces an error."""
         with pytest.raises(InvalidEnergyPlusVersion):
-            idd_version = EnergyPlusVersion("3.2.0")
+            EnergyPlusVersion("3.2.0")
 
     def test_idd_on_missing_install(self):
         idd_version = EnergyPlusVersion("9.2")
         idd_version._valid_paths = {}  # fakes not finding any versions on machine.
 
-        assert idd_version.valid_versions == {"9-2-0",}
+        assert idd_version.valid_versions == {
+            "9-2-0",
+        }

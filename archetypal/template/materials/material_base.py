@@ -71,7 +71,7 @@ class MaterialBase(UmiBase):
             **kwargs: Keywords passed to the :class:`UmiBase` class. See
                 :class:`UmiBase` for more details.
         """
-        super(MaterialBase, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.Cost = Cost
         self.EmbodiedCarbon = EmbodiedCarbon
         self.EmbodiedEnergy = EmbodiedEnergy
@@ -175,9 +175,7 @@ class MaterialBase(UmiBase):
                     self.TransportCarbon == other.TransportCarbon,
                     self.TransportDistance == other.TransportDistance,
                     self.TransportEnergy == other.TransportEnergy,
-                    np.array_equal(
-                        self.SubstitutionRatePattern, other.SubstitutionRatePattern
-                    ),
+                    np.array_equal(self.SubstitutionRatePattern, other.SubstitutionRatePattern),
                     self.Density == other.Density,
                 ]
             )

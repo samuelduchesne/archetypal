@@ -9,6 +9,7 @@ import collections
 import logging as lg
 import time
 from itertools import chain, repeat
+from typing import ClassVar
 
 import networkx
 from path import Path
@@ -32,7 +33,7 @@ class BuildingTemplate(UmiBase):
     .. image:: ../images/template/buildingtemplate.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["BuildingTemplate"]] = []
 
     __slots__ = (
         "_partition_ratio",
@@ -100,7 +101,7 @@ class BuildingTemplate(UmiBase):
             Version (str): Version number.
             **kwargs: other optional keywords passed to other constructors.
         """
-        super(BuildingTemplate, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.PartitionRatio = PartitionRatio
         self.Lifespan = Lifespan
         self.Core = Core
@@ -126,9 +127,7 @@ class BuildingTemplate(UmiBase):
 
     @Perimeter.setter
     def Perimeter(self, value):
-        assert isinstance(
-            value, ZoneDefinition
-        ), f"Expected a ZoneDefinition, not {type(value)}"
+        assert isinstance(value, ZoneDefinition), f"Expected a ZoneDefinition, not {type(value)}"
         self._perimeter = value
 
     @property
@@ -138,9 +137,7 @@ class BuildingTemplate(UmiBase):
 
     @Core.setter
     def Core(self, value):
-        assert isinstance(
-            value, ZoneDefinition
-        ), f"Expected a ZoneDefinition, not {type(value)}"
+        assert isinstance(value, ZoneDefinition), f"Expected a ZoneDefinition, not {type(value)}"
         self._core = value
 
     @property
@@ -150,9 +147,7 @@ class BuildingTemplate(UmiBase):
 
     @Structure.setter
     def Structure(self, value):
-        assert isinstance(
-            value, StructureInformation
-        ), f"Expected a StructureInformation, not {type(value)}"
+        assert isinstance(value, StructureInformation), f"Expected a StructureInformation, not {type(value)}"
         self._structure_definition = value
 
     @property
@@ -162,9 +157,7 @@ class BuildingTemplate(UmiBase):
 
     @Windows.setter
     def Windows(self, value):
-        assert isinstance(
-            value, WindowSetting
-        ), f"Expected a WindowSetting, not {type(value)}"
+        assert isinstance(value, WindowSetting), f"Expected a WindowSetting, not {type(value)}"
         self._window_setting = value
 
     @property
@@ -174,9 +167,7 @@ class BuildingTemplate(UmiBase):
 
     @DefaultWindowToWallRatio.setter
     def DefaultWindowToWallRatio(self, value):
-        self._default_window_to_wall_ratio = validators.float(
-            value, minimum=0, maximum=1
-        )
+        self._default_window_to_wall_ratio = validators.float(value, minimum=0, maximum=1)
 
     @property
     def Lifespan(self):
@@ -203,9 +194,7 @@ class BuildingTemplate(UmiBase):
 
     @YearFrom.setter
     def YearFrom(self, value):
-        self._year_from = validators.integer(
-            value, coerce_value=True, maximum=self.YearTo, allow_empty=True
-        )
+        self._year_from = validators.integer(value, coerce_value=True, maximum=self.YearTo, allow_empty=True)
 
     @property
     def YearTo(self):
@@ -214,9 +203,7 @@ class BuildingTemplate(UmiBase):
 
     @YearTo.setter
     def YearTo(self, value):
-        self._year_to = validators.integer(
-            value, coerce_value=True, minimum=self.YearFrom, allow_empty=True
-        )
+        self._year_to = validators.integer(value, coerce_value=True, minimum=self.YearFrom, allow_empty=True)
 
     @property
     def Country(self):
@@ -336,9 +323,7 @@ class BuildingTemplate(UmiBase):
         try:
             window = window_settings[window_data["$ref"]]
         except KeyError:
-            window = WindowSetting.from_dict(
-                window_data, schedules, window_constructions
-            )
+            window = WindowSetting.from_dict(window_data, schedules, window_constructions)
 
         return cls(
             Core=core,
@@ -406,28 +391,13 @@ class BuildingTemplate(UmiBase):
         log("Initiating complexity reduction...")
         start_time = time.time()
 
-        zone: ZoneDefinition
         cores = list(
-            chain.from_iterable(
-                [
-                    list(repeat(zone.duplicate(), zone.multiplier))
-                    for zone in zones
-                    if zone.is_core
-                ]
-            )
+            chain.from_iterable([list(repeat(zone.duplicate(), zone.multiplier)) for zone in zones if zone.is_core])
         )
         perimeters = list(
-            chain.from_iterable(
-                [
-                    list(repeat(zone.duplicate(), zone.multiplier))
-                    for zone in zones
-                    if not zone.is_core
-                ]
-            )
+            chain.from_iterable([list(repeat(zone.duplicate(), zone.multiplier)) for zone in zones if not zone.is_core])
         )
-        assert (
-            len(perimeters) >= 1
-        ), "Building complexity reduction must have at least one perimeter zone."
+        assert len(perimeters) >= 1, "Building complexity reduction must have at least one perimeter zone."
 
         Core = None
         # reduce list of core zones
@@ -478,8 +448,7 @@ class BuildingTemplate(UmiBase):
             level=lg.DEBUG,
         )
         log(
-            f"Completed model complexity reduction for BuildingTemplate '{name}' "
-            f"in {time.time() - start_time:,.2f}"
+            f"Completed model complexity reduction for BuildingTemplate '{name}' " f"in {time.time() - start_time:,.2f}"
         )
         return cls(
             name,
@@ -506,10 +475,10 @@ class BuildingTemplate(UmiBase):
             ZoneDefinition: The reduced zone
         """
         if len(G) < 1:
-            log("No zones for building graph %s" % G.name)
+            log(f"No zones for building graph {G.name}")
             return None
         else:
-            log("starting reduce process for building %s" % self.Name)
+            log(f"starting reduce process for building {self.Name}")
             start_time = time.time()
 
             # start from the highest degree node
@@ -568,18 +537,14 @@ class BuildingTemplate(UmiBase):
 
         def recursive_replace(umibase):
             for key, obj in umibase.mapping(validate=False).items():
-                if isinstance(
-                    obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
-                ):
+                if isinstance(obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)):
                     recursive_replace(obj)
                     setattr(umibase, key, obj.get_unique())
                 elif isinstance(obj, list):
                     [
                         recursive_replace(obj)
                         for obj in obj
-                        if isinstance(
-                            obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio)
-                        )
+                        if isinstance(obj, (UmiBase, MaterialLayer, YearSchedulePart, MassRatio))
                     ]
 
         recursive_replace(self)
@@ -595,25 +560,25 @@ class BuildingTemplate(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            Core=self.Core,
-            Lifespan=self.Lifespan,
-            PartitionRatio=self.PartitionRatio,
-            Perimeter=self.Perimeter,
-            Structure=self.Structure,
-            Windows=self.Windows,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-            YearFrom=self.YearFrom,
-            YearTo=self.YearTo,
-            Country=self.Country,
-            ClimateZone=self.ClimateZone,
-            Authors=self.Authors,
-            AuthorEmails=self.AuthorEmails,
-            Version=self.Version,
-        )
+        return {
+            "Core": self.Core,
+            "Lifespan": self.Lifespan,
+            "PartitionRatio": self.PartitionRatio,
+            "Perimeter": self.Perimeter,
+            "Structure": self.Structure,
+            "Windows": self.Windows,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+            "YearFrom": self.YearFrom,
+            "YearTo": self.YearTo,
+            "Country": self.Country,
+            "ClimateZone": self.ClimateZone,
+            "Authors": self.Authors,
+            "AuthorEmails": self.AuthorEmails,
+            "Version": self.Version,
+        }
 
     def get_ref(self, ref):
         """Get item matching reference id.
@@ -622,13 +587,7 @@ class BuildingTemplate(UmiBase):
             ref:
         """
         return next(
-            iter(
-                [
-                    value
-                    for value in BuildingTemplate.CREATED_OBJECTS
-                    if value.id == ref["$ref"]
-                ]
-            ),
+            iter([value for value in BuildingTemplate.CREATED_OBJECTS if value.id == ref["$ref"]]),
             None,
         )
 

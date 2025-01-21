@@ -54,13 +54,8 @@ def tabula_api_request(data, table="detail"):
     """
     # Prepare URL
     if table == "all-country":
-        codehex = str(
-            int(hashlib.md5(data["code_country"].encode("utf-8")).hexdigest(), 16)
-        )[0:13]
-        url_base = (
-            "http://webtool.building-typology.eu/data/matrix/building"
-            "/{0}/p/0/o/0/l/10/dc/{1}"
-        )
+        codehex = str(int(hashlib.md5(data["code_country"].encode("utf-8")).hexdigest(), 16))[0:13]
+        url_base = "http://webtool.building-typology.eu/data/matrix/building/{0}/p/0/o/0/l/10/dc/{1}"
         prepared_url = url_base.format(data["code_country"], codehex)
 
     elif table == "detail":
@@ -68,14 +63,11 @@ def tabula_api_request(data, table="detail"):
         suffix = ".".join(s for s in data["suffix"])
         bldname = buildingtype + "." + suffix
         hexint = hashlib.md5(bldname.encode("utf-8")).hexdigest()[0:13]
-        url_base = (
-            "http://webtool.building-typology.eu/data/adv/building"
-            "/detail/{0}/bv/{1}/dc/{2}"
-        )
+        url_base = "http://webtool.building-typology.eu/data/adv/building/detail/{0}/bv/{1}/dc/{2}"
         prepared_url = url_base.format(bldname, data["variant"], hexint)
 
     else:
-        raise ValueError('server-table name "{}" invalid'.format(table))
+        raise ValueError(f'server-table name "{table}" invalid')
 
     # First, try to get the cached resonse from file
     cached_response_json = get_from_cache(prepared_url)
@@ -92,12 +84,12 @@ def tabula_api_request(data, table="detail"):
             if "remark" in response_json:
                 log(
                     'Server remark: "{}"'.format(
-                        response_json["remark"], level=lg.WARNING
+                        response_json["remark"],
                     )
                 )
             elif not response_json["success"]:
                 raise ValueError(
-                    'The query "{}" returned no results'.format(prepared_url),
+                    f'The query "{prepared_url}" returned no results',
                     lg.WARNING,
                 )
             save_to_cache(prepared_url, response_json)
@@ -176,25 +168,25 @@ def tabula_building_details_sheet(
                 code_num,
                 code_variantnumber,
             ) = code_building.split(".")
-        except ValueError:
+        except ValueError as e:
             msg = (
-                'the query "{}" is missing a parameter. Make sure the '
+                f'the query "{code_building}" is missing a parameter. Make sure the '
                 '"code_building" has the form: '
                 "AT.MT.AB.02.Gen.ReEx.001.001"
-            ).format(code_building)
+            )
             log(msg, lg.ERROR)
-            raise ValueError(msg)
+            raise ValueError(msg) from e
 
     # Check code country
     code_country = _resolve_codecountry(code_country)
 
     # Check code_buildingsizeclass
-    if code_buildingsizeclass.upper() not in ["SFH", "TH", "MFH", "AB"]:
-        raise ValueError(
-            'specified code_buildingsizeclass "{}" not supported. Available '
-            'values are "SFH", "TH", '
-            '"MFH" or "AB"'
+    if code_buildingsizeclass.upper() not in {"SFH", "TH", "MFH", "AB"}:
+        msg = (
+            f'specified code_buildingsizeclass "{code_buildingsizeclass}" not supported. '
+            'Available values are "SFH", "TH", "MFH" or "AB"'
         )
+        raise ValueError(msg)
     # Check numericals
     if not isinstance(code_construcionyearclass, str):
         code_construcionyearclass = str(code_construcionyearclass).zfill(2)
@@ -293,11 +285,8 @@ def tabula_system_request(data):
     system = ".".join(s for s in data["systype"])
     hexint = hashlib.md5(system.encode("utf-8")).hexdigest()[0:13]
 
-    log("quering system type {}".format(system))
-    prepared_url = (
-        "http://webtool.building-typology.eu/data/matrix/system"
-        "/detail/{0}/dc/{1}".format(system, hexint)
-    )
+    log(f"quering system type {system}")
+    prepared_url = "http://webtool.building-typology.eu/data/matrix/system" f"/detail/{system}/dc/{hexint}"
 
     cached_response_json = get_from_cache(prepared_url)
 
@@ -315,7 +304,7 @@ def tabula_system_request(data):
             if "remark" in response_json:
                 log(
                     'Server remark: "{}"'.format(
-                        response_json["remark"], level=lg.WARNING
+                        response_json["remark"],
                     )
                 )
             save_to_cache(prepared_url, response_json)
@@ -345,7 +334,7 @@ def _resolve_codecountry(code_country):
         # if country is valid, return ISO 3166-1-alpha-2 code
         code_country = code_country.alpha_2
     else:
-        raise ValueError("Country name {} is invalid".format(code_country))
+        raise ValueError(f"Country name {code_country} is invalid")
     return code_country
 
 
@@ -359,19 +348,13 @@ def get_from_cache(url):
         # determine the filename by hashing the url
         filename = hashlib.md5(str(url).encode("utf-8")).hexdigest()
 
-        cache_path_filename = os.path.join(
-            settings.cache_folder, os.extsep.join([filename, "json"])
-        )
+        cache_path_filename = os.path.join(settings.cache_folder, os.extsep.join([filename, "json"]))
         # open the cache file for this url hash if it already exists, otherwise
         # return None
         if os.path.isfile(cache_path_filename):
-            with io.open(cache_path_filename, encoding="utf-8") as cache_file:
+            with open(cache_path_filename, encoding="utf-8") as cache_file:
                 response_json = json.load(cache_file)
-            log(
-                'Retrieved response from cache file "{}" for URL "{}"'.format(
-                    cache_path_filename, str(url)
-                )
-            )
+            log(f'Retrieved response from cache file "{cache_path_filename}" for URL "{url!s}"')
             return response_json
 
 
@@ -392,15 +375,13 @@ def save_to_cache(url, response_json):
             # hash the url (to make filename shorter than the often extremely
             # long url)
             filename = hashlib.md5(str(url).encode("utf-8")).hexdigest()
-            cache_path_filename = os.path.join(
-                settings.cache_folder, os.extsep.join([filename, "json"])
-            )
+            cache_path_filename = os.path.join(settings.cache_folder, os.extsep.join([filename, "json"]))
             # dump to json, and save to file
             json_str = json.dumps(response_json)
-            with io.open(cache_path_filename, "w", encoding="utf-8") as cache_file:
+            with open(cache_path_filename, "w", encoding="utf-8") as cache_file:
                 cache_file.write(json_str)
 
-            log('Saved response to cache file "{}"'.format(cache_path_filename))
+            log(f'Saved response to cache file "{cache_path_filename}"')
 
 
 def openei_api_request(
@@ -448,10 +429,7 @@ def nrel_api_cbr_request(data):
     """
     # define the Overpass API URL, then construct a GET-style URL as a string to
     # hash to look up/save to cache
-    url = (
-        "https://developer.nrel.gov/api/commercial-building-resources/v1"
-        "/resources.json"
-    )
+    url = "https://developer.nrel.gov/api/commercial-building-resources/v1/resources.json"
     prepared_url = requests.Request("GET", url, params=data).prepare().url
     cached_response_json = get_from_cache(prepared_url)
 
@@ -462,23 +440,20 @@ def nrel_api_cbr_request(data):
 
     else:
         start_time = time.time()
-        log('Getting from {}, "{}"'.format(url, data))
+        log(f'Getting from {url}, "{data}"')
         response = requests.get(prepared_url)
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
         domain = re.findall(r"(?s)//(.*?)/", url)[0]
-        log(
-            "Downloaded {:,.1f}KB from {}"
-            " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)
-        )
+        log(f"Downloaded {size_kb:,.1f}KB from {domain}" f" in {time.time() - start_time:,.2f} seconds")
 
         try:
             response_json = response.json()
             if "remark" in response_json:
                 log(
                     'Server remark: "{}"'.format(
-                        response_json["remark"], level=lg.WARNING
+                        response_json["remark"],
                     )
                 )
             elif "error" in response_json:
@@ -494,9 +469,7 @@ def nrel_api_cbr_request(data):
         except Exception:
             # deal with response satus_code here
             log(
-                "Server at {} returned status code {} and no JSON data.".format(
-                    domain, response.status_code
-                ),
+                f"Server at {domain} returned status code {response.status_code} and no JSON data.",
                 level=lg.ERROR,
             )
         else:
@@ -520,7 +493,7 @@ def nrel_bcl_api_request(data):
     except KeyError:
         url = "https://bcl.nrel.gov/api/search/"
     else:
-        url = "https://bcl.nrel.gov/api/search/{}.{}".format(keyword, kformat)
+        url = f"https://bcl.nrel.gov/api/search/{keyword}.{kformat}"
     prepared_url = requests.Request("GET", url, params=data).prepare().url
     log(prepared_url)
     cached_response_json = get_from_cache(prepared_url)
@@ -532,7 +505,7 @@ def nrel_bcl_api_request(data):
 
     else:
         start_time = time.time()
-        log('Getting from {}, "{}"'.format(url, data))
+        log(f'Getting from {url}, "{data}"')
         response = requests.get(prepared_url)
 
         # check if an error has occurred
@@ -542,26 +515,26 @@ def nrel_bcl_api_request(data):
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
         domain = re.findall(r"(?s)//(.*?)/", url)[0]
-        log(
-            "Downloaded {:,.1f}KB from {}"
-            " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)
-        )
+        log(f"Downloaded {size_kb:,.1f}KB from {domain}" f" in {time.time() - start_time:,.2f} seconds")
 
         # Since raise_for_status has not raised any error, we can check the response
         # json safely
         response_json = response.json()
         if "remark" in response_json:
-            log('Server remark: "{}"'.format(response_json["remark"], level=lg.WARNING))
+            log(
+                'Server remark: "{}"'.format(
+                    response_json["remark"],
+                )
+            )
         save_to_cache(prepared_url, response_json)
         return response_json
 
 
-def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
-    """Send a request to the StatCan API via HTTP GET and return the JSON
-    response.
+def stat_can_request(response_format, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
+    """Send a request to the StatCan API via HTTP GET and return the JSON response.
 
     Args:
-        type (str): "json" or "xml". json = json response format and xml = xml
+        response_format (str): "json" or "xml". json = json response format and xml = xml
             response format.
         lang (str): "E" or "F". E = English and F = French.
         dguid (str): Dissemination Geography Unique Identifier - DGUID. It is an
@@ -586,10 +559,8 @@ def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, s
     """
     prepared_url = (
         "https://www12.statcan.gc.ca/rest/census-recensement"
-        "/CPR2016.{type}?lang={lang}&dguid={dguid}&topic="
-        "{topic}&notes={notes}&stat={stat}".format(
-            type=type, lang=lang, dguid=dguid, topic=topic, notes=notes, stat=stat
-        )
+        f"/CPR2016.{response_format}?lang={lang}&dguid={dguid}&topic="
+        f"{topic}&notes={notes}&stat={stat}"
     )
 
     cached_response_json = get_from_cache(prepared_url)
@@ -602,23 +573,20 @@ def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, s
     else:
         # if this URL is not already in the cache, request it
         start_time = time.time()
-        log("Getting from {}".format(prepared_url))
+        log(f"Getting from {prepared_url}")
         response = requests.get(prepared_url)
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
-        domain = re.findall(r"//(?s)(.*?)/", prepared_url)[0]
-        log(
-            "Downloaded {:,.1f}KB from {}"
-            " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)
-        )
+        domain = re.findall(r"(?s)//(.*?)/", prepared_url)[0]
+        log(f"Downloaded {size_kb:,.1f}KB from {domain}" f" in {time.time() - start_time:,.2f} seconds")
 
         try:
             response_json = response.json()
             if "remark" in response_json:
                 log(
                     'Server remark: "{}"'.format(
-                        response_json["remark"], level=lg.WARNING
+                        response_json["remark"],
                     )
                 )
             save_to_cache(prepared_url, response_json)
@@ -636,18 +604,18 @@ def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, s
                 return response_json
             # deal with response status_code here
             log(
-                "Server at {} returned status code {} and no JSON "
-                "data.".format(domain, response.status_code),
+                f"Server at {domain} returned status code {response.status_code} and no JSON data.",
                 level=lg.ERROR,
             )
         else:
             return response_json
 
 
-def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
-    """
+def stat_can_geo_request(response_format="json", lang="E", geos="PR", cpt="00"):
+    """Send a request to the StatCan API via HTTP GET and return the JSON response.
+
     Args:
-        type (str): "json" or "xml". json = json response format and xml = xml
+        response_format (str): "json" or "xml". json = json response format and xml = xml
             response format.
         lang (str): "E" or "F". where: E = English F = French.
         geos (str): one geographic level code (default = PR). where: CD = Census
@@ -664,12 +632,7 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
             35 = Ontario 46 = Manitoba 47 = Saskatchewan 48 = Alberta 59 =
             British Columbia 60 = Yukon 61 = Northwest Territories 62 = Nunavut.
     """
-    prepared_url = (
-        "https://www12.statcan.gc.ca/rest/census-recensement"
-        "/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}".format(
-            type=type, lang=lang, geos=geos, cpt=cpt
-        )
-    )
+    prepared_url = f"https://www12.statcan.gc.ca/rest/census-recensement/CR2016Geo.{response_format}?lang={lang}&geos={geos}&cpt={cpt}"
 
     cached_response_json = get_from_cache(prepared_url)
 
@@ -681,23 +644,20 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
     else:
         # if this URL is not already in the cache, request it
         start_time = time.time()
-        log("Getting from {}".format(prepared_url))
+        log(f"Getting from {prepared_url}")
         response = requests.get(prepared_url)
         # if this URL is not already in the cache, pause, then request it
         # get the response size and the domain, log result
         size_kb = len(response.content) / 1000.0
-        domain = re.findall(r"//(?s)(.*?)/", prepared_url)[0]
-        log(
-            "Downloaded {:,.1f}KB from {}"
-            " in {:,.2f} seconds".format(size_kb, domain, time.time() - start_time)
-        )
+        domain = re.findall(r"(?s)//(.*?)/", prepared_url)[0]
+        log(f"Downloaded {size_kb:,.1f}KB from {domain}" f" in {time.time() - start_time:,.2f} seconds")
 
         try:
             response_json = response.json()
             if "remark" in response_json:
                 log(
                     'Server remark: "{}"'.format(
-                        response_json["remark"], level=lg.WARNING
+                        response_json["remark"],
                     )
                 )
             save_to_cache(prepared_url, response_json)
@@ -766,32 +726,28 @@ def download_bld_window(
     """
     # check if one or multiple values
     if isinstance(u_factor, tuple):
-        u_factor_dict = "[{} TO {}]".format(u_factor[0], u_factor[1])
+        u_factor_dict = f"[{u_factor[0]} TO {u_factor[1]}]"
     else:
         # apply tolerance
-        u_factor_dict = "[{} TO {}]".format(
-            u_factor * (1 - tolerance), u_factor * (1 + tolerance)
-        )
+        u_factor_dict = f"[{u_factor * (1 - tolerance)} TO {u_factor * (1 + tolerance)}]"
     if isinstance(shgc, tuple):
-        shgc_dict = "[{} TO {}]".format(shgc[0], shgc[1])
+        shgc_dict = f"[{shgc[0]} TO {shgc[1]}]"
     else:
         # apply tolerance
-        shgc_dict = "[{} TO {}]".format(shgc * (1 - tolerance), shgc * (1 + tolerance))
+        shgc_dict = f"[{shgc * (1 - tolerance)} TO {shgc * (1 + tolerance)}]"
     if isinstance(vis_trans, tuple):
-        vis_trans_dict = "[{} TO {}]".format(vis_trans[0], vis_trans[1])
+        vis_trans_dict = f"[{vis_trans[0]} TO {vis_trans[1]}]"
     else:
         # apply tolerance
-        vis_trans_dict = "[{} TO {}]".format(
-            vis_trans * (1 - tolerance), vis_trans * (1 + tolerance)
-        )
+        vis_trans_dict = f"[{vis_trans * (1 - tolerance)} TO {vis_trans * (1 + tolerance)}]"
 
     data = {
         "keyword": "Window",
         "format": "json",
         "f[]": [
-            "fs_a_Overall_U-factor:{}".format(u_factor_dict),
-            "fs_a_VLT:{}".format(vis_trans_dict),
-            "fs_a_SHGC:{}".format(shgc_dict),
+            f"fs_a_Overall_U-factor:{u_factor_dict}",
+            f"fs_a_VLT:{vis_trans_dict}",
+            f"fs_a_SHGC:{shgc_dict}",
             'sm_component_type:"Window"',
         ],
         "oauth_consumer_key": oauth_key,
@@ -800,17 +756,16 @@ def download_bld_window(
 
     if response:
         log(
-            "found {} possible window component(s) matching "
-            "the range {}".format(len(response["result"]), str(data["f[]"]))
+            "found {} possible window component(s) matching the range {}".format(
+                len(response["result"]), str(data["f[]"])
+            )
         )
 
         # download components
         uids = []
         for component in response["result"]:
             uids.append(component["component"]["uid"])
-        url = "https://bcl.nrel.gov/api/component/download?uids={}".format(
-            "," "".join(uids)
-        )
+        url = "https://bcl.nrel.gov/api/component/download?uids={}".format(",".join(uids))
         # actual download with get()
         d_response = requests.get(url)
 
@@ -824,9 +779,7 @@ def download_bld_window(
                 for info in z.infolist():
                     if info.filename.endswith(extension):
                         z.extract(info, path=output_folder)
-                        results.append(
-                            os.path.join(settings.data_folder, info.filename)
-                        )
+                        results.append(os.path.join(settings.data_folder, info.filename))
             return results
         else:
             return response["result"]

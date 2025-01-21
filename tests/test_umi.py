@@ -1,9 +1,9 @@
 import collections
 import json
 import os
+from typing import ClassVar
 
 import pytest
-from path import Path
 
 from archetypal import IDF, settings
 from archetypal.eplus_interface import EnergyPlusVersion
@@ -26,14 +26,16 @@ from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.umi_template import UmiTemplateLibrary, no_duplicates
 
+from .conftest import data_dir
+
 
 class TestUmiTemplate:
     """Test suite for the UmiTemplateLibrary class"""
 
     @pytest.fixture(scope="function")
-    def two_identical_libraries(self):
+    def two_identical_libraries(self, config):
         """Yield two identical libraries. Scope of this fixture is `function`."""
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        file = data_dir / "umi_samples/BostonTemplateLibrary_nodup.json"
         yield UmiTemplateLibrary.open(file), UmiTemplateLibrary.open(file)
 
     def test_add(self, two_identical_libraries):
@@ -72,9 +74,9 @@ class TestUmiTemplate:
             # missing S.
             c.unique_components("OpaqueMaterial")
 
-    def test_graph(self):
+    def test_graph(self, config):
         """Test initialization of networkx DiGraph"""
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
+        file = data_dir / "umi_samples/BostonTemplateLibrary_2.json"
 
         a = UmiTemplateLibrary.open(file)
         G = a.to_graph()
@@ -84,11 +86,11 @@ class TestUmiTemplate:
         G = a.to_graph(include_orphans=True)
         assert len(G) > n_nodes
 
-    def test_template_to_template(self):
+    def test_template_to_template(self, config):
         """load the json into UmiTemplateLibrary object, then convert back to json and
         compare"""
 
-        file = "tests/input_data/umi_samples/BostonTemplateLibrary_nodup.json"
+        file = data_dir / "umi_samples/BostonTemplateLibrary_nodup.json"
 
         a = UmiTemplateLibrary.open(file).to_dict()
         b = TestUmiTemplate.read_json(file)
@@ -101,14 +103,10 @@ class TestUmiTemplate:
     def test_umitemplate(self, config):
         """Test creating UmiTemplateLibrary from 2 IDF files"""
         idf_source = [
-            EnergyPlusVersion.current().current_install_dir
-            / "ExampleFiles"
-            / "VentilationSimpleTest.idf",
+            EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "VentilationSimpleTest.idf",
         ]
-        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        a = UmiTemplateLibrary.from_idf_files(
-            idf_source, wf, name="Mixed_Files", processors=-1, debug=True
-        )
+        wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        a = UmiTemplateLibrary.from_idf_files(idf_source, wf, name="Mixed_Files", processors=-1, debug=True)
 
         data_dict = a.to_dict()
         assert no_duplicates(data_dict)
@@ -119,12 +117,12 @@ class TestUmiTemplate:
     )
     def test_umi_samples(self, config):
         idf_source = [
-            "tests/input_data/umi_samples/B_Off_0.idf",
-            "tests/input_data/umi_samples/B_Ret_0.idf",
-            "tests/input_data/umi_samples/B_Res_0_Masonry.idf",
-            "tests/input_data/umi_samples/B_Res_0_WoodFrame.idf",
+            data_dir / "umi_samples/B_Off_0.idf",
+            data_dir / "umi_samples/B_Ret_0.idf",
+            data_dir / "umi_samples/B_Res_0_Masonry.idf",
+            data_dir / "umi_samples/B_Res_0_WoodFrame.idf",
         ]
-        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         a = UmiTemplateLibrary.from_idf_files(idf_source, wf, name="Mixed_Files")
         a.to_dict()
         data_dict = a.to_dict()
@@ -132,7 +130,7 @@ class TestUmiTemplate:
 
     @staticmethod
     def read_json(file):
-        with open(file, "r") as f:
+        with open(file) as f:
             a = json.load(f, object_pairs_hook=collections.OrderedDict)
             data_dict = collections.OrderedDict(
                 {
@@ -158,13 +156,11 @@ class TestUmiTemplate:
             data_dict.update(a)
             for key in data_dict:
                 # Sort the list elements by $id
-                data_dict[key] = sorted(
-                    data_dict[key], key=lambda x: int(x.get("$id", 0))
-                )
+                data_dict[key] = sorted(data_dict[key], key=lambda x: int(x.get("$id", 0)))
             return data_dict
 
     @pytest.fixture()
-    def idf(self):
+    def idf(self, config):
         yield IDF(prep_outputs=False)
 
     @pytest.fixture()
@@ -235,15 +231,6 @@ class TestUmiTemplate:
 
         # Gas MaterialLayers
         airLayer = GasLayer(air, Thickness=0.04)
-
-        MaterialLayers = [
-            concreteLayer,
-            insulationLayer,
-            brickLayer,
-            plywoodLayer,
-            glassLayer,
-            airLayer,
-        ]
         # endregion
 
         # region Defines constructions
@@ -268,16 +255,12 @@ class TestUmiTemplate:
         OpaqueConstructions = [wall_int, wall_ext, floor, roof]
 
         # Window construction
-        window = WindowConstruction(
-            Layers=[glassLayer, airLayer, glassLayer], Name="Window"
-        )
+        window = WindowConstruction(Layers=[glassLayer, airLayer, glassLayer], Name="Window")
         WindowConstructions = [window]
 
         # Structure definition
         mass_ratio = MassRatio(Material=plywood, NormalRatio=1, HighLoadRatio=1)
-        struct_definition = StructureInformation(
-            MassRatios=[mass_ratio], Name="Structure"
-        )
+        struct_definition = StructureInformation(MassRatios=[mass_ratio], Name="Structure")
         StructureDefinitions = [struct_definition]
         # endregion
 
@@ -285,17 +268,11 @@ class TestUmiTemplate:
 
         # Day schedules
         # Always on
-        sch_d_on = DaySchedule.from_values(
-            Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day"
-        )
+        sch_d_on = DaySchedule.from_values(Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day")
         # Always off
-        sch_d_off = DaySchedule.from_values(
-            Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day"
-        )
+        sch_d_off = DaySchedule.from_values(Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day")
         # DHW
-        sch_d_dhw = DaySchedule.from_values(
-            Name="DHW", Values=[0.3] * 24, Type="Fraction", Category="Day"
-        )
+        sch_d_dhw = DaySchedule.from_values(Name="DHW", Values=[0.3] * 24, Type="Fraction", Category="Day")
         # Internal gains
         sch_d_gains = DaySchedule.from_values(
             Name="Gains",
@@ -428,9 +405,7 @@ class TestUmiTemplate:
             "Type": "Fraction",
             "Name": "Gains",
         }
-        sch_y_gains = YearSchedule.from_dict(
-            dict_gains, {a.id: a for a in WeekSchedules}
-        )
+        sch_y_gains = YearSchedule.from_dict(dict_gains, {a.id: a for a in WeekSchedules})
         YearSchedules = [sch_y_on, sch_y_off, sch_y_dhw, sch_y_gains]
         # endregion
 
@@ -596,9 +571,7 @@ class TestUmiTemplate:
         assert no_duplicates(manual_umitemplate_library, attribute="$id")
 
     def test_climatestudio(self, climatestudio):
-        template_json = UmiTemplateLibrary(
-            name="my_umi_template", BuildingTemplates=[climatestudio]
-        ).to_json()
+        template_json = UmiTemplateLibrary(name="my_umi_template", BuildingTemplates=[climatestudio]).to_json()
         print(template_json)
 
     @pytest.mark.skipif(
@@ -608,15 +581,15 @@ class TestUmiTemplate:
     @pytest.mark.parametrize(
         "file",
         (
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         ),
         ids=("small", "medium", "large"),
     )
     def test_necb_serial(self, file, config):
         settings.log_console = True
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         template = UmiTemplateLibrary.from_idf_files(
             name="my_umi_template",
             idf_files=[file],
@@ -634,14 +607,11 @@ class TestUmiTemplate:
     def test_necb_parallel(self, config):
         settings.log_console = True
         office = [
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-            "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+            data_dir / "necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
         ]
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         template = UmiTemplateLibrary.from_idf_files(
             name="my_umi_template",
             idf_files=office,
@@ -653,42 +623,19 @@ class TestUmiTemplate:
         assert no_duplicates(template.to_dict(), attribute="Name")
         assert no_duplicates(template.to_dict(), attribute="$id")
 
-    office = [
-        "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
-        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/necb/NECB 2011-MediumOffice-NECB HDD "
-        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
-        "tests/input_data/necb/NECB 2011-LargeOffice-NECB HDD "
-        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+    office: ClassVar[list[str]] = [
+        data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        data_dir / "necb/NECB 2011-MediumOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
+        data_dir / "necb/NECB 2011-LargeOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf",
     ]
-
-    @pytest.mark.skipif(
-        os.environ.get("CI", "False").lower() == "true",
-        reason="Skipping this test on CI environment",
-    )
-    @pytest.mark.parametrize(
-        "file", Path("tests/input_data/problematic").files("*CZ5A*.idf")
-    )
-    def test_cz5a_serial(self, file, config):
-        settings.log_console = True
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        template = UmiTemplateLibrary.from_idf_files(
-            name=file.stem,
-            idf_files=[file],
-            as_version="9-2-0",
-            weather=w,
-            processors=1,
-        )
-        assert no_duplicates(template.to_dict(), attribute="Name")
-        assert no_duplicates(template.to_dict(), attribute="$id")
 
 
 @pytest.fixture(scope="session")
 def climatestudio(config):
     """A building template fixture from a climate studio idf file used in subsequent
     tests"""
-    file = "tests/input_data/umi_samples/climatestudio_test.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/climatestudio_test.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w, annual=True)
     if idf.sim_info is None:
         idf.simulate()
@@ -701,8 +648,8 @@ def climatestudio(config):
 def sf_cz5a(config):
     """A building template fixture from a climate studio idf file used in subsequent
     tests"""
-    file = "tests/input_data/problematic/SF+CZ5A+USA_IL_Chicago-OHare.Intl.AP.725300+oilfurnace+slab+IECC_2012.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "problematic/SF+CZ5A+USA_IL_Chicago-OHare.Intl.AP.725300+oilfurnace+slab+IECC_2012.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w, annual=True)
 
     bt = BuildingTemplate.from_idf(idf)

@@ -1,4 +1,5 @@
 """archetypal GasLayer."""
+
 import collections
 import logging as lg
 import math
@@ -9,7 +10,7 @@ from validator_collection import validators
 from archetypal.utils import log
 
 
-class GasLayer(object):
+class GasLayer:
     """Class used to define one gas layer in a window construction assembly.
 
     This class has two attributes:
@@ -41,8 +42,7 @@ class GasLayer(object):
         from archetypal.template.materials import GasMaterial
 
         assert isinstance(value, GasMaterial), (
-            f"Input value error for '{value}'. Value must be of type (GasMaterial), "
-            f"not {type(value)}."
+            f"Input value error for '{value}'. Value must be of type (GasMaterial), " f"not {type(value)}."
         )
         self._material = value
 
@@ -56,8 +56,7 @@ class GasLayer(object):
         self._thickness = value
         if value < 0.003:
             log(
-                "Modeling layer thinner (less) than 0.003 m (not recommended) for "
-                f"MaterialLayer '{self}'",
+                "Modeling layer thinner (less) than 0.003 m (not recommended) for " f"MaterialLayer '{self}'",
                 lg.WARNING,
             )
 
@@ -95,11 +94,7 @@ class GasLayer(object):
     @property
     def heat_capacity(self):
         """Get the material layer's heat capacity [J/(m2-k)]."""
-        return (
-            self.Material.Density
-            * self.Material.specific_heat_at_temperature(273.15)
-            * self.Thickness
-        )
+        return self.Material.Density * self.Material.specific_heat_at_temperature(273.15) * self.Thickness
 
     @property
     def specific_heat(self):
@@ -132,9 +127,9 @@ class GasLayer(object):
             pressure: The average pressure of the gas cavity in Pa.
                 Default is 101325 Pa for standard pressure at sea level.
         """
-        return self.convective_conductance(
-            delta_t, height, t_kelvin, pressure
-        ) + self.radiative_conductance(emissivity_1, emissivity_2, t_kelvin)
+        return self.convective_conductance(delta_t, height, t_kelvin, pressure) + self.radiative_conductance(
+            emissivity_1, emissivity_2, t_kelvin
+        )
 
     def u_value_at_angle(
         self,
@@ -171,9 +166,7 @@ class GasLayer(object):
             delta_t, height, angle, t_kelvin, pressure
         ) + self.radiative_conductance(emissivity_1, emissivity_2, t_kelvin)
 
-    def convective_conductance(
-        self, delta_t=15, height=1.0, t_kelvin=273.15, pressure=101325
-    ):
+    def convective_conductance(self, delta_t=15, height=1.0, t_kelvin=273.15, pressure=101325):
         """Get convective conductance of the cavity in a vertical position.
 
         Args:
@@ -190,9 +183,7 @@ class GasLayer(object):
             self.Material.conductivity_at_temperature(t_kelvin) / self.Thickness
         )
 
-    def convective_conductance_at_angle(
-        self, delta_t=15, height=1.0, angle=90, t_kelvin=273.15, pressure=101325
-    ):
+    def convective_conductance_at_angle(self, delta_t=15, height=1.0, angle=90, t_kelvin=273.15, pressure=101325):
         """Get convective conductance of the cavity in an angle.
 
         Args:
@@ -213,9 +204,7 @@ class GasLayer(object):
             self.Material.conductivity_at_temperature(t_kelvin) / self.Thickness
         )
 
-    def radiative_conductance(
-        self, emissivity_1=0.84, emissivity_2=0.84, t_kelvin=273.15
-    ):
+    def radiative_conductance(self, emissivity_1=0.84, emissivity_2=0.84, t_kelvin=273.15):
         """Get the radiative conductance of the cavity given emissivities on both sides.
 
         Args:
@@ -226,15 +215,9 @@ class GasLayer(object):
             t_kelvin: The average temperature of the gas cavity in Kelvin.
                 Default: 273.15 K (0C).
         """
-        return (
-            (4 * 5.6697e-8)
-            * (((1 / emissivity_1) + (1 / emissivity_2) - 1) ** -1)
-            * (t_kelvin ** 3)
-        )
+        return (4 * 5.6697e-8) * (((1 / emissivity_1) + (1 / emissivity_2) - 1) ** -1) * (t_kelvin**3)
 
-    def nusselt_at_angle(
-        self, delta_t=15, height=1.0, angle=90, t_kelvin=273.15, pressure=101325
-    ):
+    def nusselt_at_angle(self, delta_t=15, height=1.0, angle=90, t_kelvin=273.15, pressure=101325):
         """Get Nusselt number for a cavity at a given angle, temp diff and height.
 
         Args:
@@ -260,13 +243,13 @@ class GasLayer(object):
             cos_a = math.cos(math.radians(angle))
             sin_a_18 = math.sin(1.8 * math.radians(angle))
             term_1 = dot_x(1 - (1708 / (rayleigh * cos_a)))
-            term_2 = 1 - ((1708 * (sin_a_18 ** 1.6)) / (rayleigh * cos_a))
+            term_2 = 1 - ((1708 * (sin_a_18**1.6)) / (rayleigh * cos_a))
             term_3 = dot_x(((rayleigh * cos_a) / 5830) ** (1 / 3) - 1)
             return 1 + (1.44 * term_1 * term_2) + term_3
         elif angle < 90:
             g = 0.5 / ((1 + ((rayleigh / 3160) ** 20.6)) ** 0.1)
-            n_u1 = (1 + (((0.0936 * (rayleigh ** 0.314)) / (1 + g)) ** 7)) ** (1 / 7)
-            n_u2 = (0.104 + (0.175 / (self.Thickness / height))) * (rayleigh ** 0.283)
+            n_u1 = (1 + (((0.0936 * (rayleigh**0.314)) / (1 + g)) ** 7)) ** (1 / 7)
+            n_u2 = (0.104 + (0.175 / (self.Thickness / height))) * (rayleigh**0.283)
             n_u_60 = max(n_u1, n_u2)
             n_u_90 = self.nusselt(delta_t, height, t_kelvin, pressure)
             return (n_u_60 + n_u_90) / 2
@@ -293,9 +276,9 @@ class GasLayer(object):
         if rayleigh > 50000:
             n_u_l_1 = 0.0673838 * (rayleigh ** (1 / 3))
         elif rayleigh > 10000:
-            n_u_l_1 = 0.028154 * (rayleigh ** 0.4134)
+            n_u_l_1 = 0.028154 * (rayleigh**0.4134)
         else:
-            n_u_l_1 = 1 + 1.7596678e-10 * (rayleigh ** 2.2984755)
+            n_u_l_1 = 1 + 1.7596678e-10 * (rayleigh**2.2984755)
         n_u_l_2 = 0.242 * ((rayleigh * (self.Thickness / height)) ** 0.272)
         return max(n_u_l_1, n_u_l_2)
 
@@ -312,7 +295,7 @@ class GasLayer(object):
         """
         _numerator = (
             (self.Material.density_at_temperature(t_kelvin, pressure) ** 2)
-            * (self.Thickness ** 3)
+            * (self.Thickness**3)
             * 9.81
             * self.Material.specific_heat_at_temperature(t_kelvin)
             * delta_t
@@ -348,7 +331,7 @@ class GasLayer(object):
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
-        return dict(Material=self.Material, Thickness=self.Thickness)
+        return {"Material": self.Material, "Thickness": self.Thickness}
 
     def get_unique(self):
         """Return the first of all the created objects that is equivalent to self."""
@@ -363,18 +346,15 @@ class GasLayer(object):
         if not isinstance(other, GasLayer):
             return NotImplemented
         else:
-            return all(
-                [self.Thickness == other.Thickness, self.Material == other.Material]
-            )
+            return all([self.Thickness == other.Thickness, self.Material == other.Material])
 
     def __repr__(self):
         """Return a representation of self."""
-        return "{} with thickness of {:,.3f} m".format(self.Material, self.Thickness)
+        return f"{self.Material} with thickness of {self.Thickness:,.3f} m"
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for k, v in self.mapping().items():
-            yield k, v
+        yield from self.mapping().items()
 
     def duplicate(self):
         """Get copy of self."""

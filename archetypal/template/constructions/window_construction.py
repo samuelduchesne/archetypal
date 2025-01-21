@@ -9,6 +9,7 @@ Notes:
 
 import collections
 from enum import Enum
+from typing import ClassVar
 
 from validator_collection import validators
 
@@ -63,7 +64,7 @@ class WindowConstruction(LayeredConstruction):
     .. image:: ../images/template/constructions-window.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["WindowConstruction"]] = []
 
     _CATEGORIES = ("single", "double", "triple", "quadruple")
 
@@ -79,7 +80,7 @@ class WindowConstruction(LayeredConstruction):
             Category (str): "Single", "Double" or "Triple".
             **kwargs: Other keywords passed to the constructor.
         """
-        super(WindowConstruction, self).__init__(
+        super().__init__(
             Name,
             Layers,
             Category=Category,
@@ -98,8 +99,7 @@ class WindowConstruction(LayeredConstruction):
     @Category.setter
     def Category(self, value):
         assert value.lower() in self._CATEGORIES, (
-            f"Input error for value '{value}'. The "
-            f"Category must be one of ({self._CATEGORIES})"
+            f"Input error for value '{value}'. The " f"Category must be one of ({self._CATEGORIES})"
         )
         self._category = value
 
@@ -130,11 +130,7 @@ class WindowConstruction(LayeredConstruction):
         """
         gap_count = self.gap_count
         if gap_count == 0:  # single pane
-            return (
-                self.Layers[0].r_value
-                + (1 / self.out_h_simple())
-                + (1 / self.in_h_simple())
-            )
+            return self.Layers[0].r_value + (1 / self.out_h_simple()) + (1 / self.in_h_simple())
         elif gap_count == 1:
             heat_transfers, temperature_profile = self.heat_balance("summer", 0)
             *_, Q_dot_i4 = heat_transfers
@@ -227,9 +223,7 @@ class WindowConstruction(LayeredConstruction):
         _id = data.pop("$id")
         layers = [
             MaterialLayer(materials[layer["Material"]["$ref"]], layer["Thickness"])
-            if isinstance(
-                materials[layer["Material"]["$ref"]], (MaterialLayer, GlazingMaterial)
-            )
+            if isinstance(materials[layer["Material"]["$ref"]], (MaterialLayer, GlazingMaterial))
             else GasLayer(materials[layer["Material"]["$ref"]], layer["Thickness"])
             for layer in data.pop("Layers")
         ]
@@ -252,9 +246,7 @@ class WindowConstruction(LayeredConstruction):
         """
         layers = WindowConstruction._layers_from_construction(Construction, **kwargs)
         catdict = {0: "Single", 1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
-        category = catdict[
-            len([lyr for lyr in layers if isinstance(lyr.Material, GlazingMaterial)])
-        ]
+        category = catdict[len([lyr for lyr in layers if isinstance(lyr.Material, GlazingMaterial)])]
         return cls(Name=Construction.Name, Layers=layers, Category=category, **kwargs)
 
     @classmethod
@@ -347,18 +339,18 @@ class WindowConstruction(LayeredConstruction):
         if validate:
             self.validate()
 
-        return dict(
-            Layers=self.Layers,
-            AssemblyCarbon=self.AssemblyCarbon,
-            AssemblyCost=self.AssemblyCost,
-            AssemblyEnergy=self.AssemblyEnergy,
-            DisassemblyCarbon=self.DisassemblyCarbon,
-            DisassemblyEnergy=self.DisassemblyEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Layers": self.Layers,
+            "AssemblyCarbon": self.AssemblyCarbon,
+            "AssemblyCost": self.AssemblyCost,
+            "AssemblyEnergy": self.AssemblyEnergy,
+            "DisassemblyCarbon": self.DisassemblyCarbon,
+            "DisassemblyEnergy": self.DisassemblyEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def combine(self, other, weights=None):
         """Append other to self. Return self + other as a new object.
@@ -433,9 +425,7 @@ class WindowConstruction(LayeredConstruction):
                 self.Layers[0].r_value,
                 in_r_init,
             ]
-            in_delta_t = (in_r_init / sum(r_values)) * (
-                outside_temperature - inside_temperature
-            )
+            in_delta_t = (in_r_init / sum(r_values)) * (outside_temperature - inside_temperature)
             r_values[-1] = 1 / self.in_h(
                 inside_temperature - (in_delta_t / 2) + 273.15,
                 in_delta_t,
@@ -443,32 +433,22 @@ class WindowConstruction(LayeredConstruction):
                 angle,
                 pressure,
             )
-            temperatures = self._temperature_profile_from_r_values(
-                r_values, outside_temperature, inside_temperature
-            )
+            temperatures = self._temperature_profile_from_r_values(r_values, outside_temperature, inside_temperature)
             return temperatures, r_values
 
         # multi-layered window construction
         guess = abs(inside_temperature - outside_temperature) / 2
         guess = 1 if guess < 1 else guess  # prevents zero division with gas conductance
         avg_guess = ((inside_temperature + outside_temperature) / 2) + 273.15
-        r_values, emissivities = self._layered_r_value_initial(
-            gap_count, guess, avg_guess, wind_speed
-        )
+        r_values, emissivities = self._layered_r_value_initial(gap_count, guess, avg_guess, wind_speed)
         r_last = 0
         r_next = sum(r_values)
         while abs(r_next - r_last) > 0.001:  # 0.001 is the r-value tolerance
             r_last = sum(r_values)
-            temperatures = self._temperature_profile_from_r_values(
-                r_values, outside_temperature, inside_temperature
-            )
-            r_values = self._layered_r_value(
-                temperatures, r_values, emissivities, height, angle, pressure
-            )
+            temperatures = self._temperature_profile_from_r_values(r_values, outside_temperature, inside_temperature)
+            r_values = self._layered_r_value(temperatures, r_values, emissivities, height, angle, pressure)
             r_next = sum(r_values)
-        temperatures = self._temperature_profile_from_r_values(
-            r_values, outside_temperature, inside_temperature
-        )
+        temperatures = self._temperature_profile_from_r_values(r_values, outside_temperature, inside_temperature)
         return temperatures, r_values
 
     @staticmethod
@@ -478,9 +458,7 @@ class WindowConstruction(LayeredConstruction):
         for field in construction.fieldnames[2:]:
             # Loop through the layers from the outside layer towards the
             # indoor layers and get the material they are made of.
-            material = construction.get_referenced_object(field) or kwargs.get(
-                "material", None
-            )
+            material = construction.get_referenced_object(field) or kwargs.get("material", None)
             if material:
                 # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
                 # and append to the list of layers
@@ -506,9 +484,7 @@ class WindowConstruction(LayeredConstruction):
 
                 elif material.key.upper() == "WindowMaterial:Gas".upper():
                     # Todo: Make gas name generic, like in UmiTemplateLibrary Editor
-                    material_obj = GasMaterial(
-                        Name=material.Gas_Type.upper(), Conductivity=0.02
-                    )
+                    material_obj = GasMaterial(Name=material.Gas_Type.upper(), Conductivity=0.02)
                     material_layer = GasLayer(material_obj, material.Thickness)
                 elif material.key.upper() == "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM":
                     glass_properties = calc_simple_glazing(
@@ -516,13 +492,9 @@ class WindowConstruction(LayeredConstruction):
                         material.UFactor,
                         material.Visible_Transmittance,
                     )
-                    material_obj = GlazingMaterial(
-                        Name=material.Name, **glass_properties
-                    )
+                    material_obj = GlazingMaterial(Name=material.Name, **glass_properties)
 
-                    material_layer = MaterialLayer(
-                        material_obj, glass_properties["Thickness"]
-                    )
+                    material_layer = MaterialLayer(material_obj, glass_properties["Thickness"])
                     layers.append(material_layer)
                     break
                 else:
@@ -531,9 +503,7 @@ class WindowConstruction(LayeredConstruction):
                 layers.append(material_layer)
         return layers
 
-    def _layered_r_value_initial(
-        self, gap_count, delta_t_guess=15, avg_t_guess=273.15, wind_speed=6.7
-    ):
+    def _layered_r_value_initial(self, gap_count, delta_t_guess=15, avg_t_guess=273.15, wind_speed=6.7):
         """Compute initial r-values of each layer within a layered construction."""
         r_vals = [1 / self.out_h(wind_speed, avg_t_guess - delta_t_guess)]
         emiss = []
@@ -545,9 +515,7 @@ class WindowConstruction(LayeredConstruction):
             else:  # gas layer
                 e_front = self.Layers[i + 1].Material.IREmissivityFront
                 e_back = self.Layers[i + 1].Material.IREmissivityBack
-                r_vals.append(
-                    1 / lyr.u_value(delta_t, e_back, e_front, t_kelvin=avg_t_guess)
-                )
+                r_vals.append(1 / lyr.u_value(delta_t, e_back, e_front, t_kelvin=avg_t_guess))
                 emiss.append((e_back, e_front))
         r_vals.append(1 / self.in_h_simple())
         return r_vals, emiss
@@ -592,9 +560,7 @@ class WindowConstruction(LayeredConstruction):
             r_next = sum(r_values)
         return r_values
 
-    def _temperature_profile_from_r_values(
-        self, r_values, outside_temperature=-18, inside_temperature=21
-    ):
+    def _temperature_profile_from_r_values(self, r_values, outside_temperature=-18, inside_temperature=21):
         """Get a list of temperatures at each material boundary between R-values."""
         r_factor = sum(r_values)
         delta_t = inside_temperature - outside_temperature
@@ -658,15 +624,11 @@ class WindowConstruction(LayeredConstruction):
             conditions.
         """
         # Q_dot_noSun
-        heat_transfers, temperature_profile = self.heat_balance(
-            environmental_conditions, 0
-        )
+        heat_transfers, temperature_profile = self.heat_balance(environmental_conditions, 0)
         *_, Q_dot_noSun = heat_transfers
 
         # Q_dot_Sun
-        heat_transfers, temperature_profile = self.heat_balance(
-            environmental_conditions, 783
-        )
+        heat_transfers, temperature_profile = self.heat_balance(environmental_conditions, 783)
         *_, Q_dot_i4 = heat_transfers
 
         Q_dot_sun = -Q_dot_i4 + self.solar_transmittance * global_radiation
@@ -687,9 +649,7 @@ class WindowConstruction(LayeredConstruction):
         Returns:
             tuple: heat_flux, temperature_profile
         """
-        assert (
-            self.glazing_count == 2
-        ), f"Expected a window with 2 glazing layers, not {self.glazing_count}."
+        assert self.glazing_count == 2, f"Expected a window with 2 glazing layers, not {self.glazing_count}."
         ENV_CONDITIONS = {"summer": [32, 24, 2.75], "winter": [-18, 21, 5.5]}
         (
             outside_temperature,
@@ -713,7 +673,7 @@ class WindowConstruction(LayeredConstruction):
         abs_1 = 0.0260  # [-]
         abs_2 = 0.0737  # [-]
         L_12 = self.Layers[0].Thickness  # [m]
-        L_23 = self.Layers[1].Thickness  # [m]  # included in Layers[1] used below
+        # L_23 = self.Layers[1].Thickness  # [m]  # included in Layers[1] used below
         L_34 = self.Layers[2].Thickness  # [m]
         # "Solar absorption distribution"
         Q_dot_abs_1 = abs_1 / self.glazing_count * G_t
@@ -736,11 +696,7 @@ class WindowConstruction(LayeredConstruction):
                 abs(T_3 - T_2), height, angle, (T_3 + T_2) / 2 + 273.15, pressure
             )
             Q_dot_c_32 = h_c_32 * (T_3 - T_2)
-            Q_dot_r_32 = (
-                sigma
-                * ((T_3 + 273.15) ** 4 - (T_2 + 273.15) ** 4)
-                / (1 / epsilon_2 + 1 / epsilon_3 - 1)
-            )
+            Q_dot_r_32 = sigma * ((T_3 + 273.15) ** 4 - (T_2 + 273.15) ** 4) / (1 / epsilon_2 + 1 / epsilon_3 - 1)
             Q_dot_32 = Q_dot_c_32 + Q_dot_r_32
 
             # "Heat balance at surface 3"
@@ -749,9 +705,7 @@ class WindowConstruction(LayeredConstruction):
             # Q_dot_32 = Q_dot_abs_3 + Q_dot_43
 
             # "Heat balance at surface 4"
-            h_c_i = self.in_h_c(
-                (T_4 + T_i) / 2 + 273.15, abs(T_i - T_4), height, angle, pressure
-            )
+            h_c_i = self.in_h_c((T_4 + T_i) / 2 + 273.15, abs(T_i - T_4), height, angle, pressure)
             Q_dot_c_i4 = h_c_i * (T_i - T_4)
             Q_dot_r_i4 = epsilon_4 * sigma * ((T_i + 273.15) ** 4 - (T_4 + 273.15) ** 4)
             Q_dot_i4 = Q_dot_c_i4 + Q_dot_r_i4
@@ -768,6 +722,5 @@ class WindowConstruction(LayeredConstruction):
 
     def assert_almost_equal(self, temperatures_last, temperatures_next):
         return all(
-            abs(desired - actual) < 1.5 * 10 ** (-3)
-            for desired, actual in zip(temperatures_last, temperatures_next)
+            abs(desired - actual) < 1.5 * 10 ** (-3) for desired, actual in zip(temperatures_last, temperatures_next)
         )

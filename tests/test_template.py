@@ -5,11 +5,17 @@ import numpy as np
 import pytest
 from eppy.bunch_subclass import EpBunch
 
-from archetypal import IDF, settings
-from archetypal.eplus_interface import EnergyPlusVersion
+from archetypal import IDF
 from archetypal.simple_glazing import calc_simple_glazing
 from archetypal.template.building_template import BuildingTemplate
-from archetypal.template.conditioning import ZoneConditioning, EconomizerTypes
+from archetypal.template.conditioning import EconomizerTypes, ZoneConditioning
+from archetypal.template.constructions.base_construction import (
+    ConstructionBase,
+    LayeredConstruction,
+)
+from archetypal.template.constructions.internal_mass import InternalMass
+from archetypal.template.constructions.opaque_construction import OpaqueConstruction
+from archetypal.template.constructions.window_construction import WindowConstruction
 from archetypal.template.dhw import DomesticHotWaterSetting
 from archetypal.template.load import DimmingTypes, ZoneLoad
 from archetypal.template.materials.gas_layer import GasLayer
@@ -18,11 +24,6 @@ from archetypal.template.materials.glazing_material import GlazingMaterial
 from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.materials.nomass_material import NoMassMaterial
 from archetypal.template.materials.opaque_material import OpaqueMaterial
-from archetypal.template.constructions.opaque_construction import OpaqueConstruction
-from archetypal.template.constructions.base_construction import (
-    ConstructionBase,
-    LayeredConstruction,
-)
 from archetypal.template.schedule import (
     DaySchedule,
     UmiSchedule,
@@ -33,12 +34,12 @@ from archetypal.template.schedule import (
 from archetypal.template.structure import MassRatio, StructureInformation
 from archetypal.template.umi_base import UniqueName
 from archetypal.template.ventilation import VentilationSetting
-from archetypal.template.constructions.window_construction import WindowConstruction
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.template.zonedefinition import ZoneDefinition
-from archetypal.template.constructions.internal_mass import InternalMass
 from archetypal.utils import reduce
+
+from .conftest import data_dir
 
 
 @pytest.fixture(scope="class")
@@ -56,8 +57,8 @@ def small_idf_copy(config):
     Args:
         config:
     """
-    file = "tests/input_data/umi_samples/B_Off_0.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Off_0.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     yield idf
 
@@ -65,8 +66,8 @@ def small_idf_copy(config):
 @pytest.fixture(scope="class")
 def small_idf_obj(config):
     """An IDF model. Yields just the idf object."""
-    file = "tests/input_data/umi_samples/B_Off_0.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Off_0.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     yield idf
 
@@ -78,8 +79,8 @@ def other_idf(config):
     Args:
         config:
     """
-    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Res_0_Masonry.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     yield idf
 
@@ -91,8 +92,8 @@ def other_idf_object(config):
     Args:
         config:
     """
-    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Res_0_Masonry.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     if idf.sim_info is None:
         idf.simulate()
@@ -106,8 +107,8 @@ def other_idf_object_copy(config):
     Args:
         config:
     """
-    file = "tests/input_data/umi_samples/B_Res_0_Masonry.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Res_0_Masonry.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     if idf.sim_info is None:
         idf.simulate()
@@ -116,11 +117,8 @@ def other_idf_object_copy(config):
 
 @pytest.fixture(scope="module")
 def small_office(config):
-    file = (
-        "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
-        "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-    )
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF(file, epw=w)
     yield idf
 
@@ -132,7 +130,7 @@ def idf():
 
 @pytest.fixture(scope="class", params=["RefBldgWarehouseNew2004_Chicago.idf"])
 def warehouse(config, request):
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF.from_example_files(request.param, epw=w, annual=True)
     if idf.sim_info is None:
         idf.simulate()
@@ -194,11 +192,7 @@ class TestConstructionBase:
         construction_base_dup = construction_base.duplicate()
 
         assert construction_base == construction_base_dup
-        assert (
-            construction_base.AssemblyCarbon
-            == construction_base_dup.AssemblyCarbon
-            == 0
-        )
+        assert construction_base.AssemblyCarbon == construction_base_dup.AssemblyCarbon == 0
         assert construction_base.id != construction_base_dup.id
 
 
@@ -214,9 +208,7 @@ class TestLayeredConstruction:
 
         layers = [MaterialLayer(mat_a, 0.1), MaterialLayer(mat_a, 0.1)]
 
-        layered_construction = LayeredConstruction(
-            Layers=layers, Name="layered_construction"
-        )
+        layered_construction = LayeredConstruction(Layers=layers, Name="layered_construction")
 
         layered_construction_dup = layered_construction.duplicate()
 
@@ -312,7 +304,7 @@ class TestDaySchedule:
 
     @pytest.fixture(scope="class")
     def schedules_idf(self):
-        yield IDF("tests/input_data/schedules/schedules.idf")
+        yield IDF(data_dir / "schedules/schedules.idf")
 
     @pytest.fixture()
     def schedule_day_interval(self, schedules_idf):
@@ -327,9 +319,7 @@ class TestDaySchedule:
         yield schedules_idf.idfobjects["SCHEDULE:DAY:LIST"]
 
     @pytest.fixture()
-    def all_schedule_days(
-        self, schedule_day_interval, schedule_day_hourly, schedule_day_list
-    ):
+    def all_schedule_days(self, schedule_day_interval, schedule_day_hourly, schedule_day_list):
         yield itertools.chain(schedule_day_list, schedule_day_hourly, schedule_day_list)
 
     def test_from_epbunch(self, all_schedule_days):
@@ -356,16 +346,12 @@ class TestWeekSchedule:
     @pytest.fixture()
     def sch_d_on(self):
         """Creates 2 DaySchedules: 1 always ON."""
-        yield DaySchedule.from_values(
-            Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day"
-        )
+        yield DaySchedule.from_values(Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day")
 
     @pytest.fixture()
     def sch_d_off(self):
         """Creates DaySchedules: 1 always OFF."""
-        yield DaySchedule.from_values(
-            Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day"
-        )
+        yield DaySchedule.from_values(Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day")
 
     def test_init(self, sch_d_on, sch_d_off):
         """Creates WeekSchedule from DaySchedule."""
@@ -379,10 +365,11 @@ class TestWeekSchedule:
             Type="Fraction",
             Name="OnOff_1",
         )
+        assert a.Name == "OnOff_1"
 
     @pytest.fixture(scope="class")
     def schedules_idf(self):
-        yield IDF("tests/input_data/schedules/schedules.idf")
+        yield IDF(data_dir / "schedules/schedules.idf")
 
     def test_from_epbunch_daily(self, schedule_week_daily):
         for epbunch in schedule_week_daily:
@@ -412,9 +399,7 @@ class TestWeekSchedule:
             "Name": "OnOff_2",
         }
         # Creates WeekSchedule from dict (from json)
-        a = WeekSchedule.from_dict(
-            dict_w_on, day_schedules={a.id: a for a in days}, allow_duplicates=True
-        )
+        a = WeekSchedule.from_dict(dict_w_on, day_schedules={a.id: a for a in days}, allow_duplicates=True)
         b = a.duplicate()
         # Makes sure WeekSchedules created with 2 methods have the same values
         # And different ids
@@ -435,9 +420,7 @@ class TestWeekSchedule:
 
         week_schedule_dict = a.to_dict()
 
-        b = WeekSchedule.from_dict(
-            week_schedule_dict, day_schedules={a.id: a for a in days}
-        )
+        b = WeekSchedule.from_dict(week_schedule_dict, day_schedules={a.id: a for a in days})
         assert a == b
         assert a is not b
 
@@ -448,12 +431,8 @@ class TestYearSchedule:
     def test_yearSchedule(self):
         """Creates YearSchedule from a dictionary."""
         # Creates 2 DaySchedules : 1 always ON and 1 always OFF
-        sch_d_on = DaySchedule.from_values(
-            Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day"
-        )
-        sch_d_off = DaySchedule.from_values(
-            Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day"
-        )
+        sch_d_on = DaySchedule.from_values(Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day")
+        sch_d_off = DaySchedule.from_values(Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day")
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
@@ -493,12 +472,8 @@ class TestYearSchedule:
 
     def test_year_schedule_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""
-        sch_d_on = DaySchedule.from_values(
-            Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day"
-        )
-        sch_d_off = DaySchedule.from_values(
-            Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day"
-        )
+        sch_d_on = DaySchedule.from_values(Name="AlwaysOn", Values=[1] * 24, Type="Fraction", Category="Day")
+        sch_d_off = DaySchedule.from_values(Name="AlwaysOff", Values=[0] * 24, Type="Fraction", Category="Day")
 
         # List of 7 dict with id of DaySchedule, representing the 7 days of the week
         days = [sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on, sch_d_off, sch_d_on]
@@ -516,9 +491,7 @@ class TestYearSchedule:
 
         sch_dict = sch_year.to_dict()
 
-        sch_year_dup = YearSchedule.from_dict(
-            sch_dict, week_schedules={a.id: a for a in [sch_w_on_off]}
-        )
+        sch_year_dup = YearSchedule.from_dict(sch_dict, week_schedules={a.id: a for a in [sch_w_on_off]})
 
         assert sch_year == sch_year_dup
 
@@ -544,8 +517,8 @@ class TestOpaqueMaterial:
 
     @pytest.fixture()
     def idf(self):
-        file = "tests/input_data/umi_samples/B_Off_0.idf"
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        file = data_dir / "umi_samples/B_Off_0.idf"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w)
 
     def test_add_materials(self, mat_a, mat_b):
@@ -676,20 +649,15 @@ class TestOpaqueMaterial:
         assert gypsum.SolarAbsorptance == gypsum_duplicate.SolarAbsorptance == 0.7
         assert gypsum.ThermalEmittance == gypsum_duplicate.ThermalEmittance == 0.9
         assert gypsum.VisibleAbsorptance == gypsum_duplicate.VisibleAbsorptance == 0.5
-        assert (
-            gypsum.MoistureDiffusionResistance
-            == gypsum_duplicate.MoistureDiffusionResistance
-            == 8.3
-        )
+        assert gypsum.MoistureDiffusionResistance == gypsum_duplicate.MoistureDiffusionResistance == 8.3
 
     @pytest.fixture()
     def materials_idf(self):
         """An IDF object with different material definitions."""
-        file = "tests/input_data/materials.idf"
+        file = data_dir / "materials.idf"
         yield IDF(file, prep_outputs=False)
 
     def test_from_epbunch(self, materials_idf):
-
         for epbunch in itertools.chain(
             materials_idf.idfobjects["MATERIAL"],
             materials_idf.idfobjects["MATERIAL:NOMASS"],
@@ -703,7 +671,7 @@ class TestOpaqueMaterial:
         """Assert creating objects from missing values still works"""
         OpaqueMaterial.from_dict(
             {
-                '$id': "0",
+                "$id": "0",
                 "key": "Material",
                 "Name": "G01 16mm gypsum board",
                 "Roughness": "MediumSmooth",
@@ -713,7 +681,7 @@ class TestOpaqueMaterial:
                 "SpecificHeat": 1090.0,
                 "ThermalEmittance": "",  # here is the missing value
                 "SolarAbsorptance": "",  # here is the missing value
-                "VisibleAbsorptance": ""  # here is the missing value
+                "VisibleAbsorptance": "",  # here is the missing value
             }
         )
 
@@ -734,7 +702,6 @@ class TestNoMassMaterial:
         assert no_mass == no_mass_dup
 
     def test_from_dict_to_dict(self):
-
         data = {
             "$id": "140532076832464",
             "Name": "R13LAYER",
@@ -914,13 +881,10 @@ class TestGasMaterial:
 
         from archetypal.template.materials.gas_material import GasMaterial
 
-        filename = "tests/input_data/umi_samples/BostonTemplateLibrary_2.json"
-        with open(filename, "r") as f:
+        filename = data_dir / "umi_samples/BostonTemplateLibrary_2.json"
+        with open(filename) as f:
             datastore = json.load(f)
-        gasMat_json = [
-            GasMaterial.from_dict(store, allow_duplicates=True)
-            for store in datastore["GasMaterials"]
-        ]
+        gasMat_json = [GasMaterial.from_dict(store, allow_duplicates=True) for store in datastore["GasMaterials"]]
         gm = gasMat_json[0]
         gm_2 = gm.duplicate()
 
@@ -963,17 +927,13 @@ class TestOpaqueConstruction:
     @pytest.fixture()
     def mat_a(self):
         """A :class:Material fixture."""
-        mat_a = OpaqueMaterial(
-            Conductivity=1.4, SpecificHeat=840, Density=2240, Name="Concrete"
-        )
+        mat_a = OpaqueMaterial(Conductivity=1.4, SpecificHeat=840, Density=2240, Name="Concrete")
         yield mat_a
 
     @pytest.fixture()
     def mat_b(self):
         """A :class:Material fixture."""
-        mat_b = OpaqueMaterial(
-            Conductivity=0.12, SpecificHeat=1210, Density=540, Name="Plywood"
-        )
+        mat_b = OpaqueMaterial(Conductivity=0.12, SpecificHeat=1210, Density=540, Name="Plywood")
 
         yield mat_b
 
@@ -1025,9 +985,7 @@ class TestOpaqueConstruction:
     @pytest.fixture()
     def plaster(self):
         """A :class:Material fixture."""
-        plaster = OpaqueMaterial(
-            Conductivity=1.39, Density=2000, SpecificHeat=1085, Name="Plaster"
-        )
+        plaster = OpaqueMaterial(Conductivity=1.39, Density=2000, SpecificHeat=1085, Name="Plaster")
         yield plaster
 
     @pytest.fixture()
@@ -1042,12 +1000,10 @@ class TestOpaqueConstruction:
         yield concrete
 
     @pytest.fixture()
-    def facebrick_and_concrete(
-        self, face_brick, thermal_insulation, hollow_concrete_block, plaster
-    ):
-        """A :class:Construction based on the `Facebrick–concrete wall` from: On
+    def facebrick_and_concrete(self, face_brick, thermal_insulation, hollow_concrete_block, plaster):
+        """A :class:Construction based on the `Facebrick-concrete wall` from: On
         the thermal time constant of structural walls. Applied Thermal
-        Engineering, 24(5–6), 743–757.
+        Engineering, 24(5-6), 743-757.
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         layers = [
@@ -1056,17 +1012,15 @@ class TestOpaqueConstruction:
             MaterialLayer(hollow_concrete_block, 0.2),
             MaterialLayer(plaster, 0.02),
         ]
-        oc_a = OpaqueConstruction(Layers=layers, Name="Facebrick–concrete wall")
+        oc_a = OpaqueConstruction(Layers=layers, Name="Facebrick-concrete wall")
 
         yield oc_a
 
     @pytest.fixture()
-    def insulated_concrete_wall(
-        self, face_brick, thermal_insulation, concrete_layer, plaster
-    ):
-        """A :class:Construction based on the `Facebrick–concrete wall` from: On
+    def insulated_concrete_wall(self, face_brick, thermal_insulation, concrete_layer, plaster):
+        """A :class:Construction based on the `Facebrick-concrete wall` from: On
         the thermal time constant of structural walls. Applied Thermal
-        Engineering, 24(5–6), 743–757.
+        Engineering, 24(5-6), 743-757.
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         layers = [
@@ -1125,9 +1079,7 @@ class TestOpaqueConstruction:
 
     def test_add_opaque_construction(self, construction_a, construction_b):
         """Test __add__() for OpaqueConstruction."""
-        oc_c = OpaqueConstruction.combine(
-            construction_a, construction_b, method="constant_ufactor"
-        )
+        oc_c = OpaqueConstruction.combine(construction_a, construction_b, method="constant_ufactor")
         assert oc_c
         desired = 3.237
         assert oc_c.u_value == pytest.approx(desired, 1e-3)
@@ -1201,12 +1153,10 @@ class TestOpaqueConstruction:
         assert construction_a != construction_b
         assert hash(construction_a) != hash(construction_b)
 
-    def test_real_word_construction(
-        self, facebrick_and_concrete, insulated_concrete_wall
-    ):
+    def test_real_word_construction(self, facebrick_and_concrete, insulated_concrete_wall):
         """This test is based on wall constructions, materials and results from:
         Tsilingiris, P. T. (2004). On the thermal time constant of structural
-        walls. Applied Thermal Engineering, 24(5–6), 743–757.
+        walls. Applied Thermal Engineering, 24(5-6), 743-757.
         https://doi.org/10.1016/j.applthermaleng.2003.10.015
 
         Args:
@@ -1214,23 +1164,13 @@ class TestOpaqueConstruction:
             insulated_concrete_wall:
         """
         assert facebrick_and_concrete.u_factor == pytest.approx(0.6740, 0.01)
-        assert (
-            facebrick_and_concrete.equivalent_heat_capacity_per_unit_volume
-            == pytest.approx(1595166.7, 0.01)
-        )
-        assert facebrick_and_concrete.heat_capacity_per_unit_wall_area == pytest.approx(
-            574260.0, 0.1
-        )
+        assert facebrick_and_concrete.equivalent_heat_capacity_per_unit_volume == pytest.approx(1595166.7, 0.01)
+        assert facebrick_and_concrete.heat_capacity_per_unit_wall_area == pytest.approx(574260.0, 0.1)
 
         assert insulated_concrete_wall.u_factor == pytest.approx(0.7710, 0.01)
-        assert (
-            insulated_concrete_wall.equivalent_heat_capacity_per_unit_volume
-            == pytest.approx(1826285.7, 0.01)
-        )
+        assert insulated_concrete_wall.equivalent_heat_capacity_per_unit_volume == pytest.approx(1826285.7, 0.01)
 
-        combined_mat = facebrick_and_concrete.combine(
-            insulated_concrete_wall, method="constant_ufactor"
-        )
+        combined_mat = facebrick_and_concrete.combine(insulated_concrete_wall, method="constant_ufactor")
         facebrick_and_concrete.area = 2
         combined_2xmat = facebrick_and_concrete + insulated_concrete_wall
         assert combined_mat.specific_heat > combined_2xmat.specific_heat
@@ -1564,13 +1504,13 @@ class TestWindowConstruction:
         temperature, r_values = triple.temperature_profile(
             outside_temperature=-18, inside_temperature=21, wind_speed=5.5
         )
-        assert [-18, -16.3, -16.1, 13.6, 13.8, 21.0] == pytest.approx(temperature, 1e-1)
+        assert pytest.approx(temperature, 1e-1) == [-18, -16.3, -16.1, 13.6, 13.8, 21.0]
         print(temperature, r_values)
 
         shgc = triple.shgc("summer")
         _, temperature = triple.heat_balance("summer")
         print("shgc:", shgc)
-        assert [32, 32.9, 32.9, 31.9, 31.8, 24.0] == pytest.approx(temperature, 1e-1)
+        assert pytest.approx(temperature, 1e-1) == [32, 32.9, 32.9, 31.9, 31.8, 24.0]
 
         print(temperature, r_values)  # m2-K/W
 
@@ -1716,9 +1656,7 @@ class TestUmiSchedule:
 
         # 2 UmiSchedule from different small_idf should have the same hash,
         # not be the same object, yet be equal if they have the same values
-        sched_3 = UmiSchedule.from_epbunch(
-            ep_bunch, allow_duplicates=True, DataSource="Other Name"
-        )
+        sched_3 = UmiSchedule.from_epbunch(ep_bunch, allow_duplicates=True, DataSource="Other Name")
         assert sched is not sched_3
         assert sched == sched_3
         assert hash(sched) != hash(sched_3)
@@ -1729,15 +1667,9 @@ class TestUmiSchedule:
 
         from archetypal.utils import reduce
 
-        sch1 = UmiSchedule(
-            Name="Equipment_10kw", Values=np.ones(24), quantity=10, Type="Fraction"
-        )
-        sch2 = UmiSchedule(
-            Name="Equipment_20kw", Values=np.ones(24) / 2, quantity=20, Type="Fraction"
-        )
-        sch3 = UmiSchedule(
-            Name="Equipment_30kw", Values=np.ones(24) / 3, quantity=30, Type="Fraction"
-        )
+        sch1 = UmiSchedule(Name="Equipment_10kw", Values=np.ones(24), quantity=10, Type="Fraction")
+        sch2 = UmiSchedule(Name="Equipment_20kw", Values=np.ones(24) / 2, quantity=20, Type="Fraction")
+        sch3 = UmiSchedule(Name="Equipment_30kw", Values=np.ones(24) / 3, quantity=30, Type="Fraction")
         sch4 = reduce(UmiSchedule.combine, (sch1, sch2, sch3))
         assert sch4
 
@@ -1747,15 +1679,11 @@ class TestZoneConstructionSet:
 
     @pytest.fixture()
     def core_set(self):
-        yield ZoneConstructionSet(
-            Name="Core Construction Set", Partition=OpaqueConstruction.generic()
-        )
+        yield ZoneConstructionSet(Name="Core Construction Set", Partition=OpaqueConstruction.generic())
 
     @pytest.fixture()
     def perim_set(self):
-        yield ZoneConstructionSet(
-            Name="Perimeter Construction Set", Partition=OpaqueConstruction.generic()
-        )
+        yield ZoneConstructionSet(Name="Perimeter Construction Set", Partition=OpaqueConstruction.generic())
 
     def test_add_zoneconstructionset(self, core_set, perim_set):
         """Test __add__() for ZoneConstructionSet."""
@@ -1778,15 +1706,14 @@ class TestZoneConstructionSet:
         construction_set_dup = construction_set.duplicate()
 
         assert construction_set == construction_set_dup
-        assert (
-            construction_set.Name == construction_set_dup.Name == "A construction set"
-        )
+        assert construction_set.Name == construction_set_dup.Name == "A construction set"
 
     def test_zone_construction_set_from_zone(self, warehouse):
         """Test from zone epbunch"""
         zone = warehouse.getobject("ZONE", "Office")
         z = ZoneDefinition.from_epbunch(ep_bunch=zone, construct_parents=False)
         constrSet_ = ZoneConstructionSet.from_zone(z)
+        assert constrSet_.Name == "Office_ZoneConstructionSet"
 
     def test_zoneConstructionSet_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""
@@ -1809,9 +1736,7 @@ class TestZoneConstructionSet:
             "Name": "B_Off_0 constructions",
         }
 
-        construction_set = ZoneConstructionSet.from_dict(
-            data, opaque_constructions={a.id: a for a in [construction]}
-        )
+        construction_set = ZoneConstructionSet.from_dict(data, opaque_constructions={a.id: a for a in [construction]})
         construction_set_data = construction_set.to_dict()
 
         construction_set_dup = ZoneConstructionSet.from_dict(
@@ -1910,9 +1835,7 @@ class TestZoneLoad:
     def zl(self):
         yield ZoneLoad(
             EquipmentPowerDensity=10,
-            EquipmentAvailabilitySchedule=UmiSchedule.random(
-                Name="Random Equipment " "Schedule"
-            ),
+            EquipmentAvailabilitySchedule=UmiSchedule.random(Name="Random Equipment Schedule"),
             LightsAvailabilitySchedule=UmiSchedule.constant_schedule(Name="AlwaysOn"),
             OccupancySchedule=UmiSchedule.constant_schedule(Name="AlwaysOn"),
             area=50,
@@ -1986,13 +1909,9 @@ class TestZoneConditioning:
         ],
     )
     def zoneConditioningtests(self, config, request):
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idf = IDF.from_example_files(
-            request.param, epw=w, annual=False, design_day=True
-        )
-        copy = IDF.from_example_files(
-            request.param, epw=w, annual=False, design_day=True
-        )
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf = IDF.from_example_files(request.param, epw=w, annual=False, design_day=True)
+        copy = IDF.from_example_files(request.param, epw=w, annual=False, design_day=True)
         if idf.sim_info is None:
             idf.simulate()
         if copy.sim_info is None:
@@ -2008,11 +1927,7 @@ class TestZoneConditioning:
         cond = ZoneConditioning(Name="A Name")
         cond_dup = cond.duplicate()
 
-        assert (
-            cond.EconomizerType
-            == cond_dup.EconomizerType
-            == EconomizerTypes.NoEconomizer
-        )
+        assert cond.EconomizerType == cond_dup.EconomizerType == EconomizerTypes.NoEconomizer
 
     def test_from_zone(self, config, zoneConditioningtests):
         """"""
@@ -2021,15 +1936,19 @@ class TestZoneConditioning:
         if idf_name == "RefMedOffVAVAllDefVRP.idf":
             zone_ep = idf.getobject("ZONE", "Core_mid")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep)
-            cond_ = ZoneConditioning.from_zone(z, zone_ep)
+            zone_condition = ZoneConditioning.from_zone(z, zone_ep)
+            assert zone_condition.EconomizerType == EconomizerTypes.DifferentialDryBulb
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_HeatRecoveryHXSL.idf":
             zone_ep = idf.getobject("ZONE", "West Zone")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep)
-            cond_HX = ZoneConditioning.from_zone(z, zone_ep)
+            zone_condition = ZoneConditioning.from_zone(z, zone_ep)
+            assert zone_condition.EconomizerType == EconomizerTypes.NoEconomizer
+
         if idf_name == "AirflowNetwork_MultiZone_SmallOffice_CoilHXAssistedDX.idf":
             zone_ep = idf.getobject("ZONE", "East Zone")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep)
-            cond_HX_eco = ZoneConditioning.from_zone(z, zone_ep)
+            zone_condition = ZoneConditioning.from_zone(z, zone_ep)
+            assert zone_condition.EconomizerType == EconomizerTypes.NoEconomizer
 
     def test_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""
@@ -2066,15 +1985,11 @@ class TestZoneConditioning:
             "Name": "B_Off_0 Conditioning",
         }
 
-        cond = ZoneConditioning.from_dict(
-            copy(data), schedules={a.id: a for a in [schedule]}
-        )
+        cond = ZoneConditioning.from_dict(copy(data), schedules={a.id: a for a in [schedule]})
 
         cond_dict = cond.to_dict()
 
-        cond_dup = ZoneConditioning.from_dict(
-            cond_dict, schedules={a.id: a for a in [schedule]}
-        )
+        cond_dup = ZoneConditioning.from_dict(cond_dict, schedules={a.id: a for a in [schedule]})
 
         assert cond == cond_dup
         assert cond is not cond_dup
@@ -2131,7 +2046,7 @@ class TestVentilationSetting:
 
     @pytest.fixture(
         scope="class",
-        params=["VentilationSimpleTest.idf"],
+        params=["VentilationSimpleTest.idf", "RefBldgWarehouseNew2004_Chicago.idf"],
     )
     def ventilatontests(self, config, request):
         """Create test cases with different ventilation definitions."""
@@ -2173,15 +2088,21 @@ class TestVentilationSetting:
         if idf_name == "VentilationSimpleTest.idf":
             zone_ep = idf.getobject("ZONE", "ZONE 1")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
-            natVent = VentilationSetting.from_zone(z, zone_ep)
+            ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
+            assert ventilation_setting.IsNatVentOn is True
+            assert ventilation_setting.IsScheduledVentilationOn is False
         if idf_name == "VentilationSimpleTest.idf":
             zone_ep = idf.getobject("ZONE", "ZONE 2")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
-            schedVent = VentilationSetting.from_zone(z, zone_ep)
+            ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
+            assert ventilation_setting.IsNatVentOn is False
+            assert ventilation_setting.IsScheduledVentilationOn is True
         if idf_name == "RefBldgWarehouseNew2004_Chicago.idf":
             zone_ep = idf.getobject("ZONE", "Office")
             z = ZoneDefinition.from_epbunch(ep_bunch=zone_ep, construct_parents=False)
-            infiltVent = VentilationSetting.from_zone(z, zone_ep)
+            ventilation_setting = VentilationSetting.from_zone(z, zone_ep)
+            assert ventilation_setting.IsNatVentOn is False
+            assert ventilation_setting.IsScheduledVentilationOn is False
 
     def test_ventilationSetting_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""
@@ -2208,14 +2129,10 @@ class TestVentilationSetting:
             "DataSource": "MIT_SDL",
             "Name": "Ventilation 1",
         }
-        vent = VentilationSetting.from_dict(
-            data, schedules={a.id: a for a in [schedule]}
-        )
+        vent = VentilationSetting.from_dict(data, schedules={a.id: a for a in [schedule]})
         vent_dict = vent.to_dict()
 
-        vent_dup = VentilationSetting.from_dict(
-            vent_dict, schedules={a.id: a for a in [schedule]}
-        )
+        vent_dup = VentilationSetting.from_dict(vent_dict, schedules={a.id: a for a in [schedule]})
 
         assert vent == vent_dup
         assert vent is not vent_dup
@@ -2303,18 +2220,12 @@ class TestVentilationSetting:
         assert vent_3.volume == vent_1.volume + vent_2.volume
         assert vent_3.Infiltration == pytest.approx((0.1 + 0.2) / 2)
         annual_air_volume = (
-            vent_1.ScheduledVentilationSchedule.all_values
-            * vent_1.ScheduledVentilationAch
-            * vent_1.volume
+            vent_1.ScheduledVentilationSchedule.all_values * vent_1.ScheduledVentilationAch * vent_1.volume
         ).sum() + (
-            vent_2.ScheduledVentilationSchedule.all_values
-            * vent_2.ScheduledVentilationAch
-            * vent_2.volume
+            vent_2.ScheduledVentilationSchedule.all_values * vent_2.ScheduledVentilationAch * vent_2.volume
         ).sum()
         combined_annual_air_volume = (
-            vent_3.ScheduledVentilationSchedule.all_values
-            * vent_3.ScheduledVentilationAch
-            * vent_3.volume
+            vent_3.ScheduledVentilationSchedule.all_values * vent_3.ScheduledVentilationAch * vent_3.volume
         ).sum()
         assert combined_annual_air_volume == pytest.approx(annual_air_volume)
 
@@ -2351,17 +2262,10 @@ class TestVentilationSetting:
             (vent_1.ScheduledVentilationAch + vent_2.ScheduledVentilationAch) / 2
         )
         annual_air_volume = (
-            0
-            + (
-                vent_2.ScheduledVentilationSchedule.all_values
-                * vent_2.ScheduledVentilationAch
-                * vent_2.volume
-            ).sum()
+            0 + (vent_2.ScheduledVentilationSchedule.all_values * vent_2.ScheduledVentilationAch * vent_2.volume).sum()
         )
         combined_annual_air_volume = (
-            vent_3.ScheduledVentilationSchedule.all_values
-            * vent_3.ScheduledVentilationAch
-            * vent_3.volume
+            vent_3.ScheduledVentilationSchedule.all_values * vent_3.ScheduledVentilationAch * vent_3.volume
         ).sum()
         assert combined_annual_air_volume == annual_air_volume
 
@@ -2390,9 +2294,7 @@ class TestDomesticHotWaterSetting:
             "DataSource": "MIT_SDL",
             "Name": "B_Off_0 hot water",
         }
-        dhw = DomesticHotWaterSetting.from_dict(
-            dhw_dict, schedules={a.id: a for a in schedules}
-        )
+        dhw = DomesticHotWaterSetting.from_dict(dhw_dict, schedules={a.id: a for a in schedules})
         dhw_dup = dhw.duplicate()
 
         assert dhw == dhw_dup
@@ -2456,16 +2358,12 @@ class TestDomesticHotWaterSetting:
 
         # assert final annual quantity is kept. multiply schedule by flowrate per
         # area and area.
-        total_water_zone_1 = sum(
-            zone_1.WaterSchedule.all_values * zone_1.FlowRatePerFloorArea * zone_1.area
-        )
-        total_water_zone_2 = sum(
-            zone_2.WaterSchedule.all_values * zone_2.FlowRatePerFloorArea * zone_2.area
-        )
+        total_water_zone_1 = sum(zone_1.WaterSchedule.all_values * zone_1.FlowRatePerFloorArea * zone_1.area)
+        total_water_zone_2 = sum(zone_2.WaterSchedule.all_values * zone_2.FlowRatePerFloorArea * zone_2.area)
         total_water = total_water_zone_1 + total_water_zone_2
-        assert sum(
-            combined.WaterSchedule.all_values * combined.FlowRatePerFloorArea * 100
-        ) == pytest.approx(total_water)
+        assert sum(combined.WaterSchedule.all_values * combined.FlowRatePerFloorArea * 100) == pytest.approx(
+            total_water
+        )
 
     def test_hash_eq_dhw(self):
         """Test equality and hashing of :class:`DomesticHotWaterSetting`."""
@@ -2514,16 +2412,14 @@ class TestDomesticHotWaterSetting:
 class TestWindowSetting:
     """Combines different :class:`WindowSetting` tests."""
 
-    @pytest.fixture(
-        scope="class", params=["WindowTests.idf", "AirflowNetwork3zVent.idf"]
-    )
+    @pytest.fixture(scope="class", params=["WindowTests.idf", "AirflowNetwork3zVent.idf"])
     def windowtests(self, config, request):
         """
         Args:
             config:
             request:
         """
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF.from_example_files(request.param, epw=w, design_day=True)
         if idf.sim_info is None:
             idf.simulate()
@@ -2560,9 +2456,7 @@ class TestWindowSetting:
     def test_windowsettings_from_to_dict(self):
         """Make dict with `to_dict` and load again with `from_dict`."""
 
-        window_cstrc = WindowConstruction.from_shgc(
-            "Window Construction", 0.5, 2.2, 0.21, id="57"
-        )
+        window_cstrc = WindowConstruction.from_shgc("Window Construction", 0.5, 2.2, 0.21, id="57")
         constructions = [window_cstrc]
         schedules = [UmiSchedule.constant_schedule(id="1")]
         data = {
@@ -2726,10 +2620,7 @@ class TestInternalMass:
         )
         internal_mass_dup = internal_mass.duplicate()
         assert internal_mass == internal_mass_dup
-        assert (
-            internal_mass.total_area_exposed_to_zone
-            == internal_mass_dup.total_area_exposed_to_zone
-        )
+        assert internal_mass.total_area_exposed_to_zone == internal_mass_dup.total_area_exposed_to_zone
 
     def test_from_zone(self, small_idf_obj):
         """Test constructor from Zone EpBunch object."""
@@ -2818,8 +2709,7 @@ class TestZoneDefinition:
 
     def test_zone_volume(self, small_idf_copy):
         """Test the zone volume for a sloped roof."""
-        idf = small_idf_copy.simulate()
-        zone = idf.getobject("ZONE", "Perim")
+        zone = small_idf_copy.simulate().getobject("ZONE", "Perim")
         z = ZoneDefinition.from_epbunch(ep_bunch=zone, construct_parents=False)
         assert z.volume == pytest.approx(25.54, 1e-2)
 
@@ -2916,7 +2806,7 @@ class TestZoneDefinition:
 def bt(config):
     """A building template fixture used in subsequent tests"""
 
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     idf = IDF.from_example_files("5ZoneCostEst.idf", epw=w, annual=True)
     if idf.sim_info is None:
         idf.simulate()
@@ -2941,16 +2831,12 @@ class TestBuildingTemplate:
 
     @pytest.fixture()
     def window_setting(self, window_construction):
-        window_setting = WindowSetting(
-            "Window Setting", Construction=window_construction, id="181"
-        )
+        window_setting = WindowSetting("Window Setting", Construction=window_construction, id="181")
         return window_setting
 
     @pytest.fixture()
     def window_construction(self):
-        window_cstrc = WindowConstruction.from_shgc(
-            "Window Construction", 0.5, 2.2, 0.21, id="57"
-        )
+        window_cstrc = WindowConstruction.from_shgc("Window Construction", 0.5, 2.2, 0.21, id="57")
         return window_cstrc
 
     @pytest.fixture()
@@ -3075,14 +2961,13 @@ class TestBuildingTemplate:
         assert bt != bt_2
 
     def test_reduce(self, zone_definition):
-
-        bt = BuildingTemplate.reduced_model(
+        BuildingTemplate.reduced_model(
             "A Building Template",
             [zone_definition],
         )
 
 
-class TestUniqueName(object):
+class TestUniqueName:
     def test_uniquename(self):
         name1 = UniqueName("myname")
         name2 = UniqueName("myname")

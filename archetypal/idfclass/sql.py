@@ -1,15 +1,18 @@
 """Module for parsing EnergyPlus SQLite result files into DataFrames."""
+
+from __future__ import annotations
+
 import logging
+from collections.abc import Sequence
 from datetime import timedelta
 from sqlite3 import connect
-from typing import List, Optional, Sequence, Union
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 from energy_pandas import EnergyDataFrame
 from pandas import to_datetime
 from path import Path
-from typing_extensions import Literal
 
 from archetypal.utils import log
 
@@ -37,7 +40,7 @@ class SqlOutput:
         self.output_name = output_name
         self.reporting_frequency = reporting_frequency
 
-    def values(self, environment_type: int = 3, units: str = None) -> EnergyDataFrame:
+    def values(self, environment_type: int = 3, units: str | None = None) -> EnergyDataFrame:
         """Get the time series values as an EnergyDataFrame.
 
         Args:
@@ -49,14 +52,11 @@ class SqlOutput:
         Returns:
             (EnergyDataFrame): The time series as an EnergyDataFrame.
         """
-        cols = (
-            "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, "
-            "Units, ReportingFrequency"
-        )
+        cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, Units, ReportingFrequency"
         query = f"""
-            SELECT {cols} 
-            FROM ReportDataDictionary 
-            WHERE Name=@output_name 
+            SELECT {cols}
+            FROM ReportDataDictionary
+            WHERE Name=@output_name
             AND ReportingFrequency=@reporting_frequency;
         """
         with connect(self._file_path) as conn:
@@ -82,14 +82,12 @@ class SqlOutput:
 class _SqlOutputs:
     """Represents all the available outputs from the Sql file."""
 
-    def __init__(self, file_path: str, available_outputs: List[tuple]):
+    def __init__(self, file_path: str, available_outputs: list[tuple]):
         self._available_outputs = available_outputs
         self._properties = {}
 
         for output, reporting_frequency in self._available_outputs:
-            name = (
-                output.replace(":", "__").replace(" ", "_") + f"_{reporting_frequency}"
-            )
+            name = output.replace(":", "__").replace(" ", "_") + f"_{reporting_frequency}"
             self._properties[name] = SqlOutput(file_path, output, reporting_frequency)
             setattr(self, name, self._properties[name])
 
@@ -122,7 +120,7 @@ class Sql:
 
     def __init__(self, file_path):
         """Initialize SQLiteResult"""
-        assert Path(file_path).exists(), "No file was found at {}".format(file_path)
+        assert Path(file_path).exists(), f"No file was found at {file_path}"
         self._file_path = file_path
 
         # values to be computed as soon as they are requested
@@ -150,7 +148,7 @@ class Sql:
         return self._tabular_data_keys
 
     @property
-    def available_outputs(self) -> List[tuple]:
+    def available_outputs(self) -> list[tuple]:
         """Get tuples (OutputName, ReportingFrequency) that can be requested.
 
         Any of these outputs when input to data_collections_by_output_name will
@@ -207,22 +205,17 @@ class Sql:
         "ReportForString").
         """
         with connect(self.file_path) as conn:
-            cols = (
-                "ReportName, TableName, ReportForString, ColumnName, RowName, "
-                "Units, Value"
-            )
+            cols = "ReportName, TableName, ReportForString, ColumnName, RowName, Units, Value"
             query = f"SELECT {cols} FROM TabularDataWithStrings"
             data = pd.read_sql(query, conn)
 
-        data.RowName = data.RowName.replace({"": np.NaN, "-": np.NaN})
+        data.RowName = data.RowName.replace({"": np.nan, "-": np.nan})
         data.dropna(subset=["RowName"], inplace=True)
 
         all_df = {}
         for name, df in data.groupby(["ReportName", "TableName", "ReportForString"]):
             try:
-                pivoted = df.pivot(
-                    columns=["ColumnName", "Units"], index="RowName", values="Value"
-                )
+                pivoted = df.pivot(columns=["ColumnName", "Units"], index="RowName", values="Value")
             except ValueError:
                 # Cannot pivot; return long form
                 pivoted = df
@@ -236,9 +229,9 @@ class Sql:
 
     def timeseries_by_name(
         self,
-        variable_or_meter: Union[str, Sequence],
-        reporting_frequency: Union[_REPORTING_FREQUENCIES] = "Hourly",
-        environment_type: Union[Literal[1, 2, 3]] = 3,
+        variable_or_meter: str | Sequence,
+        reporting_frequency: _REPORTING_FREQUENCIES = "Hourly",
+        environment_type: Literal[1, 2, 3] = 3,
     ) -> EnergyDataFrame:
         """Get an EnergyDataFrame for specified meters and/or variables.
 
@@ -274,14 +267,13 @@ class Sql:
                     reporting_frequency,
                 ) not in self.available_outputs:
                     log(
-                        f"{(variable_or_meter, reporting_frequency)} not "
-                        f"an available output in the Sql file.",
+                        f"{(variable_or_meter, reporting_frequency)} not " f"an available output in the Sql file.",
                         level=logging.WARNING,
                     )
                 query = f"""
-                        SELECT {cols} 
-                        FROM ReportDataDictionary 
-                        WHERE Name=@output_name 
+                        SELECT {cols}
+                        FROM ReportDataDictionary
+                        WHERE Name=@output_name
                         AND ReportingFrequency=@reporting_frequency;
                         """
                 header_rows = pd.read_sql(
@@ -294,9 +286,9 @@ class Sql:
                 )
             elif len(variable_or_meter) == 1:  # assume it's a list
                 query = f"""
-                        SELECT {cols} 
-                        FROM ReportDataDictionary 
-                        WHERE Name=@output_name 
+                        SELECT {cols}
+                        FROM ReportDataDictionary
+                        WHERE Name=@output_name
                         AND ReportingFrequency=@reporting_frequency;
                         """
                 header_rows = pd.read_sql(
@@ -309,8 +301,8 @@ class Sql:
                 )
             else:  # assume it is a list of outputs
                 query = f"""
-                        SELECT {cols} 
-                        FROM ReportDataDictionary 
+                        SELECT {cols}
+                        FROM ReportDataDictionary
                         WHERE Name IN {tuple(variable_or_meter)}
                         AND ReportingFrequency=@reporting_frequency;"""
                 header_rows = pd.read_sql(
@@ -333,7 +325,7 @@ class Sql:
         return data
 
     def tabular_data_by_name(
-        self, report_name: str, table_name: str, report_for_string: Optional[str] = None
+        self, report_name: str, table_name: str, report_for_string: str | None = None
     ) -> pd.DataFrame:
         """Get (ReportName, TableName) data as DataFrame.
 
@@ -348,12 +340,12 @@ class Sql:
         with connect(self.file_path) as conn:
             cols = "RowName, ColumnName, Value, Units"
             query = f"""
-                SELECT {cols} FROM TabularDataWithStrings 
-                WHERE 
+                SELECT {cols} FROM TabularDataWithStrings
+                WHERE
                     (@report_name IS NULL OR ReportName=@report_name)
-                AND 
+                AND
                     (@table_name IS NULL OR TableName=@table_name)
-                AND 
+                AND
                     (@report_for_string IS NULL OR ReportForString=@report_for_string);
             """
             data = pd.read_sql(
@@ -366,9 +358,7 @@ class Sql:
                 },
             )
             try:
-                pivoted = data.pivot(
-                    index="RowName", columns=["ColumnName", "Units"], values="Value"
-                )
+                pivoted = data.pivot(index="RowName", columns=["ColumnName", "Units"], values="Value")
             except ValueError:
                 # Cannot pivot; return long-form DataFrame
                 pivoted = data
@@ -381,7 +371,7 @@ class Sql:
             pivoted = pivoted.apply(pd.to_numeric, errors="ignore")
         return pivoted
 
-    def _extract_available_outputs(self) -> List:
+    def _extract_available_outputs(self) -> list:
         """Extract the list of all available outputs from the SQLite file."""
         with connect(self.file_path) as conn:
             cols = "Name, ReportingFrequency"
@@ -417,20 +407,18 @@ class Sql:
         return df
 
 
-def _extract_timeseries(
-    conn, environment_type, header_rows, rel_indices
-) -> EnergyDataFrame:
+def _extract_timeseries(conn, environment_type, header_rows, rel_indices) -> EnergyDataFrame:
     """Extract time series given indices."""
     if len(rel_indices) == 1:
         data = pd.read_sql(
             """SELECT rd.Value,
-                      rd.ReportDataDictionaryIndex, 
+                      rd.ReportDataDictionaryIndex,
                       t.Month,
                       t.Day,
                       t.Hour,
                       t.Minute,
                       t.Interval
-            FROM ReportData as rd 
+            FROM ReportData as rd
                     LEFT JOIN Time As t ON rd.TimeIndex = t.TimeIndex
                     LEFT JOIN EnvironmentPeriods as p ON t.EnvironmentPeriodIndex = p.EnvironmentPeriodIndex
             WHERE ReportDataDictionaryIndex=@rel_indices
@@ -494,7 +482,5 @@ def _extract_timeseries(
     data.index = index
     # Create the EnergyDataFrame and set the units using dict
     data = EnergyDataFrame(data)
-    data.units = header_rows.set_index(["IndexGroup", "KeyValue", "Name"])[
-        "Units"
-    ].to_dict()
+    data.units = header_rows.set_index(["IndexGroup", "KeyValue", "Name"])["Units"].to_dict()
     return data

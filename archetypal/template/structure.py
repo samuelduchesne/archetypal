@@ -1,6 +1,7 @@
 """archetypal StructureInformation."""
 
 import collections
+from typing import ClassVar
 
 from validator_collection import validators
 
@@ -8,7 +9,7 @@ from archetypal.template.constructions.base_construction import ConstructionBase
 from archetypal.template.materials.opaque_material import OpaqueMaterial
 
 
-class MassRatio(object):
+class MassRatio:
     """Handles the properties of the mass ratio for building template structure."""
 
     __slots__ = ("_high_load_ratio", "_material", "_normal_ratio")
@@ -41,9 +42,7 @@ class MassRatio(object):
 
     @Material.setter
     def Material(self, value):
-        assert isinstance(
-            value, OpaqueMaterial
-        ), f"Material must be of type OpaqueMaterial, not {type(value)}"
+        assert isinstance(value, OpaqueMaterial), f"Material must be of type OpaqueMaterial, not {type(value)}"
         self._material = value
 
     @property
@@ -76,8 +75,7 @@ class MassRatio(object):
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for k, v in self.mapping().items():
-            yield k, v
+        yield from self.mapping().items()
 
     def to_dict(self):
         """Return MassRatio dictionary representation."""
@@ -89,11 +87,11 @@ class MassRatio(object):
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
-        return dict(
-            HighLoadRatio=self.HighLoadRatio,
-            Material=self.Material,
-            NormalRatio=self.NormalRatio,
-        )
+        return {
+            "HighLoadRatio": self.HighLoadRatio,
+            "Material": self.Material,
+            "NormalRatio": self.NormalRatio,
+        }
 
     def get_unique(self):
         """Return the first of all the created objects that is equivalent to self."""
@@ -139,7 +137,7 @@ class StructureInformation(ConstructionBase):
     .. image:: ../images/template/constructions-structure.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["StructureInformation"]] = []
 
     __slots__ = ("_mass_ratios",)
 
@@ -150,7 +148,7 @@ class StructureInformation(ConstructionBase):
             MassRatios (list of MassRatio): MassRatio object.
             **kwargs: keywords passed to the ConstructionBase constructor.
         """
-        super(StructureInformation, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.MassRatios = MassRatios
 
         # Only at the end append self to _CREATED_OBJECTS
@@ -222,18 +220,18 @@ class StructureInformation(ConstructionBase):
         if validate:
             self.validate()
 
-        return dict(
-            MassRatios=self.MassRatios,
-            AssemblyCarbon=self.AssemblyCarbon,
-            AssemblyCost=self.AssemblyCost,
-            AssemblyEnergy=self.AssemblyEnergy,
-            DisassemblyCarbon=self.DisassemblyCarbon,
-            DisassemblyEnergy=self.DisassemblyEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "MassRatios": self.MassRatios,
+            "AssemblyCarbon": self.AssemblyCarbon,
+            "AssemblyCost": self.AssemblyCost,
+            "AssemblyEnergy": self.AssemblyEnergy,
+            "DisassemblyCarbon": self.DisassemblyCarbon,
+            "DisassemblyEnergy": self.DisassemblyEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""

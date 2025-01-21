@@ -1,8 +1,8 @@
 """archetypal OpaqueMaterial."""
 
 import collections
+from typing import ClassVar
 
-import numpy as np
 from sigfig import round
 from validator_collection import validators
 
@@ -14,7 +14,7 @@ from archetypal.utils import log
 class NoMassMaterial(MaterialBase):
     """Use this component to create a custom no mass material."""
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["NoMassMaterial"]] = []
 
     _ROUGHNESS_TYPES = (
         "VeryRough",
@@ -71,7 +71,7 @@ class NoMassMaterial(MaterialBase):
                 stagnant air [%].
             **kwargs: keywords passed to parent constructors.
         """
-        super(NoMassMaterial, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.r_value = RValue
         self.Roughness = Roughness
         self.SolarAbsorptance = SolarAbsorptance
@@ -127,9 +127,7 @@ class NoMassMaterial(MaterialBase):
     def ThermalEmittance(self, value):
         if value == "" or value is None:
             value = 0.9
-        self._thermal_emittance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        self._thermal_emittance = validators.float(value, minimum=0, maximum=1, allow_empty=True)
 
     @property
     def VisibleAbsorptance(self):
@@ -140,9 +138,7 @@ class NoMassMaterial(MaterialBase):
     def VisibleAbsorptance(self, value):
         if value == "" or value is None or value is None:
             value = 0.7
-        self._visible_absorptance = validators.float(
-            value, minimum=0, maximum=1, allow_empty=True
-        )
+        self._visible_absorptance = validators.float(value, minimum=0, maximum=1, allow_empty=True)
 
     @property
     def MoistureDiffusionResistance(self):
@@ -168,10 +164,7 @@ class NoMassMaterial(MaterialBase):
         """
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -179,10 +172,7 @@ class NoMassMaterial(MaterialBase):
             return self
 
         if not weights:
-            log(
-                'using OpaqueMaterial density as weighting factor in "{}" '
-                "combine.".format(self.__class__.__name__)
-            )
+            log(f'using OpaqueMaterial density as weighting factor in "{self.__class__.__name__}" ' "combine.")
             weights = [self.Density, other.Density]
 
         meta = self._get_predecessors_meta(other)
@@ -196,18 +186,12 @@ class NoMassMaterial(MaterialBase):
             TransportCarbon=self.float_mean(other, "TransportCarbon", weights),
             TransportDistance=self.float_mean(other, "TransportDistance", weights),
             TransportEnergy=self.float_mean(other, "TransportEnergy", weights),
-            SubstitutionRatePattern=self.float_mean(
-                other, "SubstitutionRatePattern", weights=None
-            ),
-            SubstitutionTimestep=self.float_mean(
-                other, "SubstitutionTimestep", weights
-            ),
+            SubstitutionRatePattern=self.float_mean(other, "SubstitutionRatePattern", weights=None),
+            SubstitutionTimestep=self.float_mean(other, "SubstitutionTimestep", weights),
             Cost=self.float_mean(other, "Cost", weights),
             EmbodiedCarbon=self.float_mean(other, "EmbodiedCarbon", weights),
             EmbodiedEnergy=self.float_mean(other, "EmbodiedEnergy", weights),
-            MoistureDiffusionResistance=self.float_mean(
-                other, "MoistureDiffusionResistance", weights
-            ),
+            MoistureDiffusionResistance=self.float_mean(other, "MoistureDiffusionResistance", weights),
         )
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         return new_obj
@@ -287,7 +271,7 @@ class NoMassMaterial(MaterialBase):
             material into EnergyPlus, internally the properties of this layer
             are converted to approximate the properties of air (density,
             specific heat, and conductivity) with the thickness adjusted to
-            maintain the user’s desired R-Value. This allowed such layers to be
+            maintain the user's desired R-Value. This allowed such layers to be
             handled internally in the same way as other layers without any
             additional changes to the code. This solution was deemed accurate
             enough as air has very little thermal mass and it made the coding of
@@ -328,8 +312,7 @@ class NoMassMaterial(MaterialBase):
             )
         elif epbunch.key.upper() == "MATERIAL:AIRGAP":
             gas_prop = {
-                obj.Name.upper(): obj.mapping()
-                for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
+                obj.Name.upper(): obj.mapping() for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
             }
             for gasname, properties in gas_prop.items():
                 if gasname.lower() in epbunch.Name.lower():
@@ -340,9 +323,7 @@ class NoMassMaterial(MaterialBase):
                         **properties,
                     )
                 else:
-                    thickness = (
-                        gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
-                    )
+                    thickness = gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
                     return cls(
                         Name=epbunch.Name,
                         Thickness=thickness,
@@ -350,9 +331,9 @@ class NoMassMaterial(MaterialBase):
                     )
         else:
             raise NotImplementedError(
-                "Material '{}' of type '{}' is not yet "
+                f"Material '{epbunch.Name}' of type '{epbunch.key}' is not yet "
                 "supported. Please contact package "
-                "authors".format(epbunch.Name, epbunch.key)
+                "authors"
             )
 
     def to_epbunch(self, idf):
@@ -382,12 +363,12 @@ class NoMassMaterial(MaterialBase):
             is parsed. This breaks the UmiTemplate Editor, therefore we set a value
             on these attributes (if necessary) in this validation step.
         """
-        if getattr(self, "SolarAbsorptance") == "":
-            setattr(self, "SolarAbsorptance", 0.7)
-        if getattr(self, "ThermalEmittance") == "":
-            setattr(self, "ThermalEmittance", 0.9)
-        if getattr(self, "VisibleAbsorptance") == "":
-            setattr(self, "VisibleAbsorptance", 0.7)
+        if self.SolarAbsorptance == "":
+            self.SolarAbsorptance = 0.7
+        if self.ThermalEmittance == "":
+            self.ThermalEmittance = 0.9
+        if self.VisibleAbsorptance == "":
+            self.VisibleAbsorptance = 0.7
         return self
 
     def mapping(self, validate=False):
@@ -400,26 +381,26 @@ class NoMassMaterial(MaterialBase):
         if validate:
             self.validate()
 
-        return dict(
-            RValue=self.r_value,
-            MoistureDiffusionResistance=self.MoistureDiffusionResistance,
-            Roughness=self.Roughness,
-            SolarAbsorptance=self.SolarAbsorptance,
-            ThermalEmittance=self.ThermalEmittance,
-            VisibleAbsorptance=self.VisibleAbsorptance,
-            Cost=self.Cost,
-            EmbodiedCarbon=self.EmbodiedCarbon,
-            EmbodiedEnergy=self.EmbodiedEnergy,
-            SubstitutionRatePattern=self.SubstitutionRatePattern,
-            SubstitutionTimestep=self.SubstitutionTimestep,
-            TransportCarbon=self.TransportCarbon,
-            TransportDistance=self.TransportDistance,
-            TransportEnergy=self.TransportEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "RValue": self.r_value,
+            "MoistureDiffusionResistance": self.MoistureDiffusionResistance,
+            "Roughness": self.Roughness,
+            "SolarAbsorptance": self.SolarAbsorptance,
+            "ThermalEmittance": self.ThermalEmittance,
+            "VisibleAbsorptance": self.VisibleAbsorptance,
+            "Cost": self.Cost,
+            "EmbodiedCarbon": self.EmbodiedCarbon,
+            "EmbodiedEnergy": self.EmbodiedEnergy,
+            "SubstitutionRatePattern": self.SubstitutionRatePattern,
+            "SubstitutionTimestep": self.SubstitutionTimestep,
+            "TransportCarbon": self.TransportCarbon,
+            "TransportDistance": self.TransportDistance,
+            "TransportEnergy": self.TransportEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""

@@ -1,38 +1,38 @@
-name-template: 'v$RESOLVED_VERSION 🌈'
-tag-template: 'v$RESOLVED_VERSION'
+name-template: "v$RESOLVED_VERSION 🌈"
+tag-template: "v$RESOLVED_VERSION"
 categories:
-  - title: '🚀 New Features'
+  - title: "🚀 New Features"
     labels:
-      - 'new feature'
-      - 'enhancement'
-  - title: '🐛 Bug Fixes'
+      - "new feature"
+      - "enhancement"
+  - title: "🐛 Bug Fixes"
     labels:
-      - 'fix'
-      - 'bugfix'
-      - 'bug'
-  - title: '🧰 Maintenance'
+      - "fix"
+      - "bugfix"
+      - "bug"
+  - title: "🧰 Maintenance"
     labels:
-      - 'refactoring'
-      - 'dependencies'
-change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+      - "refactoring"
+      - "dependencies"
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
 version-resolver:
   major:
     labels:
-      - 'major'
+      - "major"
   minor:
     labels:
-      - 'minor'
-      - 'feature'
-      - 'new feature'
-      - 'enhancement'
+      - "minor"
+      - "feature"
+      - "new feature"
+      - "enhancement"
   patch:
     labels:
-      - 'fix'
-      - 'bugfix'
-      - 'bug'
-      - 'patch'
-      - 'refactoring'
+      - "fix"
+      - "bugfix"
+      - "bug"
+      - "patch"
+      - "refactoring"
   default: patch
 template: |
   ## Changes

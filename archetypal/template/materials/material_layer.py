@@ -10,7 +10,7 @@ from validator_collection import validators
 from archetypal.utils import log
 
 
-class MaterialLayer(object):
+class MaterialLayer:
     """Class used to define one layer in a construction assembly.
 
     This class has two attributes:
@@ -58,8 +58,7 @@ class MaterialLayer(object):
         self._thickness = value
         if value < 0.003:
             log(
-                "Modeling layer thinner (less) than 0.003 m (not recommended) for "
-                f"MaterialLayer '{self}'",
+                "Modeling layer thinner (less) than 0.003 m (not recommended) for " f"MaterialLayer '{self}'",
                 lg.WARNING,
             )
 
@@ -128,7 +127,7 @@ class MaterialLayer(object):
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
-        return dict(Material=self.Material, Thickness=self.Thickness)
+        return {"Material": self.Material, "Thickness": self.Thickness}
 
     def get_unique(self):
         """Return the first of all the created objects that is equivalent to self."""
@@ -152,12 +151,11 @@ class MaterialLayer(object):
 
     def __repr__(self):
         """Return a representation of self."""
-        return "{} with thickness of {:,.3f} m".format(self.Material, self.Thickness)
+        return f"{self.Material} with thickness of {self.Thickness:,.3f} m"
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for k, v in self.mapping().items():
-            yield k, v
+        yield from self.mapping().items()
 
     def duplicate(self):
         """Get copy of self."""

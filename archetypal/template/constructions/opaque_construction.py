@@ -2,6 +2,7 @@
 
 import collections
 import uuid
+from typing import ClassVar
 
 import numpy as np
 from eppy.bunch_subclass import BadEPFieldError
@@ -31,7 +32,7 @@ class OpaqueConstruction(LayeredConstruction):
         * solar_reflectance_index
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["OpaqueConstruction"]] = []
 
     __slots__ = ("area",)
 
@@ -44,7 +45,7 @@ class OpaqueConstruction(LayeredConstruction):
             **kwargs: Other attributes passed to parent constructors such as
                 :class:`ConstructionBase`.
         """
-        super(OpaqueConstruction, self).__init__(Name, Layers, **kwargs)
+        super().__init__(Name, Layers, **kwargs)
         self.area = 1
 
         # Only at the end append self to _CREATED_OBJECTS
@@ -57,13 +58,13 @@ class OpaqueConstruction(LayeredConstruction):
         Note that, when setting the R-value, the thickness of the inferred
         insulation layer will be adjusted.
         """
-        return super(OpaqueConstruction, self).r_value
+        return super().r_value
 
     @r_value.setter
     def r_value(self, value):
         # First, find the insulation layer
         i = self.infer_insulation_layer()
-        all_layers_except_insulation_layer = [a for a in self.Layers]
+        all_layers_except_insulation_layer = list(self.Layers)
         all_layers_except_insulation_layer.pop(i)
         insulation_layer: MaterialLayer = self.Layers[i]
 
@@ -78,7 +79,7 @@ class OpaqueConstruction(LayeredConstruction):
 
         alpha = float(value) / self.r_value
         new_r_value = (
-            ((alpha - 1) * sum([a.r_value for a in all_layers_except_insulation_layer]))
+            (alpha - 1) * sum([a.r_value for a in all_layers_except_insulation_layer])
         ) + alpha * insulation_layer.r_value
         insulation_layer.r_value = new_r_value
 
@@ -101,14 +102,11 @@ class OpaqueConstruction(LayeredConstruction):
             the n parallel layers of the composite wall." [ref]_
 
         .. [ref] Tsilingiris, P. T. (2004). On the thermal time constant of
-            structural walls. Applied Thermal Engineering, 24(5–6), 743–757.
+            structural walls. Applied Thermal Engineering, 24(5-6), 743-757.
             https://doi.org/10.1016/j.applthermaleng.2003.10.015
         """
         return (1 / self.total_thickness) * sum(
-            [
-                layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness
-                for layer in self.Layers
-            ]
+            [layer.Material.Density * layer.Material.SpecificHeat * layer.Thickness for layer in self.Layers]
         )
 
     @property
@@ -156,9 +154,7 @@ class OpaqueConstruction(LayeredConstruction):
         solar_absorptance = exposed_material.Material.SolarAbsorptance
         thermal_emissivity = exposed_material.Material.ThermalEmittance
 
-        x = (20.797 * solar_absorptance - 0.603 * thermal_emissivity) / (
-            9.5205 * thermal_emissivity + 12.0
-        )
+        x = (20.797 * solar_absorptance - 0.603 * thermal_emissivity) / (9.5205 * thermal_emissivity + 12.0)
         sri = 123.97 - 141.35 * x + 9.6555 * x * x
 
         return sri
@@ -191,10 +187,7 @@ class OpaqueConstruction(LayeredConstruction):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -212,16 +205,11 @@ class OpaqueConstruction(LayeredConstruction):
             oc = self.dominant_wall(other, weights)
             return oc
         else:
-            raise ValueError(
-                'Possible choices are ["constant_ufactor", "dominant_wall"]'
-            )
+            raise ValueError('Possible choices are ["constant_ufactor", "dominant_wall"]')
         # layers for the new OpaqueConstruction
         layers = [MaterialLayer(mat, t) for mat, t in zip(new_m, new_t)]
         new_obj = self.__class__(**meta, Layers=layers)
-        new_name = (
-            "Combined Opaque Construction {{{}}} with u_value "
-            "of {:,.3f} W/m2k".format(uuid.uuid1(), new_obj.u_value)
-        )
+        new_name = f"Combined Opaque Construction {{{uuid.uuid1()}}} with u_value " f"of {new_obj.u_value:,.3f} W/m2k"
         new_obj.rename(new_name)
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.area = sum(weights)
@@ -234,12 +222,7 @@ class OpaqueConstruction(LayeredConstruction):
             other:
             weights:
         """
-        oc = [
-            x
-            for _, x in sorted(
-                zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True
-            )
-        ][0]
+        oc = next(x for _, x in sorted(zip([2, 1], [self, other]), key=lambda pair: pair[0], reverse=True))
         return oc
 
     def _constant_ufactor(self, other, weights=None):
@@ -266,23 +249,13 @@ class OpaqueConstruction(LayeredConstruction):
             expected_total_thickness,
         ):
             """Objective function for thickness evaluation."""
-            u_value = 1 / sum(
-                [
-                    thickness / mat.Conductivity
-                    for thickness, mat in zip(thicknesses, materials)
-                ]
-            )
+            u_value = 1 / sum([thickness / mat.Conductivity for thickness, mat in zip(thicknesses, materials)])
 
             # Specific_heat: (J/kg K)
-            h_calc = [
-                mat.SpecificHeat for thickness, mat in zip(thicknesses, materials)
-            ]
+            h_calc = [mat.SpecificHeat for thickness, mat in zip(thicknesses, materials)]
 
             # (kg/m3) x (m) = (kg/m2)
-            mass_per_unit_area = [
-                mat.Density * thickness
-                for thickness, mat in zip(thicknesses, materials)
-            ]
+            mass_per_unit_area = [mat.Density * thickness for thickness, mat in zip(thicknesses, materials)]
             specific_heat = np.average(h_calc, weights=mass_per_unit_area)
             return (
                 (u_value - expected_u_value) ** 2
@@ -299,15 +272,10 @@ class OpaqueConstruction(LayeredConstruction):
         )
 
         # Get a set of all materials sorted by Material Density (descending order)
-        materials = list(
-            sorted(
-                set(
-                    [layer.Material for layer in self.Layers]
-                    + [layer.Material for layer in other.Layers]
-                ),
-                key=lambda x: x.Density,
-                reverse=True,
-            )
+        materials = sorted(
+            set([layer.Material for layer in self.Layers] + [layer.Material for layer in other.Layers]),
+            key=lambda x: x.Density,
+            reverse=True,
         )
 
         # Setup weights
@@ -319,12 +287,8 @@ class OpaqueConstruction(LayeredConstruction):
             weights = [1, 1]
 
         # Calculate the desired equivalent specific heat
-        equi_spec_heat = np.average(
-            [self.specific_heat, other.specific_heat], weights=weights
-        )
-        two_wall_thickness = np.average(
-            [self.total_thickness, other.total_thickness], weights=weights
-        )
+        equi_spec_heat = np.average([self.specific_heat, other.specific_heat], weights=weights)
+        two_wall_thickness = np.average([self.total_thickness, other.total_thickness], weights=weights)
         x0 = np.ones(len(materials))
         bnds = tuple([(0.003, None) for layer in materials])
         res = minimize(
@@ -426,10 +390,7 @@ class OpaqueConstruction(LayeredConstruction):
             "internalmass",
             "construction",
             "construction:internalsource",
-        ), (
-            f"Expected ('Internalmass', 'Construction', 'construction:internalsource')."
-            f"Got '{epbunch.key}'."
-        )
+        ), f"Expected ('Internalmass', 'Construction', 'construction:internalsource')." f"Got '{epbunch.key}'."
         name = epbunch.Name
 
         # treat internalmass and regular surfaces differently
@@ -503,18 +464,18 @@ class OpaqueConstruction(LayeredConstruction):
         if validate:
             self.validate()
 
-        return dict(
-            Layers=self.Layers,
-            AssemblyCarbon=self.AssemblyCarbon,
-            AssemblyCost=self.AssemblyCost,
-            AssemblyEnergy=self.AssemblyEnergy,
-            DisassemblyCarbon=self.DisassemblyCarbon,
-            DisassemblyEnergy=self.DisassemblyEnergy,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Layers": self.Layers,
+            "AssemblyCarbon": self.AssemblyCarbon,
+            "AssemblyCost": self.AssemblyCost,
+            "AssemblyEnergy": self.AssemblyEnergy,
+            "DisassemblyCarbon": self.DisassemblyCarbon,
+            "DisassemblyEnergy": self.DisassemblyEnergy,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     @classmethod
     def generic(cls, **kwargs):
@@ -551,7 +512,7 @@ class OpaqueConstruction(LayeredConstruction):
 
     def __copy__(self):
         """Create a copy of self."""
-        new_con = self.__class__(Name=self.Name, Layers=[a for a in self.Layers])
+        new_con = self.__class__(Name=self.Name, Layers=list(self.Layers))
         return new_con
 
     def to_epbunch(self, idf):
@@ -570,8 +531,5 @@ class OpaqueConstruction(LayeredConstruction):
             key="CONSTRUCTION",
             Name=self.Name,
             Outside_Layer=self.Layers[0].to_epbunch(idf).Name,
-            **{
-                f"Layer_{i+2}": layer.to_epbunch(idf).Name
-                for i, layer in enumerate(self.Layers[1:])
-            },
+            **{f"Layer_{i+2}": layer.to_epbunch(idf).Name for i, layer in enumerate(self.Layers[1:])},
         )

@@ -23,7 +23,7 @@ import pandas as pd
 from path import Path
 from tqdm.auto import tqdm
 
-from archetypal import settings
+from . import settings
 
 
 def config(
@@ -165,15 +165,13 @@ def get_logger(level=None, name=None, filename=None, log_dir=None):
         if not log_dir:
             log_dir: Path = settings.logs_folder
 
-        log_filename = log_dir / "{}_{}.log".format(filename, todays_date)
+        log_filename = log_dir / f"{filename}_{todays_date}.log"
 
         # if the logs folder does not already exist, create it
         if not log_dir.exists():
             os.mkdir(log_dir)
         # create file handler and log formatter and set them up
-        formatter = lg.Formatter(
-            "%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(" "message)s"
-        )
+        formatter = lg.Formatter("%(asctime)s [%(process)d]  %(levelname)s - %(name)s - %(message)s")
         if settings.log_file:
             handler = lg.FileHandler(log_filename, encoding="utf-8")
             handler.setFormatter(formatter)
@@ -225,17 +223,14 @@ def weighted_mean(series, df, weighting_variable):
     # of multipling them together.
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
-    try:
-        weights = df.loc[series.index, weighting_variable].astype("float").prod(axis=1)
-    except Exception:
-        raise
+    weights = df.loc[series.index, weighting_variable].astype("float").prod(axis=1)
 
     # Try to average
     try:
         wa = np.average(series[index].astype("float"), weights=weights[index])
     except ZeroDivisionError:
-        log("Cannot aggregate empty series {}".format(series.name), lg.WARNING)
-        return np.NaN
+        log(f"Cannot aggregate empty series {series.name}", lg.WARNING)
+        return np.nan
     except Exception:
         raise
     else:
@@ -260,32 +255,26 @@ def top(series, df, weighting_variable):
     # Returns weights. If multiple `weighting_variable`, df.prod will take care
     # of multipling them together.
     if not isinstance(series, pd.Series):
-        raise TypeError(
-            '"top()" only works on Series, ' "not DataFrames\n{}".format(series)
-        )
+        raise TypeError('"top()" only works on Series, ' f"not DataFrames\n{series}")
 
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
 
     try:
-        idx_ = (
-            df.loc[series.index]
-            .groupby(series.name)
-            .apply(lambda x: safe_prod(x, df, weighting_variable))
-        )
+        idx_ = df.loc[series.index].groupby(series.name).apply(lambda x: safe_prod(x, df, weighting_variable))
         if not idx_.empty:
             idx = idx_.nlargest(1).index
         else:
-            log('No such names "{}"'.format(series.name))
-            return np.NaN
+            log(f'No such names "{series.name}"')
+            return np.nan
     except KeyError:
-        log("Cannot aggregate empty series {}".format(series.name), lg.WARNING)
-        return np.NaN
+        log(f"Cannot aggregate empty series {series.name}", lg.WARNING)
+        return np.nan
     except Exception:
         raise
     else:
         if idx.isnull().any():
-            return np.NaN
+            return np.nan
         else:
             return pd.to_numeric(idx, errors="ignore").values[0]
 
@@ -339,16 +328,16 @@ def cd(path):
     Args:
         path:
     """
-    log("initially inside {0}".format(os.getcwd()))
+    log(f"initially inside {os.getcwd()}")
     CWD = os.getcwd()
 
     os.chdir(path)
-    log("inside {0}".format(os.getcwd()))
+    log(f"inside {os.getcwd()}")
     try:
         yield
     finally:
         os.chdir(CWD)
-        log("finally inside {0}".format(os.getcwd()))
+        log(f"finally inside {os.getcwd()}")
 
 
 def load_umi_template(json_template):
@@ -366,7 +355,7 @@ def load_umi_template(json_template):
 
             return [{key: pd.json_normalize(value)} for key, value in dicts.items()]
     else:
-        raise ValueError("File {} does not exist".format(json_template))
+        raise ValueError(f"File {json_template} does not exist")
 
 
 def check_unique_name(first_letters, count, name, unique_list, suffix=False):
@@ -410,7 +399,7 @@ def angle(v1, v2, acute=True):
         angle (float): angle between the 2 vectors in degree
     """
     angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
-    if acute == True:
+    if acute is True:
         return angle
     else:
         return 2 * np.pi - angle
@@ -446,7 +435,7 @@ def timeit(method):
 
     def timed(*args, **kwargs):
         ts = time.time()
-        log("Executing %r..." % method.__qualname__)
+        log(f"Executing {method.__qualname__!r}...")
         result = method(*args, **kwargs)
         te = time.time()
 
@@ -454,17 +443,14 @@ def timeit(method):
         try:
             try:
                 name = result.Name
-            except:
+            except Exception:
                 name = result.__qualname__
-        except:
+        except Exception:
             name = str(result)
         if tt > 0.001:
-            log("Completed %r for %r in %.3f s" % (method.__qualname__, name, tt))
+            log(f"Completed {method.__qualname__!r} for {name!r} in {tt:.3f} s")
         else:
-            log(
-                "Completed %r for %r in %.3f ms"
-                % (method.__qualname__, name, tt * 1000)
-            )
+            log(f"Completed {method.__qualname__!r} for {name!r} in {tt * 1000:.3f} ms")
         return result
 
     return timed
@@ -474,10 +460,7 @@ def lcm(x, y):
     """This function takes two integers and returns the least common multiple."""
 
     # choose the greater number
-    if x > y:
-        greater = x
-    else:
-        greater = y
+    greater = x if x > y else y
 
     while True:
         if (greater % x == 0) and (greater % y == 0):
@@ -526,23 +509,23 @@ def recursive_len(item):
     Returns:
         Total number of elements in nested list
     """
-    if type(item) == list:
+    if isinstance(item, list):
         return sum(recursive_len(subitem) for subitem in item)
     else:
         return 1
 
 
-def rotate(l, n):
+def rotate(items, n):
     """Shift list elements to the left
 
     Args:
-        l (list): list to rotate
+        items (list): list to rotate
         n (int): number to shift list to the left
 
     Returns:
         list: shifted list.
     """
-    return l[n:] + l[:n]
+    return items[n:] + items[:n]
 
 
 def parallel_process(
@@ -606,15 +589,9 @@ def parallel_process(
 
     if processors == 1:
         if use_kwargs:
-            out = {
-                filename: submit(function, **in_dict[filename])
-                for filename in tqdm(in_dict, **kwargs)
-            }
+            out = {filename: submit(function, **in_dict[filename]) for filename in tqdm(in_dict, **kwargs)}
         else:
-            out = {
-                filename: submit(function, in_dict[filename])
-                for filename in tqdm(in_dict, **kwargs)
-            }
+            out = {filename: submit(function, in_dict[filename]) for filename in tqdm(in_dict, **kwargs)}
     else:
         with _executor_factory(
             max_workers=processors,
@@ -639,15 +616,9 @@ def parallel_process(
             out = {}
 
             if use_kwargs:
-                futures = {
-                    executor.submit(function, **in_dict[filename]): filename
-                    for filename in in_dict
-                }
+                futures = {executor.submit(function, **in_dict[filename]): filename for filename in in_dict}
             else:
-                futures = {
-                    executor.submit(function, in_dict[filename]): filename
-                    for filename in in_dict
-                }
+                futures = {executor.submit(function, in_dict[filename]): filename for filename in in_dict}
 
             # Print out the progress as tasks complete
             for future in tqdm(as_completed(futures), **kwargs):
@@ -658,7 +629,7 @@ def parallel_process(
                 except Exception as e:
                     if debug:
                         lg.warning(str(e))
-                        raise e
+                        raise
                     result_done = e
                 # Append to the list of results
                 out[filename] = result_done
@@ -683,12 +654,10 @@ def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
     elif refobj.key.upper() == "ZONE":
         return name in refobj.Name
     elif refobj.key.upper() == "ZONELIST":
-        from archetypal import settings, __version__
+        from archetypal import __version__
 
         raise NotImplementedError(
-            f"Checking against a ZoneList is "
-            f"not yet supported in archetypal "
-            f"v{__version__}"
+            f"Checking against a ZoneList is " f"not yet supported in archetypal " f"v{__version__}"
         )
     raise ValueError(
         f"Invalid referring object returned while "

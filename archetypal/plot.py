@@ -22,9 +22,7 @@ from archetypal import settings
 from archetypal.utils import log
 
 
-def save_and_show(
-    fig, ax, save, show, close, filename, file_format, dpi, axis_off, extent
-):
+def save_and_show(fig, ax, save, show, close, filename, file_format, dpi, axis_off, extent):
     """Save a figure to disk and show it, as specified.
 
     Args:
@@ -56,11 +54,9 @@ def save_and_show(
         # create the save folder if it doesn't already exist
         if not os.path.exists(settings.imgs_folder):
             os.makedirs(settings.imgs_folder)
-        path_filename = os.path.join(
-            settings.imgs_folder, os.extsep.join([filename, file_format])
-        )
+        path_filename = os.path.join(settings.imgs_folder, os.extsep.join([filename, file_format]))
 
-        if not isinstance(ax, (np.ndarray, list)):
+        if not isinstance(ax, np.ndarray | list):
             ax = [ax]
         if file_format == "svg":
             fig.patch.set_alpha(0.0)
@@ -75,12 +71,10 @@ def save_and_show(
             if extent is None:
                 if len(ax) == 1:
                     if axis_off:
-                        for ax in ax:
+                        for _ax in ax:
                             # if axis is turned off, constrain the saved
                             # figure's extent to the interior of the axis
-                            extent = ax.get_window_extent().transformed(
-                                fig.dpi_scale_trans.inverted()
-                            )
+                            extent = _ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
                 else:
                     pass
             fig.savefig(
@@ -91,18 +85,14 @@ def save_and_show(
                 facecolor=fig.get_facecolor(),
                 transparent=True,
             )
-        log(
-            "Saved the figure to disk in {:,.2f} seconds".format(
-                time.time() - start_time
-            )
-        )
+        log(f"Saved the figure to disk in {time.time() - start_time:,.2f} seconds")
 
     # show the figure if specified
     if show:
         start_time = time.time()
         plt.show()
         # fig.show()
-        log("Showed the plot in {:,.2f} seconds".format(time.time() - start_time))
+        log(f"Showed the plot in {time.time() - start_time:,.2f} seconds")
     # if show=False, close the figure if close=True to prevent display
     elif close:
         plt.close()

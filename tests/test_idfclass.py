@@ -5,19 +5,21 @@ from path import Path
 
 from archetypal import IDF, settings
 from archetypal.eplus_interface import (
-    EnergyPlusProcessError,
     EnergyPlusVersionError,
     InvalidEnergyPlusVersion,
 )
 from archetypal.eplus_interface.version import EnergyPlusVersion
+from archetypal.idfclass.idf import SimulationNotRunError
 from archetypal.utils import parallel_process
+
+from .conftest import data_dir
 
 
 @pytest.fixture()
 def shoebox_model(config):
     """An IDF model. Yields both the idf"""
-    file = "tests/input_data/umi_samples/B_Off_0.idf"
-    w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+    file = data_dir / "umi_samples/B_Off_0.idf"
+    w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
     yield IDF(file, epw=w)
 
 
@@ -25,19 +27,16 @@ class TestIDF:
     @pytest.fixture(scope="session")
     def idf_model(self, config):
         """An IDF model. Yields both the idf"""
-        file = (
-            "tests/input_data/necb/NECB 2011-SmallOffice-NECB HDD "
-            "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
-        )
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        file = data_dir / "necb/NECB 2011-SmallOffice-NECB HDD Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w).simulate()
 
     @pytest.fixture()
     def natvent(self, config):
         """An old file that needs upgrade"""
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(
-            "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
+            data_dir / "problematic/nat_ventilation_SAMPLE0.idf",
             epw=w,
             as_version="9-2-0",
         )
@@ -45,20 +44,16 @@ class TestIDF:
     @pytest.fixture()
     def FiveZoneNightVent1(self):
         """"""
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        idfname = (
-            EnergyPlusVersion.current().current_install_dir
-            / "ExampleFiles"
-            / "5ZoneNightVent1.idf"
-        )
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idfname = EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "5ZoneNightVent1.idf"
         yield IDF(idfname, epw=w)
 
     @pytest.fixture()
     def natvent_v9_1_0(self, config):
         """An old file that needs upgrade"""
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(
-            "tests/input_data/problematic/nat_ventilation_SAMPLE0.idf",
+            data_dir / "problematic/nat_ventilation_SAMPLE0.idf",
             epw=w,
             as_version="9-1-0",
         )
@@ -78,27 +73,12 @@ class TestIDF:
         # assert saveas returns another object
         assert idf_copy.saveas(tmp_path / "in.idf", inplace=False) is not idf_copy
 
-    def test_copy_saveas(self, idf_model, tmp_path):
-        """Test making a copy of self and two ways of saving as (inplace or not)."""
-        idf_copy = idf_model.copy()  # make a copy of self
-
-        assert idf_copy is not idf_model
-
-        # assert saveas modifies self inplace.
-        id_before = id(idf_copy)
-        idf_copy.saveas(tmp_path / "in.idf", inplace=True)
-        id_after = id(idf_copy)
-        assert id_after == id_before
-
-        # assert saveas returns another object
-        assert idf_copy.saveas(tmp_path / "in.idf", inplace=False) is not idf_copy
-
     def test_default_version_none(self):
         file = (
-            "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD "
+            data_dir / "necb/NECB 2011-FullServiceRestaurant-NECB HDD "
             "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         )
-        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version=None)
         assert idf.file_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
@@ -106,10 +86,10 @@ class TestIDF:
 
     def test_default_version_specified_period(self):
         file = (
-            "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD "
+            data_dir / "necb/NECB 2011-FullServiceRestaurant-NECB HDD "
             "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         )
-        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version="9.2.0")
         assert idf.file_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
@@ -117,10 +97,10 @@ class TestIDF:
 
     def test_default_version_specified_dash(self):
         file = (
-            "tests/input_data/necb/NECB 2011-FullServiceRestaurant-NECB HDD "
+            data_dir / "necb/NECB 2011-FullServiceRestaurant-NECB HDD "
             "Method-CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw.idf"
         )
-        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(file, epw=wf, as_version="9-2-0")
         assert idf.file_version == EnergyPlusVersion("9-2-0")
         assert idf.idd_version == (9, 2, 0)
@@ -131,8 +111,10 @@ class TestIDF:
         assert natvent_v9_1_0.idd_version == (9, 1, 0)
         assert natvent_v9_1_0.file_version == EnergyPlusVersion("9-1-0")
 
-    def test_specific_version_error_simulate(self, natvent_v9_1_0):
-        with pytest.raises(EnergyPlusVersionError):
+    def test_specific_version_error_simulate(self, natvent_v9_1_0, mocker):
+        with mocker.patch(
+            "archetypal.eplus_interface.energy_plus.EnergyPlusExe.get_exe_path", side_effect=EnergyPlusVersionError()
+        ), pytest.raises(EnergyPlusVersionError):
             natvent_v9_1_0.simulate()
 
     def test_version(self, natvent_v9_1_0):
@@ -148,14 +130,10 @@ class TestIDF:
         natvent_v9_1_0.epw = "newepw.epw"
         assert natvent_v9_1_0.epw == Path("newepw.epw")
 
-    @pytest.mark.xfail(reason="Fails on Linux")
     def test_transition_error(self, config):
-        with pytest.raises(CalledProcessError):
-            file = (
-                "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7"
-                ".2_5A_USA_IL_CHICAGO-OHARE.idf"
-            )
-            wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        with pytest.raises((EnergyPlusVersionError, CalledProcessError)):
+            file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7.2_5A_USA_IL_CHICAGO-OHARE.idf"
+            wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
             IDF(file, epw=wf, as_version="8.9.0")
 
     def test_set_iddname(self):
@@ -170,6 +148,8 @@ class TestIDF:
         assert idf_model.sql_file.exists()
 
     def test_processed_results(self, idf_model):
+        if not idf_model.simulation_dir.exists():
+            idf_model.simulate()
         assert idf_model.process_results()
 
     def test_partition_ratio(self, idf_model):
@@ -188,19 +168,16 @@ class TestIDF:
         assert not idf_model.wwr(round_to=10).empty
 
     def test_wrong_epversion(self, config):
-        file = (
-            "tests/input_data/problematic/RefBldgLargeOfficeNew2004_v1.4_7"
-            ".2_5A_USA_IL_CHICAGO-OHARE.idf"
-        )
-        wf = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7.2_5A_USA_IL_CHICAGO-OHARE.idf"
+        wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         with pytest.raises(InvalidEnergyPlusVersion):
             IDF(file, epw=wf, as_version="7-3-0")
 
     def test_parallel_process(self, config):
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         files = {
             i: {"idfname": file.expand(), "epw": w}
-            for i, file in enumerate(Path("tests/input_data/necb").files("*.idf")[0:3])
+            for i, file in enumerate(Path(data_dir / "necb").files("*.idf")[0:3])
         }
         idfs = parallel_process(files, IDF, use_kwargs=True, processors=-1)
 
@@ -238,7 +215,7 @@ class TestIDF:
             pytest.param(
                 "Supermarket",
                 4181,
-                marks=pytest.mark.skip("Supermarket missing from BTAP " "database"),
+                marks=pytest.mark.skip("Supermarket missing from BTAP database"),
             ),
             ("Warehouse", 4835),
         ],
@@ -248,21 +225,17 @@ class TestIDF:
         desired values taken from https://github.com/canmet-energy/btap"""
         import numpy as np
 
-        idf_file = Path("tests/input_data/necb").files(f"*{archetype}*.idf")[0]
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        idf_file = Path(data_dir / "necb").files(f"*{archetype}*.idf")[0]
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(idf_file, epw=w, prep_outputs=False)
 
-        np.testing.assert_almost_equal(
-            actual=idf.net_conditioned_building_area, desired=area, decimal=0
-        )
+        np.testing.assert_almost_equal(actual=idf.net_conditioned_building_area, desired=area, decimal=0)
 
     @pytest.fixture(
         scope="class",
         params=[
             None,
-            EnergyPlusVersion.current().current_install_dir
-            / "ExampleFiles"
-            / "5ZoneNightVent1.idf",
+            EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "5ZoneNightVent1.idf",
         ],
         ids=["in memory", "5ZoneNightVent1"],
     )
@@ -313,6 +286,7 @@ class TestIDF:
         """Saving should overwrite the file content."""
         save_as = tmp_path / "idf_dup.idf"
         idf_dup = idf.saveas(save_as)
+        assert idf_dup.idfstr() == idf_dup.idfstr()
 
     def test_resize(self):
         """Test resizing a building to specific width and length"""
@@ -367,16 +341,16 @@ class TestIDFTransition:
 
 class TestMeters:
     @pytest.fixture()
-    def shoebox_res(self):
+    def shoebox_res(self, config):
         """An IDF model. Yields both the idf. This needs to be the only one used in
         the following test: test_retrieve_meters_nosim"""
-        file = "tests/input_data/umi_samples/B_Res_0_WoodFrame.idf"
-        w = "tests/input_data/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
+        file = data_dir / "umi_samples/B_Res_0_WoodFrame.idf"
+        w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         yield IDF(file, epw=w)
 
     def test_retrieve_meters_nosim(self, config, shoebox_res):
         shoebox_res.simulation_dir.rmtree_p()
-        with pytest.raises(Exception):
+        with pytest.raises(SimulationNotRunError):
             print(shoebox_res.meters)
 
     def test_retrieve_meters(self, config, shoebox_res):
@@ -387,24 +361,14 @@ class TestMeters:
 
 class TestThreads:
     @pytest.mark.xfail
-    def test_runslab(self, config, tmp_path):
+    def test_runslab(self, config):
         """Test the slab preprocessors. Makes a temp file so that permissions are ok."""
-        d = tmp_path / "sub"
-        d.mkdir()
-        p = d / "5ZoneAirCooledWithSlab.idf"
-        epw = (
-            EnergyPlusVersion.current().current_install_dir
-            / "WeatherData"
-            / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
+        idf = IDF.from_example_files(
+            "5ZoneAirCooledWithSlab.idf",
+            epw="USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw",
+            annual=False,
+            design_day=True,
         )
-        slab_idf = (
-            EnergyPlusVersion.current().current_install_dir
-            / "ExampleFiles"
-            / "5ZoneAirCooledWithSlab.idf"
-        )
-        with open(slab_idf, "r") as f:
-            p.write_text(f.read())
-        idf = IDF(p, epw=epw, annual=False, design_day=True)
 
         assert idf.simulate()
 

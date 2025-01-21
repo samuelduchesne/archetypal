@@ -2,6 +2,7 @@
 
 import collections
 from statistics import mean
+from typing import ClassVar
 
 import numpy as np
 from eppy import modeleditor
@@ -20,7 +21,7 @@ class DomesticHotWaterSetting(UmiBase):
     .. image:: ../images/template/zoneinfo-dhw.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["DomesticHotWaterSetting"]] = []
 
     __slots__ = (
         "_flow_rate_per_floor_area",
@@ -55,7 +56,7 @@ class DomesticHotWaterSetting(UmiBase):
                 mains [degC].
             **kwargs: keywords passed to parent constructors.
         """
-        super(DomesticHotWaterSetting, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.FlowRatePerFloorArea = FlowRatePerFloorArea
         self.IsOn = IsOn
         self.WaterSupplyTemperature = WaterSupplyTemperature
@@ -83,8 +84,7 @@ class DomesticHotWaterSetting(UmiBase):
     @IsOn.setter
     def IsOn(self, value):
         assert isinstance(value, bool), (
-            f"Input error with value {value}. IsOn must "
-            f"be a boolean, not a {type(value)}"
+            f"Input error with value {value}. IsOn must " f"be a boolean, not a {type(value)}"
         )
         self._is_on = value
 
@@ -97,8 +97,7 @@ class DomesticHotWaterSetting(UmiBase):
     def WaterSchedule(self, value):
         if value is not None:
             assert isinstance(value, UmiSchedule), (
-                f"Input error with value {value}. WaterSchedule must "
-                f"be an UmiSchedule, not a {type(value)}"
+                f"Input error with value {value}. WaterSchedule must " f"be an UmiSchedule, not a {type(value)}"
             )
         self._water_schedule = value
 
@@ -153,12 +152,8 @@ class DomesticHotWaterSetting(UmiBase):
         data_dict["FlowRatePerFloorArea"] = round(self.FlowRatePerFloorArea, sigfigs=4)
         data_dict["IsOn"] = self.IsOn
         data_dict["WaterSchedule"] = self.WaterSchedule.to_ref()
-        data_dict["WaterSupplyTemperature"] = round(
-            self.WaterSupplyTemperature, sigfigs=4
-        )
-        data_dict["WaterTemperatureInlet"] = round(
-            self.WaterTemperatureInlet, sigfigs=4
-        )
+        data_dict["WaterSupplyTemperature"] = round(self.WaterSupplyTemperature, sigfigs=4)
+        data_dict["WaterTemperatureInlet"] = round(self.WaterTemperatureInlet, sigfigs=4)
         data_dict["Category"] = self.Category
         data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
@@ -181,9 +176,7 @@ class DomesticHotWaterSetting(UmiBase):
             return None
 
         # First, find the WaterUse:Equipment assigned to this zone
-        dhw_objs = zone_epbunch.getreferingobjs(
-            iddgroups=["Water Systems"], fields=["Zone_Name"]
-        )
+        dhw_objs = zone_epbunch.getreferingobjs(iddgroups=["Water Systems"], fields=["Zone_Name"])
         if not dhw_objs:
             # Sometimes, some of the WaterUse:Equipment objects are not assigned to
             # any zone. Therefore, to account for their water usage, we can try to
@@ -253,17 +246,13 @@ class DomesticHotWaterSetting(UmiBase):
             if obj.Cold_Water_Supply_Temperature_Schedule_Name != "":
                 # If a cold water supply schedule is provided, create the
                 # schedule
-                epbunch = obj.theidf.schedules_dict[
-                    obj.Cold_Water_Supply_Temperature_Schedule_Name.upper()
-                ]
+                epbunch = obj.theidf.schedules_dict[obj.Cold_Water_Supply_Temperature_Schedule_Name.upper()]
                 cold_schd_names = UmiSchedule.from_epbunch(epbunch)
                 WaterTemperatureInlet.append(cold_schd_names.mean)
             else:
                 # If blank, water temperatures are calculated by the
                 # Site:WaterMainsTemperature object.
-                water_mains_temps = obj.theidf.idfobjects[
-                    "Site:WaterMainsTemperature".upper()
-                ]
+                water_mains_temps = obj.theidf.idfobjects["Site:WaterMainsTemperature".upper()]
                 if water_mains_temps:
                     # If a "Site:WaterMainsTemperature" object exists,
                     # do water depending on calc method:
@@ -271,23 +260,15 @@ class DomesticHotWaterSetting(UmiBase):
                     if water_mains_temp.Calculation_Method.lower() == "schedule":
                         # From Schedule method
                         mains_scd = UmiSchedule.from_epbunch(
-                            obj.theidf.schedules_dict[
-                                water_mains_temp.Schedule_Name.upper()
-                            ]
+                            obj.theidf.schedules_dict[water_mains_temp.Schedule_Name.upper()]
                         )
                         WaterTemperatureInlet.append(mains_scd.mean())
                     elif water_mains_temp.Calculation_Method.lower() == "correlation":
                         # From Correlation method
-                        mean_outair_temp = (
-                            water_mains_temp.Annual_Average_Outdoor_Air_Temperature
-                        )
-                        max_dif = (
-                            water_mains_temp.Maximum_Difference_In_Monthly_Average_Outdoor_Air_Temperatures
-                        )
+                        mean_outair_temp = water_mains_temp.Annual_Average_Outdoor_Air_Temperature
+                        max_dif = water_mains_temp.Maximum_Difference_In_Monthly_Average_Outdoor_Air_Temperatures
 
-                        WaterTemperatureInlet.append(
-                            water_main_correlation(mean_outair_temp, max_dif).mean()
-                        )
+                        WaterTemperatureInlet.append(water_main_correlation(mean_outair_temp, max_dif).mean())
                 else:
                     # Else, there is no Site:WaterMainsTemperature object in
                     # the input file, a default constant value of 10 C is
@@ -377,10 +358,7 @@ class DomesticHotWaterSetting(UmiBase):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         # Check if other is not the same as self
@@ -398,15 +376,9 @@ class DomesticHotWaterSetting(UmiBase):
                 ],
             ),
             IsOn=any((self.IsOn, other.IsOn)),
-            FlowRatePerFloorArea=self.float_mean(
-                other, "FlowRatePerFloorArea", [self.area, other.area]
-            ),
-            WaterSupplyTemperature=self.float_mean(
-                other, "WaterSupplyTemperature", [self.area, other.area]
-            ),
-            WaterTemperatureInlet=self.float_mean(
-                other, "WaterTemperatureInlet", [self.area, other.area]
-            ),
+            FlowRatePerFloorArea=self.float_mean(other, "FlowRatePerFloorArea", [self.area, other.area]),
+            WaterSupplyTemperature=self.float_mean(other, "WaterSupplyTemperature", [self.area, other.area]),
+            WaterTemperatureInlet=self.float_mean(other, "WaterTemperatureInlet", [self.area, other.area]),
             area=self.area + other.area,
             **meta,
         )
@@ -481,17 +453,17 @@ class DomesticHotWaterSetting(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            FlowRatePerFloorArea=self.FlowRatePerFloorArea,
-            IsOn=self.IsOn,
-            WaterSchedule=self.WaterSchedule,
-            WaterSupplyTemperature=self.WaterSupplyTemperature,
-            WaterTemperatureInlet=self.WaterTemperatureInlet,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "FlowRatePerFloorArea": self.FlowRatePerFloorArea,
+            "IsOn": self.IsOn,
+            "WaterSchedule": self.WaterSchedule,
+            "WaterSupplyTemperature": self.WaterSupplyTemperature,
+            "WaterTemperatureInlet": self.WaterTemperatureInlet,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""
@@ -530,10 +502,7 @@ class DomesticHotWaterSetting(UmiBase):
 
     def __str__(self):
         """Return string representation."""
-        return (
-            f"{str(self.id)}: {str(self.Name)} "
-            f"PeakFlow {self.FlowRatePerFloorArea:.5f} m3/hr/m2"
-        )
+        return f"{self.id!s}: {self.Name!s} " f"PeakFlow {self.FlowRatePerFloorArea:.5f} m3/hr/m2"
 
     def __copy__(self):
         """Create a copy of self."""
@@ -602,8 +571,8 @@ class DomesticHotWaterSetting(UmiBase):
                 Latent_Fraction_Schedule_Name="",
             )
         else:
-            infiltration_epbunch = None
             log("No 'WATERUSE:EQUIPMENT' created since DHW IsOn == False.")
+            dhw_epbunch = None
         return dhw_epbunch
 
 
@@ -635,9 +604,7 @@ def water_main_correlation(t_out_avg, max_diff):
     days = np.arange(1, 365)
 
     def function(t_out_avg, day, max_diff):
-        return (t_out_avg + 6) + ratio * (max_diff / 2) * np.sin(
-            np.deg2rad(0.986 * (day - 15 - lag) - 90)
-        )
+        return (t_out_avg + 6) + ratio * (max_diff / 2) * np.sin(np.deg2rad(0.986 * (day - 15 - lag) - 90))
 
     mains = [Q_(function(t_out_avg_F.m, day, max_diff_F.m), "degF") for day in days]
     series = pd.Series([temp.to("degC").m for temp in mains])

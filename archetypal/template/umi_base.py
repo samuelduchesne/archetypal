@@ -2,8 +2,8 @@
 
 import itertools
 import math
-import re
 from collections.abc import Hashable, MutableSet
+from typing import ClassVar
 
 import numpy as np
 from validator_collection import validators
@@ -20,11 +20,11 @@ def _resolve_combined_names(predecessors):
     """
 
     # all_names = [obj.Name for obj in predecessors]
-    class_ = list(set([obj.__class__.__name__ for obj in predecessors]))[0]
+    class_ = next(iter({obj.__class__.__name__ for obj in predecessors}))
 
-    return "Combined_%s_%s" % (
+    return "Combined_{}_{}".format(
         class_,
-        str(hash((pre.Name for pre in predecessors))).strip("-"),
+        str(hash(pre.Name for pre in predecessors)).strip("-"),
     )
 
 
@@ -42,7 +42,7 @@ def _shorten_name(long_name):
         return long_name
 
 
-class UmiBase(object):
+class UmiBase:
     """Base class for template objects."""
 
     __slots__ = (
@@ -200,25 +200,14 @@ class UmiBase(object):
         return {
             "Name": _resolve_combined_names(predecessors),
             "Comments": (
-                "Object composed of a combination of these "
-                "objects:\n{}".format(
-                    "\n- ".join(set(obj.Name for obj in predecessors))
+                "Object composed of a combination of these objects:\n{}".format(
+                    "\n- ".join({obj.Name for obj in predecessors})
                 )
             ),
-            "Category": ", ".join(
-                set(
-                    itertools.chain(*[obj.Category.split(", ") for obj in predecessors])
-                )
-            ),
+            "Category": ", ".join(set(itertools.chain(*[obj.Category.split(", ") for obj in predecessors]))),
             "DataSource": ", ".join(
                 set(
-                    itertools.chain(
-                        *[
-                            obj.DataSource.split(", ")
-                            for obj in predecessors
-                            if obj.DataSource is not None
-                        ]
-                    )
+                    itertools.chain(*[obj.DataSource.split(", ") for obj in predecessors if obj.DataSource is not None])
                 )
             ),
         }
@@ -236,7 +225,7 @@ class UmiBase(object):
 
     def to_dict(self):
         """Return UmiBase dictionary representation."""
-        return {"$id": "{}".format(self.id), "Name": "{}".format(self.Name)}
+        return {"$id": f"{self.id}", "Name": f"{self.Name}"}
 
     def get_ref(self, ref):
         pass
@@ -255,8 +244,7 @@ class UmiBase(object):
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for attr, value in self.mapping().items():
-            yield attr, value
+        yield from self.mapping().items()
 
     def __getitem__(self, item):
         return getattr(self, item)
@@ -291,9 +279,7 @@ class UmiBase(object):
         if not np.array(weights).any():
             weights = [1, 1]
 
-        if not isinstance(getattr(self, attr), list) and not isinstance(
-            getattr(other, attr), list
-        ):
+        if not isinstance(getattr(self, attr), list) and not isinstance(getattr(other, attr), list):
             if math.isnan(getattr(self, attr)):
                 return getattr(other, attr)
             elif math.isnan(getattr(other, attr)):
@@ -301,11 +287,7 @@ class UmiBase(object):
             elif math.isnan(getattr(self, attr)) and math.isnan(getattr(other, attr)):
                 raise ValueError("Both values for self and other are Not A Number.")
             else:
-                return float(
-                    np.average(
-                        [getattr(self, attr), getattr(other, attr)], weights=weights
-                    )
-                )
+                return float(np.average([getattr(self, attr), getattr(other, attr)], weights=weights))
         elif getattr(self, attr) is None and getattr(other, attr) is None:
             return None
         else:
@@ -371,9 +353,9 @@ class UmiBase(object):
         if other is None:
             return self
         self._CREATED_OBJECTS.remove(self)
-        id = self.id
+        uid = self.id
         new_obj = self.combine(other, allow_duplicates=allow_duplicates)
-        new_obj.id = id
+        new_obj.id = uid
         for key in self.mapping(validate=False):
             setattr(self, key, getattr(new_obj, key))
         return self
@@ -392,13 +374,13 @@ class UmiBase(object):
         if validate:
             self.validate()
 
-        return dict(
+        return {
             # id=self.id,
-            Name=self.Name,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-        )
+            "Name": self.Name,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+        }
 
     def get_unique(self):
         """Return first object matching equality in the list of instantiated objects."""
@@ -407,12 +389,7 @@ class UmiBase(object):
             obj = next(
                 iter(
                     sorted(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                            if x == self
-                            and x.Name == self.Name
-                        ),
+                        (x for x in self._CREATED_OBJECTS if x == self and x.Name == self.Name),
                         key=lambda x: x.unit_number,
                     )
                 ),
@@ -424,11 +401,7 @@ class UmiBase(object):
             obj = next(
                 iter(
                     sorted(
-                        (
-                            x
-                            for x in self._CREATED_OBJECTS
-                            if x == self
-                        ),
+                        (x for x in self._CREATED_OBJECTS if x == self),
                         key=lambda x: x.unit_number,
                     )
                 ),
@@ -493,15 +466,13 @@ class MetaData(UserSet):
     @property
     def comments(self):
         """Get object comments."""
-        return "Object composed of a combination of these objects:\n{}".format(
-            set(obj.Name for obj in self)
-        )
+        return f"Object composed of a combination of these objects:\n{ {obj.Name for obj in self} }"
 
 
 class UniqueName(str):
     """Attribute unique user-defined names for :class:`UmiBase`."""
 
-    existing = {}
+    existing: ClassVar[set[str]] = {}
 
     def __new__(cls, content):
         """Pick a name. Will increment the name if already used."""
@@ -524,6 +495,6 @@ class UniqueName(str):
         else:
             current_count = cls.existing[name]
             new_count = current_count + 1
-            new_name = f"{name}_{str(new_count)}"
+            new_name = f"{name}_{new_count!s}"
             cls.existing[name] = new_count
             return new_name

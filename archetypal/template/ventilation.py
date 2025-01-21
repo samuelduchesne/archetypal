@@ -3,6 +3,7 @@
 import collections
 import logging as lg
 from enum import Enum
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -63,7 +64,7 @@ class VentilationSetting(UmiBase):
     .. image:: ../images/template/zoneinfo-ventilation.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["VentilationSetting"]] = []
 
     __slots__ = (
         "_infiltration",
@@ -179,7 +180,7 @@ class VentilationSetting(UmiBase):
                 ventilation types which employ only a single fan.
             **kwargs: keywords passed to the constructor.
         """
-        super(VentilationSetting, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
 
         self.Infiltration = Infiltration
         self.IsInfiltrationOn = IsInfiltrationOn
@@ -598,10 +599,7 @@ class VentilationSetting(UmiBase):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         meta = self._get_predecessors_meta(other)
@@ -659,27 +657,27 @@ class VentilationSetting(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            Afn=self.Afn,
-            IsBuoyancyOn=self.IsBuoyancyOn,
-            Infiltration=self.Infiltration,
-            IsInfiltrationOn=self.IsInfiltrationOn,
-            IsNatVentOn=self.IsNatVentOn,
-            IsScheduledVentilationOn=self.IsScheduledVentilationOn,
-            NatVentMaxRelHumidity=self.NatVentMaxRelHumidity,
-            NatVentMaxOutdoorAirTemp=self.NatVentMaxOutdoorAirTemp,
-            NatVentMinOutdoorAirTemp=self.NatVentMinOutdoorAirTemp,
-            NatVentSchedule=self.NatVentSchedule,
-            NatVentZoneTempSetpoint=self.NatVentZoneTempSetpoint,
-            ScheduledVentilationAch=self.ScheduledVentilationAch,
-            ScheduledVentilationSchedule=self.ScheduledVentilationSchedule,
-            ScheduledVentilationSetpoint=self.ScheduledVentilationSetpoint,
-            IsWindOn=self.IsWindOn,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Afn": self.Afn,
+            "IsBuoyancyOn": self.IsBuoyancyOn,
+            "Infiltration": self.Infiltration,
+            "IsInfiltrationOn": self.IsInfiltrationOn,
+            "IsNatVentOn": self.IsNatVentOn,
+            "IsScheduledVentilationOn": self.IsScheduledVentilationOn,
+            "NatVentMaxRelHumidity": self.NatVentMaxRelHumidity,
+            "NatVentMaxOutdoorAirTemp": self.NatVentMaxOutdoorAirTemp,
+            "NatVentMinOutdoorAirTemp": self.NatVentMinOutdoorAirTemp,
+            "NatVentSchedule": self.NatVentSchedule,
+            "NatVentZoneTempSetpoint": self.NatVentZoneTempSetpoint,
+            "ScheduledVentilationAch": self.ScheduledVentilationAch,
+            "ScheduledVentilationSchedule": self.ScheduledVentilationSchedule,
+            "ScheduledVentilationSetpoint": self.ScheduledVentilationSetpoint,
+            "IsWindOn": self.IsWindOn,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""
@@ -928,19 +926,18 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
             IsNatVentOn = any(nat_df.loc[index, "Name"])
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             quantity = nat_df.loc[index, "Volume Flow Rate/Floor Area {m3/s/m2}"]
-            if schedule_name_.upper() in zone.idf.schedules_dict:
-                epbunch = zone.idf.schedules_dict[schedule_name_.upper()]
+            if schedule_name_.upper() in zone_ep.theidf.schedules_dict:
+                epbunch = zone_ep.theidf.schedules_dict[schedule_name_.upper()]
                 NatVentSchedule = UmiSchedule.from_epbunch(epbunch, quantity=quantity)
             else:
-                raise KeyError
-        except KeyError:
-            # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
-            #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
-            #  in the nat_df. For the mean time, a zone containing such an
-            #  object will be turned on with an AlwaysOn schedule.
-            IsNatVentOn = True
-            NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
+                # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
+                #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
+                #  in the nat_df. For the mean time, a zone containing such an
+                #  object will be turned on with an AlwaysOn schedule.
+                IsNatVentOn = True
+                NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         except Exception:
+            log("Error in reading the natural ventilation schedule. Reverting to defaults.", lg.ERROR)
             IsNatVentOn = False
             NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         finally:

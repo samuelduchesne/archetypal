@@ -223,10 +223,7 @@ def weighted_mean(series, df, weighting_variable):
     # of multipling them together.
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
-    try:
-        weights = df.loc[series.index, weighting_variable].astype("float").prod(axis=1)
-    except Exception:
-        raise
+    weights = df.loc[series.index, weighting_variable].astype("float").prod(axis=1)
 
     # Try to average
     try:
@@ -402,7 +399,7 @@ def angle(v1, v2, acute=True):
         angle (float): angle between the 2 vectors in degree
     """
     angle = np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
-    if acute == True:
+    if acute is True:
         return angle
     else:
         return 2 * np.pi - angle
@@ -438,7 +435,7 @@ def timeit(method):
 
     def timed(*args, **kwargs):
         ts = time.time()
-        log("Executing %r..." % method.__qualname__)
+        log(f"Executing {method.__qualname__!r}...")
         result = method(*args, **kwargs)
         te = time.time()
 
@@ -446,14 +443,14 @@ def timeit(method):
         try:
             try:
                 name = result.Name
-            except:
+            except Exception:
                 name = result.__qualname__
-        except:
+        except Exception:
             name = str(result)
         if tt > 0.001:
-            log("Completed %r for %r in %.3f s" % (method.__qualname__, name, tt))
+            log(f"Completed {method.__qualname__!r} for {name!r} in {tt:.3f} s")
         else:
-            log("Completed %r for %r in %.3f ms" % (method.__qualname__, name, tt * 1000))
+            log(f"Completed {method.__qualname__!r} for {name!r} in {tt * 1000:.3f} ms")
         return result
 
     return timed
@@ -463,10 +460,7 @@ def lcm(x, y):
     """This function takes two integers and returns the least common multiple."""
 
     # choose the greater number
-    if x > y:
-        greater = x
-    else:
-        greater = y
+    greater = x if x > y else y
 
     while True:
         if (greater % x == 0) and (greater % y == 0):
@@ -515,23 +509,23 @@ def recursive_len(item):
     Returns:
         Total number of elements in nested list
     """
-    if type(item) == list:
+    if isinstance(item, list):
         return sum(recursive_len(subitem) for subitem in item)
     else:
         return 1
 
 
-def rotate(l, n):
+def rotate(items, n):
     """Shift list elements to the left
 
     Args:
-        l (list): list to rotate
+        items (list): list to rotate
         n (int): number to shift list to the left
 
     Returns:
         list: shifted list.
     """
-    return l[n:] + l[:n]
+    return items[n:] + items[:n]
 
 
 def parallel_process(
@@ -635,7 +629,7 @@ def parallel_process(
                 except Exception as e:
                     if debug:
                         lg.warning(str(e))
-                        raise e
+                        raise
                     result_done = e
                 # Append to the list of results
                 out[filename] = result_done

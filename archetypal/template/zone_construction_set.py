@@ -2,6 +2,7 @@
 
 import collections
 import logging as lg
+from typing import TYPE_CHECKING, ClassVar
 
 from validator_collection import validators
 
@@ -9,11 +10,14 @@ from archetypal.template.constructions.opaque_construction import OpaqueConstruc
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
+if TYPE_CHECKING:
+    from archetypal.template import ZoneDefinition
+
 
 class ZoneConstructionSet(UmiBase):
     """ZoneConstructionSet class."""
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["ZoneConstructionSet"]] = []
 
     __slots__ = (
         "_facade",
@@ -68,7 +72,7 @@ class ZoneConstructionSet(UmiBase):
             IsSlabAdiabatic (bool): If True, surface is adiabatic.
             **kwargs:
         """
-        super(ZoneConstructionSet, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
         self.Slab = Slab
         self.IsSlabAdiabatic = IsSlabAdiabatic
         self.Roof = Roof
@@ -230,11 +234,11 @@ class ZoneConstructionSet(UmiBase):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone, **kwargs):
+    def from_zone(cls, zone: "ZoneDefinition", **kwargs):
         """Create a ZoneConstructionSet from a ZoneDefinition object.
 
         Args:
-            zone (ZoneDefinition):
+            zone (ZoneDefinition): The zone object.
         """
         name = zone.Name + "_ZoneConstructionSet"
         # dispatch surfaces
@@ -261,30 +265,15 @@ class ZoneConstructionSet(UmiBase):
         # Returning a set() for each groups of Constructions.
 
         facades = set(facade)
-        if facades:
-            facade = reduce(OpaqueConstruction.combine, facades)
-        else:
-            facade = None
+        facade = reduce(OpaqueConstruction.combine, facades) if facades else None
         grounds = set(ground)
-        if grounds:
-            ground = reduce(OpaqueConstruction.combine, grounds)
-        else:
-            ground = None
+        ground = reduce(OpaqueConstruction.combine, grounds) if grounds else None
         partitions = set(partition)
-        if partitions:
-            partition = reduce(OpaqueConstruction.combine, partitions)
-        else:
-            partition = None
+        partition = reduce(OpaqueConstruction.combine, partitions) if partitions else None
         roofs = set(roof)
-        if roofs:
-            roof = reduce(OpaqueConstruction.combine, roofs)
-        else:
-            roof = None
+        roof = reduce(OpaqueConstruction.combine, roofs) if roofs else None
         slabs = set(slab)
-        if slabs:
-            slab = reduce(OpaqueConstruction.combine, slabs)
-        else:
-            slab = None
+        slab = reduce(OpaqueConstruction.combine, slabs) if slabs else None
 
         z_set = cls(
             Facade=facade,
@@ -382,10 +371,7 @@ class ZoneConstructionSet(UmiBase):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         meta = self._get_predecessors_meta(other)
@@ -471,22 +457,22 @@ class ZoneConstructionSet(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            Facade=self.Facade,
-            Ground=self.Ground,
-            Partition=self.Partition,
-            Roof=self.Roof,
-            Slab=self.Slab,
-            IsFacadeAdiabatic=self.IsFacadeAdiabatic,
-            IsGroundAdiabatic=self.IsGroundAdiabatic,
-            IsPartitionAdiabatic=self.IsPartitionAdiabatic,
-            IsRoofAdiabatic=self.IsRoofAdiabatic,
-            IsSlabAdiabatic=self.IsSlabAdiabatic,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-        )
+        return {
+            "Facade": self.Facade,
+            "Ground": self.Ground,
+            "Partition": self.Partition,
+            "Roof": self.Roof,
+            "Slab": self.Slab,
+            "IsFacadeAdiabatic": self.IsFacadeAdiabatic,
+            "IsGroundAdiabatic": self.IsGroundAdiabatic,
+            "IsPartitionAdiabatic": self.IsPartitionAdiabatic,
+            "IsRoofAdiabatic": self.IsRoofAdiabatic,
+            "IsSlabAdiabatic": self.IsSlabAdiabatic,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+        }
 
     def duplicate(self):
         """Get copy of self."""
@@ -581,14 +567,14 @@ class SurfaceDispatcher:
                 return self._dispatch[a, b](self.surf)
             except KeyError as e:
                 raise NotImplementedError(
-                    "surface '%s' in zone '%s' not supported by surface dispatcher "
-                    "with keys %s" % (self.surf.Name, self.zone.Name, e)
-                )
+                    f"surface '{self.surf.Name}' in zone '{self.zone.Name}' not supported by surface dispatcher "
+                    f"with keys {e}"
+                ) from e
 
     @staticmethod
     def _do_facade(surf):
         log(
-            'surface "%s" assigned as a Facade' % surf.Name,
+            f'surface "{surf.Name}" assigned as a Facade',
             lg.DEBUG,
             name=surf.theidf.name,
         )
@@ -600,7 +586,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_ground(surf):
         log(
-            'surface "%s" assigned as a Ground' % surf.Name,
+            f'surface "{surf.Name}" assigned as a Ground',
             lg.DEBUG,
             name=surf.theidf.name,
         )
@@ -617,7 +603,7 @@ class SurfaceDispatcher:
             oc.area = surf.area
             oc.Category = "Partition"
             log(
-                'surface "%s" assigned as a Partition' % surf.Name,
+                f'surface "{surf.Name}" assigned as a Partition',
                 lg.DEBUG,
                 name=surf.theidf.name,
             )
@@ -631,7 +617,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_roof(surf):
         log(
-            'surface "%s" assigned as a Roof' % surf.Name,
+            f'surface "{surf.Name}" assigned as a Roof',
             lg.DEBUG,
             name=surf.theidf.name,
         )
@@ -643,7 +629,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_slab(surf):
         log(
-            'surface "%s" assigned as a Slab' % surf.Name,
+            f'surface "{surf.Name}" assigned as a Slab',
             lg.DEBUG,
             name=surf.theidf.name,
         )
@@ -655,7 +641,7 @@ class SurfaceDispatcher:
     @staticmethod
     def _do_basement(surf):
         log(
-            'surface "%s" ignored because basement facades are not supported' % surf.Name,
+            f'surface "{surf.Name}" ignored because basement facades are not supported',
             lg.WARNING,
             name=surf.theidf.name,
         )

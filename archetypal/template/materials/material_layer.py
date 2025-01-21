@@ -127,7 +127,7 @@ class MaterialLayer:
 
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
-        return dict(Material=self.Material, Thickness=self.Thickness)
+        return {"Material": self.Material, "Thickness": self.Thickness}
 
     def get_unique(self):
         """Return the first of all the created objects that is equivalent to self."""
@@ -155,8 +155,7 @@ class MaterialLayer:
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
-        for k, v in self.mapping().items():
-            yield k, v
+        yield from self.mapping().items()
 
     def duplicate(self):
         """Get copy of self."""

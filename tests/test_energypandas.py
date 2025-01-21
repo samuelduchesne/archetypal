@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from energy_pandas import EnergyDataFrame, EnergySeries
 from numpy.testing import assert_almost_equal
@@ -76,7 +74,7 @@ class TestEnergySeries:
         rd_es.discretize_tsam(noTypicalPeriods=1, inplace=True)
         assert_almost_equal(res.sum(), 2.118713381170598, decimal=3)
         # check that the type is maintained
-        assert type(rd_es) == EnergySeries
+        assert isinstance(res, EnergySeries)
 
 
 class TestEnergyDataFrame:
@@ -90,7 +88,7 @@ class TestEnergyDataFrame:
         rd_edf.discretize_tsam(noTypicalPeriods=1, inplace=True)
         assert hasattr(rd_edf, "agg")
         # check that the type is maintained
-        assert type(rd_edf) == EnergyDataFrame
+        assert isinstance(rd_edf, EnergyDataFrame)
 
     def test_plot_2d(self, rd_edf):
         fig, ax = rd_edf.plot2d(

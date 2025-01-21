@@ -168,23 +168,25 @@ def tabula_building_details_sheet(
                 code_num,
                 code_variantnumber,
             ) = code_building.split(".")
-        except ValueError:
+        except ValueError as e:
             msg = (
                 f'the query "{code_building}" is missing a parameter. Make sure the '
                 '"code_building" has the form: '
                 "AT.MT.AB.02.Gen.ReEx.001.001"
             )
             log(msg, lg.ERROR)
-            raise ValueError(msg)
+            raise ValueError(msg) from e
 
     # Check code country
     code_country = _resolve_codecountry(code_country)
 
     # Check code_buildingsizeclass
-    if code_buildingsizeclass.upper() not in ["SFH", "TH", "MFH", "AB"]:
-        raise ValueError(
-            'specified code_buildingsizeclass "{}" not supported. Available ' 'values are "SFH", "TH", ' '"MFH" or "AB"'
+    if code_buildingsizeclass.upper() not in {"SFH", "TH", "MFH", "AB"}:
+        msg = (
+            f'specified code_buildingsizeclass "{code_buildingsizeclass}" not supported. '
+            'Available values are "SFH", "TH", "MFH" or "AB"'
         )
+        raise ValueError(msg)
     # Check numericals
     if not isinstance(code_construcionyearclass, str):
         code_construcionyearclass = str(code_construcionyearclass).zfill(2)
@@ -528,12 +530,11 @@ def nrel_bcl_api_request(data):
         return response_json
 
 
-def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
-    """Send a request to the StatCan API via HTTP GET and return the JSON
-    response.
+def stat_can_request(response_format, lang="E", dguid="2016A000011124", topic=0, notes=0, stat=0):
+    """Send a request to the StatCan API via HTTP GET and return the JSON response.
 
     Args:
-        type (str): "json" or "xml". json = json response format and xml = xml
+        response_format (str): "json" or "xml". json = json response format and xml = xml
             response format.
         lang (str): "E" or "F". E = English and F = French.
         dguid (str): Dissemination Geography Unique Identifier - DGUID. It is an
@@ -558,7 +559,7 @@ def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, s
     """
     prepared_url = (
         "https://www12.statcan.gc.ca/rest/census-recensement"
-        f"/CPR2016.{type}?lang={lang}&dguid={dguid}&topic="
+        f"/CPR2016.{response_format}?lang={lang}&dguid={dguid}&topic="
         f"{topic}&notes={notes}&stat={stat}"
     )
 
@@ -610,10 +611,11 @@ def stat_can_request(type, lang="E", dguid="2016A000011124", topic=0, notes=0, s
             return response_json
 
 
-def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
-    """
+def stat_can_geo_request(response_format="json", lang="E", geos="PR", cpt="00"):
+    """Send a request to the StatCan API via HTTP GET and return the JSON response.
+
     Args:
-        type (str): "json" or "xml". json = json response format and xml = xml
+        response_format (str): "json" or "xml". json = json response format and xml = xml
             response format.
         lang (str): "E" or "F". where: E = English F = French.
         geos (str): one geographic level code (default = PR). where: CD = Census
@@ -630,9 +632,7 @@ def stat_can_geo_request(type="json", lang="E", geos="PR", cpt="00"):
             35 = Ontario 46 = Manitoba 47 = Saskatchewan 48 = Alberta 59 =
             British Columbia 60 = Yukon 61 = Northwest Territories 62 = Nunavut.
     """
-    prepared_url = (
-        f"https://www12.statcan.gc.ca/rest/census-recensement/CR2016Geo.{type}?lang={lang}&geos={geos}&cpt={cpt}"
-    )
+    prepared_url = f"https://www12.statcan.gc.ca/rest/census-recensement/CR2016Geo.{response_format}?lang={lang}&geos={geos}&cpt={cpt}"
 
     cached_response_json = get_from_cache(prepared_url)
 

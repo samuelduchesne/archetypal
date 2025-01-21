@@ -110,7 +110,7 @@ class ZoneGraph(networkx.Graph):
                             this_cstr = surface["Construction_Name"]
                             their_cstr = adj_surf["Construction_Name"]
                             is_diff_cstr = surface["Construction_Name"] != adj_surf["Construction_Name"]
-                        except:
+                        except Exception:
                             this_cstr, their_cstr, is_diff_cstr = None, None, None
                         # create edge from this zone to the adjacent zone
                         G.add_edge(
@@ -125,7 +125,7 @@ class ZoneGraph(networkx.Graph):
                     else:
                         pass
             if log_adj_report:
-                msg = "Printing Adjacency Report for zone %s\n" % zone.Name
+                msg = f"Printing Adjacency Report for zone {zone.Name}\n"
                 msg += tabulate.tabulate(adj_report, headers="keys")
                 log(msg)
 
@@ -148,7 +148,7 @@ class ZoneGraph(networkx.Graph):
             attr: keyword arguments, optional (default= no attributes)
                 Attributes to add to graph as key=value pairs.
         """
-        super(ZoneGraph, self).__init__(incoming_graph_data=incoming_graph_data, **attr)
+        super().__init__(incoming_graph_data=incoming_graph_data, **attr)
 
     def plot_graph3d(
         self,
@@ -312,7 +312,7 @@ class ZoneGraph(networkx.Graph):
             # Loop on the list of edges to get the x,y,z, coordinates of the
             # connected nodes
             # Those two points are the extrema of the line to be plotted
-            for i, j in enumerate(self.edges()):
+            for _, j in enumerate(self.edges()):
                 x = np.array((pos[j[0]][0], pos[j[1]][0]))
                 y = np.array((pos[j[0]][1], pos[j[1]][1]))
                 z = np.array((pos[j[0]][2], pos[j[1]][2]))
@@ -428,8 +428,8 @@ class ZoneGraph(networkx.Graph):
         """
         try:
             import matplotlib.pyplot as plt
-        except ImportError:
-            raise ImportError("Matplotlib required for draw()")
+        except ImportError as e:
+            raise ImportError("Matplotlib required for draw()") from e
         except RuntimeError:
             log("Matplotlib unable to open display", lg.WARNING)
             raise
@@ -460,10 +460,7 @@ class ZoneGraph(networkx.Graph):
                 # choose nodes and color for each iteration
                 nlist = [nt]
                 label = getattr(nt, "Name", nt)
-                if color_nodes:
-                    node_color = [colors[nt]]
-                else:
-                    node_color = "#1f78b4"
+                node_color = [colors[nt]] if color_nodes else "#1f78b4"
                 # draw the graph
                 sc = networkx.draw_networkx_nodes(
                     tree,
@@ -482,7 +479,6 @@ class ZoneGraph(networkx.Graph):
                     edgecolors=kwargs.get("linewidths", None),
                 )
                 paths_.extend(sc.get_paths())
-            scatter = matplotlib.collections.PathCollection(paths_)
             networkx.draw_networkx_edges(tree, pos, ax=ax, arrows=arrows, **kwargs)
             if with_labels:
                 networkx.draw_networkx_labels(

@@ -1,10 +1,12 @@
 """UmiTemplateLibrary Module."""
 
+from __future__ import annotations
+
 import json
 import logging as lg
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from concurrent.futures.thread import ThreadPoolExecutor
-from typing import List
+from typing import ClassVar, Union
 
 import networkx as nx
 from pandas.io.common import get_handle
@@ -40,6 +42,13 @@ from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.utils import CustomJSONEncoder, log, parallel_process
 
 
+class AllFailedError(Exception):
+    """Exception raised when all BuildingTemplates failed to be created."""
+
+    def __init__(self, results):
+        super().__init__([res for res in results.values() if isinstance(res, Exception)])
+
+
 class UmiTemplateLibrary:
     """Handles parsing and creating Template Library Files for UMI for Rhino.
 
@@ -47,7 +56,7 @@ class UmiTemplateLibrary:
     - See :meth:`from_idf_files` to create a library by converting existing IDF models.
     """
 
-    _LIB_GROUPS = [
+    _LIB_GROUPS: ClassVar[list[str]] = [
         "GasMaterials",
         "GlazingMaterials",
         "OpaqueMaterials",
@@ -150,9 +159,9 @@ class UmiTemplateLibrary:
     def __getitem__(self, item):
         return self.__dict__[item]
 
-    def __add__(self, other: "UmiTemplateLibrary"):
+    def __add__(self, other: UmiTemplateLibrary):
         """Combined"""
-        for key, group in other:
+        for _, group in other:
             # for each group items
             for component in group:
                 component.id = None  # Reset the component's id
@@ -171,7 +180,7 @@ class UmiTemplateLibrary:
             except_groups = []
         exception = ["BuildingTemplates"]
         exception.extend(except_groups)
-        for key, group in self:
+        for key, _ in self:
             if key not in exception:
                 setattr(self, key, [])
 
@@ -179,7 +188,7 @@ class UmiTemplateLibrary:
     def object_list(self):
         """Get list of all objects in self, including orphaned objects."""
         objs = []
-        for name, group in self:
+        for _, group in self:
             objs.extend(group)
         return objs
 
@@ -262,12 +271,12 @@ class UmiTemplateLibrary:
 
         # If all exceptions, raise them for debugging
         if all(isinstance(x, Exception) for x in results.values()):
-            raise Exception([res for res in results.values() if isinstance(res, Exception)])
+            raise AllFailedError(results)
 
         umi_template.BuildingTemplates = [res for res in results.values() if not isinstance(res, Exception)]
 
         if keep_all_zones:
-            _zones = set(obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS)
+            _zones = {obj.get_unique() for obj in ZoneDefinition._CREATED_OBJECTS}
             for zone in _zones:
                 umi_template.ZoneDefinitions.append(zone)
             exceptions = [ZoneDefinition.__name__]
@@ -580,52 +589,35 @@ class UmiTemplateLibrary:
 
     def to_dict(self):
         """Return UmiTemplateLibrary dictionary representation."""
-        # First, reset existing name
-
-        # Create ordered dict with empty list
         data_dict = OrderedDict([(key, []) for key in self._LIB_GROUPS])
 
-        # create dict values
         for group_name, group in self:
-            # reset unique names for group
             UniqueName.existing = {}
-            obj: UmiBase
             for obj in group:
-                try:
-                    data = obj.to_dict()
-                except AttributeError as e:
-                    raise AttributeError(f"{e} for {obj}")
+                data = obj.to_dict()
                 data.update({"Name": UniqueName(data.get("Name"))})
-                data_dict.setdefault(group_name, []).append(data)
+                data_dict[group_name].append(data)
 
-        if not data_dict.get("GasMaterials"):
-            # Umi needs at least one gas material even if it is not necessary.
+        if not data_dict["GasMaterials"]:
             data = GasMaterial(Name="AIR").to_dict()
             data.update({"Name": UniqueName(data.get("Name"))})
-            data_dict.get("GasMaterials").append(data)
+            data_dict["GasMaterials"].append(data)
             data_dict.move_to_end("GasMaterials", last=False)
 
-        # Correct naming convention and reorder categories
-        for key in tuple(data_dict.keys()):
-            v = data_dict[key]
-            del data_dict[key]
+        for key in list(data_dict.keys()):
             if key == "ZoneDefinitions":
-                key = "Zones"
-            if key == "StructureInformations":
-                key = "StructureDefinitions"
-            data_dict[key] = v
+                data_dict["Zones"] = data_dict.pop(key)
+            elif key == "StructureInformations":
+                data_dict["StructureDefinitions"] = data_dict.pop(key)
 
-        # Validate
         assert no_duplicates(data_dict, attribute="Name")
 
-        # Sort values
         for key in data_dict:
-            # Sort the list elements by their Name
             data_dict[key] = sorted(data_dict[key], key=lambda x: x.get("Name"))
 
         return data_dict
 
-    def unique_components(self, *args: str, exceptions: List[str] = None, keep_orphaned=False):
+    def unique_components(self, *args: str, exceptions: list[str] | None = None, keep_orphaned=False):
         """Keep only unique components.
 
         Starts by clearing all objects in self except self.BuildingTemplates.
@@ -670,9 +662,8 @@ class UmiTemplateLibrary:
             for component in group:
                 # travers each object using generator
                 for parent, key, obj in parent_key_child_traversal(component):
-                    if obj.__class__.__name__ + "s" in inclusion:
-                        if key:
-                            setattr(parent, key, obj.get_unique())  # set unique object on key
+                    if obj.__class__.__name__ + "s" in inclusion and key:
+                        setattr(parent, key, obj.get_unique())  # set unique object on key
 
         self.update_components_list(exceptions=exceptions)  # Update the components list
         if keep_orphaned:
@@ -747,48 +738,39 @@ class UmiTemplateLibrary:
         return G
 
 
-def no_duplicates(file, attribute="Name"):
-    """Assert whether or not dict has duplicated Names.
-
-    `attribute` can be another attribute name like "$id".
-
-    Args:
-        file (str or dict): Path of the json file or dict containing umi objects groups
-        attribute (str): Attribute to search for duplicates in json UMI structure.
-            eg. : "$id", "Name".
-
-    Returns:
-        bool: True if no duplicates.
-
-    Raises:
-        Exception if duplicates found.
-    """
-    import json
-    from collections import defaultdict
+def no_duplicates(file: Union[str, dict], attribute="Name"):
+    """Assert whether or not dict has duplicated Names."""
 
     if isinstance(file, str):
-        data = json.loads(open(file).read())
+        with open(file) as f:
+            data = json.loads(f.read())
     else:
         data = file
-    ids = {}
+    ids = defaultdict(lambda: defaultdict(int))
+
     for key, value in data.items():
-        ids[key] = defaultdict(int)
         for component in value:
-            try:
-                _id = component[attribute]
-            except KeyError:
-                pass  # BuildingTemplate does not have an id
-            else:
+            _id = component.get(attribute)
+            if _id:
                 ids[key][_id] += 1
+
     dups = {
-        key: dict(filter(lambda x: x[1] > 1, values.items()))
+        key: {k: v for k, v in values.items() if v > 1}
         for key, values in ids.items()
-        if dict(filter(lambda x: x[1] > 1, values.items()))
+        if any(v > 1 for v in values.values())
     }
-    if any(dups.values()):
-        raise Exception(f"Duplicate {attribute} found: {dups}")
-    else:
-        return True
+
+    if dups:
+        raise DuplicateAttributeError(attribute, dups)
+    return True
+
+
+class DuplicateAttributeError(Exception):
+    """Exception raised for duplicate attributes in UMI objects."""
+
+    def __init__(self, attribute, duplicates):
+        """Initialize a DuplicateAttributeError."""
+        super().__init__(f"Duplicate {attribute} found: {duplicates}")
 
 
 DEEP_OBJECTS = (UmiBase, MaterialLayer, GasLayer, YearSchedulePart, MassRatio, list)

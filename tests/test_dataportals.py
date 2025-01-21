@@ -220,7 +220,7 @@ def test_download_and_load_bld_window(config):
 
 
 def test_statcan(config):
-    data = dict(type="json", lang="E", dguid="2016A000011124", topic=5, notes=0)
+    data = {"response_format": "json", "lang": "E", "dguid": "2016A000011124", "topic": 5, "notes": 0}
     response = dataportal.stat_can_request(**data)
     print(response)
 
@@ -230,7 +230,7 @@ def test_statcan(config):
 
 def test_statcan_error(config):
     # Tests statcan with error in inputs
-    data = dict(type="json", lang="E", dguid="wrong_string", topic=5, notes=0)
+    data = {"response_format": "json", "lang": "E", "dguid": "wrong_string", "topic": 5, "notes": 0}
     response = dataportal.stat_can_request(**data)
     print(response)
 
@@ -239,7 +239,7 @@ def test_statcan_error(config):
 
 
 def test_statcan_geo(config):
-    data = dict(type="json", lang="E", geos="PR", cpt="00")
+    data = {"response_format": "json", "lang": "E", "geos": "PR", "cpt": "00"}
     response = dataportal.stat_can_geo_request(**data)
     print(response)
 
@@ -249,7 +249,7 @@ def test_statcan_geo(config):
 
 def test_statcan_geo_error(config):
     # Tests statcan_geo with error in inputs
-    data = dict(type="json", lang="E", geos="wrong_string", cpt="00")
+    data = {"response_format": "json", "lang": "E", "geos": "wrong_string", "cpt": "00"}
     response = dataportal.stat_can_geo_request(**data)
     print(response)
 

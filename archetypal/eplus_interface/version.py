@@ -60,9 +60,9 @@ class EnergyPlusVersion(Version):
             version = ".".join(map(str, (version.major, version.minor, version.micro)))
         if isinstance(version, str) and "-" in version:
             version = version.replace("-", ".")
-        super(EnergyPlusVersion, self).__init__(version)
+        super().__init__(version)
         if self.dash not in self.valid_versions:
-            raise InvalidEnergyPlusVersion
+            raise InvalidEnergyPlusVersion()
 
     @classmethod
     def latest(cls):
@@ -71,7 +71,7 @@ class EnergyPlusVersion(Version):
 
         # check if any EnergyPlus install exists
         if not eplus_homes:
-            raise Exception(
+            raise EnergyPlusVersionError(
                 "No EnergyPlus installation found. Make sure you have EnergyPlus "
                 "installed. Go to https://energyplus.net/downloads to download the "
                 "latest version of EnergyPlus."
@@ -109,25 +109,18 @@ class EnergyPlusVersion(Version):
         """Get the current installation directory for this EnergyPlus version."""
         try:
             return self.install_locations[self.dash]
-        except KeyError:
-            raise EnergyPlusVersionError(f"EnergyPlusVersion {self.dash} is not installed.")
+        except KeyError as e:
+            raise EnergyPlusVersionError(f"EnergyPlusVersion {self.dash} is not installed.") from e
 
     @property
-    def tuple(self) -> tuple:
+    def tuple(self) -> tuple[int, int, int]:
         """Return the version number as a tuple: (major, minor, micro)."""
         return self.major, self.minor, self.micro
 
     @property
     def valid_versions(self) -> set:
         """List the idd file version found on this machine."""
-        if not self.valid_idd_paths:
-            # Little hack in case E+ is not installed
-            _choices = {
-                settings.ep_version,
-            }
-        else:
-            _choices = set(self.valid_idd_paths.keys())
-
+        _choices = {settings.ep_version} if not self.valid_idd_paths else set(self.valid_idd_paths.keys())
         return _choices
 
     @property
@@ -161,7 +154,7 @@ class EnergyPlusVersion(Version):
         if not value:
             try:
                 basedirs_ = []
-                for version, basedir in self.install_locations.items():
+                for _, basedir in self.install_locations.items():
                     updater_ = basedir / "PreProcess" / "IDFVersionUpdater"
                     if updater_.exists():
                         basedirs_.append(updater_.files("*.idd"))
@@ -183,9 +176,9 @@ class EnergyPlusVersion(Version):
                         if match is None:
                             # Match the version in the whole path
                             match = re.search(r"\d+(-\d+)+", iddname)
-                    version = match.group()
+                    _ = match.group()
 
-                    value[version] = iddname
+                    value[_] = iddname
         self._valid_paths = dict(sorted(value.items()))
 
     @classmethod
@@ -228,8 +221,9 @@ def get_eplus_basedirs():
         return Path("/Applications").dirs("EnergyPlus*")
     else:
         warnings.warn(
-            "Archetypal is not compatible with %s. It is only compatible "
-            "with Windows, Linux or MacOs" % platform.system()
+            f"Archetypal is not compatible with {platform.system()}. It is only compatible "
+            "with Windows, Linux or MacOs",
+            stacklevel=2,
         )
 
 
@@ -246,5 +240,6 @@ def warn_if_not_compatible():
         warnings.warn(
             "No installation of EnergyPlus could be detected on this "
             "machine. Please install EnergyPlus from https://energyplus.net before "
-            "using archetypal"
+            "using archetypal",
+            stacklevel=2,
         )

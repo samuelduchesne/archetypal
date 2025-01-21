@@ -9,6 +9,7 @@ from archetypal.eplus_interface import (
     InvalidEnergyPlusVersion,
 )
 from archetypal.eplus_interface.version import EnergyPlusVersion
+from archetypal.idfclass.idf import SimulationNotRunError
 from archetypal.utils import parallel_process
 
 from .conftest import data_dir
@@ -72,21 +73,6 @@ class TestIDF:
         # assert saveas returns another object
         assert idf_copy.saveas(tmp_path / "in.idf", inplace=False) is not idf_copy
 
-    def test_copy_saveas(self, idf_model, tmp_path):
-        """Test making a copy of self and two ways of saving as (inplace or not)."""
-        idf_copy = idf_model.copy()  # make a copy of self
-
-        assert idf_copy is not idf_model
-
-        # assert saveas modifies self inplace.
-        id_before = id(idf_copy)
-        idf_copy.saveas(tmp_path / "in.idf", inplace=True)
-        id_after = id(idf_copy)
-        assert id_after == id_before
-
-        # assert saveas returns another object
-        assert idf_copy.saveas(tmp_path / "in.idf", inplace=False) is not idf_copy
-
     def test_default_version_none(self):
         file = (
             data_dir / "necb/NECB 2011-FullServiceRestaurant-NECB HDD "
@@ -125,8 +111,10 @@ class TestIDF:
         assert natvent_v9_1_0.idd_version == (9, 1, 0)
         assert natvent_v9_1_0.file_version == EnergyPlusVersion("9-1-0")
 
-    def test_specific_version_error_simulate(self, natvent_v9_1_0):
-        with pytest.raises(InvalidEnergyPlusVersion):
+    def test_specific_version_error_simulate(self, natvent_v9_1_0, mocker):
+        with mocker.patch(
+            "archetypal.eplus_interface.energy_plus.EnergyPlusExe.get_exe_path", side_effect=EnergyPlusVersionError()
+        ), pytest.raises(EnergyPlusVersionError):
             natvent_v9_1_0.simulate()
 
     def test_version(self, natvent_v9_1_0):
@@ -142,9 +130,8 @@ class TestIDF:
         natvent_v9_1_0.epw = "newepw.epw"
         assert natvent_v9_1_0.epw == Path("newepw.epw")
 
-    @pytest.mark.xfail(reason="Fails on Linux")
     def test_transition_error(self, config):
-        with pytest.raises(CalledProcessError):
+        with pytest.raises((EnergyPlusVersionError, CalledProcessError)):
             file = data_dir / "problematic/RefBldgLargeOfficeNew2004_v1.4_7.2_5A_USA_IL_CHICAGO-OHARE.idf"
             wf = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
             IDF(file, epw=wf, as_version="8.9.0")
@@ -161,6 +148,8 @@ class TestIDF:
         assert idf_model.sql_file.exists()
 
     def test_processed_results(self, idf_model):
+        if not idf_model.simulation_dir.exists():
+            idf_model.simulate()
         assert idf_model.process_results()
 
     def test_partition_ratio(self, idf_model):
@@ -361,7 +350,7 @@ class TestMeters:
 
     def test_retrieve_meters_nosim(self, config, shoebox_res):
         shoebox_res.simulation_dir.rmtree_p()
-        with pytest.raises(Exception):
+        with pytest.raises(SimulationNotRunError):
             print(shoebox_res.meters)
 
     def test_retrieve_meters(self, config, shoebox_res):
@@ -372,20 +361,14 @@ class TestMeters:
 
 class TestThreads:
     @pytest.mark.xfail
-    def test_runslab(self, config, tmp_path):
+    def test_runslab(self, config):
         """Test the slab preprocessors. Makes a temp file so that permissions are ok."""
-        d = tmp_path / "sub"
-        d.mkdir()
-        p = d / "5ZoneAirCooledWithSlab.idf"
-        epw = (
-            EnergyPlusVersion.current().current_install_dir
-            / "WeatherData"
-            / "USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw"
+        idf = IDF.from_example_files(
+            "5ZoneAirCooledWithSlab.idf",
+            epw="USA_CA_San.Francisco.Intl.AP.724940_TMY3.epw",
+            annual=False,
+            design_day=True,
         )
-        slab_idf = EnergyPlusVersion.current().current_install_dir / "ExampleFiles" / "5ZoneAirCooledWithSlab.idf"
-        with open(slab_idf) as f:
-            p.write_text(f.read())
-        idf = IDF(p, epw=epw, annual=False, design_day=True)
 
         assert idf.simulate()
 

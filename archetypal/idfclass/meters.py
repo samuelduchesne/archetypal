@@ -98,10 +98,7 @@ class Meter:
                 # the environment_type is specified by the simulationcontrol.
                 try:
                     for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes":
-                            environment_type = 3
-                        else:
-                            environment_type = 1
+                        environment_type = 3 if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes" else 1
                 except (KeyError, IndexError, AttributeError):
                     reporting_frequency = 3
         report = ReportData.from_sqlite(
@@ -136,7 +133,7 @@ class MeterGroup:
         self._idf = idf
         self._properties = {}
 
-        for i, meter in meters_dict.items():
+        for _i, meter in meters_dict.items():
             meter_name = meter["Key_Name"].replace(":", "__").replace(" ", "_")
             self._properties[meter_name] = Meter(idf, meter)
             setattr(self, meter_name, self._properties[meter_name])
@@ -153,11 +150,10 @@ class MeterGroup:
         for i in inspect.getmembers(self):
             # to remove private and protected
             # functions
-            if not i[0].startswith("_"):
+            if not i[0].startswith("_") and not inspect.ismethod(i[1]):
                 # To remove other methods that
                 # do not start with an underscore
-                if not inspect.ismethod(i[1]):
-                    members.append(i)
+                members.append(i)
 
         return f"{len(members)} available meters"
 
@@ -212,9 +208,6 @@ class Meters:
         for i in inspect.getmembers(self):
             # to remove private and protected
             # functions
-            if not i[0].startswith("_"):
-                # To remove other methods that
-                # do not start with an underscore
-                if not inspect.ismethod(i[1]):
-                    members.append(i)
+            if not i[0].startswith("_") and not inspect.ismethod(i[1]):
+                members.append(i)
         return tabulate(members, headers=("Available subgroups", "Preview"))

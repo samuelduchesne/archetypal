@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.abspath("archetypal"))
 # -- Project information -----------------------------------------------------
 
 project = "archetypal"
-copyright = f"{datetime.datetime.now().year}, Samuel Letellier-Duchesne"
+legal = f"{datetime.datetime.now().year}, Samuel Letellier-Duchesne"
 author = "Samuel Letellier-Duchesne"
 
 # The full version, including alpha/beta/rc tags
@@ -193,7 +193,7 @@ texinfo_documents = [
 epub_title = project
 epub_author = author
 epub_publisher = author
-epub_copyright = copyright
+epub_copyright = legal
 
 # The unique identifier of the text. This can be a ISBN number
 # or the project homepage.

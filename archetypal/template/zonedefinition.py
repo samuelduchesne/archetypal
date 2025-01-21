@@ -3,6 +3,7 @@
 import collections
 import sqlite3
 import time
+from typing import ClassVar
 
 from eppy.bunch_subclass import BadEPFieldError
 from sigfig import round
@@ -26,7 +27,7 @@ class ZoneDefinition(UmiBase):
     .. image:: ../images/template/zoneinfo-zone.png
     """
 
-    _CREATED_OBJECTS = []
+    _CREATED_OBJECTS: ClassVar[list["ZoneDefinition"]] = []
 
     __slots__ = (
         "_internal_mass_exposed_per_floor_area",
@@ -97,7 +98,7 @@ class ZoneDefinition(UmiBase):
             occupants (float):
             **kwargs:
         """
-        super(ZoneDefinition, self).__init__(Name, **kwargs)
+        super().__init__(Name, **kwargs)
 
         self.Ventilation = Ventilation
         self.Loads = Loads
@@ -585,10 +586,7 @@ class ZoneDefinition(UmiBase):
 
         # Check if other is the same type as self
         if not isinstance(other, self.__class__):
-            msg = "Cannot combine %s with %s" % (
-                self.__class__.__name__,
-                other.__class__.__name__,
-            )
+            msg = f"Cannot combine {self.__class__.__name__} with {other.__class__.__name__}"
             raise NotImplementedError(msg)
 
         meta = self._get_predecessors_meta(other)
@@ -607,20 +605,20 @@ class ZoneDefinition(UmiBase):
                 )
             )
 
-        new_attr = dict(
-            Conditioning=ZoneConditioning.combine(self.Conditioning, other.Conditioning, weights),
-            Constructions=ZoneConstructionSet.combine(self.Constructions, other.Constructions, weights),
-            Ventilation=VentilationSetting.combine(self.Ventilation, other.Ventilation),
-            Windows=WindowSetting.combine(self.Windows, other.Windows, weights),
-            DaylightMeshResolution=self.float_mean(other, "DaylightMeshResolution", weights=weights),
-            DaylightWorkplaneHeight=self.float_mean(other, "DaylightWorkplaneHeight", weights),
-            DomesticHotWater=DomesticHotWaterSetting.combine(self.DomesticHotWater, other.DomesticHotWater),
-            InternalMassConstruction=OpaqueConstruction.combine(
+        new_attr = {
+            "Conditioning": ZoneConditioning.combine(self.Conditioning, other.Conditioning, weights),
+            "Constructions": ZoneConstructionSet.combine(self.Constructions, other.Constructions, weights),
+            "Ventilation": VentilationSetting.combine(self.Ventilation, other.Ventilation),
+            "Windows": WindowSetting.combine(self.Windows, other.Windows, weights),
+            "DaylightMeshResolution": self.float_mean(other, "DaylightMeshResolution", weights=weights),
+            "DaylightWorkplaneHeight": self.float_mean(other, "DaylightWorkplaneHeight", weights),
+            "DomesticHotWater": DomesticHotWaterSetting.combine(self.DomesticHotWater, other.DomesticHotWater),
+            "InternalMassConstruction": OpaqueConstruction.combine(
                 self.InternalMassConstruction, other.InternalMassConstruction
             ),
-            InternalMassExposedPerFloorArea=self.float_mean(other, "InternalMassExposedPerFloorArea", weights),
-            Loads=ZoneLoad.combine(self.Loads, other.Loads, weights),
-        )
+            "InternalMassExposedPerFloorArea": self.float_mean(other, "InternalMassExposedPerFloorArea", weights),
+            "Loads": ZoneLoad.combine(self.Loads, other.Loads, weights),
+        }
         new_obj = ZoneDefinition(**meta, **new_attr)
 
         # transfer aggregated values [volume, area, occupants] to new combined zone
@@ -663,30 +661,30 @@ class ZoneDefinition(UmiBase):
         if validate:
             self.validate()
 
-        return dict(
-            Conditioning=self.Conditioning,
-            Constructions=self.Constructions,
-            DaylightMeshResolution=self.DaylightMeshResolution,
-            DaylightWorkplaneHeight=self.DaylightWorkplaneHeight,
-            DomesticHotWater=self.DomesticHotWater,
-            InternalMassConstruction=self.InternalMassConstruction,
-            InternalMassExposedPerFloorArea=self.InternalMassExposedPerFloorArea,
-            Windows=self.Windows,
-            Loads=self.Loads,
-            Ventilation=self.Ventilation,
-            Category=self.Category,
-            Comments=self.Comments,
-            DataSource=self.DataSource,
-            Name=self.Name,
-            area=self.area,
-            volume=self.volume,
-            occupants=self.occupants,
-            is_part_of_conditioned_floor_area=self.is_part_of_conditioned_floor_area,
-            is_part_of_total_floor_area=self.is_part_of_total_floor_area,
-            multiplier=self.multiplier,
-            zone_surfaces=self.zone_surfaces,
-            is_core=self.is_core,
-        )
+        return {
+            "Conditioning": self.Conditioning,
+            "Constructions": self.Constructions,
+            "DaylightMeshResolution": self.DaylightMeshResolution,
+            "DaylightWorkplaneHeight": self.DaylightWorkplaneHeight,
+            "DomesticHotWater": self.DomesticHotWater,
+            "InternalMassConstruction": self.InternalMassConstruction,
+            "InternalMassExposedPerFloorArea": self.InternalMassExposedPerFloorArea,
+            "Windows": self.Windows,
+            "Loads": self.Loads,
+            "Ventilation": self.Ventilation,
+            "Category": self.Category,
+            "Comments": self.Comments,
+            "DataSource": self.DataSource,
+            "Name": self.Name,
+            "area": self.area,
+            "volume": self.volume,
+            "occupants": self.occupants,
+            "is_part_of_conditioned_floor_area": self.is_part_of_conditioned_floor_area,
+            "is_part_of_total_floor_area": self.is_part_of_total_floor_area,
+            "multiplier": self.multiplier,
+            "zone_surfaces": self.zone_surfaces,
+            "is_core": self.is_core,
+        }
 
     def __add__(self, other):
         """Return a combination of self and other."""

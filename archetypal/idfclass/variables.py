@@ -1,7 +1,7 @@
 """EnergyPlus variables module."""
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 import pandas as pd
 from energy_pandas import EnergyDataFrame
@@ -77,10 +77,7 @@ class Variable:
                 # the environment_type is specified by the simulationcontrol.
                 try:
                     for ctrl in self._idf.idfobjects["SIMULATIONCONTROL"]:
-                        if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes":
-                            environment_type = 3
-                        else:
-                            environment_type = 1
+                        environment_type = 3 if ctrl.Run_Simulation_for_Weather_File_Run_Periods.lower() == "yes" else 1
                 except (KeyError, IndexError, AttributeError):
                     reporting_frequency = 3
         report = ReportData.from_sqlite(
@@ -113,7 +110,7 @@ class VariableGroup:
         self._idf = idf
         self._properties = {}
 
-        for i, variable in variables_dict.items():
+        for _i, variable in variables_dict.items():
             variable_name = self.normalize_output_name(variable["Variable_Name"])
             self._properties[variable_name] = Variable(idf, variable)
             setattr(self, variable_name, self._properties[variable_name])

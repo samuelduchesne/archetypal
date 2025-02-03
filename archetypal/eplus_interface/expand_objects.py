@@ -51,7 +51,7 @@ class ExpandObjectsThread(Thread):
         """Wrapper around the ExpandObject command line interface."""
 
         # Move files into place
-        self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand()
+        self.epw = self.idf.epw.copy(self.run_dir / "in.epw").expand() if self.idf.epw else None
         self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir / "Energy+.idd").expand()
 

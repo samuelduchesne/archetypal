@@ -24,6 +24,11 @@ class ExpandObjectsExe(EnergyPlusProgram):
         super().__init__(idf)
         self.running_directory = tmp_dir
 
+    @property
+    def cmd(self):
+        """Get the command line to run ExpandObjects."""
+        return shutil.which("ExpandObjects", path=self.eplus_home)
+
 
 class ExpandObjectsThread(Thread):
     """ExpandObjects program manager."""
@@ -41,12 +46,6 @@ class ExpandObjectsThread(Thread):
         self.name = "ExpandObjects_" + self.idf.name
         self.tmp = tmp
 
-    @property
-    def cmd(self):
-        """Get the command."""
-        cmd_path = Path(shutil.which("ExpandObjects", path=self.run_dir))
-        return [str(cmd_path.name)]
-
     def run(self):
         """Wrapper around the ExpandObject command line interface."""
 
@@ -55,13 +54,9 @@ class ExpandObjectsThread(Thread):
         self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
         self.idd = self.idf.iddname.copy(self.run_dir / "Energy+.idd").expand()
 
-        # Get executable using shutil.which
-        expand_object_exe = shutil.which("ExpandObjects", path=self.eplus_home)
-        self.expand_object_exe = Path(expand_object_exe).copy(self.run_dir)
-
         # Run ExpandObjects Program
         self.p = subprocess.Popen(
-            self.cmd,
+            args=ExpandObjectsExe(self.idf, self.run_dir).cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=False,  # can use shell
@@ -72,7 +67,7 @@ class ExpandObjectsThread(Thread):
 
         # Read stdout line by line
         loggers = [lg.getLogger("archetypal")]
-        with tqdm_logging_redirect(desc=f"{expand_object_exe} {self.idf.name}", loggers=loggers) as pbar:
+        with tqdm_logging_redirect(desc=f"{self.p.args} {self.idf.name}", loggers=loggers) as pbar:
             for line in iter(self.p.stdout.readline, b""):
                 decoded_line = line.decode("utf-8").strip()
                 self.msg_callback(decoded_line)

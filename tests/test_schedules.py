@@ -192,3 +192,21 @@ def test_ep_versus_schedule(schedule_parametrized):
     print(pd.DataFrame({"actual": orig.series[mask], "expected": expected[mask]}))
     np.testing.assert_array_almost_equal(orig.all_values, expected, verbose=True)
     np.testing.assert_array_almost_equal(new.all_values, expected, verbose=True)
+
+
+def test_summer_winter_design_day():
+    idf = IDF(data_dir / "schedules/schedules.idf", prep_outputs=False)
+    ep_bunch = idf.schedules_dict["CoolingCoilAvailSched".upper()]
+    s = UmiSchedule.from_epbunch(ep_bunch, start_day_of_the_week=0)
+    new = s.develop()
+    assert hash(s) != hash(new)
+    assert id(s) != id(new)
+
+    assert isinstance(s, UmiSchedule)
+    assert isinstance(new, YearSchedule)
+    assert len(s.all_values) == len(new.all_values)
+    np.testing.assert_array_equal(new.all_values, s.all_values)
+
+    # Check if SummerDesignDay and WinterDesignDay are included
+    assert "SummerDesignDay" in [day.Name for day in new.Parts[0].Schedule.Days]
+    assert "WinterDesignDay" in [day.Name for day in new.Parts[0].Schedule.Days]

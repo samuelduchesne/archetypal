@@ -398,13 +398,14 @@ class Sql:
         return df
 
     def _extract_surfaces_table(self):
-        """Extract the Zones table from the SQLite file."""
+        """Extract the Surfaces table from the SQLite file."""
         with closing_connection(self.file_path) as conn:
             query = "SELECT * from Surfaces"
             df = pd.read_sql(query, conn).set_index(["ZoneIndex", "SurfaceIndex"])
         return df
 
     def _extract_constructions_table(self):
+        """Extract the Constructions table from the SQLite file."""
         with closing_connection(self.file_path) as conn:
             query = "SELECT * from Constructions"
             df = pd.read_sql(query, conn).set_index("ConstructionIndex")

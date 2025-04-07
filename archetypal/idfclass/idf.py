@@ -932,7 +932,7 @@ class IDF(GeomIDF):
 
         html, *_ = self.simulation_dir.files("*.htm")
 
-        webbrowser.open(html.abspath())
+        webbrowser.open(html.absolute())
 
     def open_idf(self):
         """Open file in correct version of Ep-Launch."""
@@ -943,14 +943,14 @@ class IDF(GeomIDF):
             filepath = self.idfname
 
         app_path_guess = self.file_version.current_install_dir / "PreProcess" / "IDFEditor"
-        find_and_launch("IDFEditor", app_path_guess, filepath.abspath())
+        find_and_launch("IDFEditor", app_path_guess, filepath.absolute())
 
     def open_last_simulation(self):
         """Open last simulation in Ep-Launch."""
         filepath, *_ = self.simulation_dir.files("*.idf")
 
         app_path_guess = self.file_version.current_install_dir
-        find_and_launch("EP-Launch", app_path_guess, filepath.abspath())
+        find_and_launch("EP-Launch", app_path_guess, filepath.absolute())
 
     def open_err(self):
         """Open last simulation err file in texteditor."""
@@ -958,7 +958,7 @@ class IDF(GeomIDF):
 
         filepath, *_ = self.simulation_dir.files("*.err")
 
-        webbrowser.open(filepath.abspath())
+        webbrowser.open(filepath.absolute())
 
     def open_mdd(self):
         """Open .mdd file in browser.
@@ -970,7 +970,7 @@ class IDF(GeomIDF):
 
         mdd, *_ = self.simulation_dir.files("*.mdd")
 
-        webbrowser.open(mdd.abspath())
+        webbrowser.open(mdd.absolute())
 
     def open_mtd(self):
         """Open .mtd file in browser.
@@ -983,7 +983,7 @@ class IDF(GeomIDF):
 
         mtd, *_ = self.simulation_dir.files("*.mtd")
 
-        webbrowser.open(mtd.abspath())
+        webbrowser.open(mtd.absolute())
 
     @property
     def sql_file(self):
@@ -1383,7 +1383,7 @@ class IDF(GeomIDF):
 
         include = self.include
         if isinstance(include, str):
-            include = Path().abspath().glob(include)
+            include = Path().absolute().glob(include)
         elif include is not None:
             include = [Path(file) for file in include]
 
@@ -2608,7 +2608,7 @@ def _process_csv(file, working_dir, simulname):
     """
     log("looking for csv output, return the csv files in DataFrames if any")
     if "table" in file.basename():
-        tables_out = working_dir.abspath() / "tables"
+        tables_out = working_dir.absolute() / "tables"
         tables_out.makedirs_p()
         file.copy(tables_out / "%s_%s.csv" % (file.basename().stripext(), simulname))
         return

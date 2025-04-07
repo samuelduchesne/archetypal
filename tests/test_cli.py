@@ -55,7 +55,7 @@ class TestCli:
     )
     def test_transition_dir_file_mixed(self):
         """Tests the transition method for the CLI using a mixture of a directory
-        (Path.isdir()) and a file Path.isfile()"""
+        (Path.is_dir()) and a file Path.is_file()"""
         runner = CliRunner()
         result = runner.invoke(
             cli,

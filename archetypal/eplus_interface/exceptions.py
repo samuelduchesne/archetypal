@@ -20,7 +20,7 @@ class EnergyPlusProcessError(Exception):
     def __str__(self):
         """Override that only returns the stderr"""
         try:
-            name = self.idf.idfname.abspath()
+            name = self.idf.idfname.absolute()
         except Exception:
             name = self.idf.name
         msg = ":\n".join([name, self.stderr])

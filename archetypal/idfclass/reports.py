@@ -112,7 +112,7 @@ def get_sqlite_report(report_file: Path, report_tables=None):
         report_tables = settings.available_sqlite_tables
 
     # if file exists, parse it with pandas' read_sql_query
-    if report_file.exists():
+    if report_file.is_file():
         import sqlite3
 
         import numpy as np

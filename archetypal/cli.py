@@ -227,7 +227,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     final_path: Path = dir_ / name + ext
     template.save(path_or_buf=final_path)
     log(
-        f"Successfully created template file at {final_path.abspath()}",
+        f"Successfully created template file at {final_path.absolute()}",
     )
 
 
@@ -363,7 +363,7 @@ def set_filepaths(idf):
                 settings.imgs_folder,
                 settings.logs_folder,
             ]
-            top = file_or_path.abspath().dirname()
+            top = file_or_path.absolute().dirname()
             for root, _, _ in walkdirs(top, excluded_dirs):
                 pattern = file_or_path.basename()
                 file_paths += tuple(Path(root).files(pattern))

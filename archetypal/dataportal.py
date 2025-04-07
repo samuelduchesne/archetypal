@@ -14,6 +14,7 @@ import os
 import re
 import time
 import zipfile
+from warnings import warn
 
 import pandas as pd
 import pycountry as pycountry
@@ -557,6 +558,7 @@ def stat_can_request(response_format, lang="E", dguid="2016A000011124", topic=0,
             footnotes.
         stat (int): 0 or 1. 0 = counts. 1 = rates.
     """
+    warn("The stat can module is deprecated", DeprecationWarning, stacklevel=2)
     prepared_url = (
         "https://www12.statcan.gc.ca/rest/census-recensement"
         f"/CPR2016.{response_format}?lang={lang}&dguid={dguid}&topic="

@@ -340,7 +340,7 @@ def cd(path):
         log(f"finally inside {os.getcwd()}")
 
 
-def load_umi_template(json_template):
+def load_umi_template(json_template: Path):
     """Load umi template file to list of dict.
 
     Args:
@@ -349,7 +349,9 @@ def load_umi_template(json_template):
     Returns:
         list: list of dict.
     """
-    if os.path.isfile(json_template):
+    if not isinstance(json_template, Path):
+        json_template = Path(json_template)
+    if json_template.exists():
         with open(json_template) as f:
             dicts = json.load(f, object_pairs_hook=OrderedDict)
 

@@ -1,9 +1,9 @@
 """EnergyPlus reports module."""
 
-import os
 from sqlite3.dbapi2 import OperationalError
 
 import pandas as pd
+from path import Path
 
 from archetypal import settings
 from archetypal.idfclass.util import hash_model
@@ -94,7 +94,7 @@ def summary_reports_to_dataframes(reports_list):
     return results_dict
 
 
-def get_sqlite_report(report_file, report_tables=None):
+def get_sqlite_report(report_file: Path, report_tables=None):
     """Connect to the EnergyPlus SQL output file and retrieves all tables
 
     Args:
@@ -105,12 +105,14 @@ def get_sqlite_report(report_file, report_tables=None):
     Returns:
         dict: dict of DataFrames
     """
+    if not isinstance(report_file, Path):
+        report_file = Path(report_file)
     # set list of report tables
     if not report_tables:
         report_tables = settings.available_sqlite_tables
 
     # if file exists, parse it with pandas' read_sql_query
-    if os.path.isfile(report_file):
+    if report_file.exists():
         import sqlite3
 
         import numpy as np

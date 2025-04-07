@@ -349,10 +349,10 @@ def get_from_cache(url):
         # determine the filename by hashing the url
         filename = hashlib.md5(str(url).encode("utf-8")).hexdigest()
 
-        cache_path_filename = os.path.join(settings.cache_folder, os.extsep.join([filename, "json"]))
+        cache_path_filename = settings.cache_folder / (filename + ".json")
         # open the cache file for this url hash if it already exists, otherwise
         # return None
-        if os.path.isfile(cache_path_filename):
+        if cache_path_filename.is_file():
             with open(cache_path_filename, encoding="utf-8") as cache_file:
                 response_json = json.load(cache_file)
             log(f'Retrieved response from cache file "{cache_path_filename}" for URL "{url!s}"')

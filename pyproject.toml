@@ -29,7 +29,7 @@ energy_pandas = "^0.4.1"
 validator-collection = "^1.5.0"
 typing-extensions = "^4.12.2"
 pydantic-settings = "^2.3.2"
-path = "^16.14.0"
+path = ">=17.1.0"  # fix an issue with Path.copy returning a str instead of a Path object
 numpy = [
     {version = "^2.0.2", python = "<=3.9"},
     {version = "^2.1.1", python = "3.10"}

@@ -23,7 +23,7 @@ from archetypal.utils import log
 class ScheduleTypeLimits:
     """ScheduleTypeLimits class."""
 
-    __slots__ = ("_name", "_lower_limit", "_upper_limit", "_numeric_type", "_unit_type")
+    __slots__ = ("_lower_limit", "_name", "_numeric_type", "_unit_type", "_upper_limit")
 
     _NUMERIC_TYPES = ("continuous", "discrete")
     _UNIT_TYPES = (
@@ -95,7 +95,7 @@ class ScheduleTypeLimits:
         validators.string(value, allow_empty=True)
         if value is not None:
             assert value.lower() in self._NUMERIC_TYPES, (
-                f"Input error for value '{value}'. NumericType must " f"be one of '{self._NUMERIC_TYPES}'"
+                f"Input error for value '{value}'. NumericType must be one of '{self._NUMERIC_TYPES}'"
             )
         self._numeric_type = value
 
@@ -108,7 +108,7 @@ class ScheduleTypeLimits:
     def UnitType(self, value):
         value = validators.string(value)
         assert value.lower() in map(str.lower, self._UNIT_TYPES), (
-            f"Input error for value '{value}'. UnitType must " f"be one of '{self._UNIT_TYPES}'"
+            f"Input error for value '{value}'. UnitType must be one of '{self._UNIT_TYPES}'"
         )
         self._unit_type = value
 
@@ -618,7 +618,7 @@ class _ScheduleParser:
             hourly_values = cls.get_file_ep_schedule_values(sched_epbunch)
         else:
             log(
-                "Archetypal does not currently support schedules of type " f'"{sch_type}"',
+                f'Archetypal does not currently support schedules of type "{sch_type}"',
                 lg.WARNING,
             )
             hourly_values = []
@@ -663,7 +663,7 @@ class _ScheduleParser:
                 minute = None
                 value = statement.strip()
             else:
-                msg = f'The schedule "{name}" contains a Field ' f'that is not understood: "{field}"'
+                msg = f'The schedule "{name}" contains a Field that is not understood: "{field}"'
                 raise NotImplementedError(msg)
         elif "for" in field.lower():
             keywords = [word for word in values_sets if word in field.lower()]
@@ -682,7 +682,7 @@ class _ScheduleParser:
                 minute = None
             else:
                 # parse without a colon
-                msg = f'The schedule "{name}" contains a Field ' f'that is not understood: "{field}"'
+                msg = f'The schedule "{name}" contains a Field that is not understood: "{field}"'
                 raise NotImplementedError(msg)
         elif "interpolate" in field.lower():
             msg = (
@@ -709,7 +709,7 @@ class _ScheduleParser:
                     minute = minute.strip()
                     value = None
             else:
-                msg = f'The schedule "{name}" contains a Field ' f'that is not understood: "{field}"'
+                msg = f'The schedule "{name}" contains a Field that is not understood: "{field}"'
                 raise NotImplementedError(msg)
         elif "value" in field.lower():
             if ":" in field.lower():
@@ -719,7 +719,7 @@ class _ScheduleParser:
                 hour = None
                 minute = None
             else:
-                msg = f'The schedule "{name}" contains a Field ' f'that is not understood: "{field}"'
+                msg = f'The schedule "{name}" contains a Field that is not understood: "{field}"'
                 raise NotImplementedError(msg)
         else:
             # deal with the data value
@@ -819,10 +819,10 @@ class _ScheduleParser:
             # return only Saturdays
             return lambda x: x.index.dayofweek == 5
         elif field.lower() == "summerdesignday" or field.lower() == "winterdesignday":
-            # return _ScheduleParser.design_day(
-            #     schedule_epbunch, field, slicer_, start_date, strict
-            # )
-            return None
+            if slicer_ is not None:
+                return _ScheduleParser.design_day(schedule_epbunch, field, slicer_, start_date, strict)
+            else:
+                return None
         elif field.lower() == "holiday" or field.lower() == "holidays":
             field = "holiday"
             return _ScheduleParser.special_day(schedule_epbunch, field, slicer_, strict, start_date)
@@ -863,7 +863,7 @@ class _ScheduleParser:
             try:
                 date = _ScheduleParser._parse_fancy_string(field, start_date)
             except Exception as e:
-                msg = f"the schedule contains a " f"Field that is not understood: '{field}'"
+                msg = f"the schedule contains a Field that is not understood: '{field}'"
                 raise ValueError(msg, e) from e
             else:
                 return date
@@ -1012,6 +1012,8 @@ class Schedule:
         strict: bool = False,
         Type: str | ScheduleTypeLimits = None,
         Values: list[int | float] | np.ndarray = None,
+        SummerDesignDay: list[int | float] | np.ndarray | None = None,
+        WinterDesignDay: list[int | float] | np.ndarray | None = None,
         **kwargs,
     ):
         """Initialize object.
@@ -1030,6 +1032,10 @@ class Schedule:
                 object will be used to validate the current field values. If None,
                 no validation will occur.
             Values (ndarray): A 24 or 8760 list of schedule values.
+            SummerDesignDay (array-like | None): Optional 24 values for the
+                summer design day.
+            WinterDesignDay (array-like | None): Optional 24 values for the
+                winter design day.
             **kwargs:
         """
         with contextlib.suppress(Exception):
@@ -1041,6 +1047,8 @@ class Schedule:
         self.year = get_year_for_first_weekday(self.startDayOfTheWeek)
         self.Values = Values
         self.Type = Type
+        self.SummerDesignDay = SummerDesignDay
+        self.WinterDesignDay = WinterDesignDay
 
     @property
     def Type(self):
@@ -1078,6 +1086,30 @@ class Schedule:
             assert value.ndim == 1, value.ndim
             value = value.tolist()
         self._values = validators.iterable(value, allow_empty=True)
+
+    @property
+    def SummerDesignDay(self):
+        """Get or set the summer design day values."""
+        return self._summer_designday
+
+    @SummerDesignDay.setter
+    def SummerDesignDay(self, value):
+        if isinstance(value, np.ndarray):
+            assert value.ndim == 1
+            value = value.tolist()
+        self._summer_designday = validators.iterable(value, allow_empty=True)
+
+    @property
+    def WinterDesignDay(self):
+        """Get or set the winter design day values."""
+        return self._winter_designday
+
+    @WinterDesignDay.setter
+    def WinterDesignDay(self, value):
+        if isinstance(value, np.ndarray):
+            assert value.ndim == 1
+            value = value.tolist()
+        self._winter_designday = validators.iterable(value, allow_empty=True)
 
     @property
     def Name(self):
@@ -1217,9 +1249,9 @@ class Schedule:
             "The index of `new_values` must be a `pandas.DatetimeIndex`. Instead, "
             f"`{type(new_values.index)}` was provided."
         )
-        assert not self.series.index.difference(
-            new_values.index
-        ).empty, "There is no overlap between self.index and new_values.index. Please check your dates."
+        assert not self.series.index.difference(new_values.index).empty, (
+            "There is no overlap between self.index and new_values.index. Please check your dates."
+        )
 
         # create a copy of self.series as orig.
         orig = self.series.copy()
@@ -1325,6 +1357,24 @@ class Schedule:
             ep_day = DaySchedule(Name=name, Type=self.Type, Values=[unique_day[i] for i in range(24)])
             ep_days.append(ep_day)
 
+        # add design day schedules if provided
+        sdd_day = None
+        wdd_day = None
+        if self.SummerDesignDay is not None:
+            sdd_day = DaySchedule(
+                Name=f"d_{self.Name}_SummerDesignDay",
+                Type=self.Type,
+                Values=list(self.SummerDesignDay),
+            )
+            ep_days.append(sdd_day)
+        if self.WinterDesignDay is not None:
+            wdd_day = DaySchedule(
+                Name=f"d_{self.Name}_WinterDesignDay",
+                Type=self.Type,
+                Values=list(self.WinterDesignDay),
+            )
+            ep_days.append(wdd_day)
+
         # create unique weeks from unique days
         try:
             unique_weeks, nwsi, nws, count = np.unique(
@@ -1364,6 +1414,8 @@ class Schedule:
             ep_week = WeekSchedule(
                 Name=week_id,
                 Days=[dict_week[week_id][f"day_{day_num}"] for day_num in c.iterweekdays()],
+                SummerDesignDay=sdd_day,
+                WinterDesignDay=wdd_day,
             )
             ep_weeks[week_id] = ep_week
 

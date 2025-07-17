@@ -1,5 +1,5 @@
 from sqlite3 import connect
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 import numpy as np
 import pandas as pd
@@ -89,6 +89,8 @@ class EndUseBalance:
     @classmethod
     def get_eplus_version(cls, sql_file):
         """Extract EnergyPlus version from the SQL file."""
+        import sqlite3
+
         try:
             with connect(sql_file) as conn:
                 version_str = pd.read_sql('select * from "Simulations"', conn).loc[0, "EnergyPlusVersion"]
@@ -98,8 +100,10 @@ class EndUseBalance:
                 m = re.search(r"\b(\d+)\.(\d+)\.(\d+)\b", version_str)
                 if m:
                     return m.group(0)
-        except Exception as e:
-            raise ValueError("Could not extract EnergyPlus version from SQL file.") from e
+        except sqlite3.OperationalError as e:
+            raise ValueError("Could not extract EnergyPlus version from SQL file due to a database error.") from e
+        except KeyError as e:
+            raise ValueError("Could not find EnergyPlusVersion in the SQL file.") from e
 
     @classmethod
     def _match_version_override(cls, version):
@@ -153,10 +157,9 @@ class EndUseBalance:
         return None
 
     @classmethod
-    def get_keys(cls, key_name, sql_file=None):
+    def get_keys(cls, key_name: str, sql_file: Optional[str] = None, version: Optional[str] = None):
         """Return the correct keys for a variable name based on EnergyPlus version, using default and overrides (supports ranges/lists)."""
-        version = None
-        if sql_file:
+        if version is None and sql_file is not None:
             version = cls.get_eplus_version(sql_file)
         keys = cls._DEFAULT_KEYS.get(key_name, ())
         override_dict = cls._match_version_override(version)
@@ -217,28 +220,30 @@ class EndUseBalance:
     @classmethod
     def from_sql_file(cls, sql_file, units="kWh", power_units="kW", outdoor_surfaces_only=True):
         sql = Sql(sql_file)
+        # Fetch EnergyPlus version once
+        version = cls.get_eplus_version(sql_file)
         # Use dynamic keys based on EnergyPlus version
-        hvac_input_sensible = cls.get_keys("HVAC_INPUT_SENSIBLE", sql_file)
-        hvac_input_heated_surface = cls.get_keys("HVAC_INPUT_HEATED_SURFACE", sql_file)
-        hvac_input_cooled_surface = cls.get_keys("HVAC_INPUT_COOLED_SURFACE", sql_file)
-        hvac_mode = cls.get_keys("HVAC_MODE", sql_file)
-        lighting_key = cls.get_keys("LIGHTING", sql_file)
-        people_gain_key = cls.get_keys("PEOPLE_GAIN", sql_file)
-        equip_gains_key = cls.get_keys("EQUIP_GAINS", sql_file)
-        solar_gain_key = cls.get_keys("SOLAR_GAIN", sql_file)
-        infil_gain_key = cls.get_keys("INFIL_GAIN", sql_file)
-        infil_loss_key = cls.get_keys("INFIL_LOSS", sql_file)
-        vent_loss_key = cls.get_keys("VENTILATION_LOSS", sql_file)
-        vent_gain_key = cls.get_keys("VENTILATION_GAIN", sql_file)
-        nat_vent_gain_key = cls.get_keys("NAT_VENT_GAIN", sql_file)
-        nat_vent_loss_key = cls.get_keys("NAT_VENT_LOSS", sql_file)
-        hrv_loss_key = cls.get_keys("HRV_LOSS", sql_file)
-        hrv_gain_key = cls.get_keys("HRV_GAIN", sql_file)
-        air_system_key = cls.get_keys("AIR_SYSTEM", sql_file)
-        opaque_energy_flow_key = cls.get_keys("OPAQUE_ENERGY_FLOW", sql_file)
-        opaque_energy_storage_key = cls.get_keys("OPAQUE_ENERGY_STORAGE", sql_file)
-        window_loss_key = cls.get_keys("WINDOW_LOSS", sql_file)
-        window_gain_key = cls.get_keys("WINDOW_GAIN", sql_file)
+        hvac_input_sensible = cls.get_keys("HVAC_INPUT_SENSIBLE", version=version)
+        hvac_input_heated_surface = cls.get_keys("HVAC_INPUT_HEATED_SURFACE", version=version)
+        hvac_input_cooled_surface = cls.get_keys("HVAC_INPUT_COOLED_SURFACE", version=version)
+        hvac_mode = cls.get_keys("HVAC_MODE", version=version)
+        lighting_key = cls.get_keys("LIGHTING", version=version)
+        people_gain_key = cls.get_keys("PEOPLE_GAIN", version=version)
+        equip_gains_key = cls.get_keys("EQUIP_GAINS", version=version)
+        solar_gain_key = cls.get_keys("SOLAR_GAIN", version=version)
+        infil_gain_key = cls.get_keys("INFIL_GAIN", version=version)
+        infil_loss_key = cls.get_keys("INFIL_LOSS", version=version)
+        vent_loss_key = cls.get_keys("VENTILATION_LOSS", version=version)
+        vent_gain_key = cls.get_keys("VENTILATION_GAIN", version=version)
+        nat_vent_gain_key = cls.get_keys("NAT_VENT_GAIN", version=version)
+        nat_vent_loss_key = cls.get_keys("NAT_VENT_LOSS", version=version)
+        hrv_loss_key = cls.get_keys("HRV_LOSS", version=version)
+        hrv_gain_key = cls.get_keys("HRV_GAIN", version=version)
+        air_system_key = cls.get_keys("AIR_SYSTEM", version=version)
+        opaque_energy_flow_key = cls.get_keys("OPAQUE_ENERGY_FLOW", version=version)
+        opaque_energy_storage_key = cls.get_keys("OPAQUE_ENERGY_STORAGE", version=version)
+        window_loss_key = cls.get_keys("WINDOW_LOSS", version=version)
+        window_gain_key = cls.get_keys("WINDOW_GAIN", version=version)
 
         _hvac_input = sql.timeseries_by_name(hvac_input_sensible).to_units(power_units)
         _hvac_input_heated_surface = sql.timeseries_by_name(hvac_input_heated_surface).to_units(units)

@@ -74,7 +74,7 @@ class EndUseBalance:
     # Supports ranges: '<9.5', '>=9.3,<9.5', '9.3,9.4,9.5', '22', etc.
     _KEY_OVERRIDES_BY_VERSION: ClassVar[dict[str, dict[str, tuple[str, ...]]]] = {
         # Example: for version 22, override only the keys that differ
-        "24.2.0": {
+        ">=24.2.0": {
             "SOLAR_GAIN": ("Enclosure Windows Total Transmitted Solar Radiation Energy",),
         },
         "<9.5": {

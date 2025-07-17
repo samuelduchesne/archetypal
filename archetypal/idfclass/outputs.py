@@ -251,10 +251,9 @@ class Outputs:
     @reporting_frequency.setter
     def reporting_frequency(self, value):
         value = value.title()
-        assert value in self.REPORTING_FREQUENCIES, (
-            f"reporting_frequency {value} is not recognized.\nChoose from the "
-            f"following:\n{self.REPORTING_FREQUENCIES}"
-        )
+        assert (
+            value in self.REPORTING_FREQUENCIES
+        ), f"reporting_frequency {value} is not recognized.\nChoose from the following:\n{self.REPORTING_FREQUENCIES}"
         self._reporting_frequency = value
 
     def add_custom(self, outputs):
@@ -600,28 +599,29 @@ class Outputs:
         # so that the total for the timestep sums to zero. These columns are derived strictly from the other columns.
 
     def add_end_use_balance_components(self):
+        version = str(self.idf.file_version)
         for group in [
-            EndUseBalance.HVAC_MODE,
-            EndUseBalance.HVAC_INPUT_SENSIBLE,
-            EndUseBalance.HVAC_INPUT_HEATED_SURFACE,
-            EndUseBalance.HVAC_INPUT_COOLED_SURFACE,
-            EndUseBalance.LIGHTING,
-            EndUseBalance.EQUIP_GAINS,
-            EndUseBalance.PEOPLE_GAIN,
-            EndUseBalance.SOLAR_GAIN,
-            EndUseBalance.INFIL_GAIN,
-            EndUseBalance.INFIL_LOSS,
-            EndUseBalance.VENTILATION_LOSS,
-            EndUseBalance.VENTILATION_GAIN,
-            EndUseBalance.NAT_VENT_GAIN,
-            EndUseBalance.NAT_VENT_LOSS,
-            EndUseBalance.OPAQUE_ENERGY_FLOW,
-            EndUseBalance.OPAQUE_ENERGY_STORAGE,
-            EndUseBalance.WINDOW_LOSS,
-            EndUseBalance.WINDOW_GAIN,
-            EndUseBalance.HRV_LOSS,
-            EndUseBalance.HRV_GAIN,
-            EndUseBalance.AIR_SYSTEM,
+            EndUseBalance.get_keys("HVAC_MODE", version=version),
+            EndUseBalance.get_keys("HVAC_INPUT_SENSIBLE", version=version),
+            EndUseBalance.get_keys("HVAC_INPUT_HEATED_SURFACE", version=version),
+            EndUseBalance.get_keys("HVAC_INPUT_COOLED_SURFACE", version=version),
+            EndUseBalance.get_keys("LIGHTING", version=version),
+            EndUseBalance.get_keys("EQUIP_GAINS", version=version),
+            EndUseBalance.get_keys("PEOPLE_GAIN", version=version),
+            EndUseBalance.get_keys("SOLAR_GAIN", version=version),
+            EndUseBalance.get_keys("INFIL_GAIN", version=version),
+            EndUseBalance.get_keys("INFIL_LOSS", version=version),
+            EndUseBalance.get_keys("VENTILATION_LOSS", version=version),
+            EndUseBalance.get_keys("VENTILATION_GAIN", version=version),
+            EndUseBalance.get_keys("NAT_VENT_GAIN", version=version),
+            EndUseBalance.get_keys("NAT_VENT_LOSS", version=version),
+            EndUseBalance.get_keys("OPAQUE_ENERGY_FLOW", version=version),
+            EndUseBalance.get_keys("OPAQUE_ENERGY_STORAGE", version=version),
+            EndUseBalance.get_keys("WINDOW_LOSS", version=version),
+            EndUseBalance.get_keys("WINDOW_GAIN", version=version),
+            EndUseBalance.get_keys("HRV_LOSS", version=version),
+            EndUseBalance.get_keys("HRV_GAIN", version=version),
+            EndUseBalance.get_keys("AIR_SYSTEM", version=version),
         ]:
             for item in group:
                 self._output_variables.add((item, "Hourly"))

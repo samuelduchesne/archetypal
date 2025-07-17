@@ -2,6 +2,7 @@
 
 import calendar
 import collections
+import contextlib
 import hashlib
 from datetime import datetime
 from typing import ClassVar
@@ -130,7 +131,7 @@ class UmiSchedule(Schedule, UmiBase):
             return self
 
         if not weights:
-            log(f'using 1 as weighting factor in "{self.__class__.__name__}" ' "combine.")
+            log(f'using 1 as weighting factor in "{self.__class__.__name__}" combine.')
             weights = [1, 1]
         elif isinstance(weights, str):
             # get the attribute from self and other
@@ -140,7 +141,7 @@ class UmiSchedule(Schedule, UmiBase):
             length = len(weights)
             if length != 2:
                 raise ValueError(
-                    "USing a list or tuple, the weights attribute must " f"have a length of 2. A length of {length}"
+                    f"USing a list or tuple, the weights attribute must have a length of 2. A length of {length}"
                 )
         elif isinstance(weights, dict):
             weights = [weights[self.Name], weights[other.Name]]
@@ -293,14 +294,12 @@ class UmiSchedule(Schedule, UmiBase):
         if self.all_values.size != other.all_values.size:
             return NotImplemented
         else:
-            return all(
-                [
-                    self.strict == other.strict,
-                    self.Type == other.Type,
-                    self.quantity == other.quantity,
-                    np.allclose(self.all_values, other.all_values, rtol=1e-02),
-                ]
-            )
+            return all([
+                self.strict == other.strict,
+                self.Type == other.Type,
+                self.quantity == other.quantity,
+                np.allclose(self.all_values, other.all_values, rtol=1e-02),
+            ])
 
     def __copy__(self):
         """Create a copy of self."""
@@ -316,7 +315,7 @@ class UmiSchedule(Schedule, UmiBase):
 class YearSchedulePart:
     """Helper Class for YearSchedules defined with FromDay FromMonth ToDay ToMonth."""
 
-    __slots__ = ("_from_day", "_from_month", "_to_day", "_to_month", "_schedule")
+    __slots__ = ("_from_day", "_from_month", "_schedule", "_to_day", "_to_month")
 
     def __init__(
         self,
@@ -454,15 +453,13 @@ class YearSchedulePart:
         if not isinstance(other, YearSchedulePart):
             return NotImplemented
         else:
-            return all(
-                [
-                    self.FromDay == other.FromDay,
-                    self.FromMonth == other.FromMonth,
-                    self.ToDay == other.ToDay,
-                    self.ToMonth == other.ToMonth,
-                    self.Schedule == other.Schedule,
-                ]
-            )
+            return all([
+                self.FromDay == other.FromDay,
+                self.FromMonth == other.FromMonth,
+                self.ToDay == other.ToDay,
+                self.ToMonth == other.ToMonth,
+                self.Schedule == other.Schedule,
+            ])
 
     def __iter__(self):
         """Iterate over attributes. Yields tuple of (keys, value)."""
@@ -621,12 +618,10 @@ class DaySchedule(UmiSchedule):
         if not isinstance(other, DaySchedule):
             return NotImplemented
         else:
-            return all(
-                [
-                    self.Type == other.Type,
-                    np.allclose(self.all_values, other.all_values, rtol=1e-02),
-                ]
-            )
+            return all([
+                self.Type == other.Type,
+                np.allclose(self.all_values, other.all_values, rtol=1e-02),
+            ])
 
     def __hash__(self):
         """Return the hash value of self."""
@@ -688,17 +683,36 @@ class DaySchedule(UmiSchedule):
 class WeekSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles weekly schedules."""
 
-    __slots__ = ("_days", "_values")
+    __slots__ = (
+        "_days",
+        "_summer_designday",
+        "_values",
+        "_winter_designday",
+    )
 
-    def __init__(self, Name, Days=None, Category="Week", **kwargs):
+    def __init__(
+        self,
+        Name,
+        Days=None,
+        SummerDesignDay=None,
+        WinterDesignDay=None,
+        Category="Week",
+        **kwargs,
+    ):
         """Initialize a WeekSchedule object with parameters.
 
         Args:
             Days (list of DaySchedule): list of :class:`DaySchedule`.
+            SummerDesignDay (DaySchedule | None): Optional design day schedule
+                for summer sizing periods.
+            WinterDesignDay (DaySchedule | None): Optional design day schedule
+                for winter sizing periods.
             **kwargs:
         """
         super().__init__(Name, Category=Category, **kwargs)
         self.Days = Days
+        self.SummerDesignDay = SummerDesignDay
+        self.WinterDesignDay = WinterDesignDay
 
     @property
     def Days(self):
@@ -708,10 +722,32 @@ class WeekSchedule(UmiSchedule):
     @Days.setter
     def Days(self, value):
         if value is not None:
-            assert all(
-                isinstance(x, DaySchedule) for x in value
-            ), f"Input value error '{value}'. Expected list of DaySchedule."
+            assert all(isinstance(x, DaySchedule) for x in value), (
+                f"Input value error '{value}'. Expected list of DaySchedule."
+            )
         self._days = value
+
+    @property
+    def SummerDesignDay(self):
+        """Get or set the Summer Design Day schedule."""
+        return self._summer_designday
+
+    @SummerDesignDay.setter
+    def SummerDesignDay(self, value):
+        if value is not None:
+            assert isinstance(value, DaySchedule)
+        self._summer_designday = value
+
+    @property
+    def WinterDesignDay(self):
+        """Get or set the Winter Design Day schedule."""
+        return self._winter_designday
+
+    @WinterDesignDay.setter
+    def WinterDesignDay(self, value):
+        if value is not None:
+            assert isinstance(value, DaySchedule)
+        self._winter_designday = value
 
     @classmethod
     def from_epbunch(cls, epbunch, **kwargs):
@@ -721,14 +757,24 @@ class WeekSchedule(UmiSchedule):
             epbunch (EpBunch): The Schedule:Week:Daily object.
             **kwargs: keywords passed to the constructor.
         """
-        assert (
-            epbunch.key.lower() == "schedule:week:daily"
-        ), f"Expected a 'schedule:week:daily' not a '{epbunch.key.lower()}'"
+        assert epbunch.key.lower() == "schedule:week:daily", (
+            f"Expected a 'schedule:week:daily' not a '{epbunch.key.lower()}'"
+        )
         Days = WeekSchedule.get_days(epbunch, **kwargs)
+        sdd = None
+        wdd = None
+        with contextlib.suppress(Exception):
+            sdd_ep = epbunch.get_referenced_object("SummerDesignDay_ScheduleDay_Name")
+            sdd = DaySchedule.from_epbunch(sdd_ep, **kwargs)
+        with contextlib.suppress(Exception):
+            wdd_ep = epbunch.get_referenced_object("WinterDesignDay_ScheduleDay_Name")
+            wdd = DaySchedule.from_epbunch(wdd_ep, **kwargs)
         sched = cls(
             Name=epbunch.Name,
             schType=epbunch.key,
             Days=Days,
+            SummerDesignDay=sdd,
+            WinterDesignDay=wdd,
             **kwargs,
         )
 
@@ -747,7 +793,18 @@ class WeekSchedule(UmiSchedule):
         refs = data.pop("Days")
         _id = data.pop("$id")
         Days = [day_schedules[ref["$ref"]] for ref in refs]
-        wc = cls(Days=Days, id=_id, **data, **kwargs)
+        sdd_ref = data.pop("SummerDesignDay", None)
+        wdd_ref = data.pop("WinterDesignDay", None)
+        sdd = day_schedules[sdd_ref["$ref"]] if sdd_ref else None
+        wdd = day_schedules[wdd_ref["$ref"]] if wdd_ref else None
+        wc = cls(
+            Days=Days,
+            SummerDesignDay=sdd,
+            WinterDesignDay=wdd,
+            id=_id,
+            **data,
+            **kwargs,
+        )
         return wc
 
     def get_unique(self):
@@ -761,6 +818,10 @@ class WeekSchedule(UmiSchedule):
         data_dict["$id"] = str(self.id)
         data_dict["Category"] = self.Category
         data_dict["Days"] = [day.to_ref() for day in self.Days]
+        if self.SummerDesignDay is not None:
+            data_dict["SummerDesignDay"] = self.SummerDesignDay.to_ref()
+        if self.WinterDesignDay is not None:
+            data_dict["WinterDesignDay"] = self.WinterDesignDay.to_ref()
         data_dict["Type"] = "Fraction" if self.Type is None else self.Type.Name
         data_dict["Comments"] = validators.string(self.Comments, allow_empty=True)
         data_dict["DataSource"] = self.DataSource
@@ -781,6 +842,8 @@ class WeekSchedule(UmiSchedule):
         return {
             "Category": self.Category,
             "Days": self.Days,
+            "SummerDesignDay": self.SummerDesignDay,
+            "WinterDesignDay": self.WinterDesignDay,
             "Type": self.Type,
             "Comments": self.Comments,
             "DataSource": self.DataSource,
@@ -794,9 +857,9 @@ class WeekSchedule(UmiSchedule):
         Args:
             list of DaySchedule: The list of DaySchedules referenced by the epbunch.
         """
-        assert (
-            epbunch.key.lower() == "schedule:week:daily"
-        ), f"Expected a 'schedule:week:daily' not a '{epbunch.key.lower()}'"
+        assert epbunch.key.lower() == "schedule:week:daily", (
+            f"Expected a 'schedule:week:daily' not a '{epbunch.key.lower()}'"
+        )
         Days = []
         dayname = [
             "Monday",
@@ -833,12 +896,12 @@ class WeekSchedule(UmiSchedule):
         if not isinstance(other, WeekSchedule):
             return NotImplemented
         else:
-            return all(
-                [
-                    self.Type == other.Type,
-                    self.Days == other.Days,
-                ]
-            )
+            return all([
+                self.Type == other.Type,
+                self.Days == other.Days,
+                self.SummerDesignDay == other.SummerDesignDay,
+                self.WinterDesignDay == other.WinterDesignDay,
+            ])
 
     def __hash__(self):
         """Return the hash value of self."""
@@ -846,7 +909,12 @@ class WeekSchedule(UmiSchedule):
 
     def __copy__(self):
         """Create a copy of self."""
-        return self.__class__(Name=self.Name, Days=self.Days)
+        return self.__class__(
+            Name=self.Name,
+            Days=self.Days,
+            SummerDesignDay=self.SummerDesignDay,
+            WinterDesignDay=self.WinterDesignDay,
+        )
 
     def to_epbunch(self, idf):
         """Convert self to an epbunch given an idf model.
@@ -866,8 +934,8 @@ class WeekSchedule(UmiSchedule):
                     for i, day in enumerate(self.Days)
                 },
                 Holiday_ScheduleDay_Name=self.Days[6].Name,
-                SummerDesignDay_ScheduleDay_Name=self.Days[0].Name,
-                WinterDesignDay_ScheduleDay_Name=self.Days[0].Name,
+                SummerDesignDay_ScheduleDay_Name=((self.SummerDesignDay or self.Days[0]).to_epbunch(idf).Name),
+                WinterDesignDay_ScheduleDay_Name=((self.WinterDesignDay or self.Days[0]).to_epbunch(idf).Name),
                 CustomDay1_ScheduleDay_Name=self.Days[1].Name,
                 CustomDay2_ScheduleDay_Name=self.Days[6].Name,
             ),
@@ -875,7 +943,12 @@ class WeekSchedule(UmiSchedule):
 
     @property
     def children(self):
-        return self.Days
+        children = list(self.Days)
+        if self.SummerDesignDay is not None:
+            children.append(self.SummerDesignDay)
+        if self.WinterDesignDay is not None:
+            children.append(self.WinterDesignDay)
+        return children
 
 
 class YearSchedule(UmiSchedule):
@@ -891,7 +964,7 @@ class YearSchedule(UmiSchedule):
             Parts (list of YearSchedulePart): The YearScheduleParts.
             **kwargs:
         """
-        self.epbunch = kwargs.get("epbunch", None)
+        self.epbunch = kwargs.get("epbunch")
         if Parts is None:
             self.Parts = self._get_parts(self.epbunch)
         else:
@@ -975,15 +1048,13 @@ class YearSchedule(UmiSchedule):
         """
         new_dict = {"Name": self.Name, "Schedule_Type_Limits_Name": self.Type.to_epbunch(idf).Name}
         for i, part in enumerate(self.Parts):
-            new_dict.update(
-                {
-                    f"ScheduleWeek_Name_{i + 1}": part.Schedule.to_epbunch(idf).Name,
-                    f"Start_Month_{i + 1}": part.FromMonth,
-                    f"Start_Day_{i + 1}": part.FromDay,
-                    f"End_Month_{i + 1}": part.ToMonth,
-                    f"End_Day_{i + 1}": part.ToDay,
-                }
-            )
+            new_dict.update({
+                f"ScheduleWeek_Name_{i + 1}": part.Schedule.to_epbunch(idf).Name,
+                f"Start_Month_{i + 1}": part.FromMonth,
+                f"Start_Day_{i + 1}": part.FromDay,
+                f"End_Month_{i + 1}": part.ToMonth,
+                f"End_Day_{i + 1}": part.ToDay,
+            })
 
         return idf.newidfobject(key="Schedule:Year".upper(), **new_dict)
 

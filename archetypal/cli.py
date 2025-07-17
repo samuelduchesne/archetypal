@@ -202,7 +202,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     """
     output = Path(output)
     name = output.stem
-    ext = output.ext if output.ext == ".json" else ".json"
+    ext = output.suffix if output.suffix == ".json" else ".json"
     dir_ = output.dirname()
 
     file_paths = list(set_filepaths(idf))
@@ -227,7 +227,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     final_path: Path = dir_ / name + ext
     template.save(path_or_buf=final_path)
     log(
-        f"Successfully created template file at {final_path.abspath()}",
+        f"Successfully created template file at {final_path.absolute()}",
     )
 
 
@@ -351,9 +351,9 @@ def set_filepaths(idf):
     idf = tuple(Path(file_or_path).expand() for file_or_path in idf)  # make Paths
     file_paths = ()  # Placeholder for tuple of paths
     for file_or_path in idf:
-        if file_or_path.isfile():  # if a file, concatenate into file_paths
+        if file_or_path.is_file():  # if a file, concatenate into file_paths
             file_paths += (file_or_path,)
-        elif file_or_path.isdir():  # if a directory, walkdir (recursive) and get *.idf
+        elif file_or_path.is_dir():  # if a directory, walkdir (recursive) and get *.idf
             file_paths += tuple(file_or_path.walkfiles("*.idf"))
         else:
             # has wildcard
@@ -363,7 +363,7 @@ def set_filepaths(idf):
                 settings.imgs_folder,
                 settings.logs_folder,
             ]
-            top = file_or_path.abspath().dirname()
+            top = file_or_path.absolute().dirname()
             for root, _, _ in walkdirs(top, excluded_dirs):
                 pattern = file_or_path.basename()
                 file_paths += tuple(Path(root).files(pattern))

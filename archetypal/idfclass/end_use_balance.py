@@ -1,4 +1,8 @@
+"""EndUseBalance class for EnergyPlus end use balance calculations."""
+
+import re
 from sqlite3 import connect
+from typing import ClassVar, Optional
 
 import numpy as np
 import pandas as pd
@@ -9,62 +13,162 @@ from archetypal.idfclass.sql import Sql
 
 
 class EndUseBalance:
-    HVAC_MODE = ("Zone Predicted Sensible Load to Setpoint Heat Transfer Rate",)
-    HVAC_INPUT_SENSIBLE = (  # not multiplied by zone or group multipliers
-        "Zone Air Heat Balance System Air Transfer Rate",
-        "Zone Air Heat Balance System Convective Heat Gain Rate",
-    )
-    HVAC_INPUT_HEATED_SURFACE = (
-        "Zone Radiant HVAC Heating Energy",
-        "Zone Ventilated Slab Radiant Heating Energy",
-    )
-    HVAC_INPUT_COOLED_SURFACE = (
-        "Zone Radiant HVAC Cooling Energy",
-        "Zone Ventilated Slab Radiant Cooling Energy",
-    )
-    LIGHTING = ("Zone Lights Total Heating Energy",)  # checked
-    EQUIP_GAINS = (  # checked
-        "Zone Electric Equipment Radiant Heating Energy",
-        "Zone Gas Equipment Radiant Heating Energy",
-        "Zone Steam Equipment Radiant Heating Energy",
-        "Zone Hot Water Equipment Radiant Heating Energy",
-        "Zone Other Equipment Radiant Heating Energy",
-        "Zone Electric Equipment Convective Heating Energy",
-        "Zone Gas Equipment Convective Heating Energy",
-        "Zone Steam Equipment Convective Heating Energy",
-        "Zone Hot Water Equipment Convective Heating Energy",
-        "Zone Other Equipment Convective Heating Energy",
-    )
-    PEOPLE_GAIN = ("Zone People Total Heating Energy",)  # checked
-    SOLAR_GAIN = ("Zone Windows Total Transmitted Solar Radiation Energy",)  # checked
-    INFIL_GAIN = (
-        "Zone Infiltration Total Heat Gain Energy",  # checked
-        "AFN Zone Infiltration Total Heat Gain Energy",
-    )
-    INFIL_LOSS = (
-        "Zone Infiltration Total Heat Loss Energy",  # checked
-        "AFN Zone Infiltration Total Heat Loss Energy",
-    )
-    VENTILATION_LOSS = ("Zone Air System Total Heating Energy",)
-    VENTILATION_GAIN = ("Zone Air System Total Cooling Energy",)
-    NAT_VENT_GAIN = (
-        "Zone Ventilation Total Heat Gain Energy",
-        "AFN Zone Ventilation Total Heat Gain Energy",
-    )
-    NAT_VENT_LOSS = (
-        "Zone Ventilation Total Heat Loss Energy",
-        "AFN Zone Ventilation Total Heat Loss Energy",
-    )
-    OPAQUE_ENERGY_FLOW = ("Surface Outside Face Conduction Heat Transfer Energy",)
-    OPAQUE_ENERGY_STORAGE = ("Surface Heat Storage Energy",)
-    WINDOW_LOSS = ("Zone Windows Total Heat Loss Energy",)  # checked
-    WINDOW_GAIN = ("Zone Windows Total Heat Gain Energy",)  # checked
-    HRV_LOSS = ("Heat Exchanger Total Cooling Energy",)
-    HRV_GAIN = ("Heat Exchanger Total Heating Energy",)
-    AIR_SYSTEM = (
-        "Air System Heating Coil Total Heating Energy",
-        "Air System Cooling Coil Total Cooling Energy",
-    )
+    # Default keys for EnergyPlus, used as base for all versions
+    _DEFAULT_KEYS: ClassVar[dict[str, tuple[str, ...]]] = {
+        "HVAC_MODE": ("Zone Predicted Sensible Load to Setpoint Heat Transfer Rate",),
+        "HVAC_INPUT_SENSIBLE": (
+            "Zone Air Heat Balance System Air Transfer Rate",
+            "Zone Air Heat Balance System Convective Heat Gain Rate",
+        ),
+        "HVAC_INPUT_HEATED_SURFACE": (
+            "Zone Radiant HVAC Heating Energy",
+            "Zone Ventilated Slab Radiant Heating Energy",
+        ),
+        "HVAC_INPUT_COOLED_SURFACE": (
+            "Zone Radiant HVAC Cooling Energy",
+            "Zone Ventilated Slab Radiant Cooling Energy",
+        ),
+        "LIGHTING": ("Zone Lights Total Heating Energy",),
+        "EQUIP_GAINS": (
+            "Zone Electric Equipment Radiant Heating Energy",
+            "Zone Gas Equipment Radiant Heating Energy",
+            "Zone Steam Equipment Radiant Heating Energy",
+            "Zone Hot Water Equipment Radiant Heating Energy",
+            "Zone Other Equipment Radiant Heating Energy",
+            "Zone Electric Equipment Convective Heating Energy",
+            "Zone Gas Equipment Convective Heating Energy",
+            "Zone Steam Equipment Convective Heating Energy",
+            "Zone Hot Water Equipment Convective Heating Energy",
+            "Zone Other Equipment Convective Heating Energy",
+        ),
+        "PEOPLE_GAIN": ("Zone People Total Heating Energy",),
+        "SOLAR_GAIN": ("Zone Windows Total Transmitted Solar Radiation Energy",),
+        "INFIL_GAIN": (
+            "Zone Infiltration Total Heat Gain Energy",
+            "AFN Zone Infiltration Total Heat Gain Energy",
+        ),
+        "INFIL_LOSS": (
+            "Zone Infiltration Total Heat Loss Energy",
+            "AFN Zone Infiltration Total Heat Loss Energy",
+        ),
+        "VENTILATION_LOSS": ("Zone Air System Total Heating Energy",),
+        "VENTILATION_GAIN": ("Zone Air System Total Cooling Energy",),
+        "NAT_VENT_GAIN": (
+            "Zone Ventilation Total Heat Gain Energy",
+            "AFN Zone Ventilation Total Heat Gain Energy",
+        ),
+        "NAT_VENT_LOSS": (
+            "Zone Ventilation Total Heat Loss Energy",
+            "AFN Zone Ventilation Total Heat Loss Energy",
+        ),
+        "OPAQUE_ENERGY_FLOW": ("Surface Outside Face Conduction Heat Transfer Energy",),
+        "OPAQUE_ENERGY_STORAGE": ("Surface Heat Storage Energy",),
+        "WINDOW_LOSS": ("Zone Windows Total Heat Loss Energy",),
+        "WINDOW_GAIN": ("Zone Windows Total Heat Gain Energy",),
+        "HRV_LOSS": ("Heat Exchanger Total Cooling Energy",),
+        "HRV_GAIN": ("Heat Exchanger Total Heating Energy",),
+        "AIR_SYSTEM": (
+            "Air System Heating Coil Total Heating Energy",
+            "Air System Cooling Coil Total Cooling Energy",
+        ),
+    }
+
+    # Version-specific overrides (only keys that differ from default)
+    # Supports ranges: '<9.5', '>=9.3,<9.5', '9.3,9.4,9.5', '22', etc.
+    _KEY_OVERRIDES_BY_VERSION: ClassVar[dict[str, dict[str, tuple[str, ...]]]] = {
+        # Example: for version 22, override only the keys that differ
+        ">=24.2.0": {
+            "SOLAR_GAIN": ("Enclosure Windows Total Transmitted Solar Radiation Energy",),
+        },
+        "<9.5": {
+            # "SOLAR_GAIN": ("Zone Windows Total Transmitted Solar Radiation Energy",),
+        },
+        "9.3,9.4,9.5": {
+            # "SOLAR_GAIN": ("Zone Windows Total Transmitted Solar Radiation Energy",),
+        },
+        # Add more version overrides as needed
+    }
+
+    @classmethod
+    def get_eplus_version(cls, sql_file):
+        """Extract EnergyPlus version from the SQL file."""
+        # import sqlite3  # Moved to top of file
+
+        try:
+            with connect(sql_file) as conn:
+                version_str = pd.read_sql('select * from "Simulations"', conn).loc[0, "EnergyPlusVersion"]
+                # Example: 'EnergyPlus, Version 9.5.0-998c6b7e6c, YMD=2023.01.01 00:00'
+                m = re.search(r"\b(\d+)\.(\d+)\.(\d+)\b", version_str)
+                if m:
+                    return m.group(0)
+        except Exception as e:
+            raise ValueError(
+                f"Could not extract EnergyPlus version from SQL file '{sql_file}' due to a database error."
+            ) from e
+        else:
+            raise ValueError(f"Could not extract EnergyPlus version from SQL file '{sql_file}'.")
+
+    @classmethod
+    def _match_version_override(cls, version):
+        """Return the override dict for a version, supporting ranges and lists."""
+        if not version:
+            return None
+        # Direct match
+        if version in cls._KEY_OVERRIDES_BY_VERSION:
+            return cls._KEY_OVERRIDES_BY_VERSION[version]
+        # Check for range or list matches
+        from packaging.version import InvalidVersion, Version
+
+        try:
+            v = Version(version)
+        except InvalidVersion:
+            return None
+        for k, overrides in cls._KEY_OVERRIDES_BY_VERSION.items():
+            if k.startswith("<") or k.startswith(">") or "," in k or "=" in k:
+                # Range or list
+                if "," in k:
+                    # List of versions
+                    versions = [s.strip() for s in k.split(",")]
+                    if version in versions:
+                        return overrides
+                else:
+                    # Range, e.g. '<9.5', '>=9.3,<9.5'
+                    parts = [p.strip() for p in k.split(",")]
+                    match = True
+                    for part in parts:
+                        m = re.match(r"(<=?|>=?)([\d\.]+)", part)
+                        if m:
+                            op, val = m.groups()
+                            try:
+                                val_v = Version(val)
+                            except InvalidVersion:
+                                match = False
+                                break
+                            if (
+                                (op == "<" and not (v < val_v))
+                                or (op == "<=" and not (v <= val_v))
+                                or (op == ">" and not (v > val_v))
+                                or (op == ">=" and not (v >= val_v))
+                            ):
+                                match = False
+                        else:
+                            match = False
+                    if match:
+                        return overrides
+        return None
+
+    @classmethod
+    def get_keys(cls, key_name: str, sql_file: Optional[str] = None, version: Optional[str] = None):
+        """Return the correct keys for a variable name based on EnergyPlus version, using default and overrides (supports ranges/lists)."""
+        if version is None and sql_file is not None:
+            version = cls.get_eplus_version(sql_file)
+        keys = cls._DEFAULT_KEYS.get(key_name, ())
+        override_dict = cls._match_version_override(version)
+        if override_dict:
+            override = override_dict.get(key_name)
+            if override is not None:
+                keys = override
+        return keys
 
     def __init__(
         self,
@@ -117,13 +221,37 @@ class EndUseBalance:
     @classmethod
     def from_sql_file(cls, sql_file, units="kWh", power_units="kW", outdoor_surfaces_only=True):
         sql = Sql(sql_file)
+        # Fetch EnergyPlus version once
+        version = cls.get_eplus_version(sql_file)
+        # Use dynamic keys based on EnergyPlus version
+        hvac_input_sensible = cls.get_keys("HVAC_INPUT_SENSIBLE", version=version)
+        hvac_input_heated_surface = cls.get_keys("HVAC_INPUT_HEATED_SURFACE", version=version)
+        hvac_input_cooled_surface = cls.get_keys("HVAC_INPUT_COOLED_SURFACE", version=version)
+        hvac_mode = cls.get_keys("HVAC_MODE", version=version)
+        lighting_key = cls.get_keys("LIGHTING", version=version)
+        people_gain_key = cls.get_keys("PEOPLE_GAIN", version=version)
+        equip_gains_key = cls.get_keys("EQUIP_GAINS", version=version)
+        solar_gain_key = cls.get_keys("SOLAR_GAIN", version=version)
+        infil_gain_key = cls.get_keys("INFIL_GAIN", version=version)
+        infil_loss_key = cls.get_keys("INFIL_LOSS", version=version)
+        vent_loss_key = cls.get_keys("VENTILATION_LOSS", version=version)
+        vent_gain_key = cls.get_keys("VENTILATION_GAIN", version=version)
+        nat_vent_gain_key = cls.get_keys("NAT_VENT_GAIN", version=version)
+        nat_vent_loss_key = cls.get_keys("NAT_VENT_LOSS", version=version)
+        hrv_loss_key = cls.get_keys("HRV_LOSS", version=version)
+        hrv_gain_key = cls.get_keys("HRV_GAIN", version=version)
+        air_system_key = cls.get_keys("AIR_SYSTEM", version=version)
+        opaque_energy_flow_key = cls.get_keys("OPAQUE_ENERGY_FLOW", version=version)
+        opaque_energy_storage_key = cls.get_keys("OPAQUE_ENERGY_STORAGE", version=version)
+        window_loss_key = cls.get_keys("WINDOW_LOSS", version=version)
+        window_gain_key = cls.get_keys("WINDOW_GAIN", version=version)
 
-        _hvac_input = sql.timeseries_by_name(cls.HVAC_INPUT_SENSIBLE).to_units(power_units)
-        _hvac_input_heated_surface = sql.timeseries_by_name(cls.HVAC_INPUT_HEATED_SURFACE).to_units(units)
-        _hvac_input_cooled_surface = sql.timeseries_by_name(cls.HVAC_INPUT_COOLED_SURFACE).to_units(units)
+        _hvac_input = sql.timeseries_by_name(hvac_input_sensible).to_units(power_units)
+        _hvac_input_heated_surface = sql.timeseries_by_name(hvac_input_heated_surface).to_units(units)
+        _hvac_input_cooled_surface = sql.timeseries_by_name(hvac_input_cooled_surface).to_units(units)
         # convert power to energy assuming the reporting frequency
         freq = pd.infer_freq(_hvac_input.index)
-        assert freq.lower() == "h", f"freq='{freq}': A reporting frequency other than H is not yet " f"supported."
+        assert freq.lower() == "h", f"freq='{freq}': A reporting frequency other than H is not yet supported."
         freq_to_unit = {"h": "hr"}
         _hvac_input = _hvac_input.apply(
             lambda row: unit_registry.Quantity(
@@ -147,7 +275,7 @@ class EndUseBalance:
             axis=1,
             verify_integrity=True,
         )
-        mode = sql.timeseries_by_name(cls.HVAC_MODE)  # positive = Heating
+        mode = sql.timeseries_by_name(hvac_mode)  # positive = Heating
         rolling_sign = cls.get_rolling_sign_change(mode).fillna(0)
 
         # Create both heating and cooling masks
@@ -157,34 +285,34 @@ class EndUseBalance:
         heating = _hvac_input.mul(is_heating, level="KeyValue", axis=1)
         cooling = _hvac_input.mul(is_cooling, level="KeyValue", axis=1)
 
-        lighting = sql.timeseries_by_name(cls.LIGHTING).to_units(units)
+        lighting = sql.timeseries_by_name(lighting_key).to_units(units)
         zone_multipliers = sql.zone_info.set_index("ZoneName")["Multiplier"].rename("KeyValue")
         lighting = cls.apply_multipliers(
             lighting,
             zone_multipliers,
         )
-        people_gain = sql.timeseries_by_name(cls.PEOPLE_GAIN).to_units(units)
+        people_gain = sql.timeseries_by_name(people_gain_key).to_units(units)
         people_gain = cls.apply_multipliers(people_gain, zone_multipliers)
-        equipment = sql.timeseries_by_name(cls.EQUIP_GAINS).to_units(units)
+        equipment = sql.timeseries_by_name(equip_gains_key).to_units(units)
         equipment = cls.apply_multipliers(equipment, zone_multipliers)
-        solar_gain = sql.timeseries_by_name(cls.SOLAR_GAIN).to_units(units)
+        solar_gain = sql.timeseries_by_name(solar_gain_key).to_units(units)
         solar_gain = cls.apply_multipliers(solar_gain, zone_multipliers)
-        infil_gain = sql.timeseries_by_name(cls.INFIL_GAIN).to_units(units)
+        infil_gain = sql.timeseries_by_name(infil_gain_key).to_units(units)
         infil_gain = cls.apply_multipliers(infil_gain, zone_multipliers)
-        infil_loss = sql.timeseries_by_name(cls.INFIL_LOSS).to_units(units)
+        infil_loss = sql.timeseries_by_name(infil_loss_key).to_units(units)
         infil_loss = cls.apply_multipliers(infil_loss, zone_multipliers)
-        vent_loss = sql.timeseries_by_name(cls.VENTILATION_LOSS).to_units(units)
+        vent_loss = sql.timeseries_by_name(vent_loss_key).to_units(units)
         vent_loss = cls.apply_multipliers(vent_loss, zone_multipliers)
-        vent_gain = sql.timeseries_by_name(cls.VENTILATION_GAIN).to_units(units)
+        vent_gain = sql.timeseries_by_name(vent_gain_key).to_units(units)
         vent_gain = cls.apply_multipliers(vent_gain, zone_multipliers)
-        nat_vent_gain = sql.timeseries_by_name(cls.NAT_VENT_GAIN).to_units(units)
+        nat_vent_gain = sql.timeseries_by_name(nat_vent_gain_key).to_units(units)
         nat_vent_gain = cls.apply_multipliers(nat_vent_gain, zone_multipliers)
-        nat_vent_loss = sql.timeseries_by_name(cls.NAT_VENT_LOSS).to_units(units)
+        nat_vent_loss = sql.timeseries_by_name(nat_vent_loss_key).to_units(units)
         nat_vent_loss = cls.apply_multipliers(nat_vent_loss, zone_multipliers)
-        hrv_loss = sql.timeseries_by_name(cls.HRV_LOSS).to_units(units)
-        hrv_gain = sql.timeseries_by_name(cls.HRV_GAIN).to_units(units)
+        hrv_loss = sql.timeseries_by_name(hrv_loss_key).to_units(units)
+        hrv_gain = sql.timeseries_by_name(hrv_gain_key).to_units(units)
         hrv = cls.subtract_loss_from_gain(hrv_gain, hrv_loss, level="KeyValue")
-        air_system = sql.timeseries_by_name(cls.AIR_SYSTEM).to_units(units)
+        air_system = sql.timeseries_by_name(air_system_key).to_units(units)
 
         # subtract losses from gains
         infiltration = None
@@ -196,14 +324,14 @@ class EndUseBalance:
             nat_vent = cls.subtract_loss_from_gain(nat_vent_gain, nat_vent_loss, level="Name")
 
         # get the surface energy flow
-        opaque_flow = sql.timeseries_by_name(cls.OPAQUE_ENERGY_FLOW).to_units(units)
-        opaque_storage = sql.timeseries_by_name(cls.OPAQUE_ENERGY_STORAGE).to_units(units)
+        opaque_flow = sql.timeseries_by_name(opaque_energy_flow_key).to_units(units)
+        opaque_storage = sql.timeseries_by_name(opaque_energy_storage_key).to_units(units)
         opaque_storage_ = opaque_storage.copy()
         opaque_storage_.columns = opaque_flow.columns
         opaque_flow = -(opaque_flow + opaque_storage_)
-        window_loss = sql.timeseries_by_name(cls.WINDOW_LOSS).to_units(units)
+        window_loss = sql.timeseries_by_name(window_loss_key).to_units(units)
         window_loss = cls.apply_multipliers(window_loss, zone_multipliers)
-        window_gain = sql.timeseries_by_name(cls.WINDOW_GAIN).to_units(units)
+        window_gain = sql.timeseries_by_name(window_gain_key).to_units(units)
         window_gain = cls.apply_multipliers(window_gain, zone_multipliers)
         window_flow = cls.subtract_loss_from_gain(window_gain, window_loss, level="Name")
         window_flow = cls.subtract_solar_from_window_net(window_flow, solar_gain, level="KeyValue")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from contextlib import contextmanager
 from datetime import timedelta
 from sqlite3 import connect
 from typing import Literal
@@ -24,6 +25,16 @@ _REPORTING_FREQUENCIES = Literal[
     "Monthly",
     "Run Period",
 ]
+
+
+@contextmanager
+def closing_connection(file_path: str):
+    """Context manager for SQLite connection. Closes connection on exit."""
+    con = connect(file_path)
+    try:
+        yield con
+    finally:
+        con.close()
 
 
 class SqlOutput:
@@ -59,7 +70,7 @@ class SqlOutput:
             WHERE Name=@output_name
             AND ReportingFrequency=@reporting_frequency;
         """
-        with connect(self._file_path) as conn:
+        with closing_connection(self._file_path) as conn:
             header_rows = pd.read_sql(
                 query,
                 conn,
@@ -141,7 +152,7 @@ class Sql:
     def tabular_data_keys(self):
         """Get tuples of (ReportName, TableName, ReportForString) from tabular data."""
         if self._tabular_data_keys is None:
-            with connect(self.file_path) as conn:
+            with closing_connection(self.file_path) as conn:
                 query = "SELECT DISTINCT ReportName, TableName, ReportForString FROM TabularDataWithStrings"
                 data = conn.execute(query)
                 self._tabular_data_keys = data.fetchall()
@@ -204,7 +215,7 @@ class Sql:
         The dictionary keys are tuples of ("ReportName", "TableName",
         "ReportForString").
         """
-        with connect(self.file_path) as conn:
+        with closing_connection(self.file_path) as conn:
             cols = "ReportName, TableName, ReportForString, ColumnName, RowName, Units, Value"
             query = f"SELECT {cols} FROM TabularDataWithStrings"
             data = pd.read_sql(query, conn)
@@ -259,7 +270,7 @@ class Sql:
         assert (
             reporting_frequency in Sql._reporting_frequencies
         ), f"reporting_frequency is not one of {Sql._reporting_frequencies}"
-        with connect(self.file_path) as conn:
+        with closing_connection(self.file_path) as conn:
             cols = "ReportDataDictionaryIndex, IndexGroup, KeyValue, Name, Units, ReportingFrequency"
             if isinstance(variable_or_meter, str):  # assume it's a single output
                 if (
@@ -337,7 +348,7 @@ class Sql:
         Returns:
             (pd.DataFrame): A DataFrame.
         """
-        with connect(self.file_path) as conn:
+        with closing_connection(self.file_path) as conn:
             cols = "RowName, ColumnName, Value, Units"
             query = f"""
                 SELECT {cols} FROM TabularDataWithStrings
@@ -373,7 +384,7 @@ class Sql:
 
     def _extract_available_outputs(self) -> list:
         """Extract the list of all available outputs from the SQLite file."""
-        with connect(self.file_path) as conn:
+        with closing_connection(self.file_path) as conn:
             cols = "Name, ReportingFrequency"
             query = f"SELECT DISTINCT {cols} FROM ReportDataDictionary"
             data = conn.execute(query)
@@ -381,27 +392,28 @@ class Sql:
 
     def _extract_zone_info(self):
         """Extract the Zones table from the SQLite file."""
-        with connect(self.file_path) as conn:
+        with closing_connection(self.file_path) as conn:
             query = "SELECT * from Zones"
             df = pd.read_sql(query, conn).set_index("ZoneIndex")
         return df
 
     def _extract_surfaces_table(self):
-        """Extract the Zones table from the SQLite file."""
-        with connect(self.file_path) as conn:
+        """Extract the Surfaces table from the SQLite file."""
+        with closing_connection(self.file_path) as conn:
             query = "SELECT * from Surfaces"
             df = pd.read_sql(query, conn).set_index(["ZoneIndex", "SurfaceIndex"])
         return df
 
     def _extract_constructions_table(self):
-        with connect(self.file_path) as conn:
+        """Extract the Constructions table from the SQLite file."""
+        with closing_connection(self.file_path) as conn:
             query = "SELECT * from Constructions"
             df = pd.read_sql(query, conn).set_index("ConstructionIndex")
         return df
 
     def _extract_environment_periods(self):
         """Extract the EnvironmentPeriods table from the SQLite file."""
-        with connect(self.file_path) as conn:
+        with closing_connection(self.file_path) as conn:
             query = "SELECT * from EnvironmentPeriods"
             df = pd.read_sql(query, conn).set_index("EnvironmentPeriodIndex")
         return df

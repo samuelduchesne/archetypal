@@ -1,3 +1,6 @@
+"""EndUseBalance class for EnergyPlus end use balance calculations."""
+
+import re
 from sqlite3 import connect
 from typing import ClassVar, Optional
 
@@ -89,21 +92,21 @@ class EndUseBalance:
     @classmethod
     def get_eplus_version(cls, sql_file):
         """Extract EnergyPlus version from the SQL file."""
-        import sqlite3
+        # import sqlite3  # Moved to top of file
 
         try:
             with connect(sql_file) as conn:
                 version_str = pd.read_sql('select * from "Simulations"', conn).loc[0, "EnergyPlusVersion"]
                 # Example: 'EnergyPlus, Version 9.5.0-998c6b7e6c, YMD=2023.01.01 00:00'
-                import re
-
                 m = re.search(r"\b(\d+)\.(\d+)\.(\d+)\b", version_str)
                 if m:
                     return m.group(0)
-        except sqlite3.OperationalError as e:
-            raise ValueError("Could not extract EnergyPlus version from SQL file due to a database error.") from e
-        except KeyError as e:
-            raise ValueError("Could not find EnergyPlusVersion in the SQL file.") from e
+        except Exception as e:
+            raise ValueError(
+                f"Could not extract EnergyPlus version from SQL file '{sql_file}' due to a database error."
+            ) from e
+        else:
+            raise ValueError(f"Could not extract EnergyPlus version from SQL file '{sql_file}'.")
 
     @classmethod
     def _match_version_override(cls, version):
@@ -130,8 +133,6 @@ class EndUseBalance:
                         return overrides
                 else:
                     # Range, e.g. '<9.5', '>=9.3,<9.5'
-                    import re
-
                     parts = [p.strip() for p in k.split(",")]
                     match = True
                     for part in parts:

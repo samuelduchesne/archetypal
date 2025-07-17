@@ -697,6 +697,7 @@ class EndUseBalance:
         return df.unstack(level=["Period", "Gain/Loss"])
 
     def to_sankey(self, path_or_buf):
+        version = self.get_eplus_version(self.sql_file)
         system_data = self.to_df(separate_gains_and_losses=True)
         annual_system_data = system_data.sum().groupby(level=["Component", "Period", "Gain/Loss"]).sum()
         annual_system_data.rename(
@@ -740,7 +741,7 @@ class EndUseBalance:
             "Electricity",
             "Natural Gas",
             "District Cooling",
-            "District Heating",
+            "District Heating" if (version < "24.2.0") else "District Heating Water",  # name change in 24.2.0
         )
         with connect(self.sql_file) as conn:
             df = pd.read_sql(

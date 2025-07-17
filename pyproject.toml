@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "archetypal"
-version = "2.18.7"
+version = "2.18.8"
 description = "Retrieve, construct, simulate, convert and analyse building archetypes"
 authors = ["Samuel Letellier-Duchesne <samuelduchesne@me.com>"]
 license = "MIT License"

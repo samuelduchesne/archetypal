@@ -213,7 +213,7 @@ class IDF(GeomIDF):
         self,
         idfname: str | IO | Path | None = None,
         epw=None,
-        as_version: str | EnergyPlusVersion = None,
+        as_version: str | EnergyPlusVersion | None = None,
         annual=False,
         design_day=False,
         expandobjects=False,
@@ -355,10 +355,9 @@ class IDF(GeomIDF):
 
     @outputtype.setter
     def outputtype(self, value):
-        assert value in self.OUTPUTTYPES, (
-            f'Invalid input "{value}" for output_type.'
-            f"\nOutput type must be one of the following: {self.OUTPUTTYPES}"
-        )
+        assert (
+            value in self.OUTPUTTYPES
+        ), f'Invalid input "{value}" for output_type.\nOutput type must be one of the following: {self.OUTPUTTYPES}'
         self._outputtype = value
 
     def __str__(self):
@@ -533,8 +532,7 @@ class IDF(GeomIDF):
         if self._iddname is None:
             if self.as_version is not None and self.file_version > self.as_version:
                 raise EnergyPlusVersionError(
-                    f"{self.as_version} cannot be lower then "
-                    f"the version number set in the file: {self.file_version}"
+                    f"{self.as_version} cannot be lower then the version number set in the file: {self.file_version}"
                 )
             self._iddname = self.file_version.current_idd_path
         return self._iddname
@@ -755,9 +753,9 @@ class IDF(GeomIDF):
 
     @prep_outputs.setter
     def prep_outputs(self, value):
-        assert isinstance(value, (bool, list)), (
-            f"Expected bool or list of dict for " f"SimulationOutput outputs. Got {type(value)}."
-        )
+        assert isinstance(
+            value, (bool, list)
+        ), f"Expected bool or list of dict for SimulationOutput outputs. Got {type(value)}."
         self._prep_outputs = value
 
     @property
@@ -1897,7 +1895,7 @@ class IDF(GeomIDF):
         log(f"Retrieved {name} in {time.time() - start_time:,.2f} seconds")
         return series
 
-    def newidfobject(self, key, **kwargs) -> EpBunch | None:
+    def newidfobject(self, key, **kwargs) -> EpBunch:
         """Define EpBunch object and add to model.
 
         The function will test if the object exists to prevent duplicates.
@@ -1934,7 +1932,7 @@ class IDF(GeomIDF):
             for obj in existing_objs:
                 self.removeidfobject(obj)
                 log(
-                    f"{obj} is a 'unique-object'; Removed and replaced with" f" {new_object}",
+                    f"{obj} is a 'unique-object'; Removed and replaced with {new_object}",
                     lg.DEBUG,
                 )
             self.addidfobject(new_object)
@@ -1942,7 +1940,7 @@ class IDF(GeomIDF):
         if new_object in existing_objs:
             # If obj already exists, simply return the existing one.
             log(
-                f"object '{new_object}' already exists in {self.name}. " f"Skipping.",
+                f"object '{new_object}' already exists in {self.name}. Skipping.",
                 lg.DEBUG,
             )
             return next(x for x in existing_objs if x == new_object)
@@ -1952,7 +1950,7 @@ class IDF(GeomIDF):
             self.removeidfobject(obj)
             self.addidfobject(new_object)
             log(
-                f"{obj} exists but has different attributes; Removed and replaced " f"with {new_object}",
+                f"{obj} exists but has different attributes; Removed and replaced with {new_object}",
                 lg.DEBUG,
             )
             return new_object
@@ -2514,7 +2512,7 @@ class IDF(GeomIDF):
             anchor = Vector3D(*anchor)
         # Rotate the building
         super().rotate(angle, anchor=anchor)
-        log(f"Geometries rotated by {angle} degrees around " f"{anchor or 'building centroid'}")
+        log(f"Geometries rotated by {angle} degrees around {anchor or 'building centroid'}")
 
         # after building is rotate, change the north axis and zone direction to zero.
         self.idfobjects["BUILDING"][0].North_Axis = 0

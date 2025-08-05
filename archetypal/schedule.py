@@ -616,6 +616,8 @@ class _ScheduleParser:
             hourly_values = cls.get_compact_ep_schedule_values(sched_epbunch, start_date, strict)
         elif sch_type.upper() == "schedule:file".upper():
             hourly_values = cls.get_file_ep_schedule_values(sched_epbunch)
+        elif sch_type.upper() == "schedule:week:daily".upper():
+            hourly_values = cls.get_daily_weekly_ep_schedule_values(sched_epbunch, start_date, strict)
         else:
             log(
                 "Archetypal does not currently support schedules of type " f'"{sch_type}"',
@@ -819,10 +821,7 @@ class _ScheduleParser:
             # return only Saturdays
             return lambda x: x.index.dayofweek == 5
         elif field.lower() == "summerdesignday" or field.lower() == "winterdesignday":
-            # return _ScheduleParser.design_day(
-            #     schedule_epbunch, field, slicer_, start_date, strict
-            # )
-            return None
+            return _ScheduleParser.design_day(schedule_epbunch, field, slicer_, start_date, strict)
         elif field.lower() == "holiday" or field.lower() == "holidays":
             field = "holiday"
             return _ScheduleParser.special_day(schedule_epbunch, field, slicer_, strict, start_date)

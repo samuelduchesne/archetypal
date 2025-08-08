@@ -1,9 +1,9 @@
 """EnergyPlus reports module."""
 
+from pathlib import Path
 from sqlite3.dbapi2 import OperationalError
 
 import pandas as pd
-from path import Path
 
 from archetypal import settings
 from archetypal.idfclass.util import hash_model
@@ -33,7 +33,7 @@ def get_report(eplus_file, output_directory=None, output_report="sql", output_pr
         return None
     elif "htm" in output_report.lower():
         # Get the html report
-        fullpath_filename = output_directory / output_prefix + "tbl.htm"
+        fullpath_filename = output_directory / f"{output_prefix}tbl.htm"
         if fullpath_filename.exists():
             return get_html_report(fullpath_filename)
         else:
@@ -41,7 +41,7 @@ def get_report(eplus_file, output_directory=None, output_report="sql", output_pr
 
     elif output_report.lower() == "sql":
         # Get the sql report
-        fullpath_filename = output_directory / output_prefix + "out.sql"
+        fullpath_filename = output_directory / f"{output_prefix}out.sql"
         if fullpath_filename.exists():
             return get_sqlite_report(fullpath_filename)
         else:

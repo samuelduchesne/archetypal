@@ -6,6 +6,7 @@ import logging
 from collections.abc import Sequence
 from contextlib import contextmanager
 from datetime import timedelta
+from pathlib import Path
 from sqlite3 import connect
 from typing import Literal
 
@@ -13,7 +14,6 @@ import numpy as np
 import pandas as pd
 from energy_pandas import EnergyDataFrame
 from pandas import to_datetime
-from path import Path
 
 from archetypal.utils import log
 
@@ -278,7 +278,7 @@ class Sql:
                     reporting_frequency,
                 ) not in self.available_outputs:
                     log(
-                        f"{(variable_or_meter, reporting_frequency)} not " f"an available output in the Sql file.",
+                        f"{(variable_or_meter, reporting_frequency)} not an available output in the Sql file.",
                         level=logging.WARNING,
                     )
                 query = f"""

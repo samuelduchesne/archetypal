@@ -25,6 +25,7 @@ from collections.abc import Iterable
 from io import IOBase, StringIO
 from itertools import chain
 from math import isclose
+from pathlib import Path
 from typing import IO, ClassVar, Literal
 
 import eppy
@@ -37,8 +38,7 @@ from eppy.idf_msequence import Idf_MSequence
 from eppy.modeleditor import IDDNotSetError, namebunch, newrawobject
 from pandas import DataFrame, Series
 from pandas.errors import ParserError
-from path import Path
-from sigfig import round
+from sigfig import round as sig_round
 from tabulate import tabulate
 from tqdm.auto import tqdm
 
@@ -274,7 +274,7 @@ class IDF(GeomIDF):
         self.idfname = idfname
         self.epw = epw
         self.as_version = as_version
-        self.file_version = kwargs.get("file_version", None)
+        self.file_version = kwargs.get("file_version")
         self._custom_processes = custom_processes
         self.include = include
         self.keep_data_err = keep_data_err
@@ -294,7 +294,7 @@ class IDF(GeomIDF):
         self._file_encoding = encoding
         self._reporting_frequency = reporting_frequency
         self.output_prefix = None
-        self.name = name if name is not None else self.idfname.basename() if isinstance(self.idfname, Path) else None
+        self.name = name if name is not None else (self.idfname.name if isinstance(self.idfname, Path) else None)
         self.output_directory = output_directory
 
         # Set dependants to None
@@ -325,8 +325,7 @@ class IDF(GeomIDF):
         self.outputtype = outputtype
         self.original_idfname = self.idfname  # Save original
 
-        if not self.idd_info:
-            raise ValueError("IDD info is not loaded")
+        # Initialize cache and optionally upgrade
         self._original_cache = hash_model(self)
         if self.as_version is not None and self.file_version < self.as_version:
             self.upgrade(to_version=self.as_version, overwrite=False)
@@ -407,7 +406,7 @@ class IDF(GeomIDF):
         try:
             file = next(iter(Pathlib(example_files_dir).rglob(f"{example_name.stem}.idf")))
         except StopIteration as e:
-            full_list = [str(x.name) for x in example_files_dir.files("*.idf")]
+            full_list = [str(x.name) for x in example_files_dir.glob("*.idf")]
             raise ValueError(f"Choose from: {sorted(full_list)}") from e
         if epw is not None:
             epw = Path(epw)
@@ -417,7 +416,7 @@ class IDF(GeomIDF):
                 try:
                     epw = next(iter(Pathlib(dir_weather_data_).rglob(f"{epw.stem}.epw")))
                 except StopIteration as e:
-                    full_list = [str(x.name) for x in dir_weather_data_.files("*.epw")]
+                    full_list = [str(x.name) for x in dir_weather_data_.glob("*.epw")]
                     raise ValueError(f"Choose EPW from: {sorted(full_list)}") from e
         return cls(file, epw=epw, **kwargs)
 
@@ -534,7 +533,8 @@ class IDF(GeomIDF):
                 raise EnergyPlusVersionError(
                     f"{self.as_version} cannot be lower then the version number set in the file: {self.file_version}"
                 )
-            self._iddname = self.file_version.current_idd_path
+            # Ensure iddname is always a Path even if current_idd_path is a string for backward-compat
+            self._iddname = Path(self.file_version.current_idd_path)
         return self._iddname
 
     @iddname.setter
@@ -1395,7 +1395,8 @@ class IDF(GeomIDF):
 
         # Todo: Add EpMacro Thread -> if exist in.imf "%program_path%EPMacro"
         # Run the expandobjects program if necessary
-        tmp = (self.output_directory.makedirs_p() / "expandobjects_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = self.output_directory.makedirs_p() / f"expandobjects_run_{str(uuid.uuid1())[:8]}"
+        tmp.makedirs_p()
         # Run the ExpandObjects preprocessor program
         expandobjects_thread = ExpandObjectsThread(self, tmp)
         try:
@@ -1409,13 +1410,24 @@ class IDF(GeomIDF):
         finally:
             tmp.rmtree(ignore_errors=True)
             e = expandobjects_thread.exception
+            # If ExpandObjects failed (e.g., segfault on some platforms), don't block the simulation.
+            # EnergyPlus can expand objects internally via the -x flag.
             if e is not None:
-                raise e
+                from subprocess import CalledProcessError as _CPE  # local import to avoid top-level dependency
+
+                if isinstance(e, _CPE):
+                    log(
+                        "ExpandObjects failed; continuing with EnergyPlus internal expandobjects (-x).",
+                        level=lg.WARNING,
+                    )
+                else:
+                    raise e
             elif expandobjects_thread.cancelled:
                 return self
 
         # Run the Basement preprocessor program if necessary
-        tmp = (self.output_directory.makedirs_p() / "runBasement_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = self.output_directory.makedirs_p() / f"runBasement_run_{str(uuid.uuid1())[:8]}"
+        tmp.makedirs_p()
         basement_thread = BasementThread(self, tmp)
         try:
             basement_thread.start()
@@ -1434,7 +1446,8 @@ class IDF(GeomIDF):
                 return self
 
         # Run the Slab preprocessor program if necessary
-        tmp = (self.output_directory.makedirs_p() / "runSlab_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = self.output_directory.makedirs_p() / f"runSlab_run_{str(uuid.uuid1())[:8]}"
+        tmp.makedirs_p()
         slab_thread = SlabThread(self, tmp)
         try:
             slab_thread.start()
@@ -1454,7 +1467,8 @@ class IDF(GeomIDF):
                 return self
 
         # Run the energyplus program
-        tmp = (self.output_directory.makedirs_p() / "eplus_run_" + str(uuid.uuid1())[0:8]).mkdir()
+        tmp = self.output_directory.makedirs_p() / f"eplus_run_{str(uuid.uuid1())[:8]}"
+        tmp.makedirs_p()
         running_simulation_thread = EnergyPlusThread(self, tmp)
         try:
             running_simulation_thread.start()
@@ -1551,11 +1565,10 @@ class IDF(GeomIDF):
             # If simulation files exist in cache, copy to new cache location
             as_idf.simulation_dir.makedirs_p()
             for file in self.simulation_files:
-                if self.output_prefix in file:
-                    name = file.replace(self.output_prefix, as_idf.output_prefix)
-                    name = Path(name).basename()
+                if self.output_prefix in file.name:
+                    name = file.name.replace(self.output_prefix, as_idf.output_prefix)
                 else:
-                    name = file.basename()
+                    name = file.name
                 with contextlib.suppress(shutil.SameFileError):
                     # A copy of self would have the same files in the simdir and
                     # throw an error.
@@ -1593,7 +1606,7 @@ class IDF(GeomIDF):
                 results.extend(
                     [
                         (
-                            file.basename(),
+                            file.name,
                             process(
                                 file,
                                 working_dir=os.getcwd(),
@@ -1673,7 +1686,7 @@ class IDF(GeomIDF):
         else:
             self.as_version = to_version  # set version number
             # execute transitions
-            tmp = (self.output_directory / "Transition_run_" + str(uuid.uuid1())[0:8]).makedirs_p()
+            tmp = (self.output_directory / f"Transition_run_{str(uuid.uuid1())[:8]}").makedirs_p()
             transition_thread = TransitionThread(self, tmp, overwrite=overwrite)
             try:
                 transition_thread.start()
@@ -1716,7 +1729,7 @@ class IDF(GeomIDF):
             """Round up to closest `to` number."""
 
             if to and not math.isnan(x):
-                return int(round(x / to)) * to
+                return round(x / to) * to
             else:
                 return x
 
@@ -1752,10 +1765,10 @@ class IDF(GeomIDF):
             .rename_axis("Azimuth")
             .fillna(0)
         )
-        df.wall_area = df.wall_area.apply(round, decimals=1)
-        df.window_area = df.window_area.apply(round, decimals=1)
+        df.wall_area = df.wall_area.apply(sig_round, decimals=1)
+        df.window_area = df.window_area.apply(sig_round, decimals=1)
         df["wwr"] = (
-            (df.window_area / df.wall_area).replace([np.inf, -np.inf], np.nan).fillna(0).apply(round, decimals=2)
+            (df.window_area / df.wall_area).replace([np.inf, -np.inf], np.nan).fillna(0).apply(sig_round, decimals=2)
         )
         df["wwr_rounded_%"] = (
             (df.window_area / df.wall_area * 100)
@@ -2605,10 +2618,10 @@ def _process_csv(file, working_dir, simulname):
         simulname:
     """
     log("looking for csv output, return the csv files in DataFrames if any")
-    if "table" in file.basename():
-        tables_out = working_dir.absolute() / "tables"
+    if "table" in file.name:
+        tables_out = Path(working_dir).absolute() / "tables"
         tables_out.makedirs_p()
-        file.copy(tables_out / "%s_%s.csv" % (file.basename().stripext(), simulname))
+        file.copy(tables_out / f"{file.stem}_{simulname}.csv")
         return
     log(f"try to store file {file} in DataFrame")
     try:
@@ -2623,5 +2636,5 @@ def _process_csv(file, working_dir, simulname):
 def closest_cardinal_angle(azimuth):
     """Returns the closest bearing angle to the given azimuth angle."""
     dirs = [0, 90, 180, 270]
-    ix = int(round(azimuth / (360.0 / len(dirs))))
+    ix = round(azimuth / (360.0 / len(dirs)))
     return dirs[ix % len(dirs)]

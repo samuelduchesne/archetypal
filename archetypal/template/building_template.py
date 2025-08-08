@@ -9,10 +9,10 @@ import collections
 import logging as lg
 import time
 from itertools import chain, repeat
+from pathlib import Path
 from typing import ClassVar
 
 import networkx
-from path import Path
 from sigfig import round
 from tqdm.auto import tqdm
 from validator_collection import validators
@@ -447,9 +447,7 @@ class BuildingTemplate(UmiBase):
             f"Equivalent perimeter zone has an area of {Perimeter.area:,.0f} m2",
             level=lg.DEBUG,
         )
-        log(
-            f"Completed model complexity reduction for BuildingTemplate '{name}' " f"in {time.time() - start_time:,.2f}"
-        )
+        log(f"Completed model complexity reduction for BuildingTemplate '{name}' in {time.time() - start_time:,.2f}")
         return cls(
             name,
             Core=Core,

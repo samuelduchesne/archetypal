@@ -5,10 +5,10 @@ import shutil
 import subprocess
 import time
 from io import StringIO
+from pathlib import Path
 from threading import Thread
 
 from packaging.version import Version
-from path import Path
 from tqdm.contrib.logging import tqdm_logging_redirect
 
 from archetypal.eplus_interface.exceptions import EnergyPlusProcessError

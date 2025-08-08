@@ -5,11 +5,11 @@ import shutil
 import subprocess
 import time
 from io import StringIO
+from pathlib import Path
 from subprocess import CalledProcessError
 from threading import Thread
 
 from packaging.version import Version
-from path import Path
 from tqdm.contrib.logging import tqdm_logging_redirect
 
 from archetypal.eplus_interface.energy_plus import EnergyPlusProgram
@@ -55,8 +55,10 @@ class ExpandObjectsThread(Thread):
         self.idd = self.idf.iddname.copy(self.run_dir / "Energy+.idd").expand()
 
         # Run ExpandObjects Program
+        # Prepare command
+        self.cmd = ExpandObjectsExe(self.idf, self.run_dir).cmd
         self.p = subprocess.Popen(
-            args=ExpandObjectsExe(self.idf, self.run_dir).cmd,
+            args=self.cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             shell=False,  # can use shell

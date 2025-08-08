@@ -1,7 +1,7 @@
+from pathlib import Path
 from subprocess import CalledProcessError
 
 import pytest
-from path import Path
 
 from archetypal import IDF, settings
 from archetypal.eplus_interface import (
@@ -112,9 +112,13 @@ class TestIDF:
         assert natvent_v9_1_0.file_version == EnergyPlusVersion("9-1-0")
 
     def test_specific_version_error_simulate(self, natvent_v9_1_0, mocker):
-        with mocker.patch(
-            "archetypal.eplus_interface.energy_plus.EnergyPlusExe.get_exe_path", side_effect=EnergyPlusVersionError()
-        ), pytest.raises(EnergyPlusVersionError):
+        with (
+            mocker.patch(
+                "archetypal.eplus_interface.energy_plus.EnergyPlusExe.get_exe_path",
+                side_effect=EnergyPlusVersionError(),
+            ),
+            pytest.raises(EnergyPlusVersionError),
+        ):
             natvent_v9_1_0.simulate()
 
     def test_version(self, natvent_v9_1_0):
@@ -175,10 +179,7 @@ class TestIDF:
 
     def test_parallel_process(self, config):
         w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
-        files = {
-            i: {"idfname": file.expand(), "epw": w}
-            for i, file in enumerate(Path(data_dir / "necb").files("*.idf")[0:3])
-        }
+        files = {i: {"idfname": file, "epw": w} for i, file in enumerate(list((data_dir / "necb").glob("*.idf"))[0:3])}
         idfs = parallel_process(files, IDF, use_kwargs=True, processors=-1)
 
         assert not any(isinstance(a, Exception) for a in idfs.values())
@@ -225,7 +226,7 @@ class TestIDF:
         desired values taken from https://github.com/canmet-energy/btap"""
         import numpy as np
 
-        idf_file = Path(data_dir / "necb").files(f"*{archetype}*.idf")[0]
+        idf_file = next(iter((data_dir / "necb").glob(f"*{archetype}*.idf")))
         w = data_dir / "CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw"
         idf = IDF(idf_file, epw=w, prep_outputs=False)
 

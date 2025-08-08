@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import functools
 import time
+from pathlib import Path
 
 import numpy as np
 from pandas import DataFrame, read_sql_query, to_numeric
-from path import Path
 
 from archetypal.utils import log
 
@@ -71,16 +71,16 @@ class ReportData(DataFrame):
         Returns:
             ReportData: a :class:`ReportData` which is a subclass of :class:`DataFrame`.
         """
-        if not isinstance(sqlite_file, str):
-            raise TypeError(f"Please provide a str, not a {type(sqlite_file)}")
+        # Accept both str and pathlib.Path inputs
         file = Path(sqlite_file)
         if not file.exists():
-            raise FileNotFoundError(f"Could not find sql file {file.relpath()}")
+            raise FileNotFoundError(f"Could not find sql file {file}")
 
         import sqlite3
 
         # create database connection with sqlite3
-        with sqlite3.connect(sqlite_file) as conn:
+        # Use a string path for compatibility with older Python/sqlite builds
+        with sqlite3.connect(str(file)) as conn:
             # empty dict to hold all DataFrames
             # Iterate over all tables in the report_tables list
             sql_query = """

@@ -4,9 +4,9 @@ import platform
 import re
 import warnings
 from itertools import chain
+from pathlib import Path
 
 from packaging.version import Version
-from path import Path
 
 from archetypal import settings
 from archetypal.eplus_interface.exceptions import (
@@ -102,7 +102,8 @@ class EnergyPlusVersion(Version):
     @property
     def current_idd_path(self):
         """Get the current Idd file path for this version."""
-        return self.valid_idd_paths[self.dash]
+        # Backward-compatibility: tests and some call sites expect a string path
+        return str(self.valid_idd_paths[self.dash])
 
     @property
     def current_install_dir(self):
@@ -138,7 +139,8 @@ class EnergyPlusVersion(Version):
             value = {}
             for basedir in get_eplus_basedirs():
                 # match the Idd file contained in basedir
-                match = re.search(r"\d+(-\d+)+", basedir)
+                name = getattr(basedir, "stem", None) or getattr(basedir, "name", None) or str(basedir)
+                match = re.search(r"\d+(-\d+)+", name)
                 version = match.group()
                 value[version] = basedir.expand()
         self._install_locations = value
@@ -157,12 +159,12 @@ class EnergyPlusVersion(Version):
                 for _, basedir in self.install_locations.items():
                     updater_ = basedir / "PreProcess" / "IDFVersionUpdater"
                     if updater_.exists():
-                        basedirs_.append(updater_.files("*.idd"))
+                        basedirs_.append(list(updater_.glob("*.idd")))
                     else:
                         # The IDFVersionUpdate folder could be removed in some
                         # installation (eg Docker container).
                         # Add the idd contained in the basedir instead.
-                        basedirs_.append(basedir.files("*.idd"))
+                        basedirs_.append(list(basedir.glob("*.idd")))
                 iddnames = set(chain.from_iterable(basedirs_))
             except FileNotFoundError:
                 value = {}
@@ -214,11 +216,11 @@ def get_eplus_basedirs():
     if settings.energyplus_location is not None:
         return [Path(settings.energyplus_location)]
     elif platform.system() == "Windows":
-        return Path("C:\\").dirs("EnergyPlus*")
+        return list(Path("C:\\").glob("EnergyPlus*"))
     elif platform.system() == "Linux":
-        return Path("/usr/local/").dirs("EnergyPlus*")
+        return list(Path("/usr/local/").glob("EnergyPlus*"))
     elif platform.system() == "Darwin":
-        return Path("/Applications").dirs("EnergyPlus*")
+        return list(Path("/Applications").glob("EnergyPlus*"))
     else:
         warnings.warn(
             f"Archetypal is not compatible with {platform.system()}. It is only compatible "

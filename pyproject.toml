@@ -68,6 +68,9 @@ archetypal = "archetypal.cli:cli"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow that require EnergyPlus or long processing"
+]
 
 [tool.ruff]
 target-version = "py39"

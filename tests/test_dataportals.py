@@ -9,6 +9,8 @@ from archetypal.template.window_setting import WindowSetting
 
 from .conftest import data_dir
 
+pytestmark = pytest.mark.slow
+
 
 def test_tabula_available_country(config):
     # First, let's try the API call

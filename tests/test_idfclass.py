@@ -14,6 +14,8 @@ from archetypal.utils import parallel_process
 
 from .conftest import data_dir
 
+pytestmark = pytest.mark.slow
+
 
 @pytest.fixture()
 def shoebox_model(config):

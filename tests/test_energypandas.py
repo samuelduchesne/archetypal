@@ -7,6 +7,8 @@ from archetypal import IDF, settings
 
 from .conftest import data_dir
 
+pytestmark = pytest.mark.slow
+
 
 @pytest.fixture(scope="module")
 def idf(config):

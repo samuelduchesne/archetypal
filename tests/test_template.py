@@ -1,3 +1,4 @@
+import importlib
 import itertools
 from copy import copy
 
@@ -40,6 +41,8 @@ from archetypal.template.zonedefinition import ZoneDefinition
 from archetypal.utils import reduce
 
 from .conftest import data_dir
+
+has_coolprop = importlib.util.find_spec("CoolProp") is not None
 
 
 @pytest.fixture(scope="class")
@@ -1208,6 +1211,7 @@ class TestOpaqueConstruction:
             OpaqueConstruction.from_epbunch(surface)
 
 
+@pytest.mark.skipif(not has_coolprop, reason="CoolProp not installed")
 class TestWindowConstruction:
     """Series of tests for the :class:`WindowConstruction` class"""
 
@@ -1606,6 +1610,7 @@ class TestUmiSchedule:
         assert const.__class__.__name__ == "UmiSchedule"
         assert const.Name == "AlwaysOn"
 
+    @pytest.mark.slow
     def test_schedule_develop(self, config, small_idf):
         """
         Args:
@@ -1618,6 +1623,7 @@ class TestUmiSchedule:
         sched = UmiSchedule(Name="B_Off_Y_Occ", idf=idf)
         assert sched.to_ref()
 
+    @pytest.mark.slow
     def test_hash_eq_umi_sched(self, small_idf, other_idf):
         """Test equality and hashing of :class:`ZoneLoad`"""
 

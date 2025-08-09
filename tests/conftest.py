@@ -52,9 +52,9 @@ def clean_config(config):
         d.rmtree_p()
 
 
-# List fixtures that are located outiside of conftest.py so that they can be
+# List fixtures that are located outside of conftest.py so that they can be
 # used in other tests
-pytest_plugins = ["tests.test_dataportals"]
+# Removed import of test_dataportals as plugin to avoid unnecessary test loading
 
 ALL = set("darwin linux win32".split())
 
@@ -85,3 +85,15 @@ def safe_int_cast(val, default=0):
         return int(val)
     except (ValueError, TypeError):
         return default
+
+
+def pytest_addoption(parser):
+    parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--runslow"):
+        skip_slow = pytest.mark.skip(reason="need --runslow option to run")
+        for item in items:
+            if "slow" in item.keywords:
+                item.add_marker(skip_slow)

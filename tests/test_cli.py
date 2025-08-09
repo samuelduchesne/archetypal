@@ -10,6 +10,8 @@ from archetypal.utils import log
 
 from .conftest import data_dir
 
+pytestmark = pytest.mark.slow
+
 
 class TestCli:
     """Defines tests for usage of the archetypal Command Line Interface"""

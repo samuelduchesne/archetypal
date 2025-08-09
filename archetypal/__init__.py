@@ -339,16 +339,16 @@ finally:
     warn_if_not_compatible()
 
 __all__ = [
-    "settings",
-    "Settings",
-    "__version__",
-    "utils",
-    "dataportal",
     "IDF",
-    "EnergyPlusVersion",
     "BuildingTemplate",
+    "EnergyPlusVersion",
+    "Settings",
     "UmiTemplateLibrary",
+    "__version__",
     "clear_cache",
     "config",
+    "dataportal",
     "parallel_process",
+    "settings",
+    "utils",
 ]

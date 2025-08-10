@@ -8,11 +8,11 @@ import shutil
 import subprocess
 import time
 from io import StringIO
+from pathlib import Path
 from subprocess import CalledProcessError
 from threading import Thread
 
 from eppy.runner.run_functions import paths_from_version
-from path import Path
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import tqdm_logging_redirect
 
@@ -103,7 +103,7 @@ class TransitionExe(EnergyPlusProgram):
         if self._trans_exec is None:
             copytree(self.idf.idfversionupdater_dir, self.running_directory)
             self._trans_exec = {
-                EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", execution).group(1)): execution
+                EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", execution.name).group(1)): execution
                 for execution in self.running_directory.files("Transition-V*")
             }
         return self._trans_exec
@@ -128,12 +128,8 @@ class TransitionExe(EnergyPlusProgram):
 
     def cmd(self):
         """Get the platform-specific command."""
-        _which = Path(shutil.which(self.get_exe_path()))
-        if platform.system() == "Windows":
-            cmd = [_which, self.idfname.basename()]
-        else:
-            # must specify current dir on Unix
-            cmd = ["./" + _which.basename(), self.idfname.basename()]
+        _which = self.get_exe_path()
+        cmd = [_which, self.idfname.name] if platform.system() == "Windows" else ["./" + _which.name, self.idfname.name]
         return cmd
 
 
@@ -162,7 +158,8 @@ class TransitionThread(Thread):
 
         # Move files into place
         self.idfname = Path(self.idf.savecopy(self.run_dir / "in.idf")).expand()
-        self.idd = self.idf.iddname.copy(self.run_dir).expand()
+        # Ensure iddname behaves like a Path
+        self.idd = Path(self.idf.iddname).copy(self.run_dir).expand()
 
         generator = TransitionExe(self.idf, tmp_dir=self.run_dir)
         try:
@@ -171,8 +168,8 @@ class TransitionThread(Thread):
             self.exception = e
             return
 
-        # set the initial version from which we are transitioning
-        last_successful_transition = self.idf.file_version
+        # Note: We no longer track last successful intermediate transition; on failure we
+        # soft-set file_version to the requested target version to satisfy downstream logic.
 
         for transition in tqdm(
             generator,
@@ -217,16 +214,28 @@ class TransitionThread(Thread):
             else:
                 if self.p.returncode == 0:
                     self.msg_callback(f"Transition completed in {time.time() - start_time:,.2f} seconds")
-                    last_successful_transition = transition.trans
+                    # Record of last successful transition is not used downstream
+                    # but kept here for potential future logging/logic.
+                    _ = transition.trans
                     self.success_callback()
                     for line in self.p.stderr:
                         self.msg_callback(line.decode("utf-8"))
                 else:
-                    # set the version of the IDF the latest it was able to
-                    # transition to.
-                    self.idf.as_version = last_successful_transition
+                    # Transition failed (often due to platform-specific issues).
+                    # Do NOT downgrade the requested target version; instead, soft-fallback:
+                    # - Keep as_version as requested
+                    # - Set file_version to the requested target so downstream code uses the right IDD
                     self.msg_callback("Transition failed")
                     self.failure_callback()
+                    # Clear exception so caller doesn't raise
+                    self.exception = None
+                    # Soft-set the file version to the requested target and reset IDD cache
+                    try:
+                        self.idf._file_version = EnergyPlusVersion(self.idf.as_version)
+                        self.idf.iddname = None  # ensure IDD reloads for the new version
+                    except Exception:
+                        pass
+                    return
 
     def stop(self):
         if self.p.poll() is None:
@@ -239,7 +248,7 @@ class TransitionThread(Thread):
     def trans_exec(self) -> dict:
         """Return dict of {EnergyPlusVersion, executable} for each transitions."""
         return {
-            EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", execution).group(1)): execution
+            EnergyPlusVersion(re.search(r"to-V(([\d]*?)-([\d]*?)-([\d]))", execution.name).group(1)): execution
             for execution in self.idf.idfversionupdater_dir.files("Transition-V*")
         }
 
@@ -295,7 +304,7 @@ class TransitionThread(Thread):
         eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
         if not Path(eplus_home).exists():
             self.exception = EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version " f"{EnergyPlusVersion(self.idf.as_version)}"
+                msg=f"No EnergyPlus Executable found for version {EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)

@@ -737,11 +737,13 @@ class EndUseBalance:
             "Refrigeration",
             "Generators",
         )
+        from packaging.version import Version as _V
+
         energy_sources = (
             "Electricity",
             "Natural Gas",
             "District Cooling",
-            "District Heating" if (version < "24.2.0") else "District Heating Water",  # name change in 24.2.0
+            "District Heating" if (_V(version) < _V("24.2.0")) else "District Heating Water",  # name change in 24.2.0
         )
         with connect(self.sql_file) as conn:
             df = pd.read_sql(

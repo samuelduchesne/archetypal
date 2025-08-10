@@ -6,9 +6,9 @@
 ################################################################################
 import os
 import time
+from pathlib import Path
 
 import click
-from path import Path
 
 from archetypal import __version__, settings
 from archetypal.idfclass import IDF
@@ -203,7 +203,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
     output = Path(output)
     name = output.stem
     ext = output.suffix if output.suffix == ".json" else ".json"
-    dir_ = output.dirname()
+    dir_ = output.parent
 
     file_paths = list(set_filepaths(idf))
     file_list = "\n".join([f"{i}. " + str(file.name) for i, file in enumerate(file_paths)])
@@ -211,7 +211,7 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
         f"executing {len(file_paths)} file(s):\n{file_list}",
     )
     weather, *_ = set_filepaths([weather])
-    log(f"using the '{weather.basename()}' weather file\n")
+    log(f"using the '{weather.name}' weather file\n")
 
     # Call UmiTemplateLibrary constructor with list of IDFs
     template = UmiTemplateLibrary.from_idf_files(
@@ -224,8 +224,8 @@ def reduce(ctx, idf, output, weather, cores, all_zones, as_version):
         annual=True,
     )
     # Save json file
-    final_path: Path = dir_ / name + ext
-    template.save(path_or_buf=final_path)
+    final_path: Path = dir_ / f"{name}{ext}"
+    template.save(path_or_buf=str(final_path))
     log(
         f"Successfully created template file at {final_path.absolute()}",
     )
@@ -321,11 +321,11 @@ def transition(idf, to_version, cores, yes):
     for idf in results.values():
         if isinstance(idf, IDF):
             if overwrite:
-                file_list.append(idf.original_idfname)
+                file_list.append(str(idf.original_idfname))
                 idf.saveas(str(idf.original_idfname))
             else:
-                full_path = idf.original_idfname.dirname() / idf.original_idfname.stem + f"V{to_version}.idf"
-                file_list.append(full_path)
+                full_path = idf.original_idfname.parent / f"{idf.original_idfname.stem}V{to_version}.idf"
+                file_list.append(str(full_path))
                 idf.saveas(full_path)
     log(
         f"Successfully transitioned to version '{to_version}' in "
@@ -348,13 +348,13 @@ def set_filepaths(idf):
     """
     if not isinstance(idf, (list, tuple)):
         raise TypeError("A list must be passed")
-    idf = tuple(Path(file_or_path).expand() for file_or_path in idf)  # make Paths
+    idf = tuple(Path(file_or_path).expanduser() for file_or_path in idf)  # make Paths
     file_paths = ()  # Placeholder for tuple of paths
     for file_or_path in idf:
         if file_or_path.is_file():  # if a file, concatenate into file_paths
             file_paths += (file_or_path,)
         elif file_or_path.is_dir():  # if a directory, walkdir (recursive) and get *.idf
-            file_paths += tuple(file_or_path.walkfiles("*.idf"))
+            file_paths += tuple(file_or_path.rglob("*.idf"))
         else:
             # has wildcard
             excluded_dirs = [
@@ -363,12 +363,12 @@ def set_filepaths(idf):
                 settings.imgs_folder,
                 settings.logs_folder,
             ]
-            top = file_or_path.absolute().dirname()
+            top = file_or_path.absolute().parent
             for root, _, _ in walkdirs(top, excluded_dirs):
-                pattern = file_or_path.basename()
-                file_paths += tuple(Path(root).files(pattern))
+                pattern = file_or_path.name
+                file_paths += tuple(Path(root).glob(pattern))
 
-    file_paths = {f.relpath().expand() for f in file_paths}  # Only keep unique
+    file_paths = {f.resolve() for f in file_paths}  # Only keep unique
     # values
     if file_paths:
         return file_paths

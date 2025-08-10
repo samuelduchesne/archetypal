@@ -17,10 +17,10 @@ import sys
 import time
 from collections import OrderedDict
 from concurrent.futures._base import as_completed
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from path import Path
 from tqdm.auto import tqdm
 
 from . import settings
@@ -69,10 +69,14 @@ def config(
     """
     # set each global variable to the passed-in parameter value
     settings.cache_responses = cache_responses
-    settings.cache_folder = Path(cache_folder).expand().makedirs_p()
-    settings.data_folder = Path(data_folder).expand().makedirs_p()
-    settings.imgs_folder = Path(imgs_folder).expand().makedirs_p()
-    settings.logs_folder = Path(logs_folder).expand().makedirs_p()
+    settings.cache_folder = Path(cache_folder).expanduser()
+    settings.cache_folder.mkdir(parents=True, exist_ok=True)
+    settings.data_folder = Path(data_folder).expanduser()
+    settings.data_folder.mkdir(parents=True, exist_ok=True)
+    settings.imgs_folder = Path(imgs_folder).expanduser()
+    settings.imgs_folder.mkdir(parents=True, exist_ok=True)
+    settings.logs_folder = Path(logs_folder).expanduser()
+    settings.logs_folder.mkdir(parents=True, exist_ok=True)
     settings.log_console = log_console
     settings.log_file = log_file
     settings.log_level = log_level
@@ -255,7 +259,7 @@ def top(series, df, weighting_variable):
     # Returns weights. If multiple `weighting_variable`, df.prod will take care
     # of multipling them together.
     if not isinstance(series, pd.Series):
-        raise TypeError('"top()" only works on Series, ' f"not DataFrames\n{series}")
+        raise TypeError(f'"top()" only works on Series, not DataFrames\n{series}')
 
     if not isinstance(weighting_variable, list):
         weighting_variable = [weighting_variable]
@@ -658,13 +662,9 @@ def is_referenced(name, epbunch, fieldname="Zone_or_ZoneList_Name"):
     elif refobj.key.upper() == "ZONELIST":
         from archetypal import __version__
 
-        raise NotImplementedError(
-            f"Checking against a ZoneList is " f"not yet supported in archetypal " f"v{__version__}"
-        )
+        raise NotImplementedError(f"Checking against a ZoneList is not yet supported in archetypal v{__version__}")
     raise ValueError(
-        f"Invalid referring object returned while "
-        f"referencing object name: Looking for '{name}' in "
-        f"object {refobj}"
+        f"Invalid referring object returned while referencing object name: Looking for '{name}' in object {refobj}"
     )
 
 

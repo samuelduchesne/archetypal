@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import logging as lg
+import os
+import shutil
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Optional
 
@@ -195,6 +197,124 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
 settings = Settings()
 settings.unit_registry = unit_registry
 
+
+# --- pathlib.Path compatibility shims (legacy path.Path API) ---
+# These helpers allow older code to keep working after switching to pathlib.
+def _expand(self: Path) -> Path:
+    return self.expanduser()
+
+
+def _files(self: Path, pattern: str = "*"):
+    # Raise if directory doesn't exist to mimic legacy semantics used in tests
+    if not self.exists():
+        raise FileNotFoundError(str(self))
+    return list(self.glob(pattern))
+
+
+def _walkfiles(self: Path, pattern: str = "*"):
+    return self.rglob(pattern)
+
+
+def _basename(self: Path) -> str:
+    return self.name
+
+
+def _dirname(self: Path) -> Path:
+    return self.parent
+
+
+def _makedirs_p(self: Path) -> Path:
+    self.mkdir(parents=True, exist_ok=True)
+    return self
+
+
+def _mkdir_p(self: Path) -> Path:
+    self.mkdir(parents=True, exist_ok=True)
+    return self
+
+
+def _mkdir(self: Path, *args, **kwargs) -> Path:  # type: ignore[override]
+    # Preserve typical semantics but return self for chaining.
+    Path.mkdir(self, *args, **kwargs)
+    return self
+
+
+def _rmtree(self: Path, ignore_errors: bool = False):
+    shutil.rmtree(self, ignore_errors=ignore_errors)
+
+
+def _rmtree_p(self: Path):
+    shutil.rmtree(self, ignore_errors=True)
+
+
+def _copy(self: Path, dest) -> Path:
+    dest = Path(dest)
+    target = dest / self.name if dest.exists() and dest.is_dir() else dest
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(self, target)
+    return target
+
+
+def _copytree(self: Path, dest) -> Path:
+    dest = Path(dest)
+    shutil.copytree(self, dest)
+    return dest
+
+
+def _relpath(self: Path, start: Path | str | None = None) -> Path:
+    base = start if start is not None else os.getcwd()
+    return Path(os.path.relpath(self, start=base))
+
+
+def _stripext(self: Path) -> str:
+    return self.stem
+
+
+def _endswith(self: Path, suffix) -> bool:
+    return str(self).endswith(suffix)
+
+
+def _len(self: Path) -> int:
+    # Some third-party libraries (e.g., click's test runner) may call len() on
+    # arguments; provide a best-effort length of the string form.
+    return len(str(self))
+
+
+def _getitem(self: Path, item):
+    return str(self).__getitem__(item)
+
+
+def _startswith(self: Path, prefix, *args) -> bool:
+    return str(self).startswith(prefix, *args)
+
+
+# Attach shims if not already present
+for name, func in {
+    "expand": _expand,
+    "files": _files,
+    "walkfiles": _walkfiles,
+    "basename": _basename,
+    "dirname": _dirname,
+    "makedirs_p": _makedirs_p,
+    "mkdir_p": _mkdir_p,
+    "mkdir": _mkdir,
+    "rmtree": _rmtree,
+    "rmtree_p": _rmtree_p,
+    "copy": _copy,
+    "copytree": _copytree,
+    "relpath": _relpath,
+    "stripext": _stripext,
+    "endswith": _endswith,
+    "__getitem__": _getitem,
+    "startswith": _startswith,
+}.items():
+    if not hasattr(Path, name):
+        setattr(Path, name, func)
+
+# Provide len() on Path for better interop in some callers
+if not hasattr(Path, "__len__"):
+    Path.__len__ = _len  # type: ignore[attr-defined]
+
 # After settings are loaded, import other modules
 from .eplus_interface.version import EnergyPlusVersion  # noqa: E402
 from .idfclass import IDF  # noqa: E402
@@ -219,16 +339,16 @@ finally:
     warn_if_not_compatible()
 
 __all__ = [
-    "settings",
-    "Settings",
-    "__version__",
-    "utils",
-    "dataportal",
     "IDF",
-    "EnergyPlusVersion",
     "BuildingTemplate",
+    "EnergyPlusVersion",
+    "Settings",
     "UmiTemplateLibrary",
+    "__version__",
     "clear_cache",
     "config",
+    "dataportal",
     "parallel_process",
+    "settings",
+    "utils",
 ]

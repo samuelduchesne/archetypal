@@ -1,13 +1,13 @@
 import logging as lg
 import subprocess
 import time
+from pathlib import Path
 from subprocess import CalledProcessError
 from threading import Thread
 
 import eppy
 from eppy.runner.run_functions import paths_from_version
 from packaging.version import Version
-from path import Path
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -79,6 +79,7 @@ class EnergyPlusExe:
             version (bool): Display version information (default: False)
             expandobjects (bool): Run ExpandObjects prior to simulation. (default: True)
         """
+        # Short option flags map to EnergyPlus CLI switches
         self.a = annual
         self.c = convert
         self.d = output_directory
@@ -91,7 +92,10 @@ class EnergyPlusExe:
         self.s = output_sufix
         self.v = version
         self.w = epw
-        self.x = expandobjects
+        # Prefer internal object expansion; always enable -x for robustness.
+        # Keep the expandobjects parameter for API compatibility, but ignore it
+        # in favor of using EnergyPlus's internal preprocessor via -x.
+        self.x = True
 
         self.idfname = idfname
         self.ep_version = ep_version
@@ -102,7 +106,7 @@ class EnergyPlusExe:
         (eplus_exe_path, eplus_weather_path) = eppy.runner.run_functions.install_paths(self.ep_version.dash, self.i)
         if not Path(eplus_exe_path).exists():
             raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version " f"{EnergyPlusVersion(self.ep_version)}"
+                msg=f"No EnergyPlus Executable found for version {EnergyPlusVersion(self.ep_version)}"
             )
         self.eplus_exe_path = Path(eplus_exe_path).expand()
         self.eplus_weather_path = Path(eplus_weather_path).expand()
@@ -113,7 +117,7 @@ class EnergyPlusExe:
 
     def __repr__(self):
         """Return a representation of self."""
-        cmd = [self.eplus_exe_path]
+        cmd = [str(self.eplus_exe_path)]
         for key, value in self.__dict__.items():
             if key not in [
                 "idfname",
@@ -122,10 +126,12 @@ class EnergyPlusExe:
                 "eplus_weather_path",
             ]:
                 if isinstance(value, bool):
-                    cmd.append(f"-{key}") if value else None
+                    if value:
+                        cmd.append(f"-{key}")
                 else:
-                    cmd.extend([f"-{key}", value]) if value is not None else None
-        cmd.append(self.idfname)
+                    if value is not None:
+                        cmd.extend([f"-{key}", str(value)])
+        cmd.append(str(self.idfname))
         return cmd
 
     def cmd(self):
@@ -163,11 +169,12 @@ class EnergyPlusThread(Thread):
         Adapted from :func:`eppy.runner.runfunctions.run`.
         """
         # get version from IDF object or by parsing the IDF file for it
-
         tmp = self.tmp
         self.epw = Path(self.idf.epw.copy(tmp)).expand()
         self.idfname = Path(self.idf.savecopy(tmp / self.idf.name)).expand()
-        self.idd = Path(self.idf.iddname.copy(tmp)).expand()
+        # Let EnergyPlus use the default IDD from the installation; passing a copied
+        # IDD via -i has been observed to cause instability on some systems.
+        self.idd = None
         self.run_dir = Path(tmp).expand()
         self.include = [Path(file).copy(tmp) for file in self.idf.include]
 
@@ -182,7 +189,7 @@ class EnergyPlusThread(Thread):
                 convert=self.idf.convert,
                 design_day=self.idf.design_day,
                 help=False,
-                idd=self.idd,
+                idd=self.idd,  # None => use default EnergyPlus IDD
                 epmacro=self.idf.epmacro,
                 output_prefix=self.idf.output_prefix,
                 readvars=self.idf.readvars,
@@ -196,15 +203,20 @@ class EnergyPlusThread(Thread):
             if self.p:
                 self.p.terminate()  # terminate process to be sure
             return
-        with logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]), tqdm(
-            unit_scale=False,
-            total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
-            miniters=1,
-            desc=f"{eplus_exe.eplus_exe_path} #{self.idf.position}-{self.idf.name}"
-            if self.idf.position
-            else f"{eplus_exe.eplus_exe_path} {self.idf.name}",
-            position=self.idf.position,
-        ) as progress:
+        with (
+            logging_redirect_tqdm(loggers=[lg.getLogger("archetypal")]),
+            tqdm(
+                unit_scale=False,
+                total=self.idf.energyplus_its if self.idf.energyplus_its > 0 else None,
+                miniters=1,
+                desc=(
+                    f"{eplus_exe.eplus_exe_path} #{self.idf.position}-{self.idf.name}"
+                    if self.idf.position
+                    else f"{eplus_exe.eplus_exe_path} {self.idf.name}"
+                ),
+                position=self.idf.position,
+            ) as progress,
+        ):
             # Start process with tqdm bar
             self.p = subprocess.Popen(
                 self.cmd,
@@ -254,13 +266,15 @@ class EnergyPlusThread(Thread):
                 pass
             else:
                 log(
-                    "Files generated at the end of the simulation: {}".format("\n".join(save_dir.files())),
+                    "Files generated at the end of the simulation: {}".format(
+                        "\n".join(str(p) for p in save_dir.files())
+                    ),
                     lg.DEBUG,
                     name=self.name,
                 )
 
     def failure_callback(self):
-        error_filename = self.run_dir / self.idf.output_prefix + "out.err"
+        error_filename = self.run_dir / f"{self.idf.output_prefix}out.err"
         try:
             with open(error_filename) as stderr:
                 stderr_r = stderr.read()
@@ -284,7 +298,7 @@ class EnergyPlusThread(Thread):
         eplus_exe, eplus_home = paths_from_version(self.idf.as_version.dash)
         if not Path(eplus_home).exists():
             raise EnergyPlusVersionError(
-                msg=f"No EnergyPlus Executable found for version " f"{EnergyPlusVersion(self.idf.as_version)}"
+                msg=f"No EnergyPlus Executable found for version {EnergyPlusVersion(self.idf.as_version)}"
             )
         else:
             return Path(eplus_home)

@@ -6,11 +6,11 @@ import json
 import logging as lg
 from collections import OrderedDict, defaultdict
 from concurrent.futures.thread import ThreadPoolExecutor
+from pathlib import Path
 from typing import ClassVar, Union
 
 import networkx as nx
 from pandas.io.common import get_handle
-from path import Path
 
 from archetypal import settings
 from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
@@ -510,9 +510,9 @@ class UmiTemplateLibrary:
                 docs for the set of allowed keys and values.
         """
         if path_or_buf is None:
-            basedir = Path(self.name).dirname()
+            basedir = Path(self.name).parent
             name = Path(self.name).stem
-            path_or_buf = basedir / name + ".json"
+            path_or_buf = basedir / f"{name}.json"
 
         self.to_json(
             path_or_buf,

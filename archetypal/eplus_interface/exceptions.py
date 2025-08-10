@@ -48,7 +48,7 @@ class EnergyPlusVersionError(Exception):
             if self.idf_version > self.ep_version:
                 compares_ = "higher"
                 self.msg = (
-                    f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                    f"The version of {self.idf_file.name} (v{self.idf_version}) "
                     f"is {compares_} than the specified EnergyPlus version "
                     f"(v{self.ep_version}). This file looks like it has already been "
                     f"transitioned to a newer version"
@@ -56,7 +56,7 @@ class EnergyPlusVersionError(Exception):
             else:
                 compares_ = "lower"
                 self.msg = (
-                    f"The version of {self.idf_file.basename()} (v{self.idf_version}) "
+                    f"The version of {self.idf_file.name} (v{self.idf_version}) "
                     f"is {compares_} than the specified EnergyPlus version "
                     f"(v{self.ep_version})"
                 )

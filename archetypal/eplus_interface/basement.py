@@ -5,10 +5,10 @@ import shutil
 import subprocess
 import time
 from io import StringIO
+from pathlib import Path
 from threading import Thread
 
 from packaging.version import Version
-from path import Path
 from tqdm.contrib.logging import tqdm_logging_redirect
 
 from ..eplus_interface.exceptions import EnergyPlusProcessError
@@ -59,7 +59,7 @@ class BasementThread(Thread):
 
         # The BasementGHTin.idf file is copied from the self.include list
         self.include = [Path(file).copy(self.run_dir) for file in self.idf.include]
-        if "BasementGHTIn.idf" not in [p.basename() for p in self.include]:
+        if "BasementGHTIn.idf" not in [p.name for p in self.include]:
             self.cleanup_callback()
             return
 

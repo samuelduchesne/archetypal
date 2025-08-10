@@ -72,7 +72,10 @@ jobs:
           energyplus-version: ${{ matrix.energyplus-version }}
           energyplus-sha: ${{ matrix.energyplus-sha }}
           energyplus-install: ${{ matrix.energyplus-install }}
-
+      
+      - name: Install libgfortran3
+        run: sudo apt-get update && sudo apt-get install -y libgfortran3
+      
       - name: Test with tox
         run: tox -- -n 2 --doctest-modules tests --cov --cov-config=pyproject.toml --cov-report=xml
         env:

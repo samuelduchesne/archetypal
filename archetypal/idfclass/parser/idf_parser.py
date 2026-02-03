@@ -117,13 +117,9 @@ class IDFParser:
         # Load schema if not provided
         schema = self._schema
         if schema is None:
-            try:
-                from .schema import get_schema
+            from .schema import get_schema
 
-                schema = get_schema(version)
-            except Exception:
-                # Continue without schema - field ordering won't be available
-                pass
+            schema = get_schema(version)
 
         # Create document
         doc = IDFDocument(version=version, schema=schema, filepath=self._filepath)

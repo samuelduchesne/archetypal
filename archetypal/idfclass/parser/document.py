@@ -361,133 +361,16 @@ class IDFDocument:
     # Reference Graph
     # -------------------------------------------------------------------------
 
-    # Common reference field patterns (field names that typically reference other objects)
-    _REFERENCE_FIELD_PATTERNS = frozenset({
-        # Zone references
-        "zone_name",
-        "zone_or_zonelist_name",
-        "zone_or_zonelist_or_space_or_spacelist_name",
-        "thermal_zone_name",
-        # Construction/material references
-        "construction_name",
-        "outside_layer",
-        "layer_2",
-        "layer_3",
-        "layer_4",
-        "layer_5",
-        "layer_6",
-        "layer_7",
-        "layer_8",
-        "layer_9",
-        "layer_10",
-        # Surface references
-        "building_surface_name",
-        "base_surface_name",
-        "surface_name",
-        "outside_boundary_condition_object",
-        # Schedule references
-        "schedule_name",
-        "availability_schedule_name",
-        "activity_level_schedule_name",
-        "work_efficiency_schedule_name",
-        "clothing_insulation_schedule_name",
-        "air_velocity_schedule_name",
-        "number_of_people_schedule_name",
-        "heating_setpoint_schedule_name",
-        "cooling_setpoint_schedule_name",
-        "setpoint_schedule_name",
-        "fraction_radiant_schedule_name",
-        "fraction_lost_schedule_name",
-        "schedule_type_limits_name",
-        "heating_availability_schedule_name",
-        "cooling_availability_schedule_name",
-        "heating_setpoint_temperature_schedule_name",
-        "cooling_setpoint_temperature_schedule_name",
-        # Node references
-        "inlet_node_name",
-        "outlet_node_name",
-        "zone_air_inlet_node_name",
-        "zone_air_exhaust_node_name",
-        "zone_air_node_name",
-        # Other common references
-        "design_specification_outdoor_air_object_name",
-    })
-
-    # Position-based reference fields for common object types (0-indexed field positions after name)
-    # Used as fallback when no schema is available
-    _REFERENCE_FIELD_POSITIONS: dict[str, set[int]] = {
-        # BuildingSurface:Detailed: field 2 = construction, field 3 = zone, field 5 = outside boundary object
-        "BuildingSurface:Detailed": {1, 2, 4},
-        # FenestrationSurface:Detailed: field 2 = construction, field 3 = building surface
-        "FenestrationSurface:Detailed": {1, 2},
-        # People: field 1 = zone, field 2 = schedule, field 9 = activity schedule
-        "People": {0, 1, 8},
-        # Lights: field 1 = zone, field 2 = schedule
-        "Lights": {0, 1},
-        # ElectricEquipment: field 1 = zone, field 2 = schedule
-        "ElectricEquipment": {0, 1},
-        # GasEquipment: field 1 = zone, field 2 = schedule
-        "GasEquipment": {0, 1},
-        # ZoneInfiltration:DesignFlowRate: field 1 = zone, field 2 = schedule
-        "ZoneInfiltration:DesignFlowRate": {0, 1},
-        # ZoneVentilation:DesignFlowRate: field 1 = zone, field 2 = schedule
-        "ZoneVentilation:DesignFlowRate": {0, 1},
-        # Construction: all fields after name are material layers
-        "Construction": {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
-        # Schedule:Constant: field 1 = schedule type limits
-        "Schedule:Constant": {0},
-        # Schedule:Compact: field 1 = schedule type limits
-        "Schedule:Compact": {0},
-        # InternalMass: field 1 = construction, field 2 = zone
-        "InternalMass": {0, 1},
-        # Shading:Site:Detailed, Shading:Building:Detailed: no references typically
-        # ThermostatSetpoint:DualSetpoint: field 1 = heating schedule, field 2 = cooling schedule
-        "ThermostatSetpoint:DualSetpoint": {0, 1},
-        # ZoneControl:Thermostat: field 1 = zone, field 4 = control schedule
-        "ZoneControl:Thermostat": {0, 3},
-        # ZoneHVAC:IdealLoadsAirSystem: field 1 = zone
-        "ZoneHVAC:IdealLoadsAirSystem": {0},
-        # Sizing:Zone: field 1 = zone
-        "Sizing:Zone": {0},
-    }
-
     def _index_object_references(self, obj: IDFObject) -> None:
-        """Index all references in an object."""
+        """Index all references in an object using schema information."""
+        if not self._schema:
+            return  # Schema required for reference indexing
+
         obj_type = obj._type
+        field_names = self._schema.get_field_names(obj_type)
 
-        # Get field names to check
-        if self._schema:
-            field_names = self._schema.get_field_names(obj_type)
-        elif obj._field_order:
-            field_names = obj._field_order
-        else:
-            field_names = list(obj._data.keys())
-
-        # Check for position-based references (used when schema unavailable)
-        position_refs = self._REFERENCE_FIELD_POSITIONS.get(obj_type, set())
-
-        for idx, field_name in enumerate(field_names):
-            # Check if this is a reference field
-            is_reference = False
-
-            if self._schema:
-                # Use schema if available
-                is_reference = self._schema.is_reference_field(obj_type, field_name)
-            else:
-                # Fall back to pattern matching on field name
-                field_lower = field_name.lower()
-                is_reference = field_lower in self._REFERENCE_FIELD_PATTERNS
-
-                # Also check position-based references for generic field names
-                # field_1 = position 0, field_2 = position 1, etc.
-                if not is_reference and field_name.startswith("field_"):
-                    try:
-                        field_pos = int(field_name.split("_")[1]) - 1  # field_1 -> 0
-                        is_reference = field_pos in position_refs
-                    except (ValueError, IndexError):
-                        pass
-
-            if is_reference:
+        for field_name in field_names:
+            if self._schema.is_reference_field(obj_type, field_name):
                 value = obj._data.get(field_name)
                 if value and isinstance(value, str) and value.strip():
                     self._references.register(obj, field_name, value)

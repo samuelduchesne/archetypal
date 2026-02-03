@@ -49,7 +49,7 @@ write_epjson = writers_mod.write_epjson
 def generate_test_idf(num_zones: int = 100, surfaces_per_zone: int = 6) -> str:
     """Generate a test IDF file with specified complexity."""
     lines = [
-        "Version, 23.2;",
+        "Version, 24.1;",
         "",
         "Building,",
         "  TestBuilding,           !- Name",

@@ -55,7 +55,8 @@ class EpJSONSchema:
                     self._reference_lists[ref_list].append(obj_type)
 
             # Find fields that reference object lists
-            inner = obj_schema.get("patternProperties", {}).get(".*", {})
+            pattern_props = obj_schema.get("patternProperties", {})
+            inner = next(iter(pattern_props.values()), {}) if pattern_props else {}
             props = inner.get("properties", {})
             for field_name, field_schema in props.items():
                 if "object_list" in field_schema:
@@ -69,11 +70,15 @@ class EpJSONSchema:
         return self._properties.get(obj_type)
 
     def get_inner_schema(self, obj_type: str) -> dict | None:
-        """Get the inner schema (inside patternProperties.*) for an object type."""
+        """Get the inner schema (inside patternProperties) for an object type."""
         obj_schema = self.get_object_schema(obj_type)
         if not obj_schema:
             return None
-        return obj_schema.get("patternProperties", {}).get(".*", {})
+        pattern_props = obj_schema.get("patternProperties", {})
+        # The pattern key varies (e.g., ".*", "^.*\\S.*$") - get the first one
+        for key in pattern_props:
+            return pattern_props[key]
+        return None
 
     def get_field_schema(self, obj_type: str, field_name: str) -> dict | None:
         """Get schema for a specific field of an object type."""

@@ -395,26 +395,14 @@ def main():
         print(f"{r['description']:<40} {r['mean_time_sec']:<12.4f} {r['mean_memory_mb']:<12.2f} {r['zone_lookup_us']:<12.2f}")
 
     print("\n" + "=" * 80)
-    print(" COMPARISON WITH EPPY (ESTIMATED)")
+    print(" KEY FEATURES")
     print("=" * 80)
     print("""
-Based on typical eppy performance characteristics:
-
-| Operation              | eppy (v2)      | new parser (v3) | Speedup    |
-|------------------------|----------------|-----------------|------------|
-| Parse 100-zone model   | ~0.5-1.0 sec   | ~0.02-0.05 sec  | 10-20x     |
-| Parse 500-zone model   | ~2-5 sec       | ~0.1-0.2 sec    | 10-25x     |
-| Zone lookup by name    | ~100-500 us    | ~0.5-1 us       | 100-500x   |
-| Schedule lookup        | O(n*m) scan    | O(1) hash       | 100-1000x  |
-| Find used schedules    | O(n*m*p)       | O(k)            | 100-1000x  |
-| Memory per object      | ~1 KB          | ~200 bytes      | 5x         |
-
-Key improvements:
   - Streaming parser with memory mapping for large files
-  - O(1) hash-based lookups instead of O(n) scans
+  - O(1) hash-based lookups by object name
   - Reference graph for instant dependency queries
-  - Lean IDFObject with __slots__ (~200 bytes vs ~1KB)
-  - No IDD parsing required (uses EpJSON schema)
+  - Lean IDFObject with __slots__ for memory efficiency
+  - EpJSON schema as single source of truth
 """)
 
 

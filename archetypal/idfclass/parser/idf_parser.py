@@ -239,15 +239,17 @@ class IDFParser:
 
     def _parse_fields(self, fields_raw: str) -> list[str]:
         """Parse and clean field values from raw string."""
+        # First, strip comments from each line (comments may contain commas)
+        lines = []
+        for line in fields_raw.split("\n"):
+            if "!" in line:
+                line = line[: line.index("!")]
+            lines.append(line)
+
+        # Join lines and split by comma
+        clean_text = " ".join(lines)
         fields = []
-
-        # Split by comma, handling inline comments
-        for part in fields_raw.split(","):
-            # Remove inline comments
-            if "!" in part:
-                part = part[: part.index("!")]
-
-            # Clean whitespace
+        for part in clean_text.split(","):
             value = part.strip()
             fields.append(value)
 

@@ -2,8 +2,7 @@
 """
 Performance benchmark for archetypal v3 parser.
 
-Compares the new parser against baseline measurements and tests
-various operations for speed and memory efficiency.
+Compares the new parser against eppy to measure actual performance improvements.
 """
 
 from __future__ import annotations
@@ -44,6 +43,33 @@ IDFObject = objects_mod.IDFObject
 IDFCollection = objects_mod.IDFCollection
 write_idf = writers_mod.write_idf
 write_epjson = writers_mod.write_epjson
+
+# Try to import eppy for comparison
+EPPY_AVAILABLE = False
+IDD_PATH = None
+try:
+    from eppy.modeleditor import IDF
+
+    # Find EnergyPlus IDD file
+    idd_search_paths = [
+        Path(__file__).parent / "Energy+.idd",
+        "/usr/local/EnergyPlus-24-1-0/Energy+.idd",
+        "/opt/EnergyPlus-24-1-0/Energy+.idd",
+        Path.home() / "EnergyPlus-24-1-0" / "Energy+.idd",
+    ]
+
+    for idd_path in idd_search_paths:
+        if Path(idd_path).exists():
+            IDD_PATH = str(idd_path)
+            IDF.setiddname(IDD_PATH)
+            EPPY_AVAILABLE = True
+            break
+except ImportError:
+    pass
+
+if not EPPY_AVAILABLE:
+    print("Note: eppy not available for comparison benchmarks")
+    print("      Install eppy and place Energy+.idd in the project directory\n")
 
 
 def generate_test_idf(num_zones: int = 100, surfaces_per_zone: int = 6) -> str:
@@ -176,6 +202,76 @@ def generate_test_idf(num_zones: int = 100, surfaces_per_zone: int = 6) -> str:
         ])
 
     return "\n".join(lines)
+
+
+def benchmark_eppy_parsing(idf_path: Path, iterations: int = 5) -> dict:
+    """Benchmark eppy parsing speed."""
+    if not EPPY_AVAILABLE:
+        return {"error": "eppy not available"}
+
+    times = []
+    memory_peaks = []
+
+    for _ in range(iterations):
+        gc.collect()
+        tracemalloc.start()
+
+        start = time.perf_counter()
+        idf = IDF(str(idf_path))
+        end = time.perf_counter()
+
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        times.append(end - start)
+        memory_peaks.append(peak / 1024 / 1024)  # MB
+
+        del idf
+
+    return {
+        "mean_time_sec": statistics.mean(times),
+        "std_time_sec": statistics.stdev(times) if len(times) > 1 else 0,
+        "min_time_sec": min(times),
+        "max_time_sec": max(times),
+        "mean_memory_mb": statistics.mean(memory_peaks),
+        "peak_memory_mb": max(memory_peaks),
+    }
+
+
+def benchmark_eppy_lookups(idf, iterations: int = 1000) -> dict:
+    """Benchmark eppy object lookup speed."""
+    if not EPPY_AVAILABLE:
+        return {"error": "eppy not available"}
+
+    import random
+
+    # Get list of zone names
+    zones = idf.idfobjects["ZONE"]
+    zone_names = [z.Name for z in zones]
+
+    # Benchmark zone lookup by name (eppy uses linear scan)
+    start = time.perf_counter()
+    for _ in range(iterations):
+        name = random.choice(zone_names)
+        # eppy lookup - must iterate to find by name
+        for z in idf.idfobjects["ZONE"]:
+            if z.Name == name:
+                break
+    zone_lookup_time = (time.perf_counter() - start) / iterations * 1_000_000  # microseconds
+
+    # Benchmark iteration
+    start = time.perf_counter()
+    count = 0
+    for obj_type in idf.idfobjects:
+        for obj in idf.idfobjects[obj_type]:
+            count += 1
+    iteration_time = (time.perf_counter() - start) * 1000  # milliseconds
+
+    return {
+        "zone_lookup_us": zone_lookup_time,
+        "iteration_time_ms": iteration_time,
+        "total_objects": count,
+    }
 
 
 def benchmark_parsing(idf_content: str, iterations: int = 5) -> dict:
@@ -330,6 +426,7 @@ def main():
     ]
 
     all_results = []
+    eppy_results = []
 
     for num_zones, surfaces_per_zone, description in sizes:
         print(f"\n\n{'#'*60}")
@@ -344,17 +441,20 @@ def main():
         print(f"  File size: {file_size_kb:.1f} KB")
         print(f"  Lines: {num_lines}")
 
-        # Run parsing benchmark
-        print("\nBenchmarking parsing...")
-        parse_results = benchmark_parsing(idf_content, iterations=5)
-        print(format_results(parse_results, "Parsing Results"))
-
-        # Parse once more for other benchmarks
+        # Write to temp file for both parsers
         with tempfile.NamedTemporaryFile(mode='w', suffix='.idf', delete=False) as f:
             f.write(idf_content)
             temp_path = Path(f.name)
 
         try:
+            # ===== NEW PARSER BENCHMARKS =====
+            print("\n--- New Parser (v3) ---")
+
+            # Run parsing benchmark
+            print("\nBenchmarking parsing...")
+            parse_results = benchmark_parsing(idf_content, iterations=5)
+            print(format_results(parse_results, "Parsing Results"))
+
             doc = parse_idf(temp_path)
 
             # Run lookup benchmark
@@ -382,17 +482,58 @@ def main():
                 **write_results,
             })
 
+            # ===== EPPY BENCHMARKS =====
+            if EPPY_AVAILABLE:
+                print("\n--- eppy (v2) ---")
+
+                # Run eppy parsing benchmark
+                print("\nBenchmarking eppy parsing...")
+                eppy_parse = benchmark_eppy_parsing(temp_path, iterations=5)
+                if "error" not in eppy_parse:
+                    print(format_results(eppy_parse, "eppy Parsing Results"))
+
+                    # Run eppy lookup benchmark
+                    print("\nBenchmarking eppy lookups...")
+                    idf = IDF(str(temp_path))
+                    eppy_lookup = benchmark_eppy_lookups(idf, iterations=1000)
+                    print(format_results(eppy_lookup, "eppy Lookup Results"))
+
+                    eppy_results.append({
+                        "description": description,
+                        **eppy_parse,
+                        **eppy_lookup,
+                    })
+
         finally:
             temp_path.unlink()
 
     # Summary table
     print("\n\n" + "=" * 80)
-    print(" PERFORMANCE SUMMARY")
+    print(" PERFORMANCE SUMMARY - New Parser (v3)")
     print("=" * 80)
     print(f"\n{'Model':<40} {'Parse (s)':<12} {'Memory (MB)':<12} {'Lookup (us)':<12}")
     print("-" * 80)
     for r in all_results:
         print(f"{r['description']:<40} {r['mean_time_sec']:<12.4f} {r['mean_memory_mb']:<12.2f} {r['zone_lookup_us']:<12.2f}")
+
+    # Comparison table if eppy is available
+    if eppy_results:
+        print("\n\n" + "=" * 100)
+        print(" COMPARISON: New Parser vs eppy")
+        print("=" * 100)
+        print(f"\n{'Model':<35} {'v3 (s)':<10} {'eppy (s)':<10} {'Speedup':<12} {'v3 (us)':<10} {'eppy (us)':<12} {'Speedup':<10}")
+        print("-" * 100)
+        for v3, eppy in zip(all_results, eppy_results):
+            parse_speedup = eppy['mean_time_sec'] / v3['mean_time_sec'] if v3['mean_time_sec'] > 0 else 0
+            lookup_speedup = eppy['zone_lookup_us'] / v3['zone_lookup_us'] if v3['zone_lookup_us'] > 0 else 0
+            print(f"{v3['description']:<35} {v3['mean_time_sec']:<10.3f} {eppy['mean_time_sec']:<10.3f} {parse_speedup:>6.1f}x      {v3['zone_lookup_us']:<10.2f} {eppy['zone_lookup_us']:<12.2f} {lookup_speedup:>6.0f}x")
+    else:
+        print("\n\n" + "=" * 80)
+        print(" EPPY COMPARISON NOT AVAILABLE")
+        print("=" * 80)
+        print("\nTo enable comparison, install eppy and EnergyPlus:")
+        print("  pip install eppy")
+        print("  # Then ensure Energy+.idd is available")
 
     print("\n" + "=" * 80)
     print(" KEY FEATURES")

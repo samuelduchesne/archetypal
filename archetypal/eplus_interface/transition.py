@@ -97,8 +97,7 @@ class TransitionExe(EnergyPlusProgram):
                     else:
                         shutil.copy2(s, d)
                 except FileNotFoundError as e:
-                    time.sleep(60)
-                    log(f"{e}")
+                    log(f"{e}", level=lg.WARNING)
 
         if self._trans_exec is None:
             copytree(self.idf.idfversionupdater_dir, self.running_directory)

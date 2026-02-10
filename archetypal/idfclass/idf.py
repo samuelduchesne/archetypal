@@ -1400,10 +1400,10 @@ class IDF(GeomIDF):
         expandobjects_thread = ExpandObjectsThread(self, tmp)
         try:
             expandobjects_thread.start()
-            expandobjects_thread.join()
-            # Give time to the subprocess to finish completely
-            while expandobjects_thread.is_alive():
-                time.sleep(1)
+            expandobjects_thread.join(timeout=300)
+            if expandobjects_thread.is_alive():
+                expandobjects_thread.stop()
+                raise TimeoutError(f"ExpandObjects timed out after 300s for {self.name}")
         except (KeyboardInterrupt, SystemExit):
             expandobjects_thread.stop()
         finally:
@@ -1419,10 +1419,10 @@ class IDF(GeomIDF):
         basement_thread = BasementThread(self, tmp)
         try:
             basement_thread.start()
-            basement_thread.join()
-            # Give time to the subprocess to finish completely
-            while basement_thread.is_alive():
-                time.sleep(1)
+            basement_thread.join(timeout=300)
+            if basement_thread.is_alive():
+                basement_thread.stop()
+                raise TimeoutError(f"Basement preprocessor timed out after 300s for {self.name}")
         except KeyboardInterrupt:
             basement_thread.stop()
         finally:
@@ -1438,10 +1438,10 @@ class IDF(GeomIDF):
         slab_thread = SlabThread(self, tmp)
         try:
             slab_thread.start()
-            slab_thread.join()
-            # Give time to the subprocess to finish completely
-            while slab_thread.is_alive():
-                time.sleep(1)
+            slab_thread.join(timeout=300)
+            if slab_thread.is_alive():
+                slab_thread.stop()
+                raise TimeoutError(f"Slab preprocessor timed out after 300s for {self.name}")
         except KeyboardInterrupt:
             slab_thread.stop()
         finally:
@@ -1458,10 +1458,10 @@ class IDF(GeomIDF):
         running_simulation_thread = EnergyPlusThread(self, tmp)
         try:
             running_simulation_thread.start()
-            running_simulation_thread.join()
-            # Give time to the subprocess to finish completely
-            while running_simulation_thread.is_alive():
-                time.sleep(1)
+            running_simulation_thread.join(timeout=600)
+            if running_simulation_thread.is_alive():
+                running_simulation_thread.stop()
+                raise TimeoutError(f"EnergyPlus simulation timed out after 600s for {self.name}")
         except KeyboardInterrupt:
             running_simulation_thread.stop()
         finally:
@@ -1677,10 +1677,10 @@ class IDF(GeomIDF):
             transition_thread = TransitionThread(self, tmp, overwrite=overwrite)
             try:
                 transition_thread.start()
-                transition_thread.join()
-                # Give time to the subprocess to finish completely
-                while transition_thread.is_alive():
-                    time.sleep(1)
+                transition_thread.join(timeout=600)
+                if transition_thread.is_alive():
+                    transition_thread.stop()
+                    raise TimeoutError(f"Transition timed out after 600s for {self.name}")
             except KeyboardInterrupt:
                 transition_thread.stop()
             except EnergyPlusVersionError as e:

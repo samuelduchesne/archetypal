@@ -913,7 +913,7 @@ class YearSchedule(UmiSchedule):
     def all_values(self) -> np.ndarray:
         """Return numpy array of schedule Values."""
         if self._values is None:
-            index = pd.date_range(start=self.startDate, freq="1H", periods=8760)
+            index = pd.date_range(start=self.startDate, freq="1h", periods=8760)
             series = pd.Series(index=index, dtype="float")
             for part in self.Parts:
                 start = f"{self.year}-{part.FromMonth}-{part.FromDay}"

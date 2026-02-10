@@ -275,7 +275,7 @@ class _ScheduleParser:
         else:
             slicer_ = pd.Series([False] * (len(index)), index=index)
 
-        weekly_schedules = pd.Series([0] * len(slicer_), index=slicer_.index)
+        weekly_schedules = pd.Series(0.0, index=slicer_.index)
         # update last day of schedule
 
         num_of_daily_schedules = int(len(epbunch.fieldvalues[2:]) / 2)
@@ -295,8 +295,7 @@ class _ScheduleParser:
                         )
                         days.append(day)
                 new = pd.concat(days)
-                slicer_.update(pd.Series([True] * len(new.index), index=new.index))
-                slicer_ = slicer_.apply(lambda x: x is True)
+                slicer_.loc[new.index] = True
                 weekly_schedules.update(new)
             else:
                 return weekly_schedules.values

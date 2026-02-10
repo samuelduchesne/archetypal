@@ -33,7 +33,7 @@ try:
 except PackageNotFoundError:
     release = "0.0.0"
 # for example take major/minor
-version = release = ".".join(release.split(".")[:2])
+version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 

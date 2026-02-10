@@ -5,6 +5,8 @@ import pytest
 from archetypal import IDF
 from archetypal.idfclass.end_use_balance import EndUseBalance
 
+pytestmark = pytest.mark.slow
+
 
 class TestEndUseBalance:
     @pytest.fixture()

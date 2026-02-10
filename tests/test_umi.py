@@ -100,6 +100,7 @@ class TestUmiTemplate:
             b[key] = sorted(b[key], key=lambda x: x.get("Name"))
         assert json.loads(json.dumps(a)) == json.loads(json.dumps(b))
 
+    @pytest.mark.slow
     def test_umitemplate(self, config):
         """Test creating UmiTemplateLibrary from 2 IDF files"""
         idf_source = [
@@ -111,6 +112,7 @@ class TestUmiTemplate:
         data_dict = a.to_dict()
         assert no_duplicates(data_dict)
 
+    @pytest.mark.slow
     @pytest.mark.skipif(
         os.environ.get("CI", "False").lower() == "true",
         reason="not necessary to test this on CI",

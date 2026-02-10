@@ -168,6 +168,7 @@ def schedule_parametrized(request, csv_out):
     yield origin, new, expected
 
 
+@pytest.mark.slow
 def test_ep_versus_schedule(schedule_parametrized):
     """Main test. Will run the idf using EnergyPlus, retrieve the csv file,
     create the schedules and compare"""

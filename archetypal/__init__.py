@@ -171,6 +171,12 @@ class Settings(BaseSettings, arbitrary_types_allowed=True, validate_assignment=T
         "for ENERGYPLUS_VERSION in os.environ",
     )
 
+    @field_validator("ep_version")
+    @classmethod
+    def normalize_ep_version(cls, v: str) -> str:
+        """Normalize EnergyPlus version to dash-separated format (e.g. '9-2-0')."""
+        return v.replace(".", "-")
+
     energyplus_location: Optional[DirectoryPath] = Field(
         None,
         validation_alias="ENERGYPLUS_LOCATION",

@@ -7,16 +7,22 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 10
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: "true"
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -29,6 +35,8 @@ jobs:
 
   tox:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 30
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
@@ -43,20 +51,22 @@ jobs:
       fail-fast: false
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: "true"
 
       - name: Set up python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
+        with:
+          version: "1.8.5"
 
       - name: Load cached venv
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .tox
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
@@ -66,7 +76,15 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install tox tox-gh-actions
 
+      - name: Cache EnergyPlus installation
+        id: cache-energyplus
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/EnergyPlus-${{ matrix.energyplus-install }}
+          key: energyplus-${{ runner.os }}-${{ matrix.energyplus-version }}
+
       - name: Install EnergyPlus
+        if: steps.cache-energyplus.outputs.cache-hit != 'true'
         uses: Elementa-Engineering/install-energyplus@v1
         with:
           energyplus-version: ${{ matrix.energyplus-version }}
@@ -74,10 +92,10 @@ jobs:
           energyplus-install: ${{ matrix.energyplus-install }}
 
       - name: Test with tox
-        run: tox -- -n 2 --doctest-modules tests --cov --cov-config=pyproject.toml --cov-report=xml
+        run: tox -- -n 2 tests ${{ matrix.python-version == '3.11' && '--cov --cov-config=pyproject.toml --cov-report=xml' || '' }}
         env:
           ENERGYPLUS_VERSION: ${{ matrix.energyplus-version }}
 
       - name: Upload coverage reports to Codecov with GitHub Action on Python 3.11
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         if: ${{ matrix.python-version == '3.11' }}

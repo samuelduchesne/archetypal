@@ -7,13 +7,13 @@
 from __future__ import annotations
 
 import logging as lg
+
+# Version of the package
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, ClassVar, Literal, Optional
 
 from energy_pandas.units import unit_registry
-
-# Version of the package
-from pkg_resources import DistributionNotFound, get_distribution
 
 try:
     from pydantic_settings import BaseSettings
@@ -205,8 +205,8 @@ from .umi_template import (  # noqa: E402
 from .utils import clear_cache, config, parallel_process  # noqa: E402
 
 try:
-    __version__ = get_distribution("archetypal").version
-except DistributionNotFound:
+    __version__ = version("archetypal")
+except PackageNotFoundError:
     # package is not installed
     __version__ = "0.0.0"  # should happen only if package is copied, not installed.
 else:
@@ -219,16 +219,16 @@ finally:
     warn_if_not_compatible()
 
 __all__ = [
-    "settings",
-    "Settings",
-    "__version__",
-    "utils",
-    "dataportal",
     "IDF",
-    "EnergyPlusVersion",
     "BuildingTemplate",
+    "EnergyPlusVersion",
+    "Settings",
     "UmiTemplateLibrary",
+    "__version__",
     "clear_cache",
     "config",
+    "dataportal",
     "parallel_process",
+    "settings",
+    "utils",
 ]

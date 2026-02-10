@@ -15,8 +15,8 @@ import datetime
 #
 import os
 import sys
-
-from pkg_resources import get_distribution
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as get_version
 
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("archetypal"))
@@ -28,9 +28,12 @@ legal = f"{datetime.datetime.now().year}, Samuel Letellier-Duchesne"
 author = "Samuel Letellier-Duchesne"
 
 # The full version, including alpha/beta/rc tags
-release = get_distribution("archetypal").version
+try:
+    release = get_version("archetypal")
+except PackageNotFoundError:
+    release = "0.0.0"
 # for example take major/minor
-version = release = ".".join(release.split(".")[:2])
+version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 

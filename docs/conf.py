@@ -16,7 +16,7 @@ import datetime
 import os
 import sys
 
-from pkg_resources import get_distribution
+from importlib.metadata import version as get_version
 
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("archetypal"))
@@ -28,7 +28,7 @@ legal = f"{datetime.datetime.now().year}, Samuel Letellier-Duchesne"
 author = "Samuel Letellier-Duchesne"
 
 # The full version, including alpha/beta/rc tags
-release = get_distribution("archetypal").version
+release = get_version("archetypal")
 # for example take major/minor
 version = release = ".".join(release.split(".")[:2])
 

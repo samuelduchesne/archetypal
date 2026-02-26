@@ -459,48 +459,6 @@ class BuildingTemplate(UmiBase):
             **kwargs,
         )
 
-    def _graph_reduce(self, G):
-        """Using the depth first search algorithm, iterate over the zone
-        adjacency graph and compute the equivalent zone yielded by the
-        'addition' of two consecutive zones.
-
-        'Adding' two zones together means both zones properties are
-        weighted-averaged by zone area. All dependent objects implement the
-        :func:`operator.add` method.
-
-        Args:
-            G (archetypal.zone_graph.ZoneGraph):
-
-        Returns:
-            ZoneDefinition: The reduced zone
-        """
-        if len(G) < 1:
-            log(f"No zones for building graph {G.name}")
-            return None
-        else:
-            log(f"starting reduce process for building {self.Name}")
-            start_time = time.time()
-
-            # start from the highest degree node
-            subgraphs = sorted(
-                (G.subgraph(c) for c in networkx.connected_components(G)),
-                key=len,
-                reverse=True,
-            )
-            from functools import reduce
-            from operator import add
-
-            bundle_zone = reduce(
-                add,
-                [zone for subG in subgraphs for name, zone in subG.nodes(data="zone")],
-            )
-
-            log(
-                f"completed zone reduction for zone '{bundle_zone.Name}' "
-                f"in building '{self.Name}' in {time.time() - start_time:,.2f} seconds"
-            )
-            return bundle_zone
-
     def to_dict(self):
         """Return BuildingTemplate dictionary representation."""
         self.validate()  # Validate object before trying to get json format

@@ -1,9 +1,13 @@
 import functools
 from operator import add
+from typing import TYPE_CHECKING
 
 from validator_collection import validators
 
 from archetypal.template.constructions.opaque_construction import OpaqueConstruction
+
+if TYPE_CHECKING:
+    import idfkit
 
 
 class InternalMass:
@@ -46,52 +50,53 @@ class InternalMass:
         self._total_area_exposed_to_zone = validators.float(value, minimum=0)
 
     @classmethod
-    def from_zone(cls, zone_epbunch):
-        """Create InternalMass from ZoneDefinition and Zone EpBunch.
+    def from_zone(cls, zone_obj, doc: "idfkit.Document" = None):
+        """Create InternalMass from a zone idfkit object.
 
         Args:
-            zone_epbunch (EpBunch): The Zone EpBunch object.
+            zone_obj: The Zone idfkit object.
+            doc (idfkit.Document): The idfkit Document for lookups.
 
         Returns:
-            Construction: The internal mass construction for the zone
-            None: if no internal mass defined for zone.
+            InternalMass: The internal mass construction for the zone.
         """
-        internal_mass_objs = zone_epbunch.getreferingobjs(
-            iddgroups=["Thermal Zones and Surfaces"], fields=["Zone_or_ZoneList_Name"]
-        )
+        zone_name = zone_obj.name if hasattr(zone_obj, "name") else str(zone_obj)
+
+        # Find InternalMass objects assigned to this zone
+        internal_mass_objs = []
+        if doc is not None and "InternalMass" in doc:
+            for obj in doc["InternalMass"].values():
+                obj_zone = getattr(obj, "zone_or_zonelist_name", "")
+                if obj_zone == zone_name:
+                    internal_mass_objs.append(obj)
 
         area = 0  # initialize area
         mass_opaque_constructions = []  # collect internal mass objects
 
-        # Looping over possible InternalMass objects
-        # This InternalMass object (int_obj) is assigned to self,
-        # then create object and append to list. There could be more then
-        # one.
         for int_obj in internal_mass_objs:
-            if int_obj.key.upper() == "INTERNALMASS":
-                mass_opaque_constructions.append(OpaqueConstruction.from_epbunch(int_obj, Category="Internal Mass"))
-                area += float(int_obj.Surface_Area)
+            mass_opaque_constructions.append(
+                OpaqueConstruction.from_idf_object(int_obj, doc=doc, Category="Internal Mass")
+            )
+            area += float(getattr(int_obj, "surface_area", 0))
 
         # If one or more constructions, combine them into one.
         if mass_opaque_constructions:
-            # Combine elements and assign the aggregated Surface Area
             construction = functools.reduce(add, mass_opaque_constructions)
         else:
-            # No InternalMass object assigned to this Zone, then return Zone and set
-            # floor area to 0
-            return cls.generic_internalmass_from_zone(zone_epbunch)
-        return cls(f"{zone_epbunch.Name} InternalMass", construction, area)
+            return cls.generic_internalmass_from_zone(zone_obj)
+        return cls(f"{zone_name} InternalMass", construction, area)
 
     @classmethod
-    def generic_internalmass_from_zone(cls, zone_epbunch):
+    def generic_internalmass_from_zone(cls, zone_obj):
         """Create an InternalMass object with generic construction and 0 floor area.
 
         Args:
-            zone_epbunch (EpBunch): A ZoneDefinition object.
+            zone_obj: A zone idfkit object or ZoneDefinition.
         """
+        zone_name = zone_obj.name if hasattr(zone_obj, "name") else getattr(zone_obj, "Name", str(zone_obj))
         construction = OpaqueConstruction.generic_internalmass()
         return cls(
-            surface_name=f"{zone_epbunch.Name} InternalMass",
+            surface_name=f"{zone_name} InternalMass",
             total_area_exposed_to_zone=0,
             construction=construction,
         )
@@ -107,26 +112,6 @@ class InternalMass:
             "construction": self.construction,
             "total_area_exposed_to_zone": self.total_area_exposed_to_zone,
         }
-
-    def to_epbunch(self, idf, zone_name):
-        """Create an `INTERNALMASS` EpBunch given an idf model and a zone name.
-
-        Args:
-            idf (IDF): An idf model to add the EpBunch in.
-            zone_name (str): The name of the zone for this InternamMass object.
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        construction = self.construction.to_epbunch(idf)
-        internal_mass = idf.newidfobject(
-            key="INTERNALMASS",
-            Name=self.surface_name,
-            Construction_Name=construction.Name,
-            Zone_or_ZoneList_Name=zone_name,
-            Surface_Area=self.total_area_exposed_to_zone,
-        )
-        return internal_mass
 
     def __copy__(self):
         """Get a copy of self."""

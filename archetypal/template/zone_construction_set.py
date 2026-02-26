@@ -11,6 +11,8 @@ from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
 
 if TYPE_CHECKING:
+    import idfkit
+
     from archetypal.template import ZoneDefinition
 
 
@@ -234,18 +236,19 @@ class ZoneConstructionSet(UmiBase):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone: "ZoneDefinition", **kwargs):
+    def from_zone(cls, zone: "ZoneDefinition", doc: "idfkit.Document" = None, **kwargs):
         """Create a ZoneConstructionSet from a ZoneDefinition object.
 
         Args:
             zone (ZoneDefinition): The zone object.
+            doc (idfkit.Document): The idfkit Document for lookups.
         """
         name = zone.Name + "_ZoneConstructionSet"
         # dispatch surfaces
         facade, ground, partition, roof, slab = [], [], [], [], []
         zonesurfaces = zone.zone_surfaces
         for surf in zonesurfaces:
-            disp_surf = SurfaceDispatcher(surf, zone).resolved_surface
+            disp_surf = SurfaceDispatcher(surf, zone, doc=doc).resolved_surface
             if disp_surf:
                 if disp_surf.Category == "Facade":
                     if zone.is_part_of_conditioned_floor_area:
@@ -524,12 +527,19 @@ class ZoneConstructionSet(UmiBase):
 class SurfaceDispatcher:
     """Surface dispatcher class."""
 
-    __slots__ = ("surf", "zone", "_dispatch")
+    __slots__ = ("surf", "zone", "doc", "_dispatch")
 
-    def __init__(self, surf, zone):
-        """Initialize a surface dispatcher object."""
+    def __init__(self, surf, zone, doc=None):
+        """Initialize a surface dispatcher object.
+
+        Args:
+            surf: An idfkit surface object.
+            zone: The ZoneDefinition object.
+            doc: An idfkit Document for lookups.
+        """
         self.surf = surf
         self.zone = zone
+        self.doc = doc
 
         # dispatch map
         self._dispatch = {
@@ -555,58 +565,63 @@ class SurfaceDispatcher:
             ("Ceiling", "Zone"): self._do_slab,
         }
 
+    def _get_construction(self, surf):
+        """Look up a Construction object from the document."""
+        construction_name = getattr(surf, "construction_name", "")
+        if self.doc and "Construction" in self.doc:
+            return self.doc["Construction"].get(construction_name)
+        return None
+
     @property
     def resolved_surface(self):
         """Generate a resolved surface. Yields value."""
-        if self.surf.key.upper() not in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
-            a, b = (
-                self.surf["Surface_Type"].capitalize(),
-                self.surf["Outside_Boundary_Condition"],
-            )
-            try:
-                return self._dispatch[a, b](self.surf)
-            except KeyError as e:
-                raise NotImplementedError(
-                    f"surface '{self.surf.Name}' in zone '{self.zone.Name}' not supported by surface dispatcher "
-                    f"with keys {e}"
-                ) from e
+        surf_type = getattr(self.surf, "type_name", "").upper()
+        if surf_type in ["INTERNALMASS", "WINDOWSHADINGCONTROL"]:
+            return None
+        surface_type = getattr(self.surf, "surface_type", "")
+        obc = getattr(self.surf, "outside_boundary_condition", "")
+        if not surface_type or not obc:
+            return None
+        a, b = surface_type.capitalize(), obc
+        try:
+            return self._dispatch[a, b](self.surf)
+        except KeyError as e:
+            surf_name = getattr(self.surf, "name", "unknown")
+            raise NotImplementedError(
+                f"surface '{surf_name}' in zone '{self.zone.Name}' not supported by surface dispatcher "
+                f"with keys {e}"
+            ) from e
 
-    @staticmethod
-    def _do_facade(surf):
-        log(
-            f'surface "{surf.Name}" assigned as a Facade',
-            lg.DEBUG,
-            name=surf.theidf.name,
-        )
-        oc = OpaqueConstruction.from_epbunch(surf.theidf.getobject("Construction".upper(), surf.Construction_Name))
-        oc.area = surf.area
+    def _do_facade(self, surf):
+        surf_name = getattr(surf, "name", "unknown")
+        log(f'surface "{surf_name}" assigned as a Facade', lg.DEBUG)
+        construction = self._get_construction(surf)
+        if construction is None:
+            return None
+        oc = OpaqueConstruction.from_idf_object(construction, doc=self.doc)
+        oc.area = getattr(surf, "area", 0)
         oc.Category = "Facade"
         return oc
 
-    @staticmethod
-    def _do_ground(surf):
-        log(
-            f'surface "{surf.Name}" assigned as a Ground',
-            lg.DEBUG,
-            name=surf.theidf.name,
-        )
-        oc = OpaqueConstruction.from_epbunch(surf.get_referenced_object("Construction_Name"))
-        oc.area = surf.area
+    def _do_ground(self, surf):
+        surf_name = getattr(surf, "name", "unknown")
+        log(f'surface "{surf_name}" assigned as a Ground', lg.DEBUG)
+        construction = self._get_construction(surf)
+        if construction is None:
+            return None
+        oc = OpaqueConstruction.from_idf_object(construction, doc=self.doc)
+        oc.area = getattr(surf, "area", 0)
         oc.Category = "Ground"
         return oc
 
-    @staticmethod
-    def _do_partition(surf):
-        the_construction = surf.theidf.getobject("Construction".upper(), surf.Construction_Name)
-        if the_construction:
-            oc = OpaqueConstruction.from_epbunch(the_construction)
-            oc.area = surf.area
+    def _do_partition(self, surf):
+        construction = self._get_construction(surf)
+        if construction:
+            oc = OpaqueConstruction.from_idf_object(construction, doc=self.doc)
+            oc.area = getattr(surf, "area", 0)
             oc.Category = "Partition"
-            log(
-                f'surface "{surf.Name}" assigned as a Partition',
-                lg.DEBUG,
-                name=surf.theidf.name,
-            )
+            surf_name = getattr(surf, "name", "unknown")
+            log(f'surface "{surf_name}" assigned as a Partition', lg.DEBUG)
             return oc
         else:
             # we might be in a situation where the construction does not exist in the
@@ -614,36 +629,33 @@ class SurfaceDispatcher:
             # "Air Wall", which is a construction type internal to EnergyPlus.
             return None
 
-    @staticmethod
-    def _do_roof(surf):
-        log(
-            f'surface "{surf.Name}" assigned as a Roof',
-            lg.DEBUG,
-            name=surf.theidf.name,
-        )
-        oc = OpaqueConstruction.from_epbunch(surf.theidf.getobject("Construction".upper(), surf.Construction_Name))
-        oc.area = surf.area
+    def _do_roof(self, surf):
+        surf_name = getattr(surf, "name", "unknown")
+        log(f'surface "{surf_name}" assigned as a Roof', lg.DEBUG)
+        construction = self._get_construction(surf)
+        if construction is None:
+            return None
+        oc = OpaqueConstruction.from_idf_object(construction, doc=self.doc)
+        oc.area = getattr(surf, "area", 0)
         oc.Category = "Roof"
         return oc
 
-    @staticmethod
-    def _do_slab(surf):
-        log(
-            f'surface "{surf.Name}" assigned as a Slab',
-            lg.DEBUG,
-            name=surf.theidf.name,
-        )
-        oc = OpaqueConstruction.from_epbunch(surf.theidf.getobject("Construction".upper(), surf.Construction_Name))
-        oc.area = surf.area
+    def _do_slab(self, surf):
+        surf_name = getattr(surf, "name", "unknown")
+        log(f'surface "{surf_name}" assigned as a Slab', lg.DEBUG)
+        construction = self._get_construction(surf)
+        if construction is None:
+            return None
+        oc = OpaqueConstruction.from_idf_object(construction, doc=self.doc)
+        oc.area = getattr(surf, "area", 0)
         oc.Category = "Slab"
         return oc
 
     @staticmethod
     def _do_basement(surf):
+        surf_name = getattr(surf, "name", "unknown")
         log(
-            f'surface "{surf.Name}" ignored because basement facades are not supported',
+            f'surface "{surf_name}" ignored because basement facades are not supported',
             lg.WARNING,
-            name=surf.theidf.name,
         )
-        oc = None
-        return oc
+        return None

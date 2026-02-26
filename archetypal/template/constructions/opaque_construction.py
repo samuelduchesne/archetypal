@@ -519,21 +519,3 @@ class OpaqueConstruction(LayeredConstruction):
         new_con = self.__class__(Name=self.Name, Layers=list(self.Layers))
         return new_con
 
-    def to_epbunch(self, idf):
-        """Get a Construction EpBunch given an idf model.
-
-        Notes:
-            Will create layered materials as well.
-
-        Args:
-            idf (IDF): An idf model to add the EpBunch in.
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        return idf.newidfobject(
-            key="CONSTRUCTION",
-            Name=self.Name,
-            Outside_Layer=self.Layers[0].to_epbunch(idf).Name,
-            **{f"Layer_{i+2}": layer.to_epbunch(idf).Name for i, layer in enumerate(self.Layers[1:])},
-        )

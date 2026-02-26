@@ -3,9 +3,8 @@
 import collections
 import sqlite3
 import time
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
-from eppy.bunch_subclass import BadEPFieldError
 from sigfig import round
 from validator_collection import validators
 
@@ -19,6 +18,9 @@ from archetypal.template.ventilation import VentilationSetting
 from archetypal.template.window_setting import WindowSetting
 from archetypal.template.zone_construction_set import ZoneConstructionSet
 from archetypal.utils import log, settings
+
+if TYPE_CHECKING:
+    import idfkit
 
 
 class ZoneDefinition(UmiBase):
@@ -430,128 +432,147 @@ class ZoneDefinition(UmiBase):
         )
 
     @classmethod
-    def from_epbunch(cls, ep_bunch, construct_parents=True, **kwargs):
-        """Create a Zone object from an eppy 'ZONE' epbunch.
+    def from_idf_object(
+        cls,
+        zone_obj,
+        doc: "idfkit.Document",
+        sql_file,
+        zone_surfaces=None,
+        construct_parents=True,
+        **kwargs,
+    ):
+        """Create a Zone object from an idfkit Zone object.
 
         Args:
-            ep_bunch (eppy.bunch_subclass.EpBunch): The Zone EpBunch.
+            zone_obj: The idfkit Zone object.
+            doc (idfkit.Document): The idfkit Document for lookups.
+            sql_file (str or Path): Path to the EnergyPlus SQL output file.
+            zone_surfaces (list): List of surface objects for this zone.
             construct_parents (bool): If False, skips construction of parents objects
                 such as Constructions, Conditioning, etc.
         """
-        assert ep_bunch.key.lower() == "zone", f"Expected a `ZONE` epbunch, got {ep_bunch.key}"
+        assert zone_obj.type_name.lower() == "zone", (
+            f"Expected a `Zone` object, got {zone_obj.type_name}"
+        )
         start_time = time.time()
-        log(f'Constructing :class:`Zone` for zone "{ep_bunch.Name}"')
+        zone_name = zone_obj.name
+        log(f'Constructing :class:`Zone` for zone "{zone_name}"')
 
-        def calc_zone_area(zone_ep):
+        def calc_zone_area():
             """Get zone area from simulation sql file."""
-            with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
+            with sqlite3.connect(sql_file) as conn:
                 sql_query = """
                     SELECT t.Value
                     FROM TabularDataWithStrings t
                     WHERE TableName='Zone Summary' and ColumnName='Area' and RowName=?
                 """
-                (res,) = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
+                (res,) = conn.execute(sql_query, (zone_name.upper(),)).fetchone()
             return float(res)
 
-        def calc_zone_volume(zone_ep):
+        def calc_zone_volume():
             """Get zone volume from simulation sql file."""
-            with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
+            with sqlite3.connect(sql_file) as conn:
                 sql_query = (
                     "SELECT CAST(t.Value AS float) FROM TabularDataWithStrings t "
                     "WHERE TableName='Zone Summary' and ColumnName='Volume' and "
                     "RowName=?"
                 )
-                (res,) = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
+                (res,) = conn.execute(sql_query, (zone_name.upper(),)).fetchone()
             return float(res)
 
-        def calc_zone_occupants(zone_ep):
+        def calc_zone_occupants():
             """Get zone occupants from simulation sql file."""
-            with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
+            with sqlite3.connect(sql_file) as conn:
                 sql_query = (
                     "SELECT CAST(t.Value AS float) FROM TabularDataWithStrings t "
                     "WHERE TableName='Average Outdoor Air During Occupied Hours' and ColumnName='Nominal Number of Occupants' and RowName=?"
                 )
-
-                fetchone = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
+                fetchone = conn.execute(sql_query, (zone_name.upper(),)).fetchone()
                 (res,) = fetchone or (0,)
             return res
 
-        def calc_is_part_of_conditioned_floor_area(zone_ep):
+        def calc_is_part_of_conditioned_floor_area():
             """Return True if zone is part of the conditioned floor area."""
-            with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
+            with sqlite3.connect(sql_file) as conn:
                 sql_query = (
                     "SELECT t.Value FROM TabularDataWithStrings t WHERE "
                     "TableName='Zone Summary' and ColumnName='Conditioned (Y/N)' "
                     "and RowName=?"
-                    ""
                 )
-                res = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
+                res = conn.execute(sql_query, (zone_name.upper(),)).fetchone()
             return "Yes" in res
 
-        def calc_is_part_of_total_floor_area(zone_ep):
+        def calc_is_part_of_total_floor_area():
             """Return True if zone is part of the total floor area."""
-            with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
+            with sqlite3.connect(sql_file) as conn:
                 sql_query = (
                     "SELECT t.Value FROM TabularDataWithStrings t WHERE "
                     "TableName='Zone Summary' and ColumnName='Part of "
                     "Total Floor Area (Y/N)' and RowName=?"
                 )
-                res = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
+                res = conn.execute(sql_query, (zone_name.upper(),)).fetchone()
             return "Yes" in res
 
-        def calc_multiplier(zone_ep):
+        def calc_multiplier():
             """Get the zone multiplier from simulation sql."""
-            with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
+            with sqlite3.connect(sql_file) as conn:
                 sql_query = (
                     "SELECT t.Value FROM TabularDataWithStrings t WHERE "
                     "TableName='Zone Summary' and "
                     "ColumnName='Multipliers' and RowName=?"
                 )
-                (res,) = conn.execute(sql_query, (zone_ep.Name.upper(),)).fetchone()
+                (res,) = conn.execute(sql_query, (zone_name.upper(),)).fetchone()
             return int(float(res))
 
-        def is_core(zone_ep):
-            # if all surfaces don't have boundary condition == "Outdoors"
+        def _is_core(surfaces):
+            """Determine if zone is a core zone from its surfaces."""
+            if not surfaces:
+                return False
             iscore = True
-            for s in zone_ep.zonesurfaces:
+            for s in surfaces:
                 try:
-                    if (abs(int(s.tilt)) < 180) & (abs(int(s.tilt)) > 0):
-                        obc = s.Outside_Boundary_Condition.lower()
-                        if obc in ["outdoors", "ground"]:
+                    obc = getattr(s, "outside_boundary_condition", None)
+                    if obc and obc.lower() in ["outdoors", "ground"]:
+                        stype = getattr(s, "surface_type", "").lower()
+                        if stype in ["wall", "roof"]:
                             iscore = False
                             break
-                except BadEPFieldError:
-                    pass  # pass surfaces that don't have an OBC,
-                    # eg. InternalMass
+                except (AttributeError, TypeError):
+                    pass
             return iscore
 
-        name = ep_bunch.Name
+        if zone_surfaces is None:
+            zone_surfaces = []
+            # Gather surfaces belonging to this zone from the document
+            from archetypal.idfkit_adapter import get_zone_surfaces
+            zone_surfaces = get_zone_surfaces(doc, zone_name)
+
         zone = cls(
-            Name=name,
-            Category=ep_bunch.theidf.name,
-            area=calc_zone_area(ep_bunch),
-            volume=calc_zone_volume(ep_bunch),
-            occupants=calc_zone_occupants(ep_bunch),
-            is_part_of_conditioned_floor_area=calc_is_part_of_conditioned_floor_area(ep_bunch),
-            is_part_of_total_floor_area=calc_is_part_of_total_floor_area(ep_bunch),
-            multiplier=calc_multiplier(ep_bunch),
-            zone_surfaces=ep_bunch.zonesurfaces,
-            is_core=is_core(ep_bunch),
+            Name=zone_name,
+            Category=kwargs.pop("Category", ""),
+            area=calc_zone_area(),
+            volume=calc_zone_volume(),
+            occupants=calc_zone_occupants(),
+            is_part_of_conditioned_floor_area=calc_is_part_of_conditioned_floor_area(),
+            is_part_of_total_floor_area=calc_is_part_of_total_floor_area(),
+            multiplier=calc_multiplier(),
+            zone_surfaces=zone_surfaces,
+            is_core=_is_core(zone_surfaces),
             **kwargs,
         )
 
         if construct_parents:
-            zone.Constructions = ZoneConstructionSet.from_zone(zone, **kwargs)
-            zone.Conditioning = ZoneConditioning.from_zone(zone, ep_bunch, **kwargs)
-            zone.Ventilation = VentilationSetting.from_zone(zone, ep_bunch, **kwargs)
-            zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(ep_bunch, **kwargs)
-            zone.Loads = ZoneLoad.from_zone(zone, ep_bunch, **kwargs)
-            internal_mass_from_zone = InternalMass.from_zone(ep_bunch)
+            zone.Constructions = ZoneConstructionSet.from_zone(zone, doc=doc, **kwargs)
+            zone.Conditioning = ZoneConditioning.from_zone(zone, zone_obj, doc=doc, sql_file=sql_file, **kwargs)
+            zone.Ventilation = VentilationSetting.from_zone(zone, zone_obj, doc=doc, sql_file=sql_file, **kwargs)
+            zone.DomesticHotWater = DomesticHotWaterSetting.from_zone(zone_obj, doc=doc, sql_file=sql_file, **kwargs)
+            zone.Loads = ZoneLoad.from_zone(zone, zone_obj, doc=doc, sql_file=sql_file, **kwargs)
+            internal_mass_from_zone = InternalMass.from_zone(zone_obj, doc=doc)
             zone.InternalMassConstruction = internal_mass_from_zone.construction
             zone.InternalMassExposedPerFloorArea = internal_mass_from_zone.total_area_exposed_to_zone
-            zone.Windows = WindowSetting.from_zone(zone, **kwargs)
+            zone.Windows = WindowSetting.from_zone(zone, doc=doc, **kwargs)
 
-        log(f'completed Zone "{ep_bunch.Name}" constructor in {time.time() - start_time:,.2f} seconds')
+        log(f'completed Zone "{zone_name}" constructor in {time.time() - start_time:,.2f} seconds')
         return zone
 
     def combine(self, other, weights=None, allow_duplicates=False):
@@ -730,68 +751,60 @@ class ZoneDefinition(UmiBase):
         )
 
 
-def resolve_obco(ep_bunch):
+def resolve_obco(surface, doc):
     """Resolve the outside boundary condition of a surface.
 
     Args:
-        ep_bunch (EpBunch): The surface for which we are identifying the boundary
-            object.
+        surface: The idfkit surface object.
+        doc (idfkit.Document): The idfkit Document for lookups.
 
     Returns:
-        (EpBunch, EpBunch): A tuple of:
-
-            EpBunch: The other surface EpBunch: The other zone
-
-    Notes:
-        Info on the Outside Boundary Condition Object of a surface of type
-        BuildingSurface:Detailed:
-
-        Non-blank only if the field `Outside Boundary Condition` is *Surface*,
-        *Zone*, *OtherSideCoefficients* or *OtherSideConditionsModel*. If
-        Surface, specify name of corresponding surface in adjacent zone or
-        specify current surface name for internal partition separating like
-        zones. If Zone, specify the name of the corresponding zone and the
-        program will generate the corresponding interzone surface. If
-        Foundation, specify the name of the corresponding Foundation object and
-        the program will calculate the heat transfer appropriately. If
-        OtherSideCoefficients, specify name of
-        SurfaceProperty:OtherSideCoefficients. If OtherSideConditionsModel,
-        specify name of SurfaceProperty:OtherSideConditionsModel.
+        tuple: A tuple of (adjacent_surface, adjacent_zone) or (None, None).
     """
-    obc = ep_bunch.Outside_Boundary_Condition
+    obc = getattr(surface, "outside_boundary_condition", "")
 
     if obc.upper() == "ZONE":
-        name = ep_bunch.Outside_Boundary_Condition_Object
-        adj_zone = ep_bunch.theidf.getobject("ZONE", name)
+        name = getattr(surface, "outside_boundary_condition_object", "")
+        adj_zone = doc["Zone"].get(name)
         return None, adj_zone
 
     elif obc.upper() == "SURFACE":
-        obco = ep_bunch.get_referenced_object("Outside_Boundary_Condition_Object")
-        adj_zone = obco.theidf.getobject("ZONE", obco.Zone_Name)
-        return obco, adj_zone
+        obco_name = getattr(surface, "outside_boundary_condition_object", "")
+        # Find the referenced surface
+        obco = None
+        for stype in ["BuildingSurface:Detailed", "FenestrationSurface:Detailed", "Wall:Detailed", "RoofCeiling:Detailed", "Floor:Detailed"]:
+            if stype in doc and obco_name in doc[stype]:
+                obco = doc[stype][obco_name]
+                break
+        if obco:
+            zone_name = getattr(obco, "zone_name", "")
+            adj_zone = doc["Zone"].get(zone_name)
+            return obco, adj_zone
+        return None, None
     else:
         return None, None
 
 
-def is_core(zone):
-    """Return true if zone is a core zone.
+def is_core(surfaces):
+    """Return true if zone is a core zone based on its surfaces.
 
     Args:
-        zone (eppy.bunch_subclass.EpBunch): The Zone object.
+        surfaces (list): List of surface objects for the zone.
 
     Returns:
         (bool): Whether the zone is a core zone or not.
     """
-    # if all surfaces don't have boundary condition == "Outdoors"
+    if not surfaces:
+        return False
     iscore = True
-    for s in zone.zonesurfaces:
+    for s in surfaces:
         try:
-            if (abs(int(s.tilt)) < 180) & (abs(int(s.tilt)) > 0):
-                obc = s.Outside_Boundary_Condition.lower()
-                if obc in ["outdoors", "ground"]:
+            obc = getattr(s, "outside_boundary_condition", None)
+            if obc and obc.lower() in ["outdoors", "ground"]:
+                stype = getattr(s, "surface_type", "").lower()
+                if stype in ["wall", "roof"]:
                     iscore = False
                     break
-        except BadEPFieldError:
-            pass  # pass surfaces that don't have an OBC,
-            # eg. InternalMass
+        except (AttributeError, TypeError):
+            pass
     return iscore

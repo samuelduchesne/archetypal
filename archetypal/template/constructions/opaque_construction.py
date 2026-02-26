@@ -1,16 +1,20 @@
 """archetypal OpaqueConstruction."""
 
+from __future__ import annotations
+
 import collections
 import uuid
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
-from eppy.bunch_subclass import BadEPFieldError
 from validator_collection import validators
 
 from archetypal.template.constructions.base_construction import LayeredConstruction
 from archetypal.template.materials.material_layer import MaterialLayer
 from archetypal.template.materials.opaque_material import OpaqueMaterial
+
+if TYPE_CHECKING:
+    import idfkit
 
 
 class OpaqueConstruction(LayeredConstruction):
@@ -377,61 +381,61 @@ class OpaqueConstruction(LayeredConstruction):
         )
 
     @classmethod
-    def from_epbunch(cls, epbunch, **kwargs):
-        """Create an OpaqueConstruction object from an epbunch.
+    def from_idf_object(cls, obj, doc: idfkit.Document, **kwargs):
+        """Create an OpaqueConstruction object from an idfkit object.
 
-        Possible keys are "BuildingSurface:Detailed" or "InternalMass"
+        Possible keys are "InternalMass", "Construction", or
+        "Construction:InternalSource".
 
         Args:
-            epbunch (EpBunch): The epbunch object.
+            obj: idfkit InternalMass or Construction object.
+            doc: The idfkit Document for looking up referenced objects.
             **kwargs: keywords passed to the LayeredConstruction constructor.
         """
-        assert epbunch.key.lower() in (
+        obj_type = obj.type_name.lower()
+        assert obj_type in (
             "internalmass",
             "construction",
             "construction:internalsource",
-        ), f"Expected ('Internalmass', 'Construction', 'construction:internalsource')." f"Got '{epbunch.key}'."
-        name = epbunch.Name
+        ), f"Expected ('Internalmass', 'Construction', 'construction:internalsource'). Got '{obj.type_name}'."
+        name = obj.name
 
         # treat internalmass and regular surfaces differently
-        if epbunch.key.lower() == "internalmass":
-            layers = cls._internalmass_layer(epbunch)
+        if obj_type == "internalmass":
+            layers = cls._internalmass_layer(obj, doc)
             return cls(Name=name, Layers=layers, **kwargs)
-        elif epbunch.key.lower() in (
-            "construction",
-            "construction:internalsource",
-        ):
-            layers = cls._surface_layers(epbunch)
+        elif obj_type in ("construction", "construction:internalsource"):
+            layers = cls._surface_layers(obj, doc)
             return cls(Name=name, Layers=layers, **kwargs)
 
     @classmethod
-    def _internalmass_layer(cls, epbunch):
+    def _internalmass_layer(cls, obj, doc: idfkit.Document):
         """Return layers of an internal mass object.
 
         Args:
-            epbunch (EpBunch): The InternalMass epobject.
+            obj: The idfkit InternalMass object.
+            doc: The idfkit Document for looking up referenced objects.
         """
-        constr_obj = epbunch.theidf.getobject("CONSTRUCTION", epbunch.Construction_Name)
-        return cls._surface_layers(constr_obj)
+        constr_obj = doc["Construction"][obj.construction_name]
+        return cls._surface_layers(constr_obj, doc)
 
     @classmethod
-    def _surface_layers(cls, epbunch):
+    def _surface_layers(cls, obj, doc: idfkit.Document):
         """Retrieve layers for the OpaqueConstruction.
 
         Args:
-            epbunch (EpBunch): EP-Construction object
+            obj: idfkit Construction object.
+            doc: The idfkit Document for looking up referenced materials.
         """
+        from archetypal.idfkit_adapter import get_construction_layers
+
         layers = []
-        for layer in epbunch.fieldnames[2:]:
-            # Iterate over the construction's layers
-            material = epbunch.get_referenced_object(layer)
-            if material:
-                o = OpaqueMaterial.from_epbunch(material, allow_duplicates=False)
-                try:
-                    thickness = material.Thickness
-                except BadEPFieldError:
-                    thickness = o.Conductivity * material.Thermal_Resistance
-                layers.append(MaterialLayer(Material=o, Thickness=thickness))
+        for material in get_construction_layers(doc, obj.name):
+            o = OpaqueMaterial.from_idf_object(material, allow_duplicates=False)
+            thickness = getattr(material, "thickness", None)
+            if thickness is None:
+                thickness = o.Conductivity * material.thermal_resistance
+            layers.append(MaterialLayer(Material=o, Thickness=thickness))
         return layers
 
     def to_dict(self):

@@ -4,7 +4,7 @@ import collections
 import logging as lg
 from copy import copy
 from functools import reduce
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from validator_collection import checkers, validators
 
@@ -16,6 +16,9 @@ from archetypal.template.constructions.window_construction import (
 from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, timeit
+
+if TYPE_CHECKING:
+    import idfkit
 
 
 class WindowSetting(UmiBase):
@@ -396,32 +399,22 @@ class WindowSetting(UmiBase):
         return WindowSetting(Name, Construction=construction)
 
     @classmethod
-    def from_construction(cls, Construction, **kwargs):
+    def from_construction(cls, Construction, doc: "idfkit.Document" = None, **kwargs):
         """Make a :class:`WindowSetting` directly from a Construction_ object.
 
         .. _Construction : https://bigladdersoftware.com/epx/docs/8-9/input-output-reference/group-surface-construction-elements.html#construction-000
 
-        Examples:
-            >>> from archetypal import IDF
-            >>> from archetypal.template.window_setting import WindowSetting
-            >>> # Given an IDF object
-            >>> idf = IDF("idfname.idf")
-            >>> constr = idf.getobject('CONSTRUCTION',
-            >>>                              'AEDG-SmOffice 1A Window Fixed')
-            >>> WindowSetting.from_construction(
-            >>>     Name='test_window',
-            >>>     Construction=constr
-            >>> )
-
         Args:
-            Construction (EpBunch): The construction name for this window.
+            Construction: The construction idfkit object or name.
+            doc (idfkit.Document): The idfkit Document for lookups.
             **kwargs: Other keywords passed to the constructor.
 
         Returns:
-            (windowSetting): The window setting object.
+            (WindowSetting): The window setting object.
         """
-        name = kwargs.pop("Name", Construction.Name + "_Window")
-        construction = WindowConstruction.from_epbunch(Construction, **kwargs)
+        constr_name = Construction.name if hasattr(Construction, "name") else str(Construction)
+        name = kwargs.pop("Name", constr_name + "_Window")
+        construction = WindowConstruction.from_idf_object(Construction, doc=doc, **kwargs)
         AfnWindowAvailability = UmiSchedule.constant_schedule()
         ShadingSystemAvailabilitySchedule = UmiSchedule.constant_schedule()
         ZoneMixingAvailabilitySchedule = UmiSchedule.constant_schedule()
@@ -435,101 +428,103 @@ class WindowSetting(UmiBase):
         )
 
     @classmethod
-    def from_surface(cls, surface, **kwargs):
-        """Build a WindowSetting object from a FenestrationSurface:Detailed_.
+    def from_surface(cls, surface, doc: "idfkit.Document" = None, **kwargs):
+        """Build a WindowSetting object from an idfkit fenestration surface object.
 
         This constructor will detect common window constructions and
-        shading devices. Supported Shading and Natural Air flow EnergyPlus
-        objects are: WindowProperty:ShadingControl_,
-        AirflowNetwork:MultiZone:Surface_.
-
-        Important:
-            If an EnergyPlus object is not supported, eg.:
-            AirflowNetwork:MultiZone:Component:DetailedOpening_, only a warning
-            will be issued in the console for the related object instance and
-            default values will be automatically used.
-
-        .. _FenestrationSurface:Detailed:
-           https://bigladdersoftware.com/epx/docs/8-9/input-output-reference
-           /group-thermal-zone-description-geometry.html
-           #fenestrationsurfacedetailed
-        .. _WindowProperty:ShadingControl:
-           https://bigladdersoftware.com/epx/docs/8-9/input-output-reference
-           /group-thermal-zone-description-geometry.html
-           #windowpropertyshadingcontrol
-        .. _AirflowNetwork:MultiZone:Surface:
-           https://bigladdersoftware.com/epx/docs/8-9/input-output-reference
-           /group-airflow-network.html#airflownetworkmultizonesurface
-        .. _AirflowNetwork:MultiZone:Component:DetailedOpening:
-           https://bigladdersoftware.com/epx/docs/8-9/input-output-reference
-           /group-airflow-network.html
-           #airflownetworkmultizonecomponentdetailedopening
+        shading devices.
 
         Args:
-            surface (EpBunch): The FenestrationSurface:Detailed_ object.
+            surface: The FenestrationSurface:Detailed or Window idfkit object.
+            doc (idfkit.Document): The idfkit Document for lookups.
 
         Returns:
             (WindowSetting): The window setting object.
         """
-        if surface.key.upper() == "FENESTRATIONSURFACE:DETAILED":
-            if surface.Surface_Type.lower() != "window":
+        surf_type = surface.type_name.upper() if hasattr(surface, "type_name") else ""
+
+        if surf_type == "FENESTRATIONSURFACE:DETAILED":
+            surface_type = getattr(surface, "surface_type", "").lower()
+            if surface_type != "window":
                 return  # Other surface types (Doors, GlassDoors, etc.) are ignored.
-            construction = surface.get_referenced_object("Construction_Name")
-            if construction is None:
-                construction = surface.theidf.getobject("CONSTRUCTION", surface.Construction_Name)
-            construction = WindowConstruction.from_epbunch(construction)
-            shading_control = surface.get_referenced_object("Shading_Control_Name")
-        elif surface.key.upper() == "WINDOW":
-            construction = surface.get_referenced_object("Construction_Name")
-            construction = WindowConstruction.from_epbunch(construction)
-            shading_control = next(
-                iter(
-                    surface.getreferingobjs(
-                        iddgroups=["Thermal Zones and Surfaces"],
-                        fields=[f"Fenestration_Surface_{i}_Name" for i in range(1, 10)],
-                    )
-                ),
-                None,
-            )
-        elif surface.key.upper() == "DOOR":
+            construction_name = getattr(surface, "construction_name", "")
+            construction = doc["Construction"].get(construction_name) if doc else None
+            if construction:
+                construction = WindowConstruction.from_idf_object(construction, doc=doc)
+            else:
+                return None
+            # Look for shading control
+            shading_control_name = getattr(surface, "shading_control_name", "")
+            shading_control = None
+            if shading_control_name and doc and "WindowShadingControl" in doc:
+                shading_control = doc["WindowShadingControl"].get(shading_control_name)
+        elif surf_type == "WINDOW":
+            construction_name = getattr(surface, "construction_name", "")
+            construction = doc["Construction"].get(construction_name) if doc else None
+            if construction:
+                construction = WindowConstruction.from_idf_object(construction, doc=doc)
+            else:
+                return None
+            # Find WindowShadingControl that references this window
+            shading_control = None
+            surf_name = getattr(surface, "name", "")
+            if doc and "WindowShadingControl" in doc:
+                for ctrl in doc["WindowShadingControl"].values():
+                    for i in range(1, 10):
+                        field = f"fenestration_surface_{i}_name"
+                        if getattr(ctrl, field, "") == surf_name:
+                            shading_control = ctrl
+                            break
+                    if shading_control:
+                        break
+        elif surf_type == "DOOR":
             return  # Simply skip doors.
         else:
-            raise ValueError(f"A window of type {surface.key} is not yet supported. " f"Please contact developers")
+            return None
 
         attr = {}
         if shading_control:
             # a WindowProperty:ShadingControl_ object can be attached to
             # this window
             attr["IsShadingSystemOn"] = True
-            if shading_control["Setpoint"] != "":
-                attr["ShadingSystemSetpoint"] = shading_control["Setpoint"]
-            shade_mat = shading_control.get_referenced_object("Shading_Device_Material_Name")
+            setpoint = getattr(shading_control, "setpoint", "")
+            if setpoint != "":
+                attr["ShadingSystemSetpoint"] = float(setpoint)
             # get shading transmittance
-            if shade_mat:
-                attr["ShadingSystemTransmittance"] = shade_mat["Visible_Transmittance"]
+            shade_mat_name = getattr(shading_control, "shading_device_material_name", "")
+            if shade_mat_name and doc:
+                for mat_type in ["WindowMaterial:Shade", "WindowMaterial:Blind", "WindowMaterial:Screen"]:
+                    if mat_type in doc and shade_mat_name in doc[mat_type]:
+                        shade_mat = doc[mat_type][shade_mat_name]
+                        attr["ShadingSystemTransmittance"] = getattr(shade_mat, "visible_transmittance", 0.5)
+                        break
             # get shading control schedule
-            if shading_control["Shading_Control_Is_Scheduled"].upper() == "YES":
-                name = shading_control["Schedule_Name"]
-                attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.from_epbunch(
-                    surface.theidf.schedules_dict[name.upper()]
-                )
+            is_scheduled = getattr(shading_control, "shading_control_is_scheduled", "").upper()
+            if is_scheduled == "YES":
+                sched_name = getattr(shading_control, "schedule_name", "")
+                sched_obj = doc.get_schedule(sched_name) if doc and sched_name else None
+                if sched_obj:
+                    attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.from_idf_object(sched_obj, doc=doc)
+                else:
+                    attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule()
             else:
                 # Determine which behavior of control
-                shade_ctrl_type = shading_control["Shading_Control_Type"]
+                shade_ctrl_type = getattr(shading_control, "shading_control_type", "")
                 if shade_ctrl_type.lower() == "alwaysoff":
                     attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule(value=0, name="AlwaysOff")
                 elif shade_ctrl_type.lower() == "alwayson":
                     attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule()
                 else:
+                    surf_name = getattr(surface, "name", "unknown")
                     log(
-                        f'Window "{surface.Name}" uses a  window control type that '
-                        f'is not supported: "{shade_ctrl_type}". Reverting to '
-                        '"AlwaysOn"',
+                        f'Window "{surf_name}" uses a window control type that '
+                        f'is not supported: "{shade_ctrl_type}". Reverting to "AlwaysOn"',
                         lg.WARN,
                     )
                     attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule()
             # get shading type
-            if shading_control["Shading_Type"] != "":
+            shading_type = getattr(shading_control, "shading_type", "")
+            if shading_type:
                 mapping = {
                     "InteriorShade": ShadingType(1),
                     "ExteriorShade": ShadingType(0),
@@ -540,65 +535,63 @@ class WindowSetting(UmiBase):
                     "BetweenGlassBlind": ShadingType(0),
                     "SwitchableGlazing": ShadingType(0),
                 }
-                attr["ShadingSystemType"] = mapping[shading_control["Shading_Type"]]
+                attr["ShadingSystemType"] = mapping.get(shading_type, ShadingType(0))
         else:
             # Set default schedules
             attr["ShadingSystemAvailabilitySchedule"] = UmiSchedule.constant_schedule()
 
-        # get airflow network
-        afn = next(
-            iter(
-                surface.getreferingobjs(
-                    iddgroups=["Natural Ventilation and Duct Leakage"],
-                    fields=["Surface_Name"],
-                )
-            ),
-            None,
-        )
+        # get airflow network - look for AirflowNetwork:MultiZone:Surface
+        afn = None
+        surf_name = getattr(surface, "name", "")
+        if doc and "AirflowNetwork:MultiZone:Surface" in doc:
+            for obj in doc["AirflowNetwork:MultiZone:Surface"].values():
+                if getattr(obj, "surface_name", "") == surf_name:
+                    afn = obj
+                    break
 
         if afn:
-            attr["OperableArea"] = afn.WindowDoor_Opening_Factor_or_Crack_Factor
-            leak = afn.get_referenced_object("Leakage_Component_Name")
-            name = afn["Venting_Availability_Schedule_Name"]
-            if name != "":
-                attr["AfnWindowAvailability"] = UmiSchedule.from_epbunch(surface.theidf.schedules_dict[name.upper()])
+            attr["OperableArea"] = getattr(afn, "windowdoor_opening_factor_or_crack_factor", 0.8)
+            leak_name = getattr(afn, "leakage_component_name", "")
+            leak = None
+            # Find the leakage component
+            for leak_type in ["AirflowNetwork:MultiZone:Surface:EffectiveLeakageArea",
+                             "AirflowNetwork:MultiZone:Component:HorizontalOpening",
+                             "AirflowNetwork:MultiZone:Surface:Crack",
+                             "AirflowNetwork:MultiZone:Component:DetailedOpening"]:
+                if doc and leak_type in doc and leak_name in doc[leak_type]:
+                    leak = doc[leak_type][leak_name]
+                    break
+
+            sched_name = getattr(afn, "venting_availability_schedule_name", "")
+            if sched_name:
+                sched_obj = doc.get_schedule(sched_name) if doc else None
+                if sched_obj:
+                    attr["AfnWindowAvailability"] = UmiSchedule.from_idf_object(sched_obj, doc=doc)
+                else:
+                    attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule()
             else:
                 attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule()
-            name = afn["Ventilation_Control_Zone_Temperature_Setpoint_Schedule_Name"]
-            if name != "":
-                attr["AfnTempSetpoint"] = UmiSchedule(Name=name, idf=surface.theidf).mean
-            else:
-                pass  # uses default
 
-            if leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA":
-                attr["AfnDischargeC"] = leak["Discharge_Coefficient"]
-            elif leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:HORIZONTALOPENING":
-                log(
-                    f'"{leak.key}" is not fully supported. Reverting to '
-                    f'defaults for object "{cls.mro()[0].__name__}"',
-                    lg.WARNING,
-                )
-            elif (
-                leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:SURFACE:CRACK"
-                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:DETAILEDOPENING"
-                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:ZONEEXHAUSTFAN"
-                or leak.key.upper() == "AIRFLOWNETWORK:MULTIZONE:COMPONENT:SIMPLEOPENING"
-            ):
-                log(
-                    f'"{leak.key}" is not fully supported. Rerverting to '
-                    f'defaults for object "{cls.mro()[0].__name__}"',
-                    lg.WARNING,
-                )
+            if leak:
+                leak_type = leak.type_name.upper() if hasattr(leak, "type_name") else ""
+                if leak_type == "AIRFLOWNETWORK:MULTIZONE:SURFACE:EFFECTIVELEAKAGEAREA":
+                    attr["AfnDischargeC"] = getattr(leak, "discharge_coefficient", 0.65)
+                else:
+                    log(
+                        f'"{leak_type}" is not fully supported. Reverting to defaults for object "{cls.mro()[0].__name__}"',
+                        lg.WARNING,
+                    )
         else:
             attr["AfnWindowAvailability"] = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
-        # Todo: Zone Mixing is always off
+
+        # Zone Mixing is always off
         attr["ZoneMixingAvailabilitySchedule"] = UmiSchedule.constant_schedule(value=0, Name="AlwaysOff")
-        DataSource = kwargs.pop("DataSource", surface.theidf.name)
-        Category = kwargs.pop("Category", surface.theidf.name)
+        DataSource = kwargs.pop("DataSource", "")
+        Category = kwargs.pop("Category", "")
+        surf_name = getattr(surface, "name", "Window")
         w = cls(
-            Name=surface.Name,
+            Name=surf_name,
             Construction=construction,
-            idf=surface.theidf,
             Category=Category,
             DataSource=DataSource,
             **attr,
@@ -608,36 +601,40 @@ class WindowSetting(UmiBase):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone, **kwargs):
+    def from_zone(cls, zone, doc: "idfkit.Document" = None, **kwargs):
         """Iterate over the zone subsurfaces and create a window object.
 
         If more than one window is created, use reduce to combine them together.
 
         Args:
-            zone (Zone): The Zone object from which the WindowSetting is
+            zone (ZoneDefinition): The Zone object from which the WindowSetting is
                 created.
+            doc (idfkit.Document): The idfkit Document for lookups.
 
         Returns:
             WindowSetting: The WindowSetting object for this zone.
         """
+        from archetypal.idfkit_adapter import get_zone_fenestrations
+
         window_sets = []
 
-        for surf in zone.zone_surfaces:
-            # skip internalmass objects since they don't have windows.
-            if surf.key.lower() != "internalmass":
-                for subsurf in surf.subsurfaces:
-                    # For each subsurface, create a WindowSetting object
-                    # using the `from_surface` constructor.
-                    window_sets.append(cls.from_surface(subsurf, **kwargs))
+        if doc is not None:
+            # Get fenestration surfaces for this zone
+            fenestrations = get_zone_fenestrations(doc, zone.Name)
+            for subsurf in fenestrations:
+                # For each subsurface, create a WindowSetting object
+                ws = cls.from_surface(subsurf, doc=doc, **kwargs)
+                if ws is not None:
+                    window_sets.append(ws)
 
         if window_sets:
             # if one or more window has been created, reduce. Using reduce on
             # a len==1 list, will simply return the object.
-
-            return reduce(WindowSetting.combine, window_sets)
-        else:
-            # no window found, probably a core zone, return None.
-            return None
+            window_sets = [ws for ws in window_sets if ws is not None]
+            if window_sets:
+                return reduce(WindowSetting.combine, window_sets)
+        # no window found, probably a core zone, return None.
+        return None
 
     def combine(self, other, weights=None, allow_duplicates=False):
         """Append other to self. Return self + other as a new object.

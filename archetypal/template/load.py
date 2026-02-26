@@ -5,7 +5,7 @@ import logging as lg
 import math
 import sqlite3
 from enum import Enum
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,9 @@ from archetypal import settings
 from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
+
+if TYPE_CHECKING:
+    from idfkit import Document
 
 
 class DimmingTypes(Enum):
@@ -349,12 +352,14 @@ class ZoneLoad(UmiBase):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone, zone_ep, **kwargs):
+    def from_zone(cls, zone, zone_ep, doc: "Document" = None, sql_file=None, **kwargs):
         """Create a ZoneLoad object from a :class:`ZoneDefinition`.
 
         Args:
-            zone_ep:
-            zone (ZoneDefinition): zone to gets information from
+            zone (ZoneDefinition): zone to gets information from.
+            zone_ep: The zone idfkit object.
+            doc (Document): The idfkit Document for lookups.
+            sql_file: Path to the EnergyPlus SQL output file.
             kwargs: keywords passed to the parent constructor.
         """
         # If Zone is not part of total area, it should not have a ZoneLoad object.
@@ -365,7 +370,7 @@ class ZoneLoad(UmiBase):
         # Verify if Equipment in zone
 
         # create database connection with sqlite3
-        with sqlite3.connect(zone_ep.theidf.sql_file) as conn:
+        with sqlite3.connect(sql_file) as conn:
             sql_query = "select ifnull(ZoneIndex, null) from Zones where ZoneName=?"
             t = (zone.Name.upper(),)
             c = conn.cursor()
@@ -385,8 +390,9 @@ class ZoneLoad(UmiBase):
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
                 level_ = float(series["DesignLevel"])
                 if level_ > 0:
-                    return UmiSchedule.from_epbunch(
-                        zone_ep.theidf.schedules_dict[sched_name.upper()],
+                    return UmiSchedule.from_idf_object(
+                        doc.get_schedule(sched_name),
+                        doc=doc,
                         quantity=level_,
                     )
 
@@ -442,8 +448,9 @@ class ZoneLoad(UmiBase):
                 sched = series["NumberOfPeopleScheduleIndex"]
                 sql_query = "select t.ScheduleName, t.ScheduleType as M from Schedules t where ScheduleIndex=?"
                 sched_name, sched_type = c.execute(sql_query, (int(sched),)).fetchone()
-                return UmiSchedule.from_epbunch(
-                    zone_ep.theidf.schedules_dict[sched_name.upper()],
+                return UmiSchedule.from_idf_object(
+                    doc.get_schedule(sched_name),
+                    doc=doc,
                     quantity=series["NumberOfPeople"],
                 )
 
@@ -470,10 +477,10 @@ class ZoneLoad(UmiBase):
         name = zone.Name + "_ZoneLoad"
         z_load = cls(
             Name=name,
-            DimmingType=_resolve_dimming_type(zone, zone_ep),
+            DimmingType=_resolve_dimming_type(zone, zone_ep, doc=doc),
             EquipmentAvailabilitySchedule=EquipmentAvailabilitySchedule,
             EquipmentPowerDensity=float(EquipmentPowerDensity),
-            IlluminanceTarget=_resolve_illuminance_target(zone, zone_ep),
+            IlluminanceTarget=_resolve_illuminance_target(zone, zone_ep, doc=doc),
             LightingPowerDensity=float(LightingPowerDensity),
             LightsAvailabilitySchedule=LightsAvailabilitySchedule,
             OccupancySchedule=OccupancySchedule,
@@ -649,114 +656,6 @@ class ZoneLoad(UmiBase):
 
         return data_dict
 
-    def to_epbunch(self, idf, zone_name):
-        """Convert the zone load to epbunch given an idf model and a zone name.
-
-        Args:
-            idf (IDF): The idf model. epbunches will be added to this model.
-            zone_name (str): The name of the zone in the idf model.
-
-        .. code-block::
-
-            People,
-                People Perim,             !- Name
-                Perim,                    !- Zone or ZoneList Name
-                B_Off_Y_Occ,              !- Number of People Schedule Name
-                People/Area,              !- Number of People Calculation Method
-                ,                         !- Number of People
-                0.055,                    !- People per Zone Floor Area
-                ,                         !- Zone Floor Area per Person
-                0.3,                      !- Fraction Radiant
-                AUTOCALCULATE,            !- Sensible Heat Fraction
-                PerimPeopleActivity,      !- Activity Level Schedule Name
-                3.82e-08,                 !- Carbon Dioxide Generation Rate
-                No,                       !- Enable ASHRAE 55 Comfort Warnings
-                ZoneAveraged,             !- Mean Radiant Temperature Calculation Type
-                ,                         !- Surface NameAngle Factor List Name
-                PerimWorkEfficiency,      !- Work Efficiency Schedule Name
-                DynamicClothingModelASHRAE55,    !- Clothing Insulation Calculation Method
-                ,                         !- Clothing Insulation Calculation Method Schedule Name
-                ,                         !- Clothing Insulation Schedule Name
-                PerimAirVelocity,         !- Air Velocity Schedule Name
-                AdaptiveASH55;            !- Thermal Comfort Model 1 Type
-
-            Lights,
-                Perim General lighting,    !- Name
-                Perim,                    !- Zone or ZoneList Name
-                B_Off_Y_Lgt,              !- Schedule Name
-                Watts/Area,               !- Design Level Calculation Method
-                ,                         !- Lighting Level
-                12,                       !- Watts per Zone Floor Area
-                ,                         !- Watts per Person
-                0,                        !- Return Air Fraction
-                0.42,                     !- Fraction Radiant
-                0.18,                     !- Fraction Visible
-                1,                        !- Fraction Replaceable
-                ;                         !- EndUse Subcategory
-
-            ElectricEquipment,
-                Perim Equipment 1,        !- Name
-                Perim,                    !- Zone or ZoneList Name
-                B_Off_Y_Plg,              !- Schedule Name
-                Watts/Area,               !- Design Level Calculation Method
-                ,                         !- Design Level
-                8,                        !- Watts per Zone Floor Area
-                ,                         !- Watts per Person
-                0,                        !- Fraction Latent
-                0.2,                      !- Fraction Radiant
-                0,                        !- Fraction Lost
-                ;                         !- EndUse Subcategory
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        people = idf.newidfobject(
-            "PEOPLE",
-            Name=":".join(("People", self.Name, zone_name)),
-            Zone_or_ZoneList_Name=zone_name,
-            Number_of_People_Schedule_Name=self.OccupancySchedule.to_epbunch(idf).Name,
-            Number_of_People_Calculation_Method="People/Area",
-            People_per_Zone_Floor_Area=self.PeopleDensity,
-            Fraction_Radiant=0.3,
-            Sensible_Heat_Fraction="AUTOCALCULATE",
-            Activity_Level_Schedule_Name=idf.newidfobject(
-                "SCHEDULE:CONSTANT", Name="PeopleActivity", Hourly_Value=125.28
-            ).Name,
-            Carbon_Dioxide_Generation_Rate=3.82e-08,
-            Enable_ASHRAE_55_Comfort_Warnings="No",
-            Mean_Radiant_Temperature_Calculation_Type="ZoneAveraged",
-            Work_Efficiency_Schedule_Name=idf.newidfobject(
-                "SCHEDULE:CONSTANT", Name="WorkEfficiency", Hourly_Value=0
-            ).Name,
-            Clothing_Insulation_Calculation_Method="DynamicClothingModelASHRAE55",
-            Air_Velocity_Schedule_Name=idf.newidfobject("SCHEDULE:CONSTANT", Name="AirVelocity", Hourly_Value=0.2).Name,
-        )
-        lights = idf.newidfobject(
-            key="LIGHTS",
-            Name=":".join(("Lights", self.Name, zone_name)),
-            Zone_or_ZoneList_Name=zone_name,
-            Schedule_Name=self.LightsAvailabilitySchedule.to_epbunch(idf).Name,
-            Design_Level_Calculation_Method="Watts/Area",
-            Watts_per_Zone_Floor_Area=self.LightingPowerDensity,
-            Return_Air_Fraction=0,
-            Fraction_Radiant=0.42,
-            Fraction_Visible=0.18,
-            Fraction_Replaceable=1,
-        )
-        equipment = idf.newidfobject(
-            "ELECTRICEQUIPMENT",
-            Name=":".join(("ElectricEquipment", self.Name, zone_name)),
-            Zone_or_ZoneList_Name=zone_name,
-            Schedule_Name=self.EquipmentAvailabilitySchedule.to_epbunch(idf).Name,
-            Design_Level_Calculation_Method="Watts/Area",
-            Watts_per_Zone_Floor_Area=self.EquipmentPowerDensity,
-            Fraction_Latent=0,
-            Fraction_Radiant=0.2,
-            Fraction_Lost=0,
-            EndUse_Subcategory="ElectricEquipment",
-        )
-        return people, lights, equipment
-
     def __copy__(self):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False), area=self.area, volume=self.volume)
@@ -801,20 +700,23 @@ class ZoneLoad(UmiBase):
         )
 
 
-def _resolve_dimming_type(zone, zone_ep):
+def _resolve_dimming_type(zone, zone_ep, doc=None):
     """Resolve the dimming type for the Zone object.
 
     Args:
-        zone_ep:
+        zone: The zone definition.
+        zone_ep: The zone idfkit object.
+        doc: The idfkit Document for lookups.
     """
-    # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
-    # `getreferingobjs` method.
-    possible_ctrls = zone_ep.getreferingobjs(iddgroups=["Daylighting"], fields=["Zone_Name"])
+    zone_name = zone_ep.name if hasattr(zone_ep, "name") else str(zone_ep)
+    # Retrieve the list of Daylighting:Controls objects for this zone.
+    possible_ctrls = [
+        obj for obj in doc.filter_by_type("Daylighting:Controls")
+        if obj.zone_name == zone_name
+    ]
     # Then, if there are controls
     if possible_ctrls:
-        # Filter only the "Daylighting:Controls"
-        ctrls = [ctrl for ctrl in possible_ctrls if ctrl.key.upper() == "Daylighting:Controls".upper()]
-        ctrl_types = [ctrl["Lighting_Control_Type"] for ctrl in ctrls]
+        ctrl_types = [ctrl.lighting_control_type for ctrl in possible_ctrls]
 
         # There should only be one control per zone. A set of controls should return 1.
         if len(set(ctrl_types)) == 1:
@@ -839,20 +741,23 @@ def _resolve_dimming_type(zone, zone_ep):
         return DimmingTypes.Off
 
 
-def _resolve_illuminance_target(zone, zone_ep):
+def _resolve_illuminance_target(zone, zone_ep, doc=None):
     """Resolve the illuminance target for the Zone object.
 
     Args:
-        zone_ep:
+        zone: The zone definition.
+        zone_ep: The zone idfkit object.
+        doc: The idfkit Document for lookups.
     """
-    # First, retrieve the list of Daylighting objects for this zone. Uses the eppy
-    # `getreferingobjs` method.
-    possible_ctrls = zone_ep.getreferingobjs(iddgroups=["Daylighting"], fields=["Zone_Name"])
+    zone_name = zone_ep.name if hasattr(zone_ep, "name") else str(zone_ep)
+    # Retrieve the list of Daylighting:Controls objects for this zone.
+    possible_ctrls = [
+        obj for obj in doc.filter_by_type("Daylighting:Controls")
+        if obj.zone_name == zone_name
+    ]
     # Then, if there are controls
     if possible_ctrls:
-        # Filter only the "Daylighting:Controls"
-        ctrls = [ctrl for ctrl in possible_ctrls if ctrl.key.upper() == "Daylighting:Controls".upper()]
-        ctrl_types = [ctrl["Illuminance_Setpoint_at_Reference_Point_1"] for ctrl in ctrls]
+        ctrl_types = [ctrl.illuminance_setpoint_at_reference_point_1 for ctrl in possible_ctrls]
 
         # There should only be one control per zone. A set of controls should return 1.
         if len(set(ctrl_types)) == 1:

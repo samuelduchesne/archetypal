@@ -1,46 +1,32 @@
 [tool.poetry]
 name = "archetypal"
-version = "2.18.10"
-description = "Retrieve, construct, simulate, convert and analyse building archetypes"
+version = "3.0.0"
+description = "Convert EnergyPlus models to UMI building templates"
 authors = ["Samuel Letellier-Duchesne <samuelduchesne@me.com>"]
 license = "MIT License"
 readme = "README.md"
 packages = [
     { include = "archetypal", from = "." },
-    { include = "geomeppy", from = "geomeppy" },
 ]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
-networkx = "<3"
-eppy = "^0.5.63"
+idfkit = "^0.1.0"
 matplotlib = ">=3.4,<4.0"
-pycountry = "^24.6.1"
 scikit-learn = "^1.5.0"
 pandas = ">=2.0.3"
 tqdm = "^4.66.4"
 click = "^8.1.7"
+deprecation = "^2.1.0"
 sigfig = "^1.3.3"
-requests = "^2.32.3"
 coolprop = "^6.6.0"
 energy_pandas = "^0.4.1"
 validator-collection = "^1.5.0"
 pydantic-settings = "^2.3.2"
-path = ">=17.1.0"  # fix an issue with Path.copy returning a str instead of a Path object
 numpy = [
     {version = "^2.0.2", python = "<=3.9"},
     {version = "^2.1.1", python = "3.10"}
 ]
-
-# geomeppy.dependencies
-shapely = "^2.0.6"
-esoreader = "^1.2.3"
-packaging = "^24.1"
-pyclipper = "^1.3.0.post5"
-pypoly2tri = "^0.0.3"
-six = "^1.16.0"
-tomli = "^2.0.1"
-transforms3d = "^0.4.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
@@ -123,7 +109,7 @@ ignore = [
     # Python builtin is shadowed by class attribute {name} from {row}
     "A003"
 ]
-exclude = ["tests/input_data/*", "docker/trnsidf/*", "geomeppy"]
+exclude = ["tests/input_data/*", "docker/trnsidf/*"]
 
 [tool.ruff.format]
 preview = true

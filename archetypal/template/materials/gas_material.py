@@ -154,30 +154,6 @@ class GasMaterial(MaterialBase):
 
         return data_dict
 
-    def to_epbunch(self, idf, thickness):
-        """Convert self to an epbunch given an idf model and a thickness.
-
-        Args:
-            idf (IDF): An IDF model.
-            thickness (float): the thickness of the material.
-
-        .. code-block::
-
-            WindowMaterial:Gas,
-                AIR_0.006_B_Dbl_Air_Cl,    !- Name
-                AIR,                      !- Gas Type
-                0.006;                    !- Thickness
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        return idf.newidfobject(
-            "WINDOWMATERIAL:GAS",
-            Name=self.Name,
-            Gas_Type=self.Type,
-            Thickness=thickness,
-        )
-
     def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 

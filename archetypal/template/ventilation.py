@@ -3,7 +3,7 @@
 import collections
 import logging as lg
 from enum import Enum
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -14,23 +14,67 @@ from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, timeit, top, weighted_mean
 
+if TYPE_CHECKING:
+    import idfkit
 
-def resolve_temp(temp, idf):
+
+def resolve_temp(temp, doc=None):
     """Resolve the temperature given a float or a string.
 
     If a float is passed, simply return it. If a str
     is passed, get the schedule and return the mean value.
 
     Args:
-        temp (float or str):
-        idf (IDF): the idf object
+        temp (float or str): Temperature value or schedule name.
+        doc: The idfkit Document for lookups.
     """
     if isinstance(temp, float):
         return temp
-    elif isinstance(temp, str):
-        epbunch = idf.schedules_dict[temp.upper()]
-        sched = UmiSchedule.from_epbunch(epbunch)
-        return sched.all_values.mean()
+    elif isinstance(temp, str) and doc is not None:
+        sched_obj = doc.get_schedule(temp)
+        if sched_obj:
+            sched = UmiSchedule.from_idf_object(sched_obj, doc=doc)
+            return sched.all_values.mean()
+    return temp
+
+
+def _read_sql_data(sql_file):
+    """Read SQL data from EnergyPlus simulation output.
+
+    Args:
+        sql_file: Path to the EnergyPlus SQL output file.
+
+    Returns:
+        dict: Dictionary with SQL data needed for ventilation calculations.
+    """
+    import sqlite3
+
+    if sql_file is None:
+        return {}
+
+    data = {}
+    with sqlite3.connect(sql_file) as conn:
+        # Read relevant tables for ventilation calculations
+        try:
+            data["NominalInfiltration"] = pd.read_sql(
+                "SELECT * FROM NominalInfiltration", conn
+            )
+        except Exception:
+            data["NominalInfiltration"] = pd.DataFrame()
+
+        try:
+            data["NominalVentilation"] = pd.read_sql(
+                "SELECT * FROM NominalVentilation", conn
+            )
+        except Exception:
+            data["NominalVentilation"] = pd.DataFrame()
+
+        try:
+            data["Zones"] = pd.read_sql("SELECT * FROM Zones", conn)
+        except Exception:
+            data["Zones"] = pd.DataFrame()
+
+    return data
 
 
 class VentilationType(Enum):
@@ -509,12 +553,14 @@ class VentilationSetting(UmiBase):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone, zone_ep, **kwargs):
+    def from_zone(cls, zone, zone_ep, doc: "idfkit.Document" = None, sql_file=None, **kwargs):
         """Create VentilationSetting from a zone object.
 
         Args:
-            zone_ep:
-            zone (template.zone.Zone): zone to gets information from
+            zone (ZoneDefinition): zone to gets information from.
+            zone_ep: The zone idfkit object.
+            doc (idfkit.Document): The idfkit Document for lookups.
+            sql_file: Path to EnergyPlus SQL output file.
         """
         # If Zone is not part of Conditioned Area, it should not have a
         # VentilationSetting object.
@@ -522,7 +568,7 @@ class VentilationSetting(UmiBase):
             return None
         name = zone.Name + "_VentilationSetting"
 
-        df = {"a": zone_ep.theidf.sql()}
+        df = {"a": _read_sql_data(sql_file)}
         ni_df = nominal_infiltration(df)
         sched_df = nominal_mech_ventilation(df)
         nat_df = nominal_nat_ventilation(df)
@@ -541,7 +587,7 @@ class VentilationSetting(UmiBase):
             NatVentMinOutdoorAirTemp,
             NatVentSchedule,
             NatVentZoneTempSetpoint,
-        ) = do_natural_ventilation(index, nat_df, zone, zone_ep)
+        ) = do_natural_ventilation(index, nat_df, zone, zone_ep, doc=doc)
 
         # Do scheduled ventilation
         (
@@ -549,7 +595,7 @@ class VentilationSetting(UmiBase):
             IsScheduledVentilationOn,
             ScheduledVentilationAch,
             ScheduledVentilationSetpoint,
-        ) = do_scheduled_ventilation(index, sched_df, zone, zone_ep)
+        ) = do_scheduled_ventilation(index, sched_df, zone, zone_ep, doc=doc)
 
         z_vent = cls(
             Name=name,
@@ -722,170 +768,6 @@ class VentilationSetting(UmiBase):
         """Create a copy of self."""
         return self.__class__(**self.mapping(validate=False), area=self.area, volume=self.volume)
 
-    def to_epbunch(self, idf, zone_name, opening_area=0.0):
-        """Convert self to the EpBunches given an idf model, a zone name.
-
-        Notes:
-            Note that attr:`IsInfiltrationOn`, attr:`IsScheduledVentilationOn` and
-            attr:`IsNatVentOn` must be `True` for their respective EpBunch objects
-            to be created.
-
-        Args:
-            idf (IDF): The idf model in which the EpBunch is created.
-            zone_name (str): The zone name to associate this EpBunch.
-            opening_area (float): The opening area exposed to outdoors (m2)
-                in a zone.
-
-        .. code-block::
-
-            ZONEINFILTRATION:DESIGNFLOWRATE,
-                Zone Infiltration,        !- Name
-                Zone 1,                   !- Zone or ZoneList Name
-                AlwaysOn,                 !- Schedule Name
-                AirChanges/Hour,          !- Design Flow Rate Calculation Method
-                ,                         !- Design Flow Rate
-                ,                         !- Flow per Zone Floor Area
-                ,                         !- Flow per Exterior Surface Area
-                0.1,                      !- Air Changes per Hour
-                1,                        !- Constant Term Coefficient
-                0,                        !- Temperature Term Coefficient
-                0,                        !- Velocity Term Coefficient
-                0;                        !- Velocity Squared Term Coefficient
-
-            ZONEVENTILATION:DESIGNFLOWRATE,
-                 Zone 1 Ventilation,       !- Name
-                 Zone 1,                   !- Zone or ZoneList Name
-                 AlwaysOn,                 !- Schedule Name
-                 AirChanges/Hour,          !- Design Flow Rate Calculation Method
-                 ,                         !- Design Flow Rate
-                 ,                         !- Flow Rate per Zone Floor Area
-                 ,                         !- Flow Rate per Person
-                 0.6,                      !- Air Changes per Hour
-                 Exhaust,                  !- Ventilation Type
-                 67,                       !- Fan Pressure Rise
-                 0.7,                      !- Fan Total Efficiency
-                 1,                        !- Constant Term Coefficient
-                 0,                        !- Temperature Term Coefficient
-                 0,                        !- Velocity Term Coefficient
-                 0,                        !- Velocity Squared Term Coefficient
-                 -100,                     !- Minimum Indoor Temperature
-                 ,                         !- Minimum Indoor Temperature Schedule Name
-                 100,                      !- Maximum Indoor Temperature
-                 ,                         !- Maximum Indoor Temperature Schedule Name
-                 -100,                     !- Delta Temperature
-                 ,                         !- Delta Temperature Schedule Name
-                 -100,                     !- Minimum Outdoor Temperature
-                 ,                         !- Minimum Outdoor Temperature Schedule Name
-                 100,                      !- Maximum Outdoor Temperature
-                 ,                         !- Maximum Outdoor Temperature Schedule Name
-                 40;                       !- Maximum Wind Speed)
-
-            ZONEVENTILATION:WINDANDSTACKOPENAREA,
-                ,                         !- Name
-                ,                         !- Zone Name
-                0,                        !- Opening Area
-                ,                         !- Opening Area Fraction Schedule Name
-                Autocalculate,            !- Opening Effectiveness
-                0,                        !- Effective Angle
-                0,                        !- Height Difference
-                Autocalculate,            !- Discharge Coefficient for Opening
-                -100,                     !- Minimum Indoor Temperature
-                ,                         !- Minimum Indoor Temperature Schedule Name
-                100,                      !- Maximum Indoor Temperature
-                ,                         !- Maximum Indoor Temperature Schedule Name
-                -100,                     !- Delta Temperature
-                ,                         !- Delta Temperature Schedule Name
-                -100,                     !- Minimum Outdoor Temperature
-                ,                         !- Minimum Outdoor Temperature Schedule Name
-                100,                      !- Maximum Outdoor Temperature
-                ,                         !- Maximum Outdoor Temperature Schedule Name
-                40;                       !- Maximum Wind Speed
-
-        Returns:
-            tuple: A 3-tuple of EpBunch objects added to the idf model.
-        """
-        if self.IsInfiltrationOn:
-            infiltration_epbunch = idf.newidfobject(
-                key="ZONEINFILTRATION:DESIGNFLOWRATE",
-                Name=f"{zone_name} Infiltration",
-                Zone_or_ZoneList_Name=zone_name,
-                Schedule_Name=idf.newidfobject(key="SCHEDULE:CONSTANT", Name="AlwaysOn", Hourly_Value=1).Name,
-                Design_Flow_Rate_Calculation_Method="AirChanges/Hour",
-                Air_Changes_per_Hour=self.Infiltration,
-                Constant_Term_Coefficient=1,
-                Temperature_Term_Coefficient=0,
-                Velocity_Term_Coefficient=0,
-                Velocity_Squared_Term_Coefficient=0,
-            )
-        else:
-            infiltration_epbunch = None
-            log("No 'ZONEINFILTRATION:DESIGNFLOWRATE' created since IsInfiltrationOn == False.")
-
-        if self.IsScheduledVentilationOn:
-            ventilation_epbunch = idf.newidfobject(
-                key="ZONEVENTILATION:DESIGNFLOWRATE",
-                Name=f"{zone_name} Ventilation",
-                Zone_or_ZoneList_Name=zone_name,
-                Schedule_Name=self.ScheduledVentilationSchedule.to_year_week_day()[0]
-                .to_epbunch(idf)
-                .Name,  # take the YearSchedule and get the name.
-                Design_Flow_Rate_Calculation_Method="AirChanges/Hour",
-                Design_Flow_Rate="",
-                Flow_Rate_per_Zone_Floor_Area="",
-                Flow_Rate_per_Person="",
-                Air_Changes_per_Hour=self.ScheduledVentilationAch,
-                Ventilation_Type=self.VentilationType.name,
-                Fan_Pressure_Rise=67.0,
-                Fan_Total_Efficiency=0.7,
-                Constant_Term_Coefficient=1.0,
-                Temperature_Term_Coefficient=0.0,
-                Velocity_Term_Coefficient=0.0,
-                Velocity_Squared_Term_Coefficient=0.0,
-                Minimum_Indoor_Temperature=-100,
-                Minimum_Indoor_Temperature_Schedule_Name="",
-                Maximum_Indoor_Temperature=100.0,
-                Maximum_Indoor_Temperature_Schedule_Name="",
-                Delta_Temperature=-100.0,
-                Delta_Temperature_Schedule_Name="",
-                Minimum_Outdoor_Temperature=-100.0,
-                Minimum_Outdoor_Temperature_Schedule_Name="",
-                Maximum_Outdoor_Temperature=100.0,
-                Maximum_Outdoor_Temperature_Schedule_Name="",
-                Maximum_Wind_Speed=40.0,
-            )
-        else:
-            ventilation_epbunch = None
-            log("No 'ZONEVENTILATION:DESIGNFLOWRATE' created since IsScheduledVentilationOn == False.")
-
-        if self.IsNatVentOn:
-            natural_epbunch = idf.newidfobject(
-                key="ZONEVENTILATION:WINDANDSTACKOPENAREA",
-                Name=f"{zone_name} Natural Ventilation",
-                Zone_Name=zone_name,
-                Opening_Area=opening_area,
-                Opening_Area_Fraction_Schedule_Name="",
-                Opening_Effectiveness="Autocalculate",
-                Effective_Angle=0.0,
-                Height_Difference=1,
-                Discharge_Coefficient_for_Opening="Autocalculate",
-                Minimum_Indoor_Temperature=self.NatVentZoneTempSetpoint,
-                Minimum_Indoor_Temperature_Schedule_Name="",
-                Maximum_Indoor_Temperature=100.0,
-                Maximum_Indoor_Temperature_Schedule_Name="",
-                Delta_Temperature=-100.0,
-                Delta_Temperature_Schedule_Name="",
-                Minimum_Outdoor_Temperature=self.NatVentMinOutdoorAirTemp,
-                Minimum_Outdoor_Temperature_Schedule_Name="",
-                Maximum_Outdoor_Temperature=self.NatVentMaxOutdoorAirTemp,
-                Maximum_Outdoor_Temperature_Schedule_Name="",
-                Maximum_Wind_Speed=40.0,
-            )
-        else:
-            natural_epbunch = None
-            log("No 'ZONEVENTILATION:WINDANDSTACKOPENAREA' created since IsNatVentOn == False.")
-
-        return infiltration_epbunch, ventilation_epbunch, natural_epbunch
-
     @property
     def children(self):
         return self.NatVentSchedule, self.ScheduledVentilationSchedule
@@ -912,28 +794,29 @@ def do_infiltration(index, inf_df):
     return Infiltration, IsInfiltrationOn
 
 
-def do_natural_ventilation(index, nat_df, zone, zone_ep):
+def do_natural_ventilation(index, nat_df, zone, zone_ep, doc=None):
     """Get natural ventilation information of the zone.
 
     Args:
-        zone_ep:
         index (tuple): Zone name
-        nat_df:
-        zone (template.zone.Zone): zone to gets information from
+        nat_df: DataFrame with natural ventilation data.
+        zone (ZoneDefinition): zone to gets information from.
+        zone_ep: The zone idfkit object.
+        doc: The idfkit Document for lookups.
     """
     if not nat_df.empty:
         try:
             IsNatVentOn = any(nat_df.loc[index, "Name"])
             schedule_name_ = nat_df.loc[index, "Schedule Name"]
             quantity = nat_df.loc[index, "Volume Flow Rate/Floor Area {m3/s/m2}"]
-            if schedule_name_.upper() in zone_ep.theidf.schedules_dict:
-                epbunch = zone_ep.theidf.schedules_dict[schedule_name_.upper()]
-                NatVentSchedule = UmiSchedule.from_epbunch(epbunch, quantity=quantity)
+            sched_obj = doc.get_schedule(schedule_name_) if doc else None
+            if sched_obj:
+                NatVentSchedule = UmiSchedule.from_idf_object(sched_obj, doc=doc, quantity=quantity)
             else:
-                # todo: For some reason, a ZoneVentilation:WindandStackOpenArea
-                #  'Opening Area Fraction Schedule Name' is read as Constant-0.0
-                #  in the nat_df. For the mean time, a zone containing such an
-                #  object will be turned on with an AlwaysOn schedule.
+                # For some reason, a ZoneVentilation:WindandStackOpenArea
+                # 'Opening Area Fraction Schedule Name' is read as Constant-0.0
+                # in the nat_df. For the mean time, a zone containing such an
+                # object will be turned on with an AlwaysOn schedule.
                 IsNatVentOn = True
                 NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         except Exception:
@@ -942,18 +825,18 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
             NatVentSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
         finally:
             try:
-                NatVentMaxRelHumidity = 90  # todo: not sure if it is being used
+                NatVentMaxRelHumidity = 90
                 NatVentMaxOutdoorAirTemp = resolve_temp(
                     nat_df.loc[index, "Maximum Outdoor Temperature{C}/Schedule"],
-                    zone_ep.theidf,
+                    doc=doc,
                 )
                 NatVentMinOutdoorAirTemp = resolve_temp(
                     nat_df.loc[index, "Minimum Outdoor Temperature{C}/Schedule"],
-                    zone_ep.theidf,
+                    doc=doc,
                 )
                 NatVentZoneTempSetpoint = resolve_temp(
                     nat_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
-                    zone_ep.theidf,
+                    doc=doc,
                 )
             except KeyError:
                 # this zone is not in the nat_df. Revert to defaults.
@@ -970,13 +853,13 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
         NatVentMinOutdoorAirTemp = 0
         NatVentZoneTempSetpoint = 18
 
-    # Is Wind ON
-    if not zone_ep.theidf.idfobjects["ZoneVentilation:WindandStackOpenArea".upper()].list1:
-        IsWindOn = False
-        IsBuoyancyOn = False
-    else:
-        IsWindOn = True
-        IsBuoyancyOn = True
+    # Is Wind ON - check if there are ZoneVentilation:WindandStackOpenArea objects
+    IsWindOn = False
+    IsBuoyancyOn = False
+    if doc and "ZoneVentilation:WindandStackOpenArea" in doc:
+        if doc["ZoneVentilation:WindandStackOpenArea"]:
+            IsWindOn = True
+            IsBuoyancyOn = True
 
     return (
         IsNatVentOn,
@@ -990,24 +873,29 @@ def do_natural_ventilation(index, nat_df, zone, zone_ep):
     )
 
 
-def do_scheduled_ventilation(index, scd_df, zone, zone_ep):
+def do_scheduled_ventilation(index, scd_df, zone, zone_ep, doc=None):
     """Get schedule ventilation information of the zone.
 
     Args:
         index (tuple): Zone name
-        scd_df:
-        zone (template.zone.Zone): zone to gets information from
+        scd_df: DataFrame with scheduled ventilation data.
+        zone (ZoneDefinition): zone to gets information from.
+        zone_ep: The zone idfkit object.
+        doc: The idfkit Document for lookups.
     """
     if not scd_df.empty:
         try:
             IsScheduledVentilationOn = any(scd_df.loc[index, "Name"])
             schedule_name_ = scd_df.loc[index, "Schedule Name"]
-            epbunch = zone_ep.theidf.schedules_dict[schedule_name_.upper()]
-            ScheduledVentilationSchedule = UmiSchedule.from_epbunch(epbunch)
+            sched_obj = doc.get_schedule(schedule_name_) if doc else None
+            if sched_obj:
+                ScheduledVentilationSchedule = UmiSchedule.from_idf_object(sched_obj, doc=doc)
+            else:
+                ScheduledVentilationSchedule = UmiSchedule.constant_schedule(allow_duplicates=True)
             ScheduledVentilationAch = scd_df.loc[index, "ACH - Air Changes per Hour"]
             ScheduledVentilationSetpoint = resolve_temp(
                 scd_df.loc[index, "Minimum Indoor Temperature{C}/Schedule"],
-                zone_ep.theidf,
+                doc=doc,
             )
         except Exception:
             ScheduledVentilationSchedule = UmiSchedule.constant_schedule(

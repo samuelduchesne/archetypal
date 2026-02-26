@@ -13,8 +13,6 @@ from pandas.io.common import get_handle
 from path import Path
 
 from archetypal import settings
-from archetypal.eplus_interface.exceptions import EnergyPlusProcessError
-from archetypal.idfclass.idf import IDF
 from archetypal.template.building_template import BuildingTemplate
 from archetypal.template.conditioning import ZoneConditioning
 from archetypal.template.constructions.opaque_construction import OpaqueConstruction
@@ -220,7 +218,7 @@ class UmiTemplateLibrary:
             processors (int): Number of cores. Defaults to -1, all cores.
             debug (bool): If True, will raise any error on any processed file and
                 keep simulation cache directory.
-            kwargs: keyword arguments passed to IDF().
+            kwargs: keyword arguments passed to idfkit.
 
         Raises:
             Exception: All exceptions are raised if settings.debug=True. Will raise
@@ -233,13 +231,10 @@ class UmiTemplateLibrary:
         in_dict = {}
         for i, idf_file in enumerate(idf_files):
             in_dict[idf_file] = dict(
-                idfname=idf_file,
-                epw=weather,
-                verbose=False,
+                idf_file=idf_file,
+                weather_file=weather,
                 position=i,
-                nolimit=True,
-                keep_data_err=debug,
-                readvars=False,  # No need to readvars since only sql is used
+                debug=debug,
                 **kwargs,
             )
         results = parallel_process(
@@ -252,15 +247,7 @@ class UmiTemplateLibrary:
             executor=ThreadPoolExecutor,
         )
         for filename, res in results.items():
-            if isinstance(res, EnergyPlusProcessError):
-                filename = settings.logs_folder / "failed_reduce.txt"
-                with open(filename, "a") as file:
-                    file.writelines(res.write())
-                    log(
-                        f"EnergyPlusProcess error for {filename} listed in {filename}: {res}",
-                        lg.ERROR,
-                    )
-            elif isinstance(res, Exception):
+            if isinstance(res, Exception):
                 if debug:
                     raise res
                 else:
@@ -292,29 +279,42 @@ class UmiTemplateLibrary:
         return umi_template
 
     @staticmethod
-    def template_complexity_reduction(idfname, epw, **kwargs):
-        """Wrap IDF, simulate and BuildingTemplate for parallel processing."""
-        idf = IDF(idfname, epw=epw, **kwargs)
-        idf._outputs.add_umi_template_outputs()
+    def template_complexity_reduction(idf_file, weather_file, **kwargs):
+        """Load IDF, simulate and create BuildingTemplate for parallel processing."""
+        import idfkit
 
-        # remove daylight saving time modifiers
-        for daylight in idf.idfobjects["RunPeriodControl:DaylightSavingTime".upper()]:
-            idf.removeidfobject(daylight)
-        # edit run period to start on Monday
-        for run_period in idf.idfobjects["RunPeriod".upper()]:
-            run_period.Day_of_Week_for_Start_Day = "Monday"
-            run_period.Apply_Weekend_Holiday_Rule = "No"
-            run_period.Use_Weather_File_Holidays_and_Special_Days = "No"
-            run_period.Use_Weather_File_Daylight_Saving_Period = "No"
-        # remove daylight saving time modifiers
-        for day in idf.idfobjects["RunPeriodControl:SpecialDays".upper()]:
-            idf.removeidfobject(day)
+        debug = kwargs.pop("debug", False)
+        position = kwargs.pop("position", 0)
+
+        doc = idfkit.load_idf(str(idf_file))
+
+        # Prepare the document for UMI template extraction:
+        # Remove daylight saving time modifiers
+        if "RunPeriodControl:DaylightSavingTime" in doc:
+            for obj in list(doc["RunPeriodControl:DaylightSavingTime"].values()):
+                doc.remove(obj)
+        # Edit run period to start on Monday
+        if "RunPeriod" in doc:
+            for run_period in doc["RunPeriod"].values():
+                run_period.day_of_week_for_start_day = "Monday"
+                run_period.apply_weekend_holiday_rule = "No"
+                run_period.use_weather_file_holidays_and_special_days = "No"
+                run_period.use_weather_file_daylight_saving_period = "No"
+        # Remove special days
+        if "RunPeriodControl:SpecialDays" in doc:
+            for obj in list(doc["RunPeriodControl:SpecialDays"].values()):
+                doc.remove(obj)
+
+        # Add UMI template output variables
+        _add_umi_template_outputs(doc)
 
         try:
-            idf.simulate()
-        except EnergyPlusProcessError as e:
+            result = idfkit.simulate(doc, str(weather_file))
+            sql_file = result.sql
+        except Exception as e:
             return e
-        return BuildingTemplate.from_idf(idf, **kwargs)
+
+        return BuildingTemplate.from_idf(doc, sql_file=sql_file, **kwargs)
 
     @classmethod
     def open(cls, filename):
@@ -812,3 +812,55 @@ def parent_child_traversal(parent: UmiBase):
 
 def traverse(parent):
     return parent_child_traversal(parent)
+
+
+def _add_umi_template_outputs(doc):
+    """Add EnergyPlus output variables needed for UMI template extraction.
+
+    Args:
+        doc: An idfkit Document.
+    """
+    import idfkit
+
+    # Ensure SQL output is enabled
+    doc.add(idfkit.IdfObject.from_dict("Output:SQLite", {"Option Type": "SimpleAndTabular"}))
+
+    # Add required output variables for UMI template reduction
+    output_vars = [
+        ("Zone Ideal Loads Supply Air Total Heating Energy", "Hourly"),
+        ("Zone Ideal Loads Supply Air Total Cooling Energy", "Hourly"),
+        ("Zone Ideal Loads Heat Recovery Total Heating Energy", "Hourly"),
+        ("Zone Ideal Loads Heat Recovery Total Cooling Energy", "Hourly"),
+        ("Zone Ideal Loads Economizer Active Time", "Hourly"),
+    ]
+    for var_name, frequency in output_vars:
+        doc.add(
+            idfkit.IdfObject.from_dict(
+                "Output:Variable",
+                {
+                    "Key Value": "*",
+                    "Variable Name": var_name,
+                    "Reporting Frequency": frequency,
+                },
+            )
+        )
+
+    # Add required output meters
+    output_meters = [
+        "Heating:EnergyTransfer",
+        "Cooling:EnergyTransfer",
+    ]
+    for meter in output_meters:
+        doc.add(
+            idfkit.IdfObject.from_dict(
+                "Output:Meter",
+                {
+                    "Key Name": meter,
+                    "Reporting Frequency": "Monthly",
+                },
+            )
+        )
+
+    # Add tabular output
+    doc.add(idfkit.IdfObject.from_dict("OutputControl:Table:Style", {"Column Separator": "Comma"}))
+    doc.add(idfkit.IdfObject.from_dict("Output:Table:SummaryReports", {"Report 1": "AllSummary"}))

@@ -1,7 +1,9 @@
-"""archetypal OpaqueMaterial."""
+"""archetypal NoMassMaterial."""
+
+from __future__ import annotations
 
 import collections
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from sigfig import round
 from validator_collection import validators
@@ -9,6 +11,9 @@ from validator_collection import validators
 from archetypal.template import GasMaterial
 from archetypal.template.materials.material_base import MaterialBase
 from archetypal.utils import log
+
+if TYPE_CHECKING:
+    from idfkit import IdfObject
 
 
 class NoMassMaterial(MaterialBase):
@@ -260,14 +265,14 @@ class NoMassMaterial(MaterialBase):
         return cls(id=_id, **data, **kwargs)
 
     @classmethod
-    def from_epbunch(cls, epbunch, **kwargs):
-        """Create a NoMassMaterial from an EpBunch.
+    def from_idf_object(cls, obj: IdfObject, **kwargs):
+        """Create a NoMassMaterial from an idfkit object.
 
-        Note that "Material", "Material:NoMAss" and "Material:AirGap" objects are
+        Note that "Material", "Material:NoMass" and "Material:AirGap" objects are
         supported.
 
         Hint:
-            (From EnergyPlus Manual): When a user enters such a “no mass”
+            (From EnergyPlus Manual): When a user enters such a "no mass"
             material into EnergyPlus, internally the properties of this layer
             are converted to approximate the properties of air (density,
             specific heat, and conductivity) with the thickness adjusted to
@@ -282,78 +287,60 @@ class NoMassMaterial(MaterialBase):
             emittance) are assumed null.
 
         Args:
-            epbunch (EpBunch): EP-Construction object
-            **kwargs:
+            obj: idfkit Material, Material:NoMass, or Material:AirGap object
+            **kwargs: Additional keyword arguments passed to constructor
         """
-        if epbunch.key.upper() == "MATERIAL":
+        obj_type = obj.type_name.upper()
+
+        if obj_type == "MATERIAL":
             return cls(
-                Conductivity=epbunch.Conductivity,
-                Density=epbunch.Density,
-                Roughness=epbunch.Roughness,
-                SolarAbsorptance=epbunch.Solar_Absorptance,
-                SpecificHeat=epbunch.Specific_Heat,
-                ThermalEmittance=epbunch.Thermal_Absorptance,
-                VisibleAbsorptance=epbunch.Visible_Absorptance,
-                Name=epbunch.Name,
+                Conductivity=obj.conductivity,
+                Density=obj.density,
+                Roughness=obj.roughness,
+                SolarAbsorptance=obj.solar_absorptance,
+                SpecificHeat=obj.specific_heat,
+                ThermalEmittance=obj.thermal_absorptance,
+                VisibleAbsorptance=obj.visible_absorptance,
+                Name=obj.name,
                 **kwargs,
             )
-        elif epbunch.key.upper() == "MATERIAL:NOMASS":
+        elif obj_type == "MATERIAL:NOMASS":
             # Assume properties of air.
             return cls(
                 Conductivity=0.02436,  # W/mK, dry air at 0 °C and 100 kPa
                 Density=1.2754,  # dry air at 0 °C and 100 kPa.
-                Roughness=epbunch.Roughness,
-                SolarAbsorptance=epbunch.Solar_Absorptance,
+                Roughness=obj.roughness,
+                SolarAbsorptance=obj.solar_absorptance,
                 SpecificHeat=100.5,  # J/kg-K, dry air at 0 °C and 100 kPa
-                ThermalEmittance=epbunch.Thermal_Absorptance,
-                VisibleAbsorptance=epbunch.Visible_Absorptance,
-                Name=epbunch.Name,
+                ThermalEmittance=obj.thermal_absorptance,
+                VisibleAbsorptance=obj.visible_absorptance,
+                Name=obj.name,
                 **kwargs,
             )
-        elif epbunch.key.upper() == "MATERIAL:AIRGAP":
+        elif obj_type == "MATERIAL:AIRGAP":
             gas_prop = {
-                obj.Name.upper(): obj.mapping() for obj in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
+                mat.Name.upper(): mat.mapping() for mat in [GasMaterial(gas_name) for gas_name in GasMaterial._GASTYPES]
             }
             for gasname, properties in gas_prop.items():
-                if gasname.lower() in epbunch.Name.lower():
-                    thickness = properties["Conductivity"] * epbunch.Thermal_Resistance
+                if gasname.lower() in obj.name.lower():
+                    thickness = properties["Conductivity"] * obj.thermal_resistance
                     return cls(
-                        Name=epbunch.Name,
+                        Name=obj.name,
                         Thickness=thickness,
                         **properties,
                     )
                 else:
-                    thickness = gas_prop["AIR"]["Conductivity"] * epbunch.Thermal_Resistance
+                    thickness = gas_prop["AIR"]["Conductivity"] * obj.thermal_resistance
                     return cls(
-                        Name=epbunch.Name,
+                        Name=obj.name,
                         Thickness=thickness,
                         **gas_prop["AIR"],
                     )
         else:
             raise NotImplementedError(
-                f"Material '{epbunch.Name}' of type '{epbunch.key}' is not yet "
-                "supported. Please contact package "
-                "authors"
+                f"Material '{obj.name}' of type '{obj.type_name}' is not yet "
+                "supported. Please contact package authors"
             )
-
-    def to_epbunch(self, idf):
-        """Convert self to an epbunch given an IDF model.
-
-        Args:
-            idf (IDF): An IDF model.
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        return idf.newidfobject(
-            "MATERIAL:NOMASS",
-            Name=self.Name,
-            Roughness=self.Roughness,
-            Thermal_Resistance=self.r_value,
-            Thermal_Absorptance=self.ThermalEmittance,
-            Solar_Absorptance=self.SolarAbsorptance,
-            Visible_Absorptance=self.VisibleAbsorptance,
-        )
 
     def validate(self):
         """Validate object and fill in missing values.

@@ -11,7 +11,6 @@ import time
 from itertools import chain, repeat
 from typing import ClassVar
 
-import networkx
 from path import Path
 from sigfig import round
 from tqdm.auto import tqdm
@@ -335,40 +334,33 @@ class BuildingTemplate(UmiBase):
         )
 
     @classmethod
-    def from_idf(cls, idf, **kwargs):
-        """Create a BuildingTemplate from an IDF object.
+    def from_idf(cls, doc, sql_file=None, **kwargs):
+        """Create a BuildingTemplate from an idfkit Document.
 
         Args:
-            idf (IDF):
+            doc: An idfkit Document object.
+            sql_file (str or Path): Path to the EnergyPlus SQL output file.
             **kwargs:
         """
         # initialize empty BuildingTemplate
-        name = kwargs.pop("Name", Path(idf.name).stem)
+        name = kwargs.pop("Name", "unnamed")
 
-        epbunch_zones = idf.idfobjects["ZONE"]
+        zone_objects = list(doc["Zone"].values()) if "Zone" in doc else []
         zones = [
-            ZoneDefinition.from_epbunch(ep_zone, allow_duplicates=True, **kwargs)
-            for ep_zone in tqdm(epbunch_zones, desc=f"Creating UMI objects for {name}")
+            ZoneDefinition.from_idf_object(
+                zone_obj, doc=doc, sql_file=sql_file, allow_duplicates=True, **kwargs
+            )
+            for zone_obj in tqdm(zone_objects, desc=f"Creating UMI objects for {name}")
         ]
         # do core and Perim zone reduction
         bt = cls.reduced_model(name, zones, **kwargs)
 
         if bt.Core.DomesticHotWater is None or bt.Perimeter.DomesticHotWater is None:
-            dhw = DomesticHotWaterSetting.whole_building(idf)
+            dhw = DomesticHotWaterSetting.whole_building(doc, sql_file=sql_file)
             if bt.Core.DomesticHotWater is None:
                 bt.Core.DomesticHotWater = dhw
             if bt.Perimeter.DomesticHotWater is None:
                 bt.Perimeter.DomesticHotWater = dhw
-
-        bt.Comments = "\n".join(
-            [
-                "WWR calculated for original model: ",
-                idf.wwr().to_string(),
-                "where East=90, South=180, West=270, North=0\n",
-            ]
-        )
-
-        bt.PartitionRatio = idf.partition_ratio
 
         return bt
 
@@ -458,48 +450,6 @@ class BuildingTemplate(UmiBase):
             Structure=structure,
             **kwargs,
         )
-
-    def _graph_reduce(self, G):
-        """Using the depth first search algorithm, iterate over the zone
-        adjacency graph and compute the equivalent zone yielded by the
-        'addition' of two consecutive zones.
-
-        'Adding' two zones together means both zones properties are
-        weighted-averaged by zone area. All dependent objects implement the
-        :func:`operator.add` method.
-
-        Args:
-            G (archetypal.zone_graph.ZoneGraph):
-
-        Returns:
-            ZoneDefinition: The reduced zone
-        """
-        if len(G) < 1:
-            log(f"No zones for building graph {G.name}")
-            return None
-        else:
-            log(f"starting reduce process for building {self.Name}")
-            start_time = time.time()
-
-            # start from the highest degree node
-            subgraphs = sorted(
-                (G.subgraph(c) for c in networkx.connected_components(G)),
-                key=len,
-                reverse=True,
-            )
-            from functools import reduce
-            from operator import add
-
-            bundle_zone = reduce(
-                add,
-                [zone for subG in subgraphs for name, zone in subG.nodes(data="zone")],
-            )
-
-            log(
-                f"completed zone reduction for zone '{bundle_zone.Name}' "
-                f"in building '{self.Name}' in {time.time() - start_time:,.2f} seconds"
-            )
-            return bundle_zone
 
     def to_dict(self):
         """Return BuildingTemplate dictionary representation."""

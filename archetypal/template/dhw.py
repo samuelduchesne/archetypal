@@ -2,10 +2,9 @@
 
 import collections
 from statistics import mean
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
-from eppy import modeleditor
 from sigfig import round
 from validator_collection import validators
 
@@ -13,6 +12,9 @@ from archetypal import settings
 from archetypal.template.schedule import UmiSchedule
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log, reduce, timeit
+
+if TYPE_CHECKING:
+    from idfkit import Document
 
 
 class DomesticHotWaterSetting(UmiBase):
@@ -163,20 +165,27 @@ class DomesticHotWaterSetting(UmiBase):
 
     @classmethod
     @timeit
-    def from_zone(cls, zone_epbunch, **kwargs):
-        """Create object from a zone EpBunch.
+    def from_zone(cls, zone_epbunch, doc: "Document" = None, zone_area=None, **kwargs):
+        """Create object from a zone idfkit object.
 
         WaterUse:Equipment objects referring to this zone will be parsed.
 
         Args:
-            zone (EpBunch): The zone object.
+            zone_epbunch: The zone idfkit object.
+            doc (Document): The idfkit Document for lookups.
+            zone_area (float): The zone floor area. Must be provided.
         """
         # If Zone is not part of Conditioned Area, it should not have a DHW object.
-        if zone_epbunch.Part_of_Total_Floor_Area.lower() == "no":
+        zone_name = zone_epbunch.name if hasattr(zone_epbunch, "name") else str(zone_epbunch)
+        part_of_total = zone_epbunch.part_of_total_floor_area if hasattr(zone_epbunch, "part_of_total_floor_area") else "yes"
+        if str(part_of_total).lower() == "no":
             return None
 
         # First, find the WaterUse:Equipment assigned to this zone
-        dhw_objs = zone_epbunch.getreferingobjs(iddgroups=["Water Systems"], fields=["Zone_Name"])
+        dhw_objs = [
+            obj for obj in doc.filter_by_type("WaterUse:Equipment")
+            if getattr(obj, "zone_name", "") == zone_name
+        ]
         if not dhw_objs:
             # Sometimes, some of the WaterUse:Equipment objects are not assigned to
             # any zone. Therefore, to account for their water usage, we can try to
@@ -185,20 +194,22 @@ class DomesticHotWaterSetting(UmiBase):
             dhw_objs.extend(
                 [
                     dhw
-                    for dhw in zone_epbunch.theidf.idfobjects["WATERUSE:EQUIPMENT"]
-                    if zone_epbunch.Name.lower() in dhw.Name.lower()
+                    for dhw in doc.filter_by_type("WaterUse:Equipment")
+                    if zone_name.lower() in dhw.name.lower()
                 ]
             )
 
         if dhw_objs:
             # This zone has more than one WaterUse:Equipment object
-            zone_area = modeleditor.zonearea(zone_epbunch.theidf, zone_epbunch.Name)
+            if zone_area is None:
+                zone_area = 1.0
             total_flow_rate = cls._do_flow_rate(dhw_objs, zone_area)
-            water_schedule = cls._do_water_schedule(dhw_objs)
-            inlet_temp = cls._do_inlet_temp(dhw_objs)
-            supply_temp = cls._do_hot_temp(dhw_objs)
+            water_schedule = cls._do_water_schedule(dhw_objs, doc=doc)
+            inlet_temp = cls._do_inlet_temp(dhw_objs, doc=doc)
+            supply_temp = cls._do_hot_temp(dhw_objs, doc=doc)
 
-            name = zone_epbunch.Name + "_DHW"
+            name = zone_name + "_DHW"
+            doc_name = doc.name if hasattr(doc, "name") else ""
             z_dhw = cls(
                 Name=name,
                 FlowRatePerFloorArea=total_flow_rate,
@@ -206,21 +217,22 @@ class DomesticHotWaterSetting(UmiBase):
                 WaterSchedule=water_schedule,
                 WaterSupplyTemperature=supply_temp,
                 WaterTemperatureInlet=inlet_temp,
-                Category=zone_epbunch.theidf.name,
+                Category=doc_name,
                 area=zone_area,
                 **kwargs,
             )
             return z_dhw
         else:
-            log(f"No 'Water Systems' found in zone '{zone_epbunch.Name}'")
+            log(f"No 'Water Systems' found in zone '{zone_name}'")
             return None
 
     @classmethod
-    def _do_hot_temp(cls, dhw_objs):
+    def _do_hot_temp(cls, dhw_objs, doc: "Document" = None):
         """Resolve hot water temperature.
 
         Args:
-            dhw_objs:
+            dhw_objs: List of WaterUse:Equipment idfkit objects.
+            doc (Document): The idfkit Document for lookups.
         """
         hot_schds = []
         for obj in dhw_objs:
@@ -228,45 +240,45 @@ class DomesticHotWaterSetting(UmiBase):
             # temperature [C]. If blank, the target temperature defaults to
             # the hot water supply temperature.
             schedule_name = (
-                obj.Target_Temperature_Schedule_Name
-                if obj.Target_Temperature_Schedule_Name != ""
-                else obj.Hot_Water_Supply_Temperature_Schedule_Name
+                obj.target_temperature_schedule_name
+                if obj.target_temperature_schedule_name != ""
+                else obj.hot_water_supply_temperature_schedule_name
             )
-            epbunch = obj.theidf.schedules_dict[schedule_name.upper()]
-            hot_schd = UmiSchedule.from_epbunch(epbunch)
+            sched_obj = doc.get_schedule(schedule_name)
+            hot_schd = UmiSchedule.from_idf_object(sched_obj, doc=doc)
             hot_schds.append(hot_schd)
 
         return np.array([sched.all_values.mean() for sched in hot_schds]).mean()
 
     @classmethod
-    def _do_inlet_temp(cls, dhw_objs):
+    def _do_inlet_temp(cls, dhw_objs, doc: "Document" = None):
         """Calculate inlet water temperature."""
         WaterTemperatureInlet = []
         for obj in dhw_objs:
-            if obj.Cold_Water_Supply_Temperature_Schedule_Name != "":
+            if obj.cold_water_supply_temperature_schedule_name != "":
                 # If a cold water supply schedule is provided, create the
                 # schedule
-                epbunch = obj.theidf.schedules_dict[obj.Cold_Water_Supply_Temperature_Schedule_Name.upper()]
-                cold_schd_names = UmiSchedule.from_epbunch(epbunch)
+                sched_obj = doc.get_schedule(obj.cold_water_supply_temperature_schedule_name)
+                cold_schd_names = UmiSchedule.from_idf_object(sched_obj, doc=doc)
                 WaterTemperatureInlet.append(cold_schd_names.mean)
             else:
                 # If blank, water temperatures are calculated by the
                 # Site:WaterMainsTemperature object.
-                water_mains_temps = obj.theidf.idfobjects["Site:WaterMainsTemperature".upper()]
+                water_mains_temps = list(doc.filter_by_type("Site:WaterMainsTemperature"))
                 if water_mains_temps:
                     # If a "Site:WaterMainsTemperature" object exists,
                     # do water depending on calc method:
                     water_mains_temp = water_mains_temps[0]
-                    if water_mains_temp.Calculation_Method.lower() == "schedule":
+                    if water_mains_temp.calculation_method.lower() == "schedule":
                         # From Schedule method
-                        mains_scd = UmiSchedule.from_epbunch(
-                            obj.theidf.schedules_dict[water_mains_temp.Schedule_Name.upper()]
+                        mains_scd = UmiSchedule.from_idf_object(
+                            doc.get_schedule(water_mains_temp.schedule_name), doc=doc
                         )
                         WaterTemperatureInlet.append(mains_scd.mean())
-                    elif water_mains_temp.Calculation_Method.lower() == "correlation":
+                    elif water_mains_temp.calculation_method.lower() == "correlation":
                         # From Correlation method
-                        mean_outair_temp = water_mains_temp.Annual_Average_Outdoor_Air_Temperature
-                        max_dif = water_mains_temp.Maximum_Difference_In_Monthly_Average_Outdoor_Air_Temperatures
+                        mean_outair_temp = water_mains_temp.annual_average_outdoor_air_temperature
+                        max_dif = water_mains_temp.maximum_difference_in_monthly_average_outdoor_air_temperatures
 
                         WaterTemperatureInlet.append(water_main_correlation(mean_outair_temp, max_dif).mean())
                 else:
@@ -277,21 +289,23 @@ class DomesticHotWaterSetting(UmiBase):
         return mean(WaterTemperatureInlet) if WaterTemperatureInlet else 10
 
     @classmethod
-    def _do_water_schedule(cls, dhw_objs):
+    def _do_water_schedule(cls, dhw_objs, doc: "Document" = None):
         """Return the WaterSchedule for a list of WaterUse:Equipment objects.
 
         If more than one objects are passed, a combined schedule is returned
 
         Args:
-            dhw_objs (list of EpBunch): List of WaterUse:Equipment objects.
+            dhw_objs: List of WaterUse:Equipment idfkit objects.
+            doc (Document): The idfkit Document for lookups.
 
         Returns:
             UmiSchedule: The WaterSchedule
         """
         water_schds = [
-            UmiSchedule.from_epbunch(
-                obj.theidf.schedules_dict[obj.Flow_Rate_Fraction_Schedule_Name.upper()],
-                quantity=obj.Peak_Flow_Rate,
+            UmiSchedule.from_idf_object(
+                doc.get_schedule(obj.flow_rate_fraction_schedule_name),
+                doc=doc,
+                quantity=obj.peak_flow_rate,
             )
             for obj in dhw_objs
         ]
@@ -311,11 +325,12 @@ class DomesticHotWaterSetting(UmiBase):
         flow rate.
 
         Args:
-            dhw_objs (Idf_MSequence):
+            dhw_objs: List of WaterUse:Equipment idfkit objects.
+            area (float): The zone floor area.
         """
         total_flow_rate = 0
         for obj in dhw_objs:
-            total_flow_rate += obj.Peak_Flow_Rate  # m3/s
+            total_flow_rate += obj.peak_flow_rate  # m3/s
         total_flow_rate /= area  # m3/s/m2
         total_flow_rate *= 3600.0  # m3/h/m2
         return total_flow_rate
@@ -390,20 +405,24 @@ class DomesticHotWaterSetting(UmiBase):
         return self
 
     @classmethod
-    def whole_building(cls, idf):
+    def whole_building(cls, doc: "Document" = None, area=None, name=None):
         """Create one DomesticHotWaterSetting for whole building model.
 
         Args:
-            idf (IDF): The idf model.
+            doc (Document): The idfkit Document for lookups.
+            area (float): The building floor area.
+            name (str): The name identifier for the building.
 
         Returns:
             DomesticHotWaterSetting: The DomesticHotWaterSetting object.
         """
-        # Unconditioned area could be zero, therefore taking max of both
-        area = max(idf.net_conditioned_building_area, idf.unconditioned_building_area)
+        if area is None:
+            area = 1.0
+        if name is None:
+            name = doc.name if hasattr(doc, "name") else "Building"
 
         z_dhw_list = []
-        dhw_objs = idf.idfobjects["WaterUse:Equipment".upper()]
+        dhw_objs = list(doc.filter_by_type("WaterUse:Equipment"))
         if not dhw_objs:
             # defaults with 0 flow rate.
             total_flow_rate = 0
@@ -411,7 +430,7 @@ class DomesticHotWaterSetting(UmiBase):
             supply_temp = 60
             inlet_temp = 10
 
-            name = idf.name + "_DHW"
+            dhw_name = name + "_DHW"
             z_dhw = DomesticHotWaterSetting(
                 WaterSchedule=water_schedule,
                 IsOn=bool(total_flow_rate > 0),
@@ -419,16 +438,16 @@ class DomesticHotWaterSetting(UmiBase):
                 WaterSupplyTemperature=supply_temp,
                 WaterTemperatureInlet=inlet_temp,
                 area=area,
-                Name=name,
-                Category=idf.name,
+                Name=dhw_name,
+                Category=name,
             )
             z_dhw_list.append(z_dhw)
         else:
             total_flow_rate = DomesticHotWaterSetting._do_flow_rate(dhw_objs, area)
-            water_schedule = DomesticHotWaterSetting._do_water_schedule(dhw_objs)
+            water_schedule = DomesticHotWaterSetting._do_water_schedule(dhw_objs, doc=doc)
             water_schedule.quantity = total_flow_rate
-            inlet_temp = DomesticHotWaterSetting._do_inlet_temp(dhw_objs)
-            supply_temp = DomesticHotWaterSetting._do_hot_temp(dhw_objs)
+            inlet_temp = DomesticHotWaterSetting._do_inlet_temp(dhw_objs, doc=doc)
+            supply_temp = DomesticHotWaterSetting._do_hot_temp(dhw_objs, doc=doc)
             z_dhw = DomesticHotWaterSetting(
                 WaterSchedule=water_schedule,
                 IsOn=bool(total_flow_rate > 0),
@@ -437,7 +456,7 @@ class DomesticHotWaterSetting(UmiBase):
                 WaterTemperatureInlet=inlet_temp,
                 area=area,
                 Name="Whole Building WaterUse:Equipment",
-                Category=idf.name,
+                Category=name,
             )
             z_dhw_list.append(z_dhw)
 
@@ -511,69 +530,6 @@ class DomesticHotWaterSetting(UmiBase):
     @property
     def children(self):
         return (self.WaterSchedule,)
-
-    def to_epbunch(self, idf, zone_name, zone_area):
-        """Convert self to the EpBunches given an idf model, a zone name.
-
-        Notes:
-            'Target_Temperature_Schedule_Name' Reference to the schedule object specifying the
-            target water temperature [C]. Hot and cold water are mixed at the tap to attain
-            the target temperature. If insufficient hot water is available to reach the target
-            temperature, the result is cooler water at the tap. If blank, the target
-            temperature defaults to the hot water supply temperature.
-
-        Args:
-            idf (IDF): The idf model in which the EpBunch is created.
-            zone_name (str): The zone name to associate this EpBunch (str)
-            zone_area (float): The occupied zone floor area (m2)
-
-        .. code-block::
-
-            WATERUSE:EQUIPMENT,
-                DHW Perim,                !- Name
-                DHW Perim,                !- EndUse Subcategory
-                2.796438e-07,             !- Peak Flow Rate
-                B_Off_Y_Dhw,              !- Flow Rate Fraction Schedule Name
-                DHW Supply Temperature Perim,    !- Target Temperature Schedule Name
-                DHW Supply Temperature Perim,    !- Hot Water Supply Temperature Schedule Name
-                DHW Mains Temperature Perim,    !- Cold Water Supply Temperature Schedule Name
-                ,                         !- Zone Name
-                ,                         !- Sensible Fraction Schedule Name
-                ;                         !- Latent Fraction Schedule Name
-
-        Returns:
-            tuple: An EpBunch object added to the idf model.
-        """
-        if self.IsOn:
-            # Create ep_bunch for zone
-            dhw_epbunch = idf.newidfobject(
-                key="WATERUSE:EQUIPMENT",
-                Name=f"{zone_name} DHW",
-                EndUse_Subcategory="DHW",
-                # TODO: check if this needs to be a string in sci not (self.FlowRatePerFloorArea)
-                Peak_Flow_Rate=self.FlowRatePerFloorArea / 3600 * zone_area,  # m3/s
-                Flow_Rate_Fraction_Schedule_Name=self.WaterSchedule.to_epbunch(
-                    idf
-                ).Name,  # self.WaterSchedule.to_epbunch(idf).Name
-                Target_Temperature_Schedule_Name="",
-                Hot_Water_Supply_Temperature_Schedule_Name=idf.newidfobject(
-                    key="SCHEDULE:CONSTANT",
-                    Name="DhwHotTemp",
-                    Hourly_Value=self.WaterSupplyTemperature,
-                ).Name,
-                Cold_Water_Supply_Temperature_Schedule_Name=idf.newidfobject(
-                    key="SCHEDULE:CONSTANT",
-                    Name="DhwInletTemp",
-                    Hourly_Value=self.WaterTemperatureInlet,
-                ).Name,
-                Zone_Name=zone_name,
-                Sensible_Fraction_Schedule_Name="",
-                Latent_Fraction_Schedule_Name="",
-            )
-        else:
-            log("No 'WATERUSE:EQUIPMENT' created since DHW IsOn == False.")
-            dhw_epbunch = None
-        return dhw_epbunch
 
 
 def water_main_correlation(t_out_avg, max_diff):

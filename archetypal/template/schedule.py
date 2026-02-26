@@ -3,38 +3,377 @@
 import calendar
 import collections
 import hashlib
-from datetime import datetime
+import logging as lg
+from datetime import datetime, timedelta
+from itertools import groupby
 from typing import ClassVar
 
 import numpy as np
 import pandas as pd
-from validator_collection import validators
+from validator_collection import checkers, validators
 
-from archetypal.schedule import Schedule, _ScheduleParser, get_year_for_first_weekday
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log
 
 
-class UmiSchedule(Schedule, UmiBase):
+def get_year_for_first_weekday(weekday: int = 0) -> int:
+    """Get a non-leap year that starts on the given weekday (Monday=0).
+
+    Args:
+        weekday (int): 0-based day of week (Monday=0).
+
+    Returns:
+        int: The year number whose January 1st falls on *weekday*.
+    """
+    if weekday > 6:
+        raise ValueError("weekday must be between 0 and 6")
+    year = 2020
+    while True:
+        if calendar.weekday(year, 1, 1) == weekday and not calendar.isleap(year):
+            return year
+        year -= 1
+
+
+class ScheduleTypeLimits:
+    """Lightweight schedule type limits descriptor."""
+
+    __slots__ = ("_name", "_lower_limit", "_upper_limit", "_numeric_type", "_unit_type")
+
+    def __init__(
+        self,
+        Name,
+        LowerLimit=None,
+        UpperLimit=None,
+        NumericType="Continuous",
+        UnitType="Dimensionless",
+    ):
+        self.Name = Name
+        self.LowerLimit = LowerLimit
+        self.UpperLimit = UpperLimit
+        self.NumericType = NumericType
+        self.UnitType = UnitType
+
+    @property
+    def Name(self):
+        return self._name
+
+    @Name.setter
+    def Name(self, value):
+        self._name = validators.string(value)
+
+    @property
+    def LowerLimit(self):
+        return self._lower_limit
+
+    @LowerLimit.setter
+    def LowerLimit(self, value):
+        self._lower_limit = validators.float(value, allow_empty=True)
+
+    @property
+    def UpperLimit(self):
+        return self._upper_limit
+
+    @UpperLimit.setter
+    def UpperLimit(self, value):
+        self._upper_limit = validators.float(value, allow_empty=True)
+
+    @property
+    def NumericType(self):
+        return self._numeric_type
+
+    @NumericType.setter
+    def NumericType(self, value):
+        self._numeric_type = value
+
+    @property
+    def UnitType(self):
+        return self._unit_type
+
+    @UnitType.setter
+    def UnitType(self, value):
+        self._unit_type = value
+
+    def __eq__(self, other):
+        if not isinstance(other, ScheduleTypeLimits):
+            return NotImplemented
+        return self.Name == other.Name
+
+    def __hash__(self):
+        return hash(self.Name)
+
+    def __repr__(self):
+        return f"ScheduleTypeLimits({self.Name!r})"
+
+    @classmethod
+    def from_dict(cls, data):
+        """Create from a dictionary."""
+        return cls(**data)
+
+    def to_dict(self):
+        """Return dictionary representation."""
+        return {
+            "Name": self.Name,
+            "LowerLimit": self.LowerLimit,
+            "UpperLimit": self.UpperLimit,
+            "NumericType": self.NumericType,
+            "UnitType": self.UnitType,
+        }
+
+    @classmethod
+    def from_idf_object(cls, obj):
+        """Create a ScheduleTypeLimits from an idfkit object.
+
+        Args:
+            obj: An idfkit object of type ``ScheduleTypeLimits``.
+        """
+        name = obj.name
+        lower_limit = getattr(obj, "lower_limit_value", None)
+        upper_limit = getattr(obj, "upper_limit_value", None)
+        numeric_type = getattr(obj, "numeric_type", "Continuous")
+        unit_type = getattr(obj, "unit_type", "Dimensionless")
+        return cls(
+            Name=name,
+            LowerLimit=lower_limit if checkers.is_numeric(lower_limit) else None,
+            UpperLimit=upper_limit if checkers.is_numeric(upper_limit) else None,
+            NumericType=numeric_type if checkers.is_string(numeric_type, minimum_length=1) else "Continuous",
+            UnitType=unit_type if checkers.is_string(unit_type, minimum_length=1) else "Dimensionless",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Helper utilities for parsing idfkit day-schedule objects
+# ---------------------------------------------------------------------------
+
+
+def _parse_day_list(obj):
+    """Parse a Schedule:Day:List idfkit object into 24 hourly values.
+
+    The object has variable-length fields: pairs of (minutes, value).
+    We interpolate into 24 hourly bins (value at the start of each hour).
+    """
+    values = [0.0] * 24
+    current_minute = 0
+    idx = 1
+    while True:
+        minutes_attr = f"minutes_until_time_{idx}"
+        value_attr = f"value_until_time_{idx}"
+        minutes = getattr(obj, minutes_attr, None)
+        val = getattr(obj, value_attr, None)
+        if minutes is None or val is None:
+            break
+        end_minute = int(minutes)
+        start_hour = current_minute // 60
+        end_hour = min((end_minute - 1) // 60, 23)
+        for h in range(start_hour, end_hour + 1):
+            values[h] = float(val)
+        current_minute = end_minute
+        idx += 1
+    return values
+
+
+def _parse_day_interval(obj):
+    """Parse a Schedule:Day:Interval idfkit object into 24 hourly values.
+
+    Fields come in pairs: ``time_N`` (HH:MM format) and ``value_until_time_N``.
+    """
+    values = [0.0] * 24
+    prev_hour = 0
+    idx = 1
+    while True:
+        time_attr = f"time_{idx}"
+        value_attr = f"value_until_time_{idx}"
+        time_str = getattr(obj, time_attr, None)
+        val = getattr(obj, value_attr, None)
+        if time_str is None or val is None:
+            break
+        # time_str is typically "HH:MM"
+        parts = str(time_str).split(":")
+        hour = int(parts[0])
+        if hour == 24:
+            hour = 24  # means end of day
+        for h in range(prev_hour, min(hour, 24)):
+            values[h] = float(val)
+        prev_hour = hour
+        idx += 1
+    return values
+
+
+def _find_day_schedule(doc, name):
+    """Look up a day schedule object by name in the idfkit Document.
+
+    Searches across the three day-schedule types.
+
+    Args:
+        doc: An idfkit Document.
+        name: The name of the day schedule to find.
+
+    Returns:
+        The idfkit object for the day schedule.
+
+    Raises:
+        KeyError: If the day schedule is not found in any of the expected types.
+    """
+    for type_name in ("Schedule:Day:Hourly", "Schedule:Day:List", "Schedule:Day:Interval"):
+        try:
+            return doc[type_name][name]
+        except (KeyError, TypeError):
+            continue
+    raise KeyError(f"Day schedule '{name}' not found in document")
+
+
+class UmiSchedule(UmiBase):
     """Class that handles Schedules."""
 
     _CREATED_OBJECTS: ClassVar[list["UmiSchedule"]] = []
 
-    __slots__ = ("_quantity",)
+    __slots__ = (
+        "_quantity",
+        "_schedule_type_limits",
+        "_values",
+        "_strict",
+        "_start_day_of_the_week",
+    )
 
-    def __init__(self, Name, quantity=None, **kwargs):
+    def __init__(
+        self,
+        Name,
+        quantity=None,
+        strict=False,
+        start_day_of_the_week=0,
+        Type=None,
+        Values=None,
+        **kwargs,
+    ):
         """Initialize object with parameters.
 
         Args:
-            Name:
-            quantity:
-            **kwargs:
+            Name (str): The name of the schedule.
+            quantity: Optional quantity associated with the schedule.
+            strict (bool): If True, raise on missing qualifiers.
+            start_day_of_the_week (int): 0-based weekday (Monday=0).
+            Type (str or ScheduleTypeLimits): Schedule type limits.
+            Values (list or ndarray): Schedule values.
+            **kwargs: Keywords passed to :class:`UmiBase`.
         """
         super().__init__(Name, **kwargs)
+        self.strict = strict
+        self.startDayOfTheWeek = start_day_of_the_week
+        self.Values = Values
+        self.Type = Type
         self.quantity = quantity
 
         # Only at the end append self to _CREATED_OBJECTS
         self._CREATED_OBJECTS.append(self)
+
+    # ------------------------------------------------------------------
+    # Properties inlined from the former Schedule base class
+    # ------------------------------------------------------------------
+
+    @property
+    def Type(self):
+        """Get or set the schedule type limits object. Can be None."""
+        return self._schedule_type_limits
+
+    @Type.setter
+    def Type(self, value):
+        if isinstance(value, str):
+            if "fraction" in value.lower():
+                value = ScheduleTypeLimits("Fraction", 0, 1)
+            elif value.lower() == "temperature":
+                value = ScheduleTypeLimits("Temperature", -100, 100)
+            elif value.lower() == "on/off":
+                value = ScheduleTypeLimits("On/Off", 0, 1, "Discrete", "Availability")
+            else:
+                value = ScheduleTypeLimits("Fraction", 0, 1)
+                log(
+                    f"'{value}' is not a known ScheduleTypeLimits for "
+                    f"{self.Name}. Defaulting to 'Fraction'.",
+                    level=lg.WARNING,
+                )
+        self._schedule_type_limits = value
+
+    @property
+    def Values(self):
+        """Get or set the list of schedule values."""
+        return self._values
+
+    @Values.setter
+    def Values(self, value):
+        if isinstance(value, np.ndarray):
+            assert value.ndim == 1, value.ndim
+            value = value.tolist()
+        self._values = validators.iterable(value, allow_empty=True)
+
+    @property
+    def strict(self):
+        """Get or set the strict flag."""
+        return self._strict
+
+    @strict.setter
+    def strict(self, value):
+        self._strict = bool(value)
+
+    @property
+    def startDayOfTheWeek(self):
+        """Get or set the start day of the week (Monday=0)."""
+        return self._start_day_of_the_week
+
+    @startDayOfTheWeek.setter
+    def startDayOfTheWeek(self, value):
+        self._start_day_of_the_week = int(value) if value is not None else 0
+
+    @property
+    def year(self):
+        """Get the year satisfying startDayOfTheWeek."""
+        return get_year_for_first_weekday(self.startDayOfTheWeek)
+
+    @property
+    def startDate(self):
+        """Get the start date of the schedule."""
+        return datetime(self.year, 1, 1)
+
+    @property
+    def all_values(self) -> np.ndarray:
+        """Return numpy array of schedule Values."""
+        return np.array(self._values)
+
+    @all_values.setter
+    def all_values(self, value):
+        self._values = validators.iterable(value, maximum_length=8760)
+
+    @property
+    def max(self):
+        """Get the maximum value of the schedule."""
+        return max(self.all_values)
+
+    @property
+    def min(self):
+        """Get the minimum value of the schedule."""
+        return min(self.all_values)
+
+    @property
+    def mean(self):
+        """Get the mean value of the schedule."""
+        return np.average(self.all_values)
+
+    @property
+    def series(self):
+        """Return a pandas Series with a DatetimeIndex."""
+        index = pd.date_range(
+            start=self.startDate, periods=self.all_values.size, freq="1h"
+        )
+        return pd.Series(self.all_values, index=index, name=self.Name)
+
+    @staticmethod
+    def get_schedule_type_limits_name(obj):
+        """Return the Schedule Type Limits name associated to a schedule object.
+
+        Works with idfkit objects (uses snake_case attribute access).
+        """
+        try:
+            return obj.schedule_type_limits_name
+        except (AttributeError, KeyError):
+            return "unknown"
 
     @property
     def quantity(self):
@@ -50,14 +389,18 @@ class UmiSchedule(Schedule, UmiBase):
         """Create an UmiSchedule with a constant value at each timestep.
 
         Args:
-            Type:
-            value (float):
-            Name:
-            idf:
-            **kwargs:
+            Type (str): Schedule type limits name.
+            value (float): The constant value.
+            Name (str): The name of the schedule.
+            **kwargs: Keywords passed to the constructor.
         """
         value = validators.float(value)
-        return super().constant_schedule(value=value, Name=Name, Type=Type, **kwargs)
+        return cls.from_values(
+            Name=Name,
+            Values=(np.ones((8760,)) * value).tolist(),
+            Type=Type,
+            **kwargs,
+        )
 
     @classmethod
     def random(cls, Name="AlwaysOn", Type="Fraction", **kwargs):
@@ -79,11 +422,11 @@ class UmiSchedule(Schedule, UmiBase):
 
         Args:
             Name (str): The name of the Schedule.
-            Values (list):
-            Type:
-            **kwargs:
+            Values (list): A list of schedule values.
+            Type (str): Schedule type limits name.
+            **kwargs: Keywords passed to the constructor.
         """
-        return super().from_values(Name=Name, Values=Values, Type=Type, **kwargs)
+        return cls(Name=Name, Values=Values, Type=Type, **kwargs)
 
     def combine(self, other, weights=None, quantity=None):
         """Combine two UmiSchedule objects together.
@@ -194,6 +537,100 @@ class UmiSchedule(Schedule, UmiBase):
         new_obj.predecessors.update(self.predecessors + other.predecessors)
         new_obj.weights = sum(weights)
         return new_obj
+
+    def to_year_week_day(self):
+        """Convert 8760 hourly values to Year-Week-Day schedule structure.
+
+        Returns:
+            3-element tuple containing:
+                - **yearly** (*YearSchedule*): The yearly schedule object.
+                - **weekly** (*list of WeekSchedule*): The weekly schedule objects.
+                - **daily** (*list of DaySchedule*): The daily schedule objects.
+        """
+        full_year = np.array(self.all_values)  # shape (8760,)
+
+        # reshape to (365, 24)
+        Values = full_year.reshape(-1, 24)
+
+        # create unique days
+        unique_days, nds = np.unique(Values, axis=0, return_inverse=True)
+
+        ep_days = []
+        dict_day = {}
+        for count_day, unique_day in enumerate(unique_days):
+            name = f"d_{self.Name}_{count_day:02d}"
+            dict_day[name] = unique_day
+            ep_day = DaySchedule(
+                Name=name, Type=self.Type, Values=[unique_day[i] for i in range(24)]
+            )
+            ep_days.append(ep_day)
+
+        # create unique weeks from unique days
+        try:
+            unique_weeks, nwsi, nws, count = np.unique(
+                full_year[: 364 * 24, ...].reshape(-1, 168),
+                return_index=True,
+                axis=0,
+                return_inverse=True,
+                return_counts=True,
+            )
+        except ValueError as e:
+            raise ValueError(
+                "Looks like the idf model needs to be rerun with 'annual=True'"
+            ) from e
+
+        c = calendar.Calendar(firstweekday=self.startDayOfTheWeek)
+
+        dict_week = {}
+        for count_week, unique_week in enumerate(unique_weeks):
+            week_id = f"w_{self.Name}_{count_week:02d}"
+            dict_week[week_id] = {}
+            for i, day in zip(list(range(0, 7)), list(c.iterweekdays())):
+                day_of_week = unique_week[..., i * 24 : (i + 1) * 24]
+                for key, ep_day in zip(dict_day, ep_days):
+                    if (day_of_week == dict_day[key]).all():
+                        dict_week[week_id][f"day_{day}"] = ep_day
+
+        ep_weeks = {}
+        for week_id in dict_week:
+            ep_week = WeekSchedule(
+                Name=week_id,
+                Days=[dict_week[week_id][f"day_{day_num}"] for day_num in c.iterweekdays()],
+            )
+            ep_weeks[week_id] = ep_week
+
+        blocks = {}
+        from_date = datetime(self.year, 1, 1)
+        bincount = [
+            sum(1 for _ in group) for key, group in groupby(nws + 1) if key
+        ]
+        week_order = dict(
+            enumerate(
+                np.array([key for key, group in groupby(nws + 1) if key]) - 1
+            )
+        )
+        for i, (_, count) in enumerate(zip(week_order, bincount)):
+            week_id = list(dict_week)[week_order[i]]
+            to_date = from_date + timedelta(days=int(count * 7), hours=-1)
+            blocks[i] = YearSchedulePart(
+                FromDay=from_date.day,
+                FromMonth=from_date.month,
+                ToDay=to_date.day,
+                ToMonth=to_date.month,
+                Schedule=ep_weeks[week_id],
+            )
+            from_date = to_date + timedelta(hours=1)
+
+            # If this is the last block, force end of year
+            if i == len(bincount) - 1:
+                blocks[i].ToDay = 31
+                blocks[i].ToMonth = 12
+
+        ep_year = YearSchedule(
+            self.Name, Type=self.Type, Parts=list(blocks.values())
+        )
+
+        return ep_year, list(ep_weeks.values()), ep_days
 
     def develop(self):
         """Develop the UmiSchedule into a Year-Week-Day schedule structure."""
@@ -476,7 +913,7 @@ class YearSchedulePart:
 class DaySchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles daily schedules."""
 
-    __slots__ = ("_values",)
+    __slots__ = ()
 
     def __init__(self, Name, Values, Category="Day", **kwargs):
         """Initialize a DaySchedule object with parameters.
@@ -499,39 +936,43 @@ class DaySchedule(UmiSchedule):
         self._values = validators.iterable(value, maximum_length=24)
 
     @classmethod
-    def from_epbunch(cls, epbunch, strict=False, **kwargs):
-        """Create a DaySchedule from an EpBunch.
+    def from_idf_object(cls, obj, doc=None, strict=False, **kwargs):
+        """Create a DaySchedule from an idfkit IdfObject.
 
-        This method accepts "Schedule:Day:Hourly", "Schedule:Day:List" and
-        "Schedule:Day:Interval".
+        This method accepts ``Schedule:Day:Hourly``, ``Schedule:Day:List`` and
+        ``Schedule:Day:Interval`` objects.
 
         Args:
-            epbunch (EpBunch): The EpBunch object to construct a DaySchedule
-                from.
+            obj: The idfkit schedule object.
+            doc: The idfkit Document (for looking up related objects).
+            strict (bool): Unused, kept for API compatibility.
             **kwargs: Keywords passed to the :class:`UmiSchedule` constructor.
-                See :class:`UmiSchedule` for more details.
         """
-        assert epbunch.key.lower() in (
+        obj_type = obj.type_name.lower()
+        assert obj_type in (
             "schedule:day:hourly",
             "schedule:day:list",
             "schedule:day:interval",
         ), (
-            f"Input error for '{epbunch.key}'. Expected on of "
-            f"('Schedule:Day:Hourly', 'Schedule:Day:List' and "
+            f"Input error for '{obj.type_name}'. Expected one of "
+            f"('Schedule:Day:Hourly', 'Schedule:Day:List', "
             f"'Schedule:Day:Interval')"
         )
-        start_day_of_the_week = epbunch.theidf.day_of_week_for_start_day
-        start_date = datetime(get_year_for_first_weekday(start_day_of_the_week), 1, 1)
-        sched = cls(
-            Name=epbunch.Name,
-            epbunch=epbunch,
-            schType=epbunch.key,
-            Type=cls.get_schedule_type_limits_name(epbunch),
-            Values=_ScheduleParser.get_schedule_values(epbunch, start_date, strict=strict),
+
+        if obj_type == "schedule:day:hourly":
+            values = [getattr(obj, f"hour_{i}") for i in range(1, 25)]
+        elif obj_type == "schedule:day:list":
+            values = _parse_day_list(obj)
+        elif obj_type == "schedule:day:interval":
+            values = _parse_day_interval(obj)
+
+        type_name = cls.get_schedule_type_limits_name(obj)
+        return cls(
+            Name=obj.name,
+            Type=type_name,
+            Values=values,
             **kwargs,
         )
-
-        return sched
 
     @classmethod
     def from_values(cls, Name, Values, Type="Fraction", **kwargs):
@@ -636,59 +1077,12 @@ class DaySchedule(UmiSchedule):
         """Create a copy of self."""
         return self.__class__(self.Name, Values=self.all_values.tolist())
 
-    def to_epbunch(self, idf):
-        """Convert self to an epbunch given an idf model.
-
-        Args:
-            idf (IDF): An IDF model.
-
-        .. code-block::
-
-            SCHEDULE:DAY:HOURLY,
-                ,                         !- Name
-                ,                         !- Schedule Type Limits Name
-                0,                        !- Hour 1
-                0,                        !- Hour 2
-                0,                        !- Hour 3
-                0,                        !- Hour 4
-                0,                        !- Hour 5
-                0,                        !- Hour 6
-                0,                        !- Hour 7
-                0,                        !- Hour 8
-                0,                        !- Hour 9
-                0,                        !- Hour 10
-                0,                        !- Hour 11
-                0,                        !- Hour 12
-                0,                        !- Hour 13
-                0,                        !- Hour 14
-                0,                        !- Hour 15
-                0,                        !- Hour 16
-                0,                        !- Hour 17
-                0,                        !- Hour 18
-                0,                        !- Hour 19
-                0,                        !- Hour 20
-                0,                        !- Hour 21
-                0,                        !- Hour 22
-                0,                        !- Hour 23
-                0;                        !- Hour 24
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        return idf.newidfobject(
-            key="Schedule:Day:Hourly".upper(),
-            **dict(
-                Name=self.Name,
-                Schedule_Type_Limits_Name=self.Type.to_epbunch(idf).Name,
-                **{f"Hour_{i + 1}": self.all_values[i] for i in range(24)},
-            ),
-        )
 
 
 class WeekSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles weekly schedules."""
 
-    __slots__ = ("_days", "_values")
+    __slots__ = ("_days",)
 
     def __init__(self, Name, Days=None, Category="Week", **kwargs):
         """Initialize a WeekSchedule object with parameters.
@@ -714,20 +1108,20 @@ class WeekSchedule(UmiSchedule):
         self._days = value
 
     @classmethod
-    def from_epbunch(cls, epbunch, **kwargs):
-        """Create a WeekSchedule from a Schedule:Week:Daily object.
+    def from_idf_object(cls, obj, doc=None, **kwargs):
+        """Create a WeekSchedule from a Schedule:Week:Daily idfkit object.
 
         Args:
-            epbunch (EpBunch): The Schedule:Week:Daily object.
+            obj: The idfkit Schedule:Week:Daily object.
+            doc: The idfkit Document for resolving referenced day schedules.
             **kwargs: keywords passed to the constructor.
         """
         assert (
-            epbunch.key.lower() == "schedule:week:daily"
-        ), f"Expected a 'schedule:week:daily' not a '{epbunch.key.lower()}'"
-        Days = WeekSchedule.get_days(epbunch, **kwargs)
+            obj.type_name.lower() == "schedule:week:daily"
+        ), f"Expected a 'schedule:week:daily' not a '{obj.type_name.lower()}'"
+        Days = WeekSchedule.get_days(obj, doc=doc, **kwargs)
         sched = cls(
-            Name=epbunch.Name,
-            schType=epbunch.key,
+            Name=obj.name,
             Days=Days,
             **kwargs,
         )
@@ -788,28 +1182,34 @@ class WeekSchedule(UmiSchedule):
         }
 
     @classmethod
-    def get_days(cls, epbunch, **kwargs):
-        """Get the DaySchedules referenced in the Week:Schedule:Days object.
+    def get_days(cls, obj, doc=None, **kwargs):
+        """Get the DaySchedules referenced in a Schedule:Week:Daily object.
 
         Args:
-            list of DaySchedule: The list of DaySchedules referenced by the epbunch.
+            obj: The idfkit Schedule:Week:Daily object.
+            doc: The idfkit Document for resolving referenced day schedules.
+            **kwargs: Keywords forwarded to :meth:`DaySchedule.from_idf_object`.
+
+        Returns:
+            list of DaySchedule: The list of DaySchedules referenced by *obj*.
         """
         assert (
-            epbunch.key.lower() == "schedule:week:daily"
-        ), f"Expected a 'schedule:week:daily' not a '{epbunch.key.lower()}'"
+            obj.type_name.lower() == "schedule:week:daily"
+        ), f"Expected a 'schedule:week:daily' not a '{obj.type_name.lower()}'"
         Days = []
         dayname = [
-            "Monday",
-            "Tuesday",
-            "Wednesday",
-            "Thursday",
-            "Friday",
-            "Saturday",
-            "Sunday",
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday",
         ]
         for day in dayname:
-            day_ep = epbunch.get_referenced_object(f"{day}_ScheduleDay_Name")
-            Days.append(DaySchedule.from_epbunch(day_ep, **kwargs))
+            day_sched_name = getattr(obj, f"{day}_schedule_day_name")
+            day_obj = _find_day_schedule(doc, day_sched_name)
+            Days.append(DaySchedule.from_idf_object(day_obj, doc=doc, **kwargs))
 
         return Days
 
@@ -848,31 +1248,6 @@ class WeekSchedule(UmiSchedule):
         """Create a copy of self."""
         return self.__class__(Name=self.Name, Days=self.Days)
 
-    def to_epbunch(self, idf):
-        """Convert self to an epbunch given an idf model.
-
-        Args:
-            idf (IDF): An IDF model.
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        return idf.newidfobject(
-            key="Schedule:Week:Daily".upper(),
-            **dict(
-                Name=self.Name,
-                **{
-                    f"{calendar.day_name[i]}_ScheduleDay_Name": day.to_epbunch(idf).Name
-                    for i, day in enumerate(self.Days)
-                },
-                Holiday_ScheduleDay_Name=self.Days[6].Name,
-                SummerDesignDay_ScheduleDay_Name=self.Days[0].Name,
-                WinterDesignDay_ScheduleDay_Name=self.Days[0].Name,
-                CustomDay1_ScheduleDay_Name=self.Days[1].Name,
-                CustomDay2_ScheduleDay_Name=self.Days[6].Name,
-            ),
-        )
-
     @property
     def children(self):
         return self.Days
@@ -881,22 +1256,27 @@ class WeekSchedule(UmiSchedule):
 class YearSchedule(UmiSchedule):
     """Superclass of UmiSchedule that handles yearly schedules."""
 
-    def __init__(self, Name, Type="Fraction", Parts=None, Category="Year", **kwargs):
+    def __init__(self, Name, Type="Fraction", Parts=None, Category="Year", idf_obj=None, doc=None, **kwargs):
         """Initialize a YearSchedule object with parameters.
 
         Args:
-            Category:
-            Name:
-            Type:
+            Category (str): Category identification.
+            Name (str): Name of the schedule.
+            Type (str or ScheduleTypeLimits): Schedule type limits.
             Parts (list of YearSchedulePart): The YearScheduleParts.
-            **kwargs:
+            idf_obj: Optional idfkit object for ``Schedule:Year``.
+            doc: Optional idfkit Document for resolving references.
+            **kwargs: Keywords passed to :class:`UmiSchedule`.
         """
-        self.epbunch = kwargs.get("epbunch", None)
-        if Parts is None:
-            self.Parts = self._get_parts(self.epbunch)
-        else:
+        self._idf_obj = idf_obj
+        self._doc = doc
+        if Parts is None and idf_obj is not None:
+            self.Parts = self._get_parts(idf_obj)
+        elif Parts is not None:
             self.Parts = Parts
-        super().__init__(Name=Name, Type=Type, schType="Schedule:Year", Category=Category, **kwargs)
+        else:
+            self.Parts = []
+        super().__init__(Name=Name, Type=Type, Category=Category, **kwargs)
 
     def __eq__(self, other):
         """Assert self is equivalent to other."""
@@ -961,32 +1341,6 @@ class YearSchedule(UmiSchedule):
 
         return data_dict
 
-    def to_epbunch(self, idf):
-        """Convert self to an epbunch given an idf model.
-
-        Notes:
-            The object is added to the idf model.
-
-        Args:
-            idf (IDF): An IDF model.
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        new_dict = {"Name": self.Name, "Schedule_Type_Limits_Name": self.Type.to_epbunch(idf).Name}
-        for i, part in enumerate(self.Parts):
-            new_dict.update(
-                {
-                    f"ScheduleWeek_Name_{i + 1}": part.Schedule.to_epbunch(idf).Name,
-                    f"Start_Month_{i + 1}": part.FromMonth,
-                    f"Start_Day_{i + 1}": part.FromDay,
-                    f"End_Month_{i + 1}": part.ToMonth,
-                    f"End_Day_{i + 1}": part.ToDay,
-                }
-            )
-
-        return idf.newidfobject(key="Schedule:Year".upper(), **new_dict)
-
     def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
 
@@ -1006,28 +1360,57 @@ class YearSchedule(UmiSchedule):
             "Name": self.Name,
         }
 
-    def _get_parts(self, epbunch):
-        parts = []
-        for i in range(int(len(epbunch.fieldvalues[3:]) / 5)):
-            week_day_schedule_name = epbunch[f"ScheduleWeek_Name_{i + 1}"]
+    def _get_parts(self, idf_obj):
+        """Build YearScheduleParts from an idfkit Schedule:Year object.
 
-            FromMonth = epbunch[f"Start_Month_{i + 1}"]
-            ToMonth = epbunch[f"End_Month_{i + 1}"]
-            FromDay = epbunch[f"Start_Day_{i + 1}"]
-            ToDay = epbunch[f"End_Day_{i + 1}"]
+        The Schedule:Year object has repeating groups of five fields:
+        ``schedule_week_name_N``, ``start_month_N``, ``start_day_N``,
+        ``end_month_N``, ``end_day_N``.  We iterate until the fields are
+        missing or empty.
+
+        Args:
+            idf_obj: An idfkit object of type ``Schedule:Year``.
+
+        Returns:
+            list of YearSchedulePart
+        """
+        parts = []
+        idx = 1
+        while True:
+            week_name = getattr(idf_obj, f"schedule_week_name_{idx}", None)
+            if week_name is None or week_name == "":
+                break
+            from_month = getattr(idf_obj, f"start_month_{idx}", None)
+            from_day = getattr(idf_obj, f"start_day_{idx}", None)
+            to_month = getattr(idf_obj, f"end_month_{idx}", None)
+            to_day = getattr(idf_obj, f"end_day_{idx}", None)
+            if from_month is None:
+                break
+
+            # Resolve the week schedule -- first look in already-created objects,
+            # then fall back to building from the doc if available.
+            week_sched = next(
+                (
+                    x
+                    for x in self._CREATED_OBJECTS
+                    if x.Name == week_name and type(x).__name__ == "WeekSchedule"
+                ),
+                None,
+            )
+            if week_sched is None and self._doc is not None:
+                week_obj = self._doc["Schedule:Week:Daily"][week_name]
+                week_sched = WeekSchedule.from_idf_object(week_obj, doc=self._doc)
+
             parts.append(
                 YearSchedulePart(
-                    FromDay,
-                    FromMonth,
-                    ToDay,
-                    ToMonth,
-                    next(
-                        x
-                        for x in self._CREATED_OBJECTS
-                        if x.Name == week_day_schedule_name and type(x).__name__ == "WeekSchedule"
-                    ),
+                    int(from_day),
+                    int(from_month),
+                    int(to_day),
+                    int(to_month),
+                    week_sched,
                 )
             )
+            idx += 1
         return parts
 
     def to_ref(self):

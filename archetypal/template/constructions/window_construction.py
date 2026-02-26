@@ -7,11 +7,16 @@ Notes:
     archetypal.template module.
 """
 
+from __future__ import annotations
+
 import collections
 from enum import Enum
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from validator_collection import validators
+
+if TYPE_CHECKING:
+    import idfkit
 
 from archetypal.simple_glazing import calc_simple_glazing
 from archetypal.template.constructions.base_construction import LayeredConstruction
@@ -230,24 +235,18 @@ class WindowConstruction(LayeredConstruction):
         return cls(Layers=layers, id=_id, **data, **kwargs)
 
     @classmethod
-    def from_epbunch(cls, Construction, **kwargs):
-        """Create :class:`WindowConstruction` object from idf Construction object.
-
-        Example:
-            >>> from archetypal import IDF
-            >>> from archetypal.template.window_setting import WindowSetting
-            >>> idf = IDF("myidf.idf")
-            >>> construction_name = "Some construction name"
-            >>> WindowConstruction.from_epbunch(Name=construction_name, idf=idf)
+    def from_idf_object(cls, construction, doc: idfkit.Document, **kwargs):
+        """Create :class:`WindowConstruction` object from an idfkit Construction object.
 
         Args:
-            Construction (EpBunch): The Construction epbunch object.
+            construction: idfkit Construction object.
+            doc: idfkit Document for looking up referenced materials.
             **kwargs: Other keywords passed to the constructor.
         """
-        layers = WindowConstruction._layers_from_construction(Construction, **kwargs)
+        layers = WindowConstruction._layers_from_construction(construction, doc, **kwargs)
         catdict = {0: "Single", 1: "Single", 2: "Double", 3: "Triple", 4: "Quadruple"}
         category = catdict[len([lyr for lyr in layers if isinstance(lyr.Material, GlazingMaterial)])]
-        return cls(Name=Construction.Name, Layers=layers, Category=category, **kwargs)
+        return cls(Name=construction.name, Layers=layers, Category=category, **kwargs)
 
     @classmethod
     def from_shgc(
@@ -301,33 +300,6 @@ class WindowConstruction(LayeredConstruction):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def to_epbunch(self, idf):
-        """Convert self to a `Construction` epbunch given an idf model.
-
-        Args:
-            idf (IDF): The idf model in which the EpBunch is created.
-
-        .. code-block::
-
-            Construction,
-                B_Dbl_Air_Cl,                           !- Name
-                B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,     !- Outside Layer
-                AIR_0.006_B_Dbl_Air_Cl,                 !- Layer 2
-                B_Glass_Clear_3_0.003_B_Dbl_Air_Cl;     !- Layer 3
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        data = {"Name": self.Name}
-        for i, layer in enumerate(self.Layers):
-            mat = layer.to_epbunch(idf)
-            if i < 1:
-                data["Outside_Layer"] = mat.Name
-            else:
-                data[f"Layer_{i+1}"] = mat.Name
-
-        return idf.newidfobject("CONSTRUCTION", **data)
 
     def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.
@@ -452,55 +424,56 @@ class WindowConstruction(LayeredConstruction):
         return temperatures, r_values
 
     @staticmethod
-    def _layers_from_construction(construction, **kwargs):
-        """Retrieve layers for the Construction epbunch."""
+    def _layers_from_construction(construction, doc, **kwargs):
+        """Retrieve layers for the Construction from idfkit.
+
+        Args:
+            construction: idfkit Construction object.
+            doc: idfkit Document for looking up referenced materials.
+        """
+        from archetypal.idfkit_adapter import get_construction_layers
+
         layers = []
-        for field in construction.fieldnames[2:]:
-            # Loop through the layers from the outside layer towards the
-            # indoor layers and get the material they are made of.
-            material = construction.get_referenced_object(field) or kwargs.get("material", None)
-            if material:
-                # Create the WindowMaterial:Glazing or the WindowMaterial:Gas
-                # and append to the list of layers
-                if material.key.upper() == "WindowMaterial:Glazing".upper():
-                    material_obj = GlazingMaterial(
-                        Name=material.Name,
-                        Conductivity=material.Conductivity,
-                        SolarTransmittance=material.Solar_Transmittance_at_Normal_Incidence,
-                        SolarReflectanceFront=material.Front_Side_Solar_Reflectance_at_Normal_Incidence,
-                        SolarReflectanceBack=material.Back_Side_Solar_Reflectance_at_Normal_Incidence,
-                        VisibleTransmittance=material.Visible_Transmittance_at_Normal_Incidence,
-                        VisibleReflectanceFront=material.Front_Side_Visible_Reflectance_at_Normal_Incidence,
-                        VisibleReflectanceBack=material.Back_Side_Visible_Reflectance_at_Normal_Incidence,
-                        IRTransmittance=material.Infrared_Transmittance_at_Normal_Incidence,
-                        IREmissivityFront=material.Front_Side_Infrared_Hemispherical_Emissivity,
-                        IREmissivityBack=material.Back_Side_Infrared_Hemispherical_Emissivity,
-                        DirtFactor=material.Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance,
-                        Optical=material.Optical_Data_Type,
-                        OpticalData=material.Window_Glass_Spectral_Data_Set_Name,
-                    )
+        for material in get_construction_layers(doc, construction.name):
+            mat_type = material.type_name.upper()
 
-                    material_layer = MaterialLayer(material_obj, material.Thickness)
+            if mat_type == "WINDOWMATERIAL:GLAZING":
+                material_obj = GlazingMaterial(
+                    Name=material.name,
+                    Conductivity=material.conductivity,
+                    SolarTransmittance=material.solar_transmittance_at_normal_incidence,
+                    SolarReflectanceFront=material.front_side_solar_reflectance_at_normal_incidence,
+                    SolarReflectanceBack=material.back_side_solar_reflectance_at_normal_incidence,
+                    VisibleTransmittance=material.visible_transmittance_at_normal_incidence,
+                    VisibleReflectanceFront=material.front_side_visible_reflectance_at_normal_incidence,
+                    VisibleReflectanceBack=material.back_side_visible_reflectance_at_normal_incidence,
+                    IRTransmittance=material.infrared_transmittance_at_normal_incidence,
+                    IREmissivityFront=material.front_side_infrared_hemispherical_emissivity,
+                    IREmissivityBack=material.back_side_infrared_hemispherical_emissivity,
+                    DirtFactor=material.dirt_correction_factor_for_solar_and_visible_transmittance,
+                    Optical=material.optical_data_type,
+                    OpticalData=material.window_glass_spectral_data_set_name,
+                )
+                material_layer = MaterialLayer(material_obj, material.thickness)
 
-                elif material.key.upper() == "WindowMaterial:Gas".upper():
-                    # Todo: Make gas name generic, like in UmiTemplateLibrary Editor
-                    material_obj = GasMaterial(Name=material.Gas_Type.upper(), Conductivity=0.02)
-                    material_layer = GasLayer(material_obj, material.Thickness)
-                elif material.key.upper() == "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM":
-                    glass_properties = calc_simple_glazing(
-                        material.Solar_Heat_Gain_Coefficient,
-                        material.UFactor,
-                        material.Visible_Transmittance,
-                    )
-                    material_obj = GlazingMaterial(Name=material.Name, **glass_properties)
+            elif mat_type == "WINDOWMATERIAL:GAS":
+                material_obj = GasMaterial(Name=material.gas_type.upper(), Conductivity=0.02)
+                material_layer = GasLayer(material_obj, material.thickness)
 
-                    material_layer = MaterialLayer(material_obj, glass_properties["Thickness"])
-                    layers.append(material_layer)
-                    break
-                else:
-                    continue
-
+            elif mat_type == "WINDOWMATERIAL:SIMPLEGLAZINGSYSTEM":
+                glass_properties = calc_simple_glazing(
+                    material.solar_heat_gain_coefficient,
+                    material.u_factor,
+                    material.visible_transmittance,
+                )
+                material_obj = GlazingMaterial(Name=material.name, **glass_properties)
+                material_layer = MaterialLayer(material_obj, glass_properties["Thickness"])
                 layers.append(material_layer)
+                break
+            else:
+                continue
+
+            layers.append(material_layer)
         return layers
 
     def _layered_r_value_initial(self, gap_count, delta_t_guess=15, avg_t_guess=273.15, wind_speed=6.7):

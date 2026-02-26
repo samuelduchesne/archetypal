@@ -54,7 +54,7 @@ def clean_config(config):
 
 # List fixtures that are located outside of conftest.py so that they can be
 # used in other tests
-# Removed import of test_dataportals as plugin to avoid unnecessary test loading
+pytest_plugins = []
 
 ALL = set("darwin linux win32".split())
 

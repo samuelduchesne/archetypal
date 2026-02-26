@@ -1,12 +1,13 @@
 """archetypal GlazingMaterial."""
 
+from __future__ import annotations
+
 import collections
 from typing import ClassVar
 
 from sigfig import round
 from validator_collection import validators
 
-from archetypal.idfclass.extensions import EpBunch
 from archetypal.template.materials.material_base import MaterialBase
 from archetypal.template.umi_base import UmiBase
 from archetypal.utils import log
@@ -304,54 +305,6 @@ class GlazingMaterial(MaterialBase):
         data_dict["Name"] = self.Name
 
         return data_dict
-
-    def to_epbunch(self, idf, thickness) -> EpBunch:
-        """Convert self to an EpBunch given an idf model and a thickness.
-
-        Args:
-            idf (IDF): An IDF model.
-            thickness (float): the thickness of the material.
-
-        .. code-block::
-
-            WindowMaterial:Glazing,
-                B_Glass_Clear_3_0.003_B_Dbl_Air_Cl,    !- Name
-                SpectralAverage,          !- Optical Data Type
-                SpectralAverage,          !- Window Glass Spectral Data Set Name
-                0.003,                    !- Thickness
-                0.83,                     !- Solar Transmittance at Normal Incidence
-                0.07,                     !- Front Side Solar Reflectance at Normal Incidence
-                0.07,                     !- Back Side Solar Reflectance at Normal Incidence
-                0.89,                     !- Visible Transmittance at Normal Incidence
-                0.08,                     !- Front Side Visible Reflectance at Normal Incidence
-                0.08,                     !- Back Side Visible Reflectance at Normal Incidence
-                0,                        !- Infrared Transmittance at Normal Incidence
-                0.84,                     !- Front Side Infrared Hemispherical Emissivity
-                0.84,                     !- Back Side Infrared Hemispherical Emissivity
-                0.9,                      !- Conductivity
-                1;                        !- Dirt Correction Factor for Solar and Visible Transmittance
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        return idf.newidfobject(
-            "WINDOWMATERIAL:GLAZING",
-            Name=self.Name,
-            Optical_Data_Type="SpectralAverage",
-            Window_Glass_Spectral_Data_Set_Name="SpectralAverage",
-            Thickness=thickness,
-            Solar_Transmittance_at_Normal_Incidence=self.SolarTransmittance,
-            Front_Side_Solar_Reflectance_at_Normal_Incidence=self.SolarReflectanceFront,
-            Back_Side_Solar_Reflectance_at_Normal_Incidence=self.SolarReflectanceBack,
-            Visible_Transmittance_at_Normal_Incidence=self.VisibleTransmittance,
-            Front_Side_Visible_Reflectance_at_Normal_Incidence=self.VisibleReflectanceFront,
-            Back_Side_Visible_Reflectance_at_Normal_Incidence=self.VisibleReflectanceBack,
-            Infrared_Transmittance_at_Normal_Incidence=self.IRTransmittance,
-            Front_Side_Infrared_Hemispherical_Emissivity=self.IREmissivityFront,
-            Back_Side_Infrared_Hemispherical_Emissivity=self.IREmissivityBack,
-            Conductivity=self.Conductivity,
-            Dirt_Correction_Factor_for_Solar_and_Visible_Transmittance=self.DirtFactor,
-        )
 
     def mapping(self, validate=False):
         """Get a dict based on the object properties, useful for dict repr.

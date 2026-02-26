@@ -110,21 +110,6 @@ class MaterialLayer:
             Thickness=round(self.Thickness, decimals=3),
         )
 
-    def to_epbunch(self, idf):
-        """Convert self to an EpBunch given an IDF model.
-
-        Notes:
-            The object is added to the idf model.
-            The thickness is passed to the epbunch.
-
-        Args:
-            idf (IDF): An IDF model.
-
-        Returns:
-            EpBunch: The EpBunch object added to the idf model.
-        """
-        return self.Material.to_epbunch(idf, self.Thickness)
-
     def mapping(self):
         """Get a dict based on the object properties, useful for dict repr."""
         return {"Material": self.Material, "Thickness": self.Thickness}

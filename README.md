@@ -11,6 +11,20 @@
 Retrieve, construct, simulate, convert and analyze building simulation
 templates
 
+> [!NOTE]
+> **Project status and future direction**
+>
+> Active development of the broader EnergyPlus tooling has moved to a new
+> project, [**idfkit**](https://github.com/idfkit/idfkit). New features,
+> bug fixes, and ongoing maintenance will primarily land there.
+>
+> `archetypal` will continue to exist but will receive only limited
+> maintenance going forward. Over time, its scope will be reduced to the
+> **IDF complexity reduction** feature used to generate
+> [UMI](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html)
+> template libraries. Users relying on other functionality are encouraged
+> to migrate to [idfkit](https://github.com/idfkit/idfkit).
+
 ## Overview
 
 **Archetypal** is a Python package that helps handle building

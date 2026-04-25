@@ -11,19 +11,27 @@
 Retrieve, construct, simulate, convert and analyze building simulation
 templates
 
-> [!NOTE]
-> **Project status and future direction**
+> [!IMPORTANT]
+> ## Meet the next generation: [**idfkit**](https://github.com/idfkit/idfkit)
 >
-> Active development of the broader EnergyPlus tooling has moved to a new
-> project, [**idfkit**](https://github.com/idfkit/idfkit). New features,
-> bug fixes, and ongoing maintenance will primarily land there.
+> The story of `archetypal` continues in a brand-new, modern project:
+> [**idfkit**](https://github.com/idfkit/idfkit) — a faster, cleaner, and
+> more powerful toolkit for working with EnergyPlus IDF models in Python.
+>
+> Everything you loved about `archetypal` is being rebuilt with a sharper
+> focus, a friendlier API, and a roadmap packed with new features.
+> If you build, transform, or analyze IDF models, **idfkit is where the
+> action is.** New features, bug fixes, and active development now live
+> there — come check it out, star the repo, and join us!
+>
+> 👉 **[github.com/idfkit/idfkit](https://github.com/idfkit/idfkit)**
 >
 > `archetypal` will continue to exist but will receive only limited
-> maintenance going forward. Over time, its scope will be reduced to the
+> maintenance going forward. Over time, its scope will be narrowed to the
 > **IDF complexity reduction** feature used to generate
 > [UMI](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html)
-> template libraries. Users relying on other functionality are encouraged
-> to migrate to [idfkit](https://github.com/idfkit/idfkit).
+> template libraries. For everything else, **migrate to idfkit** and
+> enjoy the upgrade. 🚀
 
 ## Overview
 

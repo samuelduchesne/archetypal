@@ -12,6 +12,7 @@ Retrieve, construct, simulate, convert and analyze building simulation
 templates
 
 > [!IMPORTANT]
+>
 > ## Meet the next generation: [**idfkit**](https://idfkit.com)
 >
 > The story of `archetypal` continues in a brand-new, modern project:

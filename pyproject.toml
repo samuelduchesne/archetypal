@@ -43,6 +43,8 @@ tomli = "^2.0.1"
 transforms3d = "^0.4.1"
 
 [tool.poetry.group.dev.dependencies]
+# Transitive via matplotlib; pins the patched release for GHSA-58r4-6rv3-gfh8 (needs Python >= 3.11).
+pillow = {version = ">=13.0.0", python = ">=3.11"}
 pytest = "^8.2.2"
 pytest-cov = "^5.0.0"
 pytest-xdist = "^3.6.1"

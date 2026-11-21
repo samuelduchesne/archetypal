@@ -94,8 +94,15 @@ reproducing v2's design by inertia.
 - The public API MUST be fully typed and documented, and every public behaviour MUST be tested.
 - User-facing documentation MUST always be in sync with the codebase. A change to public
   behaviour is not complete until the documentation describing it is updated in the same pull
-  request. Documentation covers tutorials, how-to guides, reference and explanation (Diátaxis),
-  and its examples MUST run against the current release.
+  request. Its examples MUST run against the current release.
+- User-facing documentation MUST follow the Diátaxis framework. Every page belongs to exactly one
+  of four kinds, and its content serves that kind only:
+  - **Tutorials** teach a newcomer by doing, through one guided, working path.
+  - **How-to guides** solve one task for a user who already knows what they want.
+  - **Reference** describes the API, data model and command line, completely and neutrally.
+  - **Explanation** gives the why: concepts, physical assumptions and design decisions (for
+    example, what a reduction conserves and why).
+  A page that mixes kinds MUST be split.
 - archetypal supports the Python versions its dependencies jointly support (3.10–3.12 at
   ratification, bounded by epinterface).
 - The project uses uv for environments and builds, Keep a Changelog for `CHANGELOG.md`, and
@@ -126,8 +133,8 @@ Version 2 is kept on a `v2.x` maintenance branch that receives security fixes on
   the roadmap.
 - Every plan MUST pass a Constitution Check against Principles I–IV before tasks are generated,
   and record any justified exception.
-- Every plan MUST name the user-facing documentation it adds or changes, and its tasks MUST
-  include those documentation updates.
+- Every plan MUST name the user-facing documentation it adds or changes, with its Diátaxis kind,
+  and its tasks MUST include those documentation updates.
 - Upstream changes that a spec depends on (idfkit, epinterface) MUST be listed as dependencies of
   that spec, and the spec cannot be marked implemented until they are released.
 
@@ -144,4 +151,4 @@ request that edits this file, states the reason, and bumps the version:
 Reviewers verify compliance with this constitution on every pull request. Any exception MUST be
 justified in the relevant plan and recorded there.
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.2.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

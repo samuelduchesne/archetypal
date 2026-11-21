@@ -83,11 +83,14 @@ correctness will be judged. It MUST NOT prescribe algorithms, data structures, o
 organization. Those belong to the plan (`plan.md`), which MUST satisfy the specification and this
 constitution.
 
-Existing v2 behaviour is evidence for a specification, never a requirement of it. v3 capabilities
-are specified afresh; v2 code is ported only where a plan shows it meets the specification.
+Existing v2 behaviour is evidence for a specification, never a requirement of it. Every v3
+capability is specified afresh and implemented afresh: no v2 code is carried into v3 as is. A plan
+MAY consult v2 code to understand past behaviour, but what v3 ships is written to v3's standards
+(strict typing, tests, documentation; Principle VI).
 
-*Rationale:* v3 rewrites reduction and aggregation. Fixing the "what" first keeps the rewrite from
-reproducing v2's design by inertia.
+*Rationale:* v2 predates strict typing and today's tooling, and its weaknesses are spread through
+the code. Fixing the "what" first, then writing everything new, keeps v3 from reproducing v2's
+design by inertia.
 
 ### VI. A Dependable Public Library
 
@@ -151,4 +154,4 @@ request that edits this file, states the reason, and bumps the version:
 Reviewers verify compliance with this constitution on every pull request. Any exception MUST be
 justified in the relevant plan and recorded there.
 
-**Version**: 1.2.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.3.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

@@ -1,18 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (none) → 1.0.0
-Bump rationale: initial roadmap, harvested from the v3 design conversation (2026-11-21) and
-constitution 1.2.0.
+Version change: 1.0.0 → 1.1.0
+Bump rationale: MINOR — C-04 broadened from reduction to all of v3; new decision C-10 (no
+release regresses v2's core capability); new open question Q6; UP-4 note made precise.
 
 Changes this revision:
-  - Added specs 001–007 (v3.0: 001–003; v3.1: 004–005; v3.2: 006–007) and 008 (undecided)
-  - Recorded decisions C-01 … C-09
-  - Recorded upstream prerequisites UP-1 … UP-5
-  - Recorded open questions Q1 … Q5
+  - C-04: "reduction is rewritten" → "nothing from v2 is ported as is" (constitution 1.3.0, V)
+  - Added C-10: v3.0 ships only with 001, 002 and 003 together
+  - UP-4: ladybug is used only to read EPW ground temperatures
+  - Added Q6: archetype zone layouts richer than core/perimeter
+  - 001 notes: 001 is not a release on its own
 
-Specs affected: 001–008
-Open questions added/resolved: Q1–Q5 added; none resolved
+Specs affected: 001, 002, 003
+Open questions added/resolved: Q6 added; none resolved
+
+Previous revision (1.0.0, 2026-11-21): initial roadmap with specs 001–008, decisions
+C-01 … C-09, upstream prerequisites UP-1 … UP-5 and open questions Q1 … Q5, harvested from the
+v3 design conversation and constitution 1.2.0.
 
 Notes: No ADRs (docs/adr/ absent) and no PRD detected. Decisions live inline as C-xx.
 The upstream items are pull requests to other repositories (epinterface, idfkit); they are not
@@ -63,11 +68,14 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   definition. Rather than add a building-level wrapper in archetypal, we extend epinterface to
   support separate core and perimeter zone components ourselves and contribute it by pull
   request (UP-2).
-- **C-04 — Reduction is rewritten, not ported:** both the reduction workflow (`reduce`) and
-  the aggregation of zone properties (`combine`) are specified afresh for v3. v2's behaviour is
-  evidence, not a requirement. Aggregated schedules are expressed as EnergyPlus
-  `Schedule:Compact` objects. The rewrite aims to be more correct and faster than v2, and must
-  show it (Q1). *Constitution IV, V.*
+- **C-04 — Nothing from v2 is ported as is:** every v3 capability is specified and written
+  afresh to v3's standards (strict typing, tests, documentation). v2 predates strict typing and
+  current tooling; its code may be read to understand past behaviour, never copied in. This
+  includes the reduction workflow (`reduce`) and the aggregation of zone properties
+  (`combine`). Aggregated schedules are expressed as EnergyPlus `Schedule:Compact` objects. The
+  reduction rewrite aims to be more correct and faster than v2, and must show it (Q1).
+  *Constitution IV, V.*
+  ~~Revision 1.0.0 limited this decision to reduction.~~
 - **C-05 — Calibration is out of scope for now:** no calibration against metered data in v3.
   *Constitution III.*
 - **C-06 — Out of scope:** simulation orchestration and batch runs, building geometry and
@@ -78,6 +86,10 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   Open PR #554 (moving v2 onto idfkit) is superseded by v3, which removes the code it ports.
 - **C-09 — Documentation:** user-facing documentation follows Diátaxis and is updated in the
   same pull request as the behaviour it describes. *Constitution VI.*
+- **C-10 — No release regresses v2's core capability:** v2's core workflow is "reduce a
+  detailed EnergyPlus model and get a UMI template library". v3.0 ships only when 001, 002 and
+  003 are all implemented, so a v3.0 user can still do that (reduce to SBEM, then write UMI
+  JSON). The spec numbers order the writing, not separate releases.
 
 ## Upstream Prerequisites
 
@@ -92,6 +104,9 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   repository, so no v3 release can ship before this.
 - **UP-4 — epinterface's heavy dependencies become optional extras** (Prisma, geopandas,
   ladybug). Desirable, not blocking; keeps archetypal's install small (C-06, constitution III).
+  ladybug-core is used once, in `sbem/builder.py`, to read monthly ground temperatures from the
+  EPW file; idfkit's weather module is the likely replacement, which would drop the dependency
+  rather than make it optional.
 - **UP-5 — idfkit: `Schedule:Compact` creation aware of day types** (weekday, weekend,
   holiday). Optional; only if spec 002's plan shows idfkit is the right home for it.
 
@@ -114,8 +129,9 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 - **Scope (out):** reduction and translation behaviour themselves (002, 003).
 - **Depends on:** UP-1, UP-3
 - **Governed by:** C-01, C-07, C-08, C-09
-- **Notes:** Ordered first because 002 and 003 need somewhere to live, but it can be specified
-  alongside them. Whether the `reduce` command keeps its v2 name and arguments is a question for
+- **Notes:** Not a release on its own (C-10): it ships together with 002 and 003 as v3.0.
+  Ordered first because 002 and 003 need somewhere to live, but it can be specified alongside
+  them. Whether the `reduce` command keeps its v2 name and arguments is a question for
   this spec.
 
 ### 002 — Reduce a detailed EnergyPlus model to an SBEM archetype  [status: planned]
@@ -231,6 +247,13 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   so archetypal is not broken by schema changes it did not plan for?
 - **Q4 — Licensing of published sources** (TABULA, and any building-stock data used by 006)
   for redistribution of derived archetypes.
+- **Q6 — Can an archetype hold more than a core and a perimeter zone?** Today an SBEM
+  `Model` holds one zone definition applied to every zone of a shoebox (zoning is either
+  core/perimeter or one zone per storey). A hospital reduced to two zones loses the difference
+  between operating rooms, patient rooms and corridors. An archetype could instead hold several
+  zone definitions (for example by space use and by exposure) with their shares of floor area,
+  core/perimeter being the simplest case. Decides the scope of UP-2 and of 002, and what 003
+  must report as lost, since UMI holds only two zones. May revise C-03.
 - **Q5 — Coordination with the epinterface authors** on scope: epinterface already has a
   composer and a ClimateStudio reader; confirm which of "apply" (006) and translators (008)
   belong in archetypal.
@@ -246,4 +269,4 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 
 ---
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.1.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

@@ -37,6 +37,11 @@ what "survives the trip" means and how the user is told when something does not.
   given that a UMI template does not store them? → A: Nowhere fixed: the archetype is read with
   a "core/perimeter by geometry" layout whose shares are set by the building's geometry when it
   is applied, as UMI does. On writing, fixed shares are dropped and reported as lost.
+- Q: When an archetype with several zone groups is written to UMI without its reduction report
+  (edited, or built another way), how is it merged to core/perimeter? → A: From its current
+  groups; where report data is missing (for example delivered and consumed energy for
+  efficiencies), floor-area weighting is used instead and each such parameter is listed in the
+  loss report as approximate.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -125,6 +130,11 @@ original and result field by field.
 
 ### Edge Cases
 
+- **A multi-group archetype without its reduction report** (edited, or not produced by spec
+  002): it is still written; the merge to core/perimeter uses its current groups and
+  floor-area weighting where report data is missing, and the loss report marks those
+  parameters as approximate (FR-006).
+
 - **Library with no building templates** (components only): reading produces no archetypes and
   says so; the components are not lost silently but listed as unused.
 - **Unused components** (defined but referenced by no building template): reported as unused;
@@ -167,7 +177,10 @@ original and result field by field.
   library file that UMI opens without errors.
 - **FR-006**: An archetype with more than two zone groups MUST be merged to core/perimeter
   using spec 002's rules (FR-010 of spec 002) before writing, and the merge MUST be reported as
-  a loss.
+  a loss. When the archetype's reduction report is not available, the merge MUST start from the
+  archetype's current groups and use floor-area weighting for any parameter whose spec 002 rule
+  needs report data (for example efficiencies, which need delivered and consumed energy); each
+  such parameter MUST be listed in the loss report as approximate.
 - **FR-006a**: Writing MUST drop an archetype's fixed floor-area shares, because UMI derives
   them from each building's geometry, and MUST report them as lost.
 - **FR-007**: Components shared by several archetypes MUST appear once in the written library;

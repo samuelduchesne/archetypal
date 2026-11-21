@@ -1,6 +1,25 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.2.2 → 1.3.0
+Bump rationale: MINOR — new upstream prerequisite UP-6; UP-1, UP-2, UP-4 and UP-5 scope
+expanded from the 002 plan's research; UP-3 recorded as met.
+
+Changes this revision:
+  - UP-1: also requires SBEM components importable without archetypal, eppy or Prisma, and
+    PyYAML declared
+  - UP-2: adds the SBEM fields the 002 plan found missing (orientation ratios, infiltration
+    schedule, heat-recovery effectiveness, holiday and design-day slots, save/load helpers)
+  - UP-3: met (epinterface 1.0.0–1.5.0 on PyPI)
+  - UP-4: also loosens exact pins (click, pandas)
+  - UP-5: also a faster day-profile evaluation if 002's benchmark needs it
+  - UP-6 (new): idfkit Schedule:Year evaluation fix
+  - 002: plan written (specs/002-reduce-to-sbem/plan.md)
+
+Specs affected: 002 (and 001, 003 through UP-1/UP-2)
+Open questions added/resolved: none
+
+Previous revision (1.2.2):
 Version change: 1.2.1 → 1.2.2
 Bump rationale: PATCH — status transition (003 planned → specced).
 
@@ -176,20 +195,34 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
 Not archetypal specs. Pull requests to other repositories that archetypal specs depend on.
 
 - **UP-1 — epinterface uses idfkit instead of archetypal/eppy.** Removes the circular
-  dependency (epinterface currently pins `archetypal==2.18.10`). A draft PR is open.
+  dependency (epinterface currently pins `archetypal==2.18.10`). A draft PR is open. It must
+  also leave `epinterface.sbem.components` importable without archetypal, eppy or a generated
+  Prisma client, and declare PyYAML (imported by `sbem/builder.py`, undeclared in 1.5.0).
+  *Blocking for 002.*
 - **UP-2 — epinterface `Model` holds several zone groups** (zone definition plus floor-area
   share, C-03), plus whatever simulation-relevant fields the UMI field mapping shows are missing
-  (C-13). Built by us, contributed by PR.
+  (C-13). Built by us, contributed by PR. The 002 plan's research adds: envelope and window
+  ratios by orientation, an infiltration schedule, numeric heat-recovery effectiveness,
+  holiday and design-day slots in `WeekComponent`, and save/load helpers with a schema version.
+  Zone groups block 002; each added field does not (its loss is reported until it lands).
   ~~Revision 1.0.0: separate core and perimeter zones only.~~
 - **UP-3 — epinterface is published on PyPI.** A package on PyPI cannot depend on a git
-  repository, so no v3 release can ship before this.
+  repository, so no v3 release can ship before this. **Met:** releases 1.0.0–1.5.0 are on PyPI
+  (checked 2026-11-21).
 - **UP-4 — epinterface's heavy dependencies become optional extras** (Prisma, geopandas,
   ladybug). Desirable, not blocking; keeps archetypal's install small (C-06, constitution III).
   ladybug-core is used once, in `sbem/builder.py`, to read monthly ground temperatures from the
   EPW file; idfkit's weather module is the likely replacement, which would drop the dependency
-  rather than make it optional.
+  rather than make it optional. Also loosen 1.5.0's exact pins (`click==8.1.7`,
+  `pandas<2.3`), which would otherwise constrain every archetypal user.
 - **UP-5 — idfkit: `Schedule:Compact` creation aware of day types** (weekday, weekend,
-  holiday). Optional; only if spec 002's plan shows idfkit is the right home for it.
+  holiday). Optional; only if spec 002's plan shows idfkit is the right home for it. The 002
+  plan adds: a faster day-profile schedule evaluation, needed only if 002's performance
+  benchmark (about 55 ms per schedule-year in 1.3.0rc2) misses its budget.
+- **UP-6 — idfkit: `Schedule:Year` evaluation fails on loaded models.** In 1.3.0rc2,
+  `schedules/year.py` calls `int('1.0')` on month and day fields parsed as floats, so every
+  `Schedule:Year` read from a file raises `ValueError`. Fix before idfkit 1.3.0 final. 002
+  bridges it temporarily (plan, Complexity Tracking). *Blocking for 002's release.*
 
 ## Planned Specs
 
@@ -234,9 +267,10 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   demonstrated on reference buildings; the matching explanation page in the docs.
 - **Scope (out):** algorithms and code structure (the plan's job, C-04); calibration (C-05);
   generating EnergyPlus from the archetype (epinterface).
-- **Depends on:** 001, UP-1, UP-2
+- **Depends on:** 001, UP-1, UP-2, UP-6
 - **Governed by:** C-02, C-03, C-04, C-11, C-12
-- **Spec dir:** specs/002-reduce-to-sbem/
+- **Spec dir:** specs/002-reduce-to-sbem/ (plan written; research.md raises spec feedback F-1
+  on SC-002 and F-2 on FR-023 for `/speckit-analyze`)
 - **Notes:** The spec states the *what* and *why* of reduction, not the *how*, so that
   `/speckit-plan` can design the rewrite freely. Evidence gathered from v2 for the spec's
   motivation: perimeter aggregation includes core zones; zone multipliers are applied by
@@ -348,4 +382,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.2.2 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.3.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

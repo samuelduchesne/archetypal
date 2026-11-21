@@ -1,113 +1,234 @@
-# Implementation Plan: [FEATURE]
+# Implementation Plan: Reduce a detailed EnergyPlus model to an SBEM archetype
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Branch**: `claude/admiring-meitner-1f43qk` (spec 002) | **Date**: 2026-11-21 |
+**Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
-
-**Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
+**Input**: Feature specification from `specs/002-reduce-to-sbem/spec.md`
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+Reduction reads a detailed EnergyPlus model and its simulation results and produces one SBEM
+archetype plus a reduction report.
+
+**Steps.**
+
+1. **Read.** archetypal reads what EnergyPlus computed (floor areas, multipliers, surfaces,
+   U-factors, installed loads, delivered and consumed energy) from the results' SQLite file
+   through idfkit. It reads schedules, thermostats, hot water and air-side equipment from the
+   model, also through idfkit.
+2. **Group.** It classifies each conditioned zone by exposure and space use, and forms zone
+   groups for the chosen layout.
+3. **Ledger.** For each group it keeps a **ledger** of conserved totals: areas, UA, heat
+   capacity, installed gains, hourly profiles, airflows, hot water, and delivered and consumed
+   energy by fuel.
+4. **Convert.** It turns each ledger into epinterface SBEM components. Intensity = conserved
+   total ÷ basis. Schedules become representative days per month. Envelopes become equivalent
+   three-layer constructions.
+
+**Merging.** Merging works on ledgers, so a coarser layout is the same computation whether it
+starts from the detailed model or from a finer archetype's report.
+
+**Comparison.** A separate function compares two sets of results (detailed model and
+archetype) by end use and peak.
+
+**Tooling.** The project uses the project-kit-cookiecutter template: src layout, uv, ruff,
+pyright strict, MkDocs. The unit test tier must finish within two minutes.
+
+All decisions and their evidence are in [research.md](research.md).
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
+**Language/Version**: Python 3.10–3.12 (`requires-python = ">=3.10,<3.13"`, bounded by
+epinterface; research R15, R17).
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
+**Primary Dependencies**:
+- epinterface (SBEM data model; first release with UP-1 and UP-2);
+- idfkit `>=1.3,<2` (model I/O, schedule evaluation, SQLite and tabular results, single
+  simulation run);
+- numpy;
+- pydantic v2 (research R17).
 
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
+**Storage**: files only. The archetype is `<name>.sbem.json` (epinterface's pydantic JSON) and
+the report is `<name>.report.json` (archetypal's JSON Schema); research R14.
 
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+**Testing**: pytest with markers `energyplus` and `reference`; pytest-timeout; hypothesis;
+pytest-cov. The unit tier must take ≤ 120 s, enforced by a session hook; research R16.
 
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+**Target Platform**: Linux, macOS and Windows; pure Python. EnergyPlus 24.2 is needed only for
+the optional single run (FR-002) and the integration and reference tiers.
 
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: Python library (public API). Spec 001 owns the command line that wraps it.
 
-**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
+**Performance Goals**:
+- reduce the largest reference building in < 10 s excluding simulation (SC-008);
+- the whole reference set at least 10× faster than v2.
 
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
+Internal budget: schedule evaluation ≤ 7 s on the largest model (R5).
 
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
+**Constraints**:
+- deterministic, byte-identical output (FR-005);
+- conserved totals within 0.1 % (SC-005);
+- no reimplementation of idfkit or epinterface capabilities (constitution I);
+- no simulation batches (constitution III).
 
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Scale/Scope**:
+- reference set: 16 DOE commercial prototypes × 3 climate zones + 1 residential prototype,
+  i.e. 49 buildings;
+- largest model: the hospital and large-office prototypes, with tens of zones and roughly 150
+  schedules.
+
+No item is left as NEEDS CLARIFICATION. Every unknown is resolved in research.md: R1–R17, plus
+spec feedback F-1 and F-2.
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: checked before Phase 0 and re-checked after Phase 1 design.*
 
-[Gates determined based on constitution file]
+| Principle | Check | Status |
+|---|---|---|
+| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls. The SBEM model and its JSON are epinterface's. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6. There is one temporary bridge: normalising `Schedule:Year` month and day fields to `int` until UP-6. It is tracked and removed when UP-6 is released. | Pass (bridge recorded below) |
+| **II. One archetype data model** | The output is SBEM only. The ledger is internal working state, not a second archetype model: it is never written as an archetype, and only its totals appear in the report (needed for FR-010 and FR-022). | Pass |
+| **III. Small and focused** | Four runtime dependencies, each justified (R17). There is at most one simulation run, on request. No geometry generation (FR-024 carries ratios only). No calibration. | Pass |
+| **IV. Physically correct and verifiable** | Each SBEM parameter is tied to a conservation rule (data-model.md, "Derivation rules"). The reference tier measures SC-001–SC-008 against stated targets, including v2's baseline (SC-004). | Pass, with spec feedback F-1 (SC-002 and fan end uses) for `/speckit-analyze` |
+| **V. What and why before how** | All "how" lives here and in research.md. No v2 code is carried over; v2 is read only to run the SC-004 baseline in a separate environment. | Pass |
+| **VI. Dependable public library** | Strict pyright, py.typed, ruff with `D` (Google docstrings), public behaviour tested, docs in the same PR (below), Python 3.10–3.12, uv, Keep a Changelog. | Pass |
+
+**Gate result: PASS.** The only exception is the temporary bridge for UP-6, recorded in
+Complexity Tracking.
+
+### Documentation this plan adds (constitution VI, FR-030)
+
+| Page | Diátaxis kind | Content |
+|---|---|---|
+| `docs/explanation/reduction.md` | Explanation | What reduction conserves and why: FR-014–FR-024, exposure and space use, representative days, equivalent constructions, what SBEM cannot hold. |
+| `docs/how-to/reduce-a-model.md` | How-to | Reduce a model with existing results, or with the single run; choose a layout and threshold; supply a space-use mapping. |
+| `docs/how-to/merge-an-archetype.md` | How-to | Merge an archetype to a coarser layout. |
+| `docs/how-to/compare-results.md` | How-to | Compare detailed and archetype results. |
+| `docs/reference/reduction-report.md` | Reference | Every field of the report, generated from its JSON Schema. |
+| `docs/reference/results-requirements.md` | Reference | The EnergyPlus outputs reduction needs, generated from `RESULTS_REQUIREMENTS`. |
+| `docs/reference/api/reduction.md` | Reference | mkdocstrings page for `archetypal.reduction` and `archetypal.comparison`. |
+
+Every code example in these pages runs in CI against the unit fixtures (docs-test job).
+
+## Upstream dependencies (constitution: Development Workflow)
+
+Spec 002 cannot be marked implemented until the blocking items are released.
+
+| Item | Repository | What | Blocking? |
+|---|---|---|---|
+| UP-1 | epinterface | Depend on idfkit instead of `archetypal==2.18.10`. `sbem.components` must be importable without archetypal, eppy or a generated Prisma client, and PyYAML must be declared. | Yes |
+| UP-2 | epinterface | Several zone groups per archetype. It also adds these fields, which this plan's research showed are missing: per-orientation envelope and window ratios (FR-024), an infiltration schedule (FR-018), numeric heat-recovery effectiveness (FR-019), holiday and design-day slots in `WeekComponent` (FR-023), and save/load helpers with a schema version (R14). | Zone groups: yes. Each extra field: no (until it lands, its loss is reported under FR-026). |
+| UP-3 | epinterface | Published on PyPI. | **Already met**: 15 releases on PyPI, 1.0.0–1.5.0. |
+| UP-4 | epinterface | Heavy dependencies become optional (Prisma, geopandas, ladybug), and exact pins are loosened (`click==8.1.7`, `pandas<2.3`). | No (install size and conflicts) |
+| UP-5 | idfkit | Day-type-aware `Schedule:Compact` creation. Now also a faster day-profile evaluation if the R5 benchmark fails. | No |
+| UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final. | Yes for release; bridged meanwhile |
+
+The roadmap is updated with UP-6, the broader UP-2 and UP-5 scope, and UP-3 marked as met.
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/[###-feature]/
-├── plan.md              # This file (/speckit-plan command output)
-├── research.md          # Phase 0 output (/speckit-plan command)
-├── data-model.md        # Phase 1 output (/speckit-plan command)
-├── quickstart.md        # Phase 1 output (/speckit-plan command)
-├── contracts/           # Phase 1 output (/speckit-plan command)
-└── tasks.md             # Phase 2 output (/speckit-tasks command - NOT created by /speckit-plan)
+specs/002-reduce-to-sbem/
+├── plan.md              # This file
+├── research.md          # Phase 0: decisions R1–R17, spec feedback F-1, F-2
+├── data-model.md        # Phase 1: entities, ledger, derivation rules, pipeline states
+├── quickstart.md        # Phase 1: validation scenarios
+├── contracts/
+│   ├── python-api.md          # public functions and types
+│   ├── reduction-report.md    # report file contract (fields, invariants)
+│   └── results-requirements.md# EnergyPlus outputs reduction needs
+├── checklists/requirements.md
+└── tasks.md             # Phase 2 (/speckit-tasks; not created here)
 ```
 
-### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
+### Source Code (repository root, `v3` line)
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+src/archetypal/
+├── __init__.py              # public re-exports: reduce, merge, compare, Layout, ReductionOptions, errors
+├── py.typed
+├── errors.py                # ArchetypalError → ReductionError (NoConditionedZones, MissingResults,
+│                            #   ModelResultsMismatch, UnsupportedEnergyPlusVersion), NotComparableError
+├── io.py                    # write/read <name>.sbem.json and <name>.report.json (deterministic JSON)
+├── reduction/
+│   ├── __init__.py          # reduce(), merge(), Layout, ReductionOptions, RESULTS_REQUIREMENTS
+│   ├── options.py           # Layout enum, ReductionOptions (threshold, mapping, layout)
+│   ├── requirements.py      # RESULTS_REQUIREMENTS; check results; add outputs and run once via idfkit
+│   ├── sources.py           # SourceData: idfkit document + SQLResult; version and model/results matching
+│   ├── inventory.py         # ZoneRecord per zone from the Zones, Surfaces and Nominal* tables
+│   ├── classify.py          # exposure (R7), conditioned/attic/basement (R8), space use (R4)
+│   ├── grouping.py          # layouts, small-group threshold, merge plan (FR-008–FR-011)
+│   ├── ledger.py            # GroupLedger: conserved totals; add/merge (associative, commutative)
+│   ├── schedules.py         # evaluation via idfkit (memoised), projection, Schedule:Compact text (R5)
+│   ├── envelope.py          # surface classes, UA, capacity, equivalent constructions (R6)
+│   ├── airflow.py           # infiltration, outdoor air, HRV/economiser (R9)
+│   ├── thermostats.py       # FR-020 (R10)
+│   ├── hotwater.py          # FR-021 (R11)
+│   ├── efficiency.py        # FR-022 (R12)
+│   ├── to_sbem.py           # ledger → epinterface components (one function per SBEM component)
+│   ├── report.py            # ReductionReport pydantic models, JSON Schema
+│   └── _bridges.py          # temporary upstream bridges (UP-6), each with its removal condition
+└── comparison/
+    ├── __init__.py          # compare(), ComparisonResult, AcceptanceTargets
+    └── results.py           # end uses, peaks, comparability checks (R13)
 
 tests/
-├── contract/
-├── integration/
-└── unit/
+├── conftest.py              # markers, 120 s session budget hook, hypothesis profiles
+├── fixtures/
+│   ├── models/              # three_zone.idf, ten_zone_multipliers.idf (+ .sql results, R2 outputs only)
+│   └── regenerate.py        # rebuild fixture results (needs EnergyPlus; not run in the unit tier)
+├── unit/                    # default tier: one module per source module, plus property tests
+├── integration/             # @pytest.mark.energyplus: single-run path, epinterface builds the archetype
+└── reference/               # @pytest.mark.reference: SC-001–SC-008 on the reference set
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
+verification/
+├── reference_set.toml       # prototype list, climate zones, download URLs and SHA-256
+├── run_v2_baseline.py       # SC-004 baseline, run in a separate env with archetypal<3
+└── report.py                # tabulates SC-001–SC-008 evidence for the docs
 
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+docs/
+├── explanation/reduction.md
+├── how-to/{reduce-a-model,merge-an-archetype,compare-results}.md
+└── reference/{reduction-report,results-requirements}.md, reference/api/reduction.md
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure decision.** This is a single library in src layout, generated from the
+project-kit-cookiecutter template and linked with cruft (R15). The `reduction` and
+`comparison` subpackages keep the public surface small; the internal modules mirror the
+spec's requirement groups, so each FR has one home. `verification/` sits outside the package
+because it is project evidence, not library code. The v2 tree moves to `v2.x` (R15); spec 001
+owns that move and the command line.
+
+### Tooling configuration (from the template, with the R15 edits)
+
+- **`pyproject.toml`:**
+  - hatchling build;
+  - `requires-python = ">=3.10,<3.13"`;
+  - `[tool.pyright] typeCheckingMode = "strict"`, `pythonVersion = "3.10"`;
+  - `[tool.ruff]`: `target-version = "py310"`, `line-length = 120`, `fix = true`, preview
+    format;
+  - lint `select` = the template's set plus `D`, `NPY`, `PL`;
+  - `pydocstyle.convention = "google"`, `pylint.max-args = 8`, `future-annotations = true`;
+  - per-file ignores: `tests/*` → `S101`, `D`, `PLR2004`.
+- **`[tool.pytest.ini_options]`:**
+  - `strict = true`, `testpaths = ["tests"]`;
+  - `markers = ["energyplus: needs EnergyPlus 24.2", "reference: reference-set evidence (slow)"]`;
+  - `addopts = "-m 'not energyplus and not reference' --durations=15"`;
+  - `timeout = 5`. The integration and reference tiers override the timeout per marker in
+    `conftest.py`.
+- **CI** (`.github/workflows/main.yml`, from the template):
+  - `quality` job: `make check` (lock, pre-commit with ruff, pyright, deptry);
+  - unit tests on 3.10, 3.11 and 3.12;
+  - `check-docs` job.
+  - Added: an `integration` job (EnergyPlus 24.2, Python 3.12, `-m energyplus`) on PRs, and
+    `reference.yml` (weekly and `workflow_dispatch`).
+  - Extra job: unit tests against epinterface's development branch (C-14), allowed to fail
+    but reported.
 
 ## Complexity Tracking
 
-> **Fill ONLY if Constitution Check has violations that must be justified**
-
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| Exception | Why needed | Simpler alternative rejected because |
+|---|---|---|
+| Temporary bridge `_bridges.normalise_schedule_year` (normalises a copy of `Schedule:Year` month and day fields to `int` before idfkit evaluates it) | idfkit 1.3.0rc2 fails on every `Schedule:Year` loaded from a file (research finding 5). Reduction must handle them; the prototypes use them. | Writing our own `Schedule:Year` evaluator duplicates idfkit (constitution I). Waiting for the fix blocks all development. The bridge is a few lines, tested, and removed when UP-6 is released (a test fails once idfkit's version includes the fix, as a reminder). |

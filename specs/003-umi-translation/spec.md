@@ -47,6 +47,10 @@ what "survives the trip" means and how the user is told when something does not.
   the loss report states that the core definition was copied, not derived from core zones.
 - Q: When reading or writing loses information, does translation still succeed? → A: Yes by
   default, with the loss report; a strict mode makes any loss an error and writes no output.
+- Q: How is "UMI opens the written library without errors" verified, given UMI runs inside
+  Rhino on Windows? → A: Automatically, on every change, by loading each written library with
+  Basilisk, the UMI template library code from MIT's Sustainable Design Lab; its core library
+  runs on .NET without Rhino.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -193,7 +197,9 @@ original and result field by field.
   definition used for the core zone as well, and the loss report MUST state that the core
   definition was copied from the perimeter rather than derived from core zones.
 - **FR-007**: Components shared by several archetypes MUST appear once in the written library;
-  component names in the written library MUST be unique.
+  component names in the written library MUST be unique. The written library MUST contain no
+  orphaned components (components no building template uses), which UMI's library code
+  rejects.
 - **FR-008**: Schedules MUST be written in UMI's year, week and day form, reproducing the same
   hourly values for every day type as the archetype's schedules.
 
@@ -243,8 +249,8 @@ original and result field by field.
 
 - **SC-001**: 100 % of libraries in the UMI test set are read without error, and every one of
   their building templates becomes a valid SBEM archetype.
-- **SC-002**: 100 % of libraries written by the translator open in UMI without errors or
-  warnings about the file.
+- **SC-002**: 100 % of libraries written by the translator load without errors in Basilisk,
+  UMI's template library code, checked automatically on every change.
 - **SC-003**: For every library in the UMI test set, a read-then-write round trip reproduces
   every simulation-relevant value within 0.01 % relative difference, and every other
   difference is listed in the round-trip report.
@@ -260,6 +266,10 @@ original and result field by field.
 
 ## Assumptions
 
+- Basilisk (github.com/MITSustainableDesignLab/basilisk, MIT licence) is the authority on
+  UMI's library format: its core library is the code UMI uses to read template libraries, and
+  it runs on .NET without Rhino or Windows. If a future UMI release reads libraries differently
+  from Basilisk, SC-002 is re-pointed at that release.
 - UMI's current template library format is the target for writing; older formats are read where
   identifiable (edge cases).
 - UMI requires both a core and a perimeter zone definition in each building template, and

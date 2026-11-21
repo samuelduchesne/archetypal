@@ -45,6 +45,8 @@ what "survives the trip" means and how the user is told when something does not.
 - Q: How is an archetype with only a perimeter group written to UMI, which needs both a core and
   a perimeter zone definition? → A: The perimeter definition is used for the core zone too, and
   the loss report states that the core definition was copied, not derived from core zones.
+- Q: When reading or writing loses information, does translation still succeed? → A: Yes by
+  default, with the loss report; a strict mode makes any loss an error and writes no output.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -206,6 +208,9 @@ original and result field by field.
 - **FR-011**: Every read and write MUST produce a loss report listing each value that could not
   be represented in the target, the building template or archetype it belongs to, and why.
   An empty report MUST say explicitly that nothing was lost.
+- **FR-011a**: By default, a read or write that loses information MUST still succeed and
+  report the loss. Users MUST be able to request a strict mode in which any loss is an error:
+  no output is produced and the loss report states what would have been lost.
 - **FR-012**: Translation MUST be deterministic: the same input always produces the same
   output file and report.
 
@@ -248,6 +253,8 @@ original and result field by field.
 - **SC-005**: Every UMI field appears in the published field correspondence (100 % coverage).
 - **SC-006**: No loss goes unreported: in an audit comparing inputs and outputs field by field
   for the whole test set, every difference found appears in the corresponding report.
+- **SC-006a**: In strict mode, every read or write in the test set whose loss report is not
+  empty fails and produces no output, and every one whose report is empty succeeds.
 - **SC-007**: Reading or writing a library of 100 building templates takes under 5 seconds on a
   typical laptop.
 

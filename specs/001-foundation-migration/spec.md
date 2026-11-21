@@ -47,6 +47,8 @@ This spec is not a release on its own: v3.0 ships only when 001, 002 and 003 are
 - Q: In what file format does the reduce command write an SBEM archetype, so that the merge
   and compare commands and other tools can read it back? → A: epinterface's own serialisation
   of its model, one file per archetype; reports are written as separate files beside it.
+- Q: In what form are the reduction and loss reports written? → A: One structured,
+  machine-readable file per report, plus a short human-readable summary printed by the command.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -218,7 +220,9 @@ page belongs to exactly one Diátaxis kind.
   command's `-v`/`--version` (EnergyPlus upgrade), `--all_zones`, `--cache-responses` and the data, logs, images and
   cache folder options. v3 MUST keep this behaviour for every 3.x release.
 - **FR-014**: Every command MUST write the reports defined by specs 002 and 003 next to its
-  output, and MUST exit with distinct statuses for success, success with losses reported,
+  output, each as one structured, machine-readable file that a script can load without
+  archetypal, and MUST print a short human-readable summary of them (counts of losses and
+  approximations, failed models, where the report files are). It MUST exit with distinct statuses for success, success with losses reported,
   partial failure (some models failed) and failure.
 - **FR-015**: Commands MUST NOT overwrite an existing output unless the user asks.
 
@@ -276,6 +280,8 @@ page belongs to exactly one Diátaxis kind.
   security fixes after v3.0.
 - **Archetype file**: one SBEM archetype stored in epinterface's own serialisation; archetypal
   adds no format of its own around it. Its reduction report is a separate file beside it.
+- **Report file**: one reduction or loss report, stored as a structured, machine-readable
+  file beside the output it describes; the command line prints only a summary of it.
 - **Documentation site**: the user-facing pages, organised into Diátaxis's four kinds and kept
   in sync with the code.
 

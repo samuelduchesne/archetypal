@@ -83,8 +83,9 @@ match.
 **Acceptance Scenarios**:
 
 1. **Given** a detailed model, **When** the modeller asks for the core/perimeter layout,
-   **Then** the archetype has at most two zone groups and the report lists the space-use
-   distinctions that were merged.
+   **Then** the archetype has two zone groups, core and perimeter (one, when the building has
+   no core zones; see scenario 3), and the report lists the space-use distinctions that were
+   merged.
 2. **Given** an archetype at the default layout, **When** it is merged to a coarser layout,
    **Then** the result equals reducing the detailed model directly to that coarser layout
    (merging and reducing follow the same rules; roadmap C-11).

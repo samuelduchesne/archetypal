@@ -1,50 +1,140 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# archetypal Constitution
+
+## Purpose and Place in the Stack
+
+archetypal is where building archetypes are **created**, **translated**, and **codified for
+application**.
+
+It exists because the surrounding work now has owners: idfkit owns general EnergyPlus scripting,
+and epinterface owns the SBEM archetype data model and the generation of EnergyPlus models from
+it. Nobody owns the life of an archetype around them: deriving it from a detailed model or a
+published source, moving it between the formats tools use, and stating the rules by which an
+archetype is assigned to a real building. archetypal owns that, and only that.
+
+```
+archetypal    create · translate · apply
+     ↓
+epinterface   SBEM data model · composer · EnergyPlus generation
+     ↓
+idfkit        EnergyPlus I/O · simulation · results · weather · schedules
+```
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Archetypes, Not EnergyPlus
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+archetypal MUST NOT reimplement a capability that idfkit or epinterface provides: model I/O,
+schema validation, simulation, result parsing, weather, geometry, schedule evaluation, or
+EnergyPlus generation from SBEM.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+When archetypal needs something those packages lack, the gap MUST be closed upstream by a pull
+request (for example, separate core and perimeter zones in epinterface's `Model`). A local
+workaround is allowed only as a temporary bridge that is tracked against the upstream change and
+removed when it lands.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+*Rationale:* v2 grew into a general EnergyPlus toolkit and duplicated what is now better done
+elsewhere. Duplication splits users, bugs, and maintenance effort.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. One Archetype Data Model
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+SBEM, as defined by epinterface, is the single archetype data model. Every capability MUST read
+or produce SBEM. Other formats (UMI JSON first; later ClimateStudio and CityGML Energy ADE) are
+**translators** to and from SBEM, never parallel models maintained inside archetypal.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+A translation MUST state what it loses. A round trip through a translator MUST either reproduce
+its input or report exactly which fields could not be represented.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+*Rationale:* two data models drift apart and must be kept in sync forever. A single model makes
+every translator and every creation method compose with every other.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. Small and Focused
+
+archetypal MUST stay a small library with a minimal dependency footprint. The following are out of
+scope and MUST NOT be added without amending this constitution:
+
+- simulation orchestration or batch running (idfkit's job);
+- calibration against metered data;
+- building geometry, or GIS-to-model generation;
+- district energy networks;
+- Modelica or other non-EnergyPlus engine output.
+
+A new dependency MUST be justified in the plan that introduces it. A heavy or optional capability
+MUST live behind an optional extra.
+
+*Rationale:* users who only want to reduce or translate an archetype must not inherit a platform.
+
+### IV. Physically Correct and Verifiable
+
+Every transformation of building data (reduction, translation, derivation from a published source)
+MUST state, in its specification, which physical quantities it conserves and how each output
+parameter relates to the inputs it is derived from.
+
+Correctness MUST be demonstrated, not asserted. Every transformation MUST be verified against
+reference buildings with stated acceptance criteria. A claim that a new method is "more correct"
+than a previous one MUST be backed by a comparison on those references.
+
+*Rationale:* archetypes feed decisions about whole building stocks. An error in an aggregation
+rule propagates silently into every building it is applied to.
+
+### V. What and Why Before How
+
+A specification (`spec.md`) describes **what** a capability does, **why** it exists, and how its
+correctness will be judged. It MUST NOT prescribe algorithms, data structures, or code
+organization. Those belong to the plan (`plan.md`), which MUST satisfy the specification and this
+constitution.
+
+Existing v2 behaviour is evidence for a specification, never a requirement of it. v3 capabilities
+are specified afresh; v2 code is ported only where a plan shows it meets the specification.
+
+*Rationale:* v3 rewrites reduction and aggregation. Fixing the "what" first keeps the rewrite from
+reproducing v2's design by inertia.
+
+### VI. A Dependable Public Library
+
+- The public API MUST be fully typed and documented, and every public behaviour MUST be tested.
+- archetypal supports the Python versions its dependencies jointly support (3.10–3.12 at
+  ratification, bounded by epinterface).
+- The project uses uv for environments and builds, Keep a Changelog for `CHANGELOG.md`, and
+  semantic versioning.
+- A breaking change to the public API requires a MAJOR release and a migration note.
+
+*Rationale:* archetypal is a dependency of other tools; they must be able to trust its contract.
+
+## Scope
+
+archetypal v3 covers three activities:
+
+- **Create:** derive an archetype from a detailed EnergyPlus model (reduction), and from published
+  sources such as TABULA/EPISCOPE and ASHRAE 90.1 vintage tables.
+- **Translate:** move archetypes between SBEM and other formats, starting with UMI template
+  libraries (JSON).
+- **Apply:** codify how archetypes are assigned to buildings, as rule sets for epinterface's
+  composer, and check archetype libraries for completeness and plausibility.
+
+Version 2 is kept on a `v2.x` maintenance branch that receives security fixes only.
+
+## Development Workflow
+
+- Work follows Spec Kit: constitution → roadmap → specify → clarify → plan → tasks → implement.
+- The roadmap (`.specify/memory/roadmap.md`) records the planned specs, their order, and the
+  decisions behind them. A spec that changes scope or reverses a recorded decision MUST update
+  the roadmap.
+- Every plan MUST pass a Constitution Check against Principles I–IV before tasks are generated,
+  and record any justified exception.
+- Upstream changes that a spec depends on (idfkit, epinterface) MUST be listed as dependencies of
+  that spec, and the spec cannot be marked implemented until they are released.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution takes precedence over other project practices. Amendments are made by pull
+request that edits this file, states the reason, and bumps the version:
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- **MAJOR:** a principle is removed or redefined, or the scope boundary changes in a way that
+  invalidates existing specs.
+- **MINOR:** a principle or section is added, or guidance is materially expanded.
+- **PATCH:** clarifications and wording that do not change meaning.
+
+Reviewers verify compliance with this constitution on every pull request. Any exception MUST be
+justified in the relevant plan and recorded there.
+
+**Version**: 1.0.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

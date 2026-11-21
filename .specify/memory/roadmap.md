@@ -1,6 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.1.0 → 1.2.0
+Bump rationale: MINOR — open questions Q1–Q6 resolved into decisions C-11 … C-16; C-03
+broadened from core/perimeter to zone groups (amends 002, 003 and UP-2 without invalidating
+them); 008 narrowed to CityGML Energy ADE.
+
+Changes this revision:
+  - C-03 redefined: an archetype is a set of zone groups; core/perimeter is one layout (Q6)
+  - Added C-11 (zone groups and layouts), C-12 (reduction correctness, Q1), C-13 (UMI fields,
+    Q2), C-14 (SBEM change coordination, Q3), C-15 (source licensing, Q4), C-16 (composer and
+    ClimateStudio stay in epinterface, Q5)
+  - UP-2 broadened to zone groups; 002 and 003 scope updated; 006 and 008 updated
+  - Open questions Q1–Q6 marked resolved
+
+Specs affected: 002, 003, 004, 006, 008
+Open questions added/resolved: Q1–Q6 resolved; none added
+
+Previous revision (1.1.0):
 Version change: 1.0.0 → 1.1.0
 Bump rationale: MINOR — C-04 broadened from reduction to all of v3; new decision C-10 (no
 release regresses v2's core capability); new open question Q6; UP-4 note made precise.
@@ -64,16 +81,18 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   translator; v2's UMI template classes (`archetypal/template/`) are not carried into v3 as a
   model. Chosen over keeping UMI as a second model (two models to keep in sync) and over a new
   neutral model (yet another standard). *Constitution II.*
-- **C-03 — Core/perimeter lives upstream:** epinterface's `Model` holds a single zone
-  definition. Rather than add a building-level wrapper in archetypal, we extend epinterface to
-  support separate core and perimeter zone components ourselves and contribute it by pull
-  request (UP-2).
+- **C-03 — An archetype is a set of zone groups, defined upstream:** epinterface's `Model`
+  holds a single zone definition. We extend epinterface (UP-2) so that an archetype holds
+  several zone groups, each with its own zone definition and its share of the building's floor
+  area. Core/perimeter is one layout among others (C-11). Built by us and contributed by pull
+  request rather than wrapped in archetypal.
+  ~~Revision 1.0.0: separate core and perimeter zone components only.~~
 - **C-04 — Nothing from v2 is ported as is:** every v3 capability is specified and written
   afresh to v3's standards (strict typing, tests, documentation). v2 predates strict typing and
   current tooling; its code may be read to understand past behaviour, never copied in. This
   includes the reduction workflow (`reduce`) and the aggregation of zone properties
   (`combine`). Aggregated schedules are expressed as EnergyPlus `Schedule:Compact` objects. The
-  reduction rewrite aims to be more correct and faster than v2, and must show it (Q1).
+  reduction rewrite aims to be more correct and faster than v2, and must show it (C-12).
   *Constitution IV, V.*
   ~~Revision 1.0.0 limited this decision to reduction.~~
 - **C-05 — Calibration is out of scope for now:** no calibration against metered data in v3.
@@ -90,6 +109,46 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   detailed EnergyPlus model and get a UMI template library". v3.0 ships only when 001, 002 and
   003 are all implemented, so a v3.0 user can still do that (reduce to SBEM, then write UMI
   JSON). The spec numbers order the writing, not separate releases.
+- **C-11 — Zone groups and layouts** *(resolves Q6)*: reduction groups the detailed model's
+  zones by **space use** and by **exposure** (perimeter or core), so a hospital keeps operating
+  rooms, patient rooms and corridors apart. This is the default layout. Merging groups follows
+  the same conservation rules as forming them, so a coarser layout (down to core/perimeter, as
+  UMI requires) is a further reduction of a finer one, never a separate method. Each group
+  records the detailed zones it came from. How space use is recognised in a detailed model,
+  and how small groups are handled, belong to spec 002.
+- **C-12 — What makes a reduction correct** *(resolves Q1)*: both parameter-faithful and
+  energy-faithful.
+  - *Parameter-faithful:* every archetype parameter is derived by a stated physical rule that
+    names the quantity it conserves (for example installed lighting power, envelope heat-loss
+    coefficient, outdoor airflow, thermal capacitance, floor area), so an intensity is the
+    conserved total divided by the basis it applies to.
+  - *Energy-faithful:* on a reference set, the simulated archetype is compared with the
+    simulated detailed model. Initial targets: total annual site energy within ±5 %; each major
+    end use (heating, cooling, interior lighting, interior equipment, fans, service hot water)
+    within ±10 %; annual peak heating and cooling demand within ±15 %. v3 must also have a
+    smaller error than v2 on the same set, which is what "more correct" means.
+  - *Reference set:* the DOE/PNNL commercial prototype buildings (all building types) in at
+    least three climate zones (hot, mixed, cold), plus at least one residential model.
+  - Spec 002's clarification may tighten or adjust a target once a v2 baseline is measured, but
+    may not drop one. The comparison exercises the whole chain (reduction, then epinterface's
+    model generation), which is the chain users rely on.
+- **C-13 — UMI fields** *(resolves Q2)*: every UMI field that affects simulation results
+  (structure and thermal mass, window settings, partition ratio, among others) must be
+  representable in SBEM; where it is not, UP-2 adds it. Descriptive fields (names, comments,
+  lifespan, embodied-carbon data) map to SBEM's metadata and environmental fields. Nothing is
+  dropped silently. The field-by-field mapping is part of spec 003.
+- **C-14 — Coordinating changes to SBEM** *(resolves Q3)*: archetypal pins epinterface to a
+  compatible version range; every SBEM change archetypal needs is made upstream by our own pull
+  request; archetypal's test suite also runs against epinterface's development branch so a
+  breaking change is seen before it is released. archetypal uses only SBEM's public model.
+- **C-15 — Licensing of published sources** *(resolves Q4)*: archetypal ships readers, not
+  copies of source data, unless the source's licence explicitly allows redistribution. Every
+  derived archetype records its source and that source's licence in its provenance. Data under
+  non-commercial licences (for example EUBUCCO, CC BY-NC) is never bundled.
+- **C-16 — The composer and ClimateStudio stay in epinterface** *(resolves Q5)*: archetypal does
+  not build a second composer. Spec 006 delivers rule sets for epinterface's composer and the
+  means to author, test and share them; anything the composer lacks is added upstream.
+  epinterface already reads ClimateStudio templates, so that translator stays there.
 
 ## Upstream Prerequisites
 
@@ -97,9 +156,10 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 
 - **UP-1 — epinterface uses idfkit instead of archetypal/eppy.** Removes the circular
   dependency (epinterface currently pins `archetypal==2.18.10`). A draft PR is open.
-- **UP-2 — epinterface `Model` supports separate core and perimeter zones**, plus whatever
-  building-level fields the UMI field mapping shows are missing (Q2). Built by us, contributed
-  by PR.
+- **UP-2 — epinterface `Model` holds several zone groups** (zone definition plus floor-area
+  share, C-03), plus whatever simulation-relevant fields the UMI field mapping shows are missing
+  (C-13). Built by us, contributed by PR.
+  ~~Revision 1.0.0: separate core and perimeter zones only.~~
 - **UP-3 — epinterface is published on PyPI.** A package on PyPI cannot depend on a git
   repository, so no v3 release can ship before this.
 - **UP-4 — epinterface's heavy dependencies become optional extras** (Prisma, geopandas,
@@ -137,11 +197,15 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 ### 002 — Reduce a detailed EnergyPlus model to an SBEM archetype  [status: planned]
 
 - **Description:** Turn a detailed, multizone EnergyPlus model (and the results of simulating
-  it) into one SBEM archetype with a core zone and a perimeter zone, describing what is
-  conserved and why.
-- **Outcome:** a modeller reduces any supported EnergyPlus model to an SBEM archetype and gets
-  evidence that it is faithful to the original, by the definition settled in Q1.
-- **Scope (in):** which zones count as core and which as perimeter; how every archetype
+  it) into one SBEM archetype made of zone groups (by space use and exposure, C-11), describing
+  what is conserved and why.
+- **Outcome:** a modeller reduces any supported EnergyPlus model to an SBEM archetype, at the
+  default layout or a coarser one down to core/perimeter, and gets evidence that it is faithful
+  to the original by the criteria in C-12.
+- **Scope (in):** how space use and exposure are recognised and zones grouped; how groups are
+  merged into coarser layouts; the geometric characteristics the archetype must carry to be
+  simulated (floor-area shares, envelope and window areas by orientation, storeys); how every
+  archetype
   parameter (envelope, internal loads, conditioning, ventilation, domestic hot water, schedules)
   relates to the detailed model; how zone multipliers and non-conditioned zones count; what the
   reduction conserves; schedules expressed as `Schedule:Compact`; how correctness is
@@ -149,7 +213,7 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 - **Scope (out):** algorithms and code structure (the plan's job, C-04); calibration (C-05);
   generating EnergyPlus from the archetype (epinterface).
 - **Depends on:** 001, UP-1, UP-2
-- **Governed by:** C-02, C-03, C-04
+- **Governed by:** C-02, C-03, C-04, C-11, C-12
 - **Notes:** The spec states the *what* and *why* of reduction, not the *how*, so that
   `/speckit-plan` can design the rewrite freely. Evidence gathered from v2 for the spec's
   motivation: perimeter aggregation includes core zones; zone multipliers are applied by
@@ -164,14 +228,16 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   archetypes out as a UMI template library, so existing UMI libraries keep their value.
 - **Outcome:** a UMI library survives a round trip, or the user receives a report of exactly
   which fields could not be represented (constitution II).
-- **Scope (in):** the field-by-field correspondence between UMI and SBEM; what is lost in
-  each direction and how the user is told; UMI library-level concerns (shared components,
+- **Scope (in):** the field-by-field correspondence between UMI and SBEM (C-13); writing an
+  archetype with more than two zone groups to UMI by first merging it to core/perimeter
+  (C-11), and reporting that merge as a loss; what is lost in each direction and how the user
+  is told; UMI library-level concerns (shared components,
   naming, duplicates such as #459).
 - **Scope (out):** UMI templates as editable Python objects (C-02); other formats (008).
 - **Depends on:** 001, UP-2
-- **Governed by:** C-02
+- **Governed by:** C-02, C-11, C-13
 - **Notes:** The field mapping done for this spec also decides what UP-2 must add to
-  epinterface (Q2).
+  epinterface (C-13).
 
 ### v3.1 — create from published sources
 
@@ -184,8 +250,8 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   value; behaviour when data are missing.
 - **Scope (out):** scraping the TABULA web tool as v2 did.
 - **Depends on:** 001
-- **Notes:** TABULA has no API; the stable source is the published workbook. Licensing to be
-  confirmed (Q4).
+- **Notes:** TABULA has no API; the stable source is the published workbook. Licensing per
+  C-15: archetypal reads the workbook, and bundles derived data only if its licence allows.
 
 ### 005 — Archetypes from ASHRAE 90.1 vintages  [status: planned]
 
@@ -213,6 +279,7 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   are shared and versioned.
 - **Scope (out):** geometry and GIS processing (C-06).
 - **Depends on:** 001; epinterface composer
+- **Governed by:** C-15, C-16
 
 ### 007 — Archetype library quality checks  [status: planned]
 
@@ -225,43 +292,31 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 
 ### Later
 
-### 008 — More translators (ClimateStudio, CityGML Energy ADE)  [status: undecided]
+### 008 — Translate to and from CityGML Energy ADE  [status: undecided]
 
-- **Description:** Additional translators between SBEM and other archetype formats.
+- **Description:** A translator between SBEM archetypes and CityGML Energy ADE, the city-scale
+  data standard.
 - **Outcome:** _to be defined_
 - **Scope (in):** _to be defined_
-- **Notes:** epinterface already reads ClimateStudio templates, so a ClimateStudio translator
-  may belong there rather than here. CityGML Energy ADE has no archetype-library standard yet.
+- **Notes:** Undecided because CityGML Energy ADE has no archetype-library standard yet; revisit
+  when its 3.0 version settles one. ClimateStudio was dropped from this entry: that translator
+  stays in epinterface (C-16).
 
 ## Open Questions
 
-- **Q1 — What makes a reduction correct?** Parameter-faithful (each archetype value is the
-  right physical aggregate of the detailed model), energy-faithful (the simulated archetype
-  reproduces the detailed model's results within a tolerance), or both. If energy-faithful:
-  which results (annual end uses, peak loads), what tolerance, and which reference buildings.
-  Blocks the acceptance criteria of 002.
-- **Q2 — Which UMI building-level fields must SBEM represent?** Structure and thermal mass,
-  window settings, partition ratio, lifespan and metadata: each is either already in SBEM, added
-  by UP-2, or dropped by v3. Settled by the field mapping in 003.
-- **Q3 — How are changes to the shared SBEM model coordinated** with epinterface's maintainer,
-  so archetypal is not broken by schema changes it did not plan for?
-- **Q4 — Licensing of published sources** (TABULA, and any building-stock data used by 006)
-  for redistribution of derived archetypes.
-- **Q6 — Can an archetype hold more than a core and a perimeter zone?** Today an SBEM
-  `Model` holds one zone definition applied to every zone of a shoebox (zoning is either
-  core/perimeter or one zone per storey). A hospital reduced to two zones loses the difference
-  between operating rooms, patient rooms and corridors. An archetype could instead hold several
-  zone definitions (for example by space use and by exposure) with their shares of floor area,
-  core/perimeter being the simplest case. Decides the scope of UP-2 and of 002, and what 003
-  must report as lost, since UMI holds only two zones. May revise C-03.
-- **Q5 — Coordination with the epinterface authors** on scope: epinterface already has a
-  composer and a ClimateStudio reader; confirm which of "apply" (006) and translators (008)
-  belong in archetypal.
+None open. Resolved in revision 1.2.0:
+
+- ~~Q1 — What makes a reduction correct?~~ → C-12
+- ~~Q2 — Which UMI building-level fields must SBEM represent?~~ → C-13
+- ~~Q3 — How are changes to the shared SBEM model coordinated?~~ → C-14
+- ~~Q4 — Licensing of published sources~~ → C-15
+- ~~Q5 — Which of "apply" and the translators belong in archetypal?~~ → C-16
+- ~~Q6 — Can an archetype hold more than a core and a perimeter zone?~~ → C-03, C-11
 
 ## Cross-Cutting Notes
 
 - **Reference buildings** used to verify transformations (constitution IV) are shared across
-  002, 003 and 005; choosing them once avoids each spec inventing its own.
+  002, 003 and 005, and defined once in C-12.
 - **Provenance** (where each archetype value came from) appears in 002, 004 and 005; it should
   mean the same thing in each.
 - **Explanation pages** in the documentation carry the physical rules of each transformation
@@ -269,4 +324,4 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 
 ---
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.2.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

@@ -29,6 +29,15 @@ expected to exist on only one side; the field correspondence this spec requires 
 establishes which. Constitution II requires every translation to state what it loses; this spec defines
 what "survives the trip" means and how the user is told when something does not.
 
+## Clarifications
+
+### Session 2026-11-21
+
+- Q: When reading a UMI library, where do the core and perimeter floor-area shares come from,
+  given that a UMI template does not store them? → A: Nowhere fixed: the archetype is read with
+  a "core/perimeter by geometry" layout whose shares are set by the building's geometry when it
+  is applied, as UMI does. On writing, fixed shares are dropped and reported as lost.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Write an archetype as a UMI template library (Priority: P1)
@@ -49,11 +58,12 @@ the same archetype merged to core/perimeter, and that the loss report lists the 
 
 1. **Given** an SBEM archetype with core and perimeter groups only, **When** the modeller
    writes it to UMI, **Then** they get a UMI template library containing one building template
-   whose values equal the archetype's, and a loss report that lists nothing lost or lists each
-   SBEM field that UMI cannot hold.
+   whose values equal the archetype's, and a loss report that lists the archetype's floor-area
+   shares (FR-006a) and each SBEM field that UMI cannot hold.
 2. **Given** an archetype with several zone groups, **When** it is written to UMI, **Then** the
    building template equals the archetype merged to core/perimeter (spec 002, FR-010), and the
-   loss report lists the groups that were merged.
+   loss report lists the groups that were merged and the archetype's floor-area shares, which
+   UMI does not store.
 3. **Given** several archetypes that share components (the same construction, the same
    schedule), **When** they are written to one library, **Then** each shared component appears
    once in the library and every building template refers to it.
@@ -77,7 +87,8 @@ field of the library is either represented or listed in the report.
 **Acceptance Scenarios**:
 
 1. **Given** a valid UMI template library, **When** it is read, **Then** each building template
-   becomes one SBEM archetype with a core and a perimeter zone group, carrying the library's
+   becomes one SBEM archetype with a core and a perimeter zone group in the "core/perimeter by
+   geometry" layout (no fixed floor-area shares), carrying the library's
    descriptive information (name, authors, country, climate zone, construction years, data
    source, comments, lifespan).
 2. **Given** a library in which two materials share a name but differ in thickness or other
@@ -140,8 +151,9 @@ original and result field by field.
 
 - **FR-001**: Users MUST be able to read a UMI template library file into SBEM archetypes, one
   archetype per building template.
-- **FR-002**: Each archetype read from UMI MUST have two zone groups, core and perimeter, with
-  floor-area shares derived from the template's information, and MUST carry the template's
+- **FR-002**: Each archetype read from UMI MUST have two zone groups, core and perimeter, in the
+  "core/perimeter by geometry" layout: their floor-area shares are not fixed by the archetype
+  but set by the building's geometry when it is applied, as in UMI. It MUST carry the template's
   structure, window settings, partition ratio, default window-to-wall ratio and descriptive
   fields.
 - **FR-003**: Reading MUST keep components that share a name but differ in any property as
@@ -156,6 +168,8 @@ original and result field by field.
 - **FR-006**: An archetype with more than two zone groups MUST be merged to core/perimeter
   using spec 002's rules (FR-010 of spec 002) before writing, and the merge MUST be reported as
   a loss.
+- **FR-006a**: Writing MUST drop an archetype's fixed floor-area shares, because UMI derives
+  them from each building's geometry, and MUST report them as lost.
 - **FR-007**: Components shared by several archetypes MUST appear once in the written library;
   component names in the written library MUST be unique.
 - **FR-008**: Schedules MUST be written in UMI's year, week and day form, reproducing the same
@@ -189,6 +203,8 @@ original and result field by field.
 - **Building template**: UMI's description of one archetype: a core zone, a perimeter zone,
   structure, window settings and descriptive information.
 - **SBEM archetype**: as defined in spec 002: zone groups and building-level characteristics.
+  An archetype read from UMI uses the "core/perimeter by geometry" layout, in which the core
+  and perimeter shares are set by the building's geometry rather than stored.
 - **Field correspondence**: the published mapping between every UMI field and its SBEM
   counterpart, or the reason it has none.
 - **Loss report**: the record of a read or write: everything not represented, merges performed,
@@ -222,8 +238,6 @@ original and result field by field.
 - UMI requires both a core and a perimeter zone in each building template. If UMI accepts a
   template without a core, the edge case above becomes a direct write and the assumption is
   removed during clarification.
-- Floor-area shares of the core and perimeter groups read from UMI follow UMI's own definition
-  of the perimeter (from its geometry settings); the plan identifies where UMI states it.
 - epinterface supports zone groups and the fields required by C-13 (upstream UP-2) before this
   spec is implemented.
 - UMI templates are not offered as editable Python objects (roadmap C-02); editing happens on

@@ -51,6 +51,9 @@ This spec is not a release on its own: v3.0 ships only when 001, 002 and 003 are
   machine-readable file per report, plus a short human-readable summary printed by the command.
 - Q: For how long after v3.0 does the v2.x line receive security fixes? → A: 12 months after
   v3.0 or until v3.1 ships (restoring TABULA), whichever is later.
+- Q: How is it checked that a v2 user can follow the migration guide? → A: No user study:
+  migration is developed without user feedback. The guide is checked by running its examples
+  (SC-004) and by the coverage check against v2 (SC-003); the moderated test is removed.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -304,16 +307,13 @@ page belongs to exactly one Diátaxis kind.
   v2 package.
 - **SC-004**: 100 % of the documentation's code examples and before/after "after" examples
   run without error on every change.
-- **SC-005**: A user familiar with v2 reproduces "reduce a model to a UMI library" with v3 on
-  a reference model using only the tutorial and the migration guide, in under 15 minutes,
-  in a moderated test with at least three v2 users.
-- **SC-006**: 100 % of public names carry complete type information, checked by a type
+- **SC-005**: 100 % of public names carry complete type information, checked by a type
   checker in strict mode on every change.
-- **SC-007**: Importing archetypal 3 and running any command leaves no file or folder behind
+- **SC-006**: Importing archetypal 3 and running any command leaves no file or folder behind
   other than the outputs the user asked for, checked automatically.
-- **SC-008**: Every removed v2 option or name tried in an automated check produces the
+- **SC-007**: Every removed v2 option or name tried in an automated check produces the
   migration-guide error, never a generic failure.
-- **SC-009**: Every documentation page is tagged with exactly one Diátaxis kind, checked
+- **SC-008**: Every documentation page is tagged with exactly one Diátaxis kind, checked
   automatically.
 
 ## Assumptions

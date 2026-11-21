@@ -1,6 +1,16 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.2.1 → 1.2.2
+Bump rationale: PATCH — status transition (003 planned → specced).
+
+Changes this revision:
+  - 003: status specced; spec dir specs/003-umi-translation/
+
+Specs affected: 003
+Open questions added/resolved: none
+
+Previous revision (1.2.1):
 Version change: 1.2.0 → 1.2.1
 Bump rationale: PATCH — status transition (002 planned → specced) and a note on writing order.
 
@@ -234,7 +244,7 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   Related v2 issues: #383 (small core floor plates), #390 (DHW too large), #66/#123/#127
   (conditioning and COP accuracy).
 
-### 003 — Translate UMI template libraries to and from SBEM  [status: planned]
+### 003 — Translate UMI template libraries to and from SBEM  [status: specced]
 
 - **Description:** Read a UMI template library (JSON) into SBEM archetypes, and write SBEM
   archetypes out as a UMI template library, so existing UMI libraries keep their value.
@@ -248,6 +258,7 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 - **Scope (out):** UMI templates as editable Python objects (C-02); other formats (008).
 - **Depends on:** 001, UP-2
 - **Governed by:** C-02, C-11, C-13
+- **Spec dir:** specs/003-umi-translation/
 - **Notes:** The field mapping done for this spec also decides what UP-2 must add to
   epinterface (C-13).
 
@@ -336,4 +347,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.2.1 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.2.2 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

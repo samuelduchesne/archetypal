@@ -92,6 +92,10 @@ reproducing v2's design by inertia.
 ### VI. A Dependable Public Library
 
 - The public API MUST be fully typed and documented, and every public behaviour MUST be tested.
+- User-facing documentation MUST always be in sync with the codebase. A change to public
+  behaviour is not complete until the documentation describing it is updated in the same pull
+  request. Documentation covers tutorials, how-to guides, reference and explanation (Diátaxis),
+  and its examples MUST run against the current release.
 - archetypal supports the Python versions its dependencies jointly support (3.10–3.12 at
   ratification, bounded by epinterface).
 - The project uses uv for environments and builds, Keep a Changelog for `CHANGELOG.md`, and
@@ -99,6 +103,7 @@ reproducing v2's design by inertia.
 - A breaking change to the public API requires a MAJOR release and a migration note.
 
 *Rationale:* archetypal is a dependency of other tools; they must be able to trust its contract.
+Documentation that lags the code breaks that trust as surely as a bug does.
 
 ## Scope
 
@@ -121,6 +126,8 @@ Version 2 is kept on a `v2.x` maintenance branch that receives security fixes on
   the roadmap.
 - Every plan MUST pass a Constitution Check against Principles I–IV before tasks are generated,
   and record any justified exception.
+- Every plan MUST name the user-facing documentation it adds or changes, and its tasks MUST
+  include those documentation updates.
 - Upstream changes that a spec depends on (idfkit, epinterface) MUST be listed as dependencies of
   that spec, and the spec cannot be marked implemented until they are released.
 
@@ -137,4 +144,4 @@ request that edits this file, states the reason, and bumps the version:
 Reviewers verify compliance with this constitution on every pull request. Any exception MUST be
 justified in the relevant plan and recorded there.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.1.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

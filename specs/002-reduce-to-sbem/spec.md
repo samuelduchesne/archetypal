@@ -59,8 +59,10 @@ accounts for every detailed zone.
    schedules, **When** it is reduced with the default layout, **Then** they end up in different
    zone groups.
 3. **Given** a model with zone multipliers (for example one typical floor multiplied by 10),
-   **When** it is reduced, **Then** the archetype is identical to reducing the same building
-   modelled with every floor drawn explicitly.
+   **When** it is reduced, **Then** its groups, floor areas and every conserved total of FR-014
+   to FR-021 agree within 0.1 % with reducing the same building modelled with every floor drawn
+   explicitly. Parameters derived from simulation results (FR-022) may differ by as much as the
+   two simulations do.
 4. **Given** the same inputs, **When** the reduction is run twice, **Then** both archetypes and
    reports are identical.
 
@@ -112,7 +114,7 @@ targets in SC-001 to SC-003.
 **Acceptance Scenarios**:
 
 1. **Given** results for a detailed model and its archetype, **When** the modeller compares
-   them, **Then** they see, for total site energy, each major end use and annual peak heating
+   them, **Then** they see, for total site energy, each end use and annual peak heating
    and cooling demand, the two values, their difference, and whether it is within target.
 2. **Given** results that cover different weather files or run periods, **When** the modeller
    compares them, **Then** the comparison refuses and explains why the results are not
@@ -130,8 +132,12 @@ targets in SC-001 to SC-003.
 - **Unconditioned zones** (plenums, attics, crawlspaces, unconditioned basements): they never
   become zone groups. Where SBEM has a matching building-level assumption (attic, basement)
   they map to it; otherwise they are listed in the report as excluded, with their floor area.
+  Their envelope is not dropped (FR-013): a plenum's roof and exterior walls are carried by the
+  groups of the conditioned zones it serves.
 - **A space use covering a very small share of floor area** (below the small-group threshold):
   it is merged into the most similar group of the same exposure, and the report says so.
+- **A group with no delivered heating or cooling** (for example a core group in a hot climate):
+  its efficiency for that mode cannot be derived from results (FR-022).
 - **Zones with identical names in different storeys, zone lists and group multipliers**: each
   zone counts exactly as many times as EnergyPlus counts it.
 - **A detailed model feature SBEM cannot express** (for example a specific HVAC topology,
@@ -171,7 +177,9 @@ targets in SC-001 to SC-003.
 - **FR-007**: Each conditioned detailed zone MUST be classified by **space use**, using, in
   order of precedence: (1) a mapping supplied by the user; (2) space types declared in the
   model; (3) zones whose internal loads, schedules and thermostat settings are the same are
-  treated as one space use. The report MUST state which source decided each zone's space use.
+  treated as one space use. "The same" MUST tolerate numerical rounding, and the resulting
+  classification MUST NOT depend on the order in which zones appear in the model. The report
+  MUST state which source decided each zone's space use.
 - **FR-008**: The default layout MUST form one zone group per combination of space use and
   exposure present in the model.
 - **FR-009**: Users MUST be able to choose a coarser layout: by space use only, core/perimeter
@@ -180,14 +188,21 @@ targets in SC-001 to SC-003.
   the detailed model or by merging a finer archetype (one set of rules for forming and merging
   groups).
 - **FR-011**: A group whose floor-area share is below a small-group threshold MUST be merged
-  into the most similar group of the same exposure. The threshold MUST be adjustable by the
-  user, defaults to 5 % of conditioned floor area, and every such merge MUST appear in the
-  report.
+  into the most similar group of the same exposure (or, in a layout without exposure, the most
+  similar group). The threshold MUST be applied once, to the groups of the requested layout
+  formed from the detailed zones, never to the groups of an intermediate finer layout; merging a
+  finer archetype therefore starts from its groups before thresholding, which the archetype's
+  report MUST retain (FR-010). A small group with no other group to merge into is kept. The
+  threshold MUST be adjustable by the user, defaults to 5 % of conditioned floor area, and every
+  such merge MUST appear in the report.
 - **FR-012**: Every detailed zone MUST count exactly as many times as EnergyPlus counts it
   (zone multipliers and list multipliers included).
 - **FR-013**: Unconditioned zones MUST NOT become zone groups. Attics and basements MUST map to
   SBEM's corresponding building-level assumptions where they exist; any other unconditioned
-  zone MUST be listed in the report as excluded, with its floor area.
+  zone MUST be listed in the report as excluded, with its floor area. The envelope of an
+  excluded zone (for example a plenum's roof and exterior walls) MUST be carried by the groups
+  of the conditioned zones it is adjacent to and conserved under FR-016, and the report MUST
+  state the assignment.
 
 **What reduction conserves** (constitution IV, roadmap C-12)
 
@@ -199,8 +214,10 @@ divided by the group's matching basis.
   shares MUST sum to 100 % of conditioned floor area.
 - **FR-015 — Internal gains**: for occupancy, lighting, equipment and every other internal gain
   type SBEM represents, each group MUST conserve the installed total (people, watts) and the
-  hourly total over the year (installed total × schedule), as well as the split between
-  sensible, latent, radiant and convected parts where the detailed model defines it.
+  hourly total over the year (installed total × schedule). Where the detailed model defines a
+  split between sensible, latent, radiant and convected parts, each group MUST conserve the
+  annual energy of each part; a single group fraction cannot also conserve the installed split
+  when member zones run on different schedules, so the installed split is not conserved.
 - **FR-016 — Envelope**: for each envelope element class (exterior walls, roofs, exposed floors,
   ground-contact surfaces, windows), each group MUST conserve the element area and its heat
   loss coefficient (area × thermal transmittance). For windows, it MUST additionally conserve
@@ -208,21 +225,32 @@ divided by the group's matching basis.
   the visible light admitted (area × visible transmittance), by orientation.
 - **FR-017 — Thermal mass**: each group MUST conserve the heat capacity of its envelope
   constructions and of its internal mass.
-- **FR-018 — Infiltration**: each group MUST conserve the total infiltration airflow and its
-  hourly profile.
+- **FR-018 — Infiltration**: each group MUST conserve the total design infiltration airflow and
+  its hourly profile (design airflow × schedule). Where member zones' infiltration responds
+  differently to weather (wind and temperature coefficients), the difference in realised
+  airflow MUST be listed in the report as not represented (FR-026).
 - **FR-019 — Mechanical ventilation**: each group MUST conserve the total outdoor airflow and its
   hourly profile, and the presence and effectiveness of heat recovery and economiser control
   weighted by the airflow they apply to.
 - **FR-020 — Thermostat settings**: heating and cooling setpoints have no conserved total; each
   group's setpoint schedule MUST be the floor-area-weighted mean of its zones', and the report
-  MUST state that this rule is representative rather than conserving.
+  MUST state that this rule is representative rather than conserving. Only zones heated (or
+  cooled) enter the heating (or cooling) mean; a zone with no thermostat for a mode, or with a
+  setpoint that disables it, does not, and the report MUST state the share of the group's floor
+  area that is not heated or not cooled.
 - **FR-021 — Domestic hot water**: each group MUST conserve the total hot water use (volume and
-  hourly profile) and supply temperature of its zones; hot water attached to the building as a
-  whole MUST be allocated to groups in proportion to the use that drives it, and the report
-  MUST state the allocation.
+  hourly profile) of its zones and the energy needed to heat it: the group's supply temperature
+  MUST be the mains temperature plus the volume-weighted mean of its zones' temperature rise
+  above mains. Hot water attached to the building as a whole MUST be allocated to groups in
+  proportion to the use that drives it, and the report MUST state the allocation.
 - **FR-022 — Conditioning efficiency**: each group's heating and cooling efficiencies MUST be
   the effective seasonal values that reproduce, for the heating and cooling energy delivered to
-  its zones in the detailed simulation, the energy consumed to deliver it, by fuel.
+  its zones in the detailed simulation, the energy consumed to deliver it, by fuel. Merging
+  groups MUST conserve both delivered and consumed energy (the merged efficiency is total
+  delivered over total consumed), so the report MUST carry each group's delivered and consumed
+  energy by fuel (FR-010). Where a group receives no delivered heating (or cooling), its
+  efficiency for that mode MUST be taken from the equipment serving it, and any consumption not
+  attributable to delivered energy (standby, pilot lights) MUST be listed in the report.
 - **FR-023 — Schedules**: every schedule in the archetype MUST be expressed as an EnergyPlus
   `Schedule:Compact` that keeps the day types present in the source (weekdays, weekends,
   holidays, design days) and reproduces the conserved hourly profile of FR-015, FR-018,
@@ -239,11 +267,13 @@ divided by the group's matching basis.
 - **FR-026**: The report MUST list every feature of the detailed model that the archetype does
   not represent, and, where its effect was folded into another parameter, which one.
 - **FR-027**: Users MUST be able to compare the simulation results of a detailed model and of its
-  archetype, and receive, for total site energy, each major end use by fuel (heating, cooling,
-  interior lighting, interior equipment, fans, service hot water) and annual peak heating and
+  archetype, and receive, for total site energy, each end use by fuel that EnergyPlus reports
+  (heating, cooling, interior and exterior lighting, interior equipment, fans, pumps, heat
+  rejection, refrigeration, service hot water and any other) and annual peak heating and
   cooling demand, both values, the difference and whether it meets the acceptance targets.
 - **FR-028**: The comparison MUST refuse results that are not comparable (different weather,
-  run period or reporting units) and say why.
+  run period, reporting units, or timestep and reporting frequency, on which peak demand
+  depends) and say why.
 
 **Errors**
 
@@ -271,7 +301,9 @@ divided by the group's matching basis.
   characteristics (geometry characteristics, attic and basement assumptions).
 - **Reduction report**: the record of a reduction: each group's source zones, each parameter's
   rule, excluded zones, merged small groups, the source of each space-use classification, and
-  what was not represented.
+  what was not represented. It also records what is needed to reproduce the reduction: the
+  versions of archetypal, EnergyPlus and epinterface, identifiers of the model, results and
+  weather file used, and the options chosen (layout, threshold, space-use mapping).
 - **Reference set**: the buildings on which reduction is verified: the DOE/PNNL commercial
   prototype buildings (all building types) in at least three climate zones (hot, mixed, cold),
   plus at least one residential model (roadmap C-12).
@@ -285,15 +317,18 @@ weather and run period:
 
 - **SC-001**: Total annual site energy of the archetype is within ±5 % of the detailed model's
   for every building.
-- **SC-002**: Each major end use (heating, cooling, interior lighting, interior equipment, fans,
-  service hot water) is within ±10 % for every building where that end use is at least 5 % of
-  total site energy.
-- **SC-003**: Annual peak heating and cooling demand are each within ±15 % for every building.
-- **SC-004**: v3's error on SC-001 to SC-003 is smaller than v2's on the same buildings, for the
-  set as a whole and for at least 90 % of individual buildings. This is what "more correct than
-  v2" means.
+- **SC-002**: Each end use reported in FR-027 is within ±10 % for every building where that end
+  use is at least 5 % of total site energy.
+- **SC-003**: Annual peak heating and cooling demand are each within ±15 % for every building
+  where that peak is at least 10 % of the larger of the building's two peaks.
+- **SC-004**: v3's error on SC-001 to SC-003, with v3 reduced to the core/perimeter layout that
+  v2 produces, is smaller than v2's on the same buildings, for the set as a whole (mean
+  absolute relative error) and for at least 90 % of individual buildings. Comparing at the
+  same layout isolates the aggregation rules from the finer zoning. This is what "more correct
+  than v2" means.
 - **SC-005**: Every conserved total named in FR-014 to FR-019, FR-021 and FR-022 matches the
-  detailed model within 0.1 % for every building and every layout.
+  detailed model within 0.1 % (exactly, where the detailed total is zero) for every building
+  and every layout.
 - **SC-006**: 100 % of reference buildings reduce without error at every layout, and 100 % of
   detailed zones are accounted for in each report.
 - **SC-007**: Reducing directly to a coarser layout and merging a finer archetype to it give

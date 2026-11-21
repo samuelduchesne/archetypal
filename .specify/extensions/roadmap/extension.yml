@@ -1,0 +1,80 @@
+schema_version: '1.0'
+extension:
+  id: roadmap
+  name: Spec Roadmap
+  version: 0.1.0
+  description: >-
+    Capture a durable spec roadmap after the constitution, then review specs
+    against it before and after implementation so spec-specific decisions,
+    outcomes, and constraints are never lost.
+  author: srobroek
+  repository: https://github.com/srobroek/speckit-roadmap
+  license: Apache-2.0
+  homepage: https://github.com/srobroek/speckit-roadmap
+requires:
+  speckit_version: '>=0.11.6'
+provides:
+  commands:
+    - name: speckit.roadmap.write
+      file: commands/speckit.roadmap.write.md
+      description: Create or amend the project spec roadmap (runs after the constitution)
+    - name: speckit.roadmap.brief
+      file: commands/speckit.roadmap.brief.md
+      description: >-
+        Read-only briefing: surface what the roadmap expects for the spec about
+        to be implemented
+    - name: speckit.roadmap.debrief
+      file: commands/speckit.roadmap.debrief.md
+      description: 'Read-only review: check the implemented spec against its roadmap entry'
+    - name: speckit.roadmap.sync
+      file: commands/speckit.roadmap.sync.md
+      description: >-
+        Read-only reconciliation: detect drift between the roadmap ledger and
+        specs on disk
+  scripts:
+    - name: load-config-sh
+      file: scripts/bash/load-config.sh
+      description: Load and validate roadmap extension configuration; emit a JSON contract
+      executable: true
+    - name: load-config-ps
+      file: scripts/powershell/load-config.ps1
+      description: Load and validate roadmap extension configuration; emit a JSON contract
+      executable: true
+  config:
+    - name: roadmap-config.yml
+      template: config-template.yml
+      description: >-
+        Roadmap extension configuration (roadmap path, ADR directory, PRD
+        detection globs)
+      required: false
+hooks:
+  after_constitution:
+    command: speckit.roadmap.write
+    optional: true
+    prompt: >-
+      Draft or update the spec roadmap now? (captures spec-specific decisions
+      and future-spec intent from the constitution discussion)
+    description: >-
+      Capture a durable roadmap so constitution-phase decisions and
+      not-yet-written-spec intent are not lost
+  before_implement:
+    command: speckit.roadmap.brief
+    optional: true
+    prompt: Review the roadmap for this spec before implementing?
+    description: >-
+      Surface the roadmap's expectations (outcome, scope, governing decisions,
+      dependencies) for the spec about to be built
+  after_implement:
+    command: speckit.roadmap.debrief
+    optional: true
+    prompt: Check the implementation against the roadmap?
+    description: Verify the implemented spec matches its roadmap entry's outcome and scope
+tags:
+  - roadmap
+  - planning
+  - governance
+  - review
+  - spec-alignment
+defaults:
+  report:
+    max_findings: 50

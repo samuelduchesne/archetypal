@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "git": {
+      "version": "1.0.1",
+      "source": "local",
+      "manifest_hash": "sha256:698cc7089602db44622de39730555db4999cda94ab47195bcfe18f41d08b430a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-21T18:51:40.466292+00:00"
+    },
+    "agent-context": {
+      "version": "1.0.2",
+      "source": "local",
+      "manifest_hash": "sha256:270100175bb742c37b8d549f2233c5b79114869dac754883dbecac2a4813beef",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.agent-context.update"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-21T18:51:41.553762+00:00"
+    },
+    "github": {
+      "version": "1.0.3",
+      "source": "local",
+      "manifest_hash": "sha256:a533b88a1888aa456167f9b4b6bcf956d5837dcb0e7bc7c6be31be8ae618bc38",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.github.taskstoissues"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-21T18:51:43.031904+00:00"
+    },
+    "roadmap": {
+      "version": "0.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:8da8b6c515c692f0efda4daeed43e318347ca86f98b16ec778e88f9ff0e7a47e",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.roadmap.write",
+          "speckit.roadmap.brief",
+          "speckit.roadmap.debrief",
+          "speckit.roadmap.sync"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-11-21T18:52:27.204166+00:00"
+    }
+  }
+}

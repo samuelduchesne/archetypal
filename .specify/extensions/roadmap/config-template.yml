@@ -1,0 +1,34 @@
+# Spec Roadmap Extension Configuration
+# Copy this file to roadmap-config.yml and customize as needed.
+# All values are optional; the defaults below are applied when a key is absent.
+# Environment variables (SPECKIT_ROADMAP_*) override file values.
+
+roadmap:
+  # Where the roadmap artifact lives. Default keeps it beside the constitution
+  # as a durable, project-level governance document.
+  # Env override: SPECKIT_ROADMAP_PATH
+  path: ".specify/memory/roadmap.md"
+
+adr:
+  # Directory where Architecture Decision Records live, IF the project uses them.
+  # The roadmap only REFERENCES ADRs (governed-by: ADR-NNNN); it never authors them.
+  # If this directory is absent, ADR linkage is simply unused (graceful no-op).
+  # Env override: SPECKIT_ROADMAP_ADR_DIR
+  dir: "docs/adr/"
+
+prd:
+  # Glob patterns used to DETECT product-requirement documents anywhere in the repo.
+  # General detection — not coupled to any single PRD tool. Detected PRDs are
+  # referenced (addresses: ...) and may pre-fill goals/outcomes; never authored.
+  # Env override: SPECKIT_ROADMAP_PRD_GLOBS (comma-separated)
+  globs:
+    - "**/prd*.md"
+    - "**/PRD*.md"
+    - "**/prd-intake.yaml"
+    - "**/product-spec.md"
+    - "docs/product/**/*.md"
+
+report:
+  # Maximum number of findings in a review report table (overflow is summarized).
+  # Env override: SPECKIT_ROADMAP_MAX_FINDINGS
+  max_findings: 50

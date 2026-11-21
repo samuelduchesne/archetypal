@@ -238,3 +238,6 @@ docs/reference/
 .idea/
 
 tests/tests/.temp/
+
+# spec-kit catalog cache
+.specify/extensions/.cache/

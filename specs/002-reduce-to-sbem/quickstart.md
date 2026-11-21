@@ -14,13 +14,14 @@ API details are in [contracts/python-api.md](contracts/python-api.md). Report fi
 ## 1. Quality gates and the unit tier (every push)
 
 ```bash
-make check                 # uv lock --locked, pre-commit (ruff check + format), pyright strict, deptry
+make check                 # uv lock --locked, pre-commit (ruff, ban on untyped idfkit lookups), pyright strict, idfkit check, deptry
 uv run pytest              # default selection: unit tier only
 ```
 
 **Expected:**
 
-- every check passes;
+- every check passes, including `idfkit check --since 22.1` with no C001–C006 findings and no
+  pyright "unknown type" errors;
 - pytest reports its 15 slowest tests and finishes in **under 120 s**. The session hook fails
   the run otherwise.
 

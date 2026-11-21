@@ -44,7 +44,7 @@ Six facts drive most of the decisions below.
 ## R1 — Where static quantities come from: the EnergyPlus SQLite output
 
 **Decision.** Read every quantity EnergyPlus itself computes from the results' SQLite file,
-through `idfkit.simulation.SQLResult`:
+through `idfkit.simulation.SQLResult` (static tables through the typed wrappers of R18):
 
 | Quantity | SQLite table |
 |---|---|
@@ -55,7 +55,7 @@ through `idfkit.simulation.SQLResult`:
 | Design infiltration and simple ventilation | `NominalInfiltration`, `NominalVentilation` |
 | Per-surface U-factor with films, SHGC and visible transmittance | tabular *Envelope Summary* (Opaque Exterior, Exterior Fenestration) |
 
-Read the model itself (through idfkit) only for what the SQLite file does not hold:
+Read the model itself (through idfkit's typed accessors, R18) only for what the SQLite file does not hold:
 
 - schedules and their definitions;
 - thermostat controls;
@@ -543,6 +543,79 @@ No pandas import in archetypal. The command line (`click` or similar) is spec 00
 pins (`click==8.1.7`, `pandas<2.3`, `packaging<25` via archetypal 2.18.10) and undeclared
 `PyYAML` must be loosened or fixed. Those changes are folded into UP-1 and UP-4 (see the
 upstream table in plan.md).
+
+## R18 — idfkit's typed interface first
+
+**Decision.** archetypal reads models only through idfkit's statically typed interface.
+
+1. **Typing the document.** The loaded document is narrowed once, in `sources.py`, with
+   `idfkit.versioned.as_version(doc, since="22.1")`. Its type is then `IDFDocumentSince22_1`,
+   the union of the release document types R3 supports. The range follows idfkit as it adds
+   releases, with no list to maintain.
+2. **Reading objects.** Objects are read through the typed accessors:
+   - snake_case properties where idfkit has them (`doc.zones`, `doc.spaces`,
+     `doc.run_periods`, `doc.schedule_compacts`, `doc.schedule_years`,
+     `doc.zone_control_thermostats`, `doc.water_use_equipments`);
+   - otherwise a **literal** key (`doc["ThermostatSetpoint:DualSetpoint"]`,
+     `doc["Controller:OutdoorAir"]`), which is overloaded and returns a typed collection.
+
+   Fields are typed attributes: `Space.space_type: str | None`,
+   `RunPeriod.day_of_week_for_start_day: Literal[...] | None`,
+   `ZoneControlThermostat.control_1_object_type: Literal[...]`, and so on. Extensible fields
+   are typed groups, for example `ScheduleYear.schedule_weeks[i].start_month: int`.
+3. **Forbidden in `src/`:**
+   - `get_collection`;
+   - indexing with a non-literal string;
+   - `collections` and `objects_by_type`;
+   - `get_referenced_object`, `schedules_dict` and `get_zone_surfaces` (each returns untyped
+     `IDFObject`s);
+   - `getattr` on idfkit objects.
+4. **Following references** (a thermostat's setpoint object, a schedule name of unknown type):
+   look the name up in typed collections.
+   - `_schedules.py` builds one typed index
+     `dict[str, AnySchedule]` from the per-type accessors, where
+     `AnySchedule = ScheduleCompact | ScheduleYear | ScheduleConstant | ScheduleFile | …`.
+   - Thermostats dispatch on `control_n_object_type`, a `Literal`, with `match`, so pyright
+     checks every case.
+5. **Fields that differ between releases.** Narrow with `as_version(doc, (IDFDocumentV22_1,
+   …))` or `as_version(doc, since=...)` around the read, never `isinstance`. A probe under
+   pyright strict (1.1.408) confirmed that `Lights.watts_per_floor_area` is a type error on the
+   22.1+ union, as it should be. Loads come from the SQLite tables anyway (R1), so reduction
+   needs no such narrowing today.
+6. **Enforcement.** Three checks run in `make check` and pre-commit:
+   - **`idfkit check`**, configured in `[tool.idfkit.check]` with `since = "22.1"` and
+     `extend-select = ["C004"]`. It reports object types or choice values that differ between
+     releases (C001, C002), any literal `get_collection` (C003, C004) and `add()` types no
+     target accepts (C006).
+   - **pyright strict**, with `reportUnknownMemberType` and `reportUnknownVariableType` as
+     errors. An untyped `IDFObject` leaking in fails the build.
+   - **A `pygrep` pre-commit hook** banning the names listed in item 3 under `src/`.
+
+**Where idfkit is not yet typed, archetypal wraps it in one place and asks upstream.**
+
+| idfkit API | Returns | archetypal's bridge | Upstream |
+|---|---|---|---|
+| `SQLResult.query(sql)` (EnergyPlus static tables: `Zones`, `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`) | `list[tuple[object, ...]]` | `_sql_tables.py`: one frozen dataclass per table (`ZoneRow`, `SurfaceRow`, `NominalLoadRow`, …), converted and checked at the boundary. No other module calls `query`. | **UP-7**: typed readers for these tables in idfkit. archetypal switches to them and deletes `_sql_tables.py`. |
+| `idfkit.schedules.values(schedule: IDFObject, …)` | `list[float]` | None needed: typed schedule objects are `IDFObject`s. | UP-5 (faster day profiles) |
+| `ScheduleYear.schedule_weeks[i].start_month`, typed `int` | `'1.0'` at run time in 1.3.0rc2 | `_bridges.py` (UP-6) | **UP-6**: also makes the typed field honour its declared type. |
+
+**Rationale.**
+
+- The user asked for idfkit's strongly typed interface wherever possible.
+- With the typed interface, pyright catches misspelt object types, fields missing from a
+  release and unhandled choice values when the code is written, not when a user's model fails.
+- Concentrating the untyped boundary in `_sql_tables.py` and `_bridges.py` keeps the rest of
+  the package strict, and each bridge has a named upstream exit (constitution I).
+
+**Alternatives considered.**
+
+- *`get_collection` with string names from a table.* Rejected: untyped, and the user ruled it
+  out.
+- *`load_idf(..., as_type=IDFDocumentV24_2)`.* Rejected: types one release and refuses the
+  rest of R3's range.
+- *Read loads from the typed model instead of SQLite.* Rejected: R1's reasons still hold
+  (multipliers, input-method normalisation, renames across releases). The typed SQLite
+  readers of UP-7 give both properties.
 
 ## Spec feedback
 

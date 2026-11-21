@@ -36,8 +36,8 @@ The inputs, checked.
 
 | Field | Type | Notes |
 |---|---|---|
-| `model` | idfkit `AnyIDFDocument` | Loaded with `idfkit.load_idf`/`load_epjson`. |
-| `results` | idfkit `SQLResult` | From the SQLite file of the detailed run. |
+| `model` | `idfkit.versioned.IDFDocumentSince22_1` | Loaded with `idfkit.load_idf`/`load_epjson`, then narrowed by `as_version(doc, since="22.1")`, which also enforces R3's lower bound. Read only through typed accessors (R18). |
+| `results` | idfkit `SQLResult` | From the SQLite file of the detailed run. Static tables are read through `_sql_tables` typed rows (R18, UP-7). |
 | `energyplus_version` | `tuple[int, int, int]` | From the model's `Version` and the results' `Simulations` table; the two must agree. |
 | `run_period` | `RunPeriodInfo` | Start and end dates, start weekday, calendar year chosen per R5, holidays. |
 | `model_sha256`, `results_sha256`, `weather_sha256` | `str`, `str`, `str \| None` | For the report's reproducibility block. |
@@ -65,10 +65,10 @@ One per EnergyPlus zone, as EnergyPlus counts it.
 | `gains` | `tuple[GainRecord, ...]` | `Nominal*` tables |
 | `infiltration` | `tuple[AirflowRecord, ...]` | `NominalInfiltration` |
 | `outdoor_air` | `Profile` | R2 hourly output |
-| `thermostat` | `ThermostatRecord \| None` | Model (R10) |
+| `thermostat` | `ThermostatRecord \| None` | Model: `doc.zone_control_thermostats`, dispatched on the `Literal` `control_n_object_type` (R10, R18) |
 | `hot_water` | `tuple[HotWaterRecord, ...]` | Model and R2 outputs, after R11 allocation |
 | `delivered` | `dict[Mode, float]` | R2 run-period outputs |
-| `space_type` | `str \| None` | `Space.space_type` when all of the zone's spaces agree |
+| `space_type` | `str \| None` | `doc.spaces`: `Space.space_type` when all of the zone's spaces agree |
 
 Supporting records:
 

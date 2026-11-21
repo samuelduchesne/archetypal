@@ -18,7 +18,7 @@ from archetypal.errors import (
 
 ```python
 def reduce(
-    model: str | os.PathLike[str] | AnyIDFDocument,
+    model: str | os.PathLike[str] | AnyIDFDocument,   # narrowed internally with as_version(since="22.1")
     results: str | os.PathLike[str] | SQLResult | None = None,
     *,
     options: ReductionOptions = ReductionOptions(),
@@ -28,6 +28,9 @@ def reduce(
 ) -> Reduction: ...
 ```
 
+- **`model`** may be any idfkit document. Reduction narrows it with
+  `idfkit.versioned.as_version(doc, since="22.1")`. A document from an older release raises
+  `UnsupportedEnergyPlusVersion`, pointing to `idfkit.migration.migrate`.
 - **`results`** is the SQLite output of an annual run that meets `RESULTS_REQUIREMENTS`.
 - **When `results` is `None` or incomplete:**
   - If `simulate=False`, reduction raises `MissingResults`. The exception lists each missing

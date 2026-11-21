@@ -15,7 +15,9 @@ archetype plus a reduction report.
 1. **Read.** archetypal reads what EnergyPlus computed (floor areas, multipliers, surfaces,
    U-factors, installed loads, delivered and consumed energy) from the results' SQLite file
    through idfkit. It reads schedules, thermostats, hot water and air-side equipment from the
-   model, also through idfkit.
+   model through idfkit's **strongly typed interface**: the document is narrowed to the
+   supported releases with `as_version(doc, since="22.1")`, then read with typed accessors
+   only, never `get_collection` (research R18).
 2. **Group.** It classifies each conditioned zone by exposure and space use, and forms zone
    groups for the chosen layout.
 3. **Ledger.** For each group it keeps a **ledger** of conserved totals: areas, UA, heat
@@ -44,7 +46,7 @@ epinterface; research R15, R17).
 **Primary Dependencies**:
 - epinterface (SBEM data model; first release with UP-1 and UP-2);
 - idfkit `>=1.3,<2` (model I/O, schedule evaluation, SQLite and tabular results, single
-  simulation run);
+  simulation run), used through its typed interface only (R18);
 - numpy;
 - pydantic v2 (research R17).
 
@@ -86,15 +88,15 @@ spec feedback F-1 and F-2.
 
 | Principle | Check | Status |
 |---|---|---|
-| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls. The SBEM model and its JSON are epinterface's. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6. There is one temporary bridge: normalising `Schedule:Year` month and day fields to `int` until UP-6. It is tracked and removed when UP-6 is released. | Pass (bridge recorded below) |
+| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls, made through its typed interface (R18). The SBEM model and its JSON are epinterface's. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6, UP-7. There are two temporary bridges, both tracked and removed when their upstream item is released: normalising `Schedule:Year` month and day fields to `int` until UP-6, and typed row wrappers over `SQLResult.query` until UP-7. | Pass (bridges recorded below) |
 | **II. One archetype data model** | The output is SBEM only. The ledger is internal working state, not a second archetype model: it is never written as an archetype, and only its totals appear in the report (needed for FR-010 and FR-022). | Pass |
 | **III. Small and focused** | Four runtime dependencies, each justified (R17). There is at most one simulation run, on request. No geometry generation (FR-024 carries ratios only). No calibration. | Pass |
 | **IV. Physically correct and verifiable** | Each SBEM parameter is tied to a conservation rule (data-model.md, "Derivation rules"). The reference tier measures SC-001–SC-008 against stated targets, including v2's baseline (SC-004). | Pass, with spec feedback F-1 (SC-002 and fan end uses) for `/speckit-analyze` |
 | **V. What and why before how** | All "how" lives here and in research.md. No v2 code is carried over; v2 is read only to run the SC-004 baseline in a separate environment. | Pass |
-| **VI. Dependable public library** | Strict pyright, py.typed, ruff with `D` (Google docstrings), public behaviour tested, docs in the same PR (below), Python 3.10–3.12, uv, Keep a Changelog. | Pass |
+| **VI. Dependable public library** | Strict pyright, with unknown-type reports as errors so no untyped idfkit object leaks in, and `idfkit check` (R18); py.typed, ruff with `D` (Google docstrings), public behaviour tested, docs in the same PR (below), Python 3.10–3.12, uv, Keep a Changelog. | Pass |
 
-**Gate result: PASS.** The only exception is the temporary bridge for UP-6, recorded in
-Complexity Tracking.
+**Gate result: PASS.** The only exceptions are the temporary bridges for UP-6 and UP-7,
+recorded in Complexity Tracking.
 
 ### Documentation this plan adds (constitution VI, FR-030)
 
@@ -121,9 +123,11 @@ Spec 002 cannot be marked implemented until the blocking items are released.
 | UP-3 | epinterface | Published on PyPI. | **Already met**: 15 releases on PyPI, 1.0.0–1.5.0. |
 | UP-4 | epinterface | Heavy dependencies become optional (Prisma, geopandas, ladybug), and exact pins are loosened (`click==8.1.7`, `pandas<2.3`). | No (install size and conflicts) |
 | UP-5 | idfkit | Day-type-aware `Schedule:Compact` creation. Now also a faster day-profile evaluation if the R5 benchmark fails. | No |
-| UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final. | Yes for release; bridged meanwhile |
+| UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final, so the typed `schedule_weeks[i].start_month: int` really is an `int`. | Yes for release; bridged meanwhile |
+| UP-7 (new) | idfkit | Typed readers for EnergyPlus's static SQLite tables (`Zones`, `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`), in place of raw `SQLResult.query` rows. | No; bridged by `_sql_tables.py` |
 
-The roadmap is updated with UP-6, the broader UP-2 and UP-5 scope, and UP-3 marked as met.
+The roadmap is updated with UP-6 and UP-7, the broader UP-2 and UP-5 scope, and UP-3 marked
+as met.
 
 ## Project Structure
 
@@ -156,12 +160,14 @@ src/archetypal/
 │   ├── __init__.py          # reduce(), merge(), Layout, ReductionOptions, RESULTS_REQUIREMENTS
 │   ├── options.py           # Layout enum, ReductionOptions (threshold, mapping, layout)
 │   ├── requirements.py      # RESULTS_REQUIREMENTS; check results; add outputs and run once via idfkit
-│   ├── sources.py           # SourceData: idfkit document + SQLResult; version and model/results matching
+│   ├── sources.py           # SourceData: as_version(doc, since="22.1") + SQLResult; version and model/results matching
+│   ├── _sql_tables.py       # typed frozen rows over SQLResult.query (bridge until UP-7); the only caller of query()
 │   ├── inventory.py         # ZoneRecord per zone from the Zones, Surfaces and Nominal* tables
 │   ├── classify.py          # exposure (R7), conditioned/attic/basement (R8), space use (R4)
 │   ├── grouping.py          # layouts, small-group threshold, merge plan (FR-008–FR-011)
 │   ├── ledger.py            # GroupLedger: conserved totals; add/merge (associative, commutative)
-│   ├── schedules.py         # evaluation via idfkit (memoised), projection, Schedule:Compact text (R5)
+│   ├── schedules.py         # typed AnySchedule index from per-type accessors; evaluation via idfkit (memoised),
+│   │                        #   projection, Schedule:Compact text (R5, R18)
 │   ├── envelope.py          # surface classes, UA, capacity, equivalent constructions (R6)
 │   ├── airflow.py           # infiltration, outdoor air, HRV/economiser (R9)
 │   ├── thermostats.py       # FR-020 (R10)
@@ -212,6 +218,14 @@ owns that move and the command line.
   - lint `select` = the template's set plus `D`, `NPY`, `PL`;
   - `pydocstyle.convention = "google"`, `pylint.max-args = 8`, `future-annotations = true`;
   - per-file ignores: `tests/*` → `S101`, `D`, `PLR2004`.
+- **`[tool.pyright]`:** strict, plus `reportUnknownMemberType`, `reportUnknownVariableType`
+  and `reportUnknownArgumentType` set to `"error"` (R18).
+- **`[tool.idfkit.check]`:** `paths = ["src"]`, `since = "22.1"`, `extend-select = ["C004"]`,
+  `fail-on = "warning"`. This runs `idfkit check` in `make check` and as a local pre-commit
+  hook (R18).
+- **`.pre-commit-config.yaml`:** in addition to the template's hooks, a `pygrep` hook bans
+  `get_collection`, `.collections`, `objects_by_type`, `get_referenced_object`,
+  `schedules_dict` and `get_zone_surfaces` under `src/`.
 - **`[tool.pytest.ini_options]`:**
   - `strict = true`, `testpaths = ["tests"]`;
   - `markers = ["energyplus: needs EnergyPlus 24.2", "reference: reference-set evidence (slow)"]`;
@@ -231,4 +245,5 @@ owns that move and the command line.
 
 | Exception | Why needed | Simpler alternative rejected because |
 |---|---|---|
+| Temporary bridge `_sql_tables.py` (typed frozen rows over `SQLResult.query` for the static tables) | idfkit has no typed reader for these tables, and R1 depends on them. | Calling `query` throughout the code spreads untyped `tuple[object, ...]` rows and breaks R18. Reading loads from the model instead loses multipliers and normalisation (R1). The wrapper is one module, removed when UP-7 is released. |
 | Temporary bridge `_bridges.normalise_schedule_year` (normalises a copy of `Schedule:Year` month and day fields to `int` before idfkit evaluates it) | idfkit 1.3.0rc2 fails on every `Schedule:Year` loaded from a file (research finding 5). Reduction must handle them; the prototypes use them. | Writing our own `Schedule:Year` evaluator duplicates idfkit (constitution I). Waiting for the fix blocks all development. The bridge is a few lines, tested, and removed when UP-6 is released (a test fails once idfkit's version includes the fix, as a reminder). |

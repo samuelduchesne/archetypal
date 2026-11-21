@@ -1,6 +1,15 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.3.0 → 1.4.0
+Bump rationale: MINOR — new upstream prerequisite UP-7 (typed SQLite table readers in idfkit);
+UP-6 also asks that the typed Schedule:Year fields honour their declared int type. Follows
+the 002 plan's decision to use idfkit only through its typed interface (research R18).
+
+Specs affected: 002
+Open questions added/resolved: none
+
+Previous revision (1.3.0):
 Version change: 1.2.2 → 1.3.0
 Bump rationale: MINOR — new upstream prerequisite UP-6; UP-1, UP-2, UP-4 and UP-5 scope
 expanded from the 002 plan's research; UP-3 recorded as met.
@@ -222,7 +231,13 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 - **UP-6 — idfkit: `Schedule:Year` evaluation fails on loaded models.** In 1.3.0rc2,
   `schedules/year.py` calls `int('1.0')` on month and day fields parsed as floats, so every
   `Schedule:Year` read from a file raises `ValueError`. Fix before idfkit 1.3.0 final. 002
-  bridges it temporarily (plan, Complexity Tracking). *Blocking for 002's release.*
+  bridges it temporarily (plan, Complexity Tracking). The fix must also make the typed field
+  `schedule_weeks[i].start_month: int` an `int` at run time. *Blocking for 002's release.*
+- **UP-7 — idfkit: typed readers for EnergyPlus's static SQLite tables** (`Zones`,
+  `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`). Today they are
+  reachable only through `SQLResult.query`, which returns untyped rows. archetypal uses idfkit
+  only through its typed interface (002 research R18), so it bridges this with one module of
+  typed rows until the readers exist. Not blocking.
 
 ## Planned Specs
 
@@ -267,7 +282,7 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   demonstrated on reference buildings; the matching explanation page in the docs.
 - **Scope (out):** algorithms and code structure (the plan's job, C-04); calibration (C-05);
   generating EnergyPlus from the archetype (epinterface).
-- **Depends on:** 001, UP-1, UP-2, UP-6
+- **Depends on:** 001, UP-1, UP-2, UP-6 (UP-7 desirable)
 - **Governed by:** C-02, C-03, C-04, C-11, C-12
 - **Spec dir:** specs/002-reduce-to-sbem/ (plan written; research.md raises spec feedback F-1
   on SC-002 and F-2 on FR-023 for `/speckit-analyze`)
@@ -382,4 +397,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.3.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.4.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

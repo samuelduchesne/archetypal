@@ -21,10 +21,12 @@ moves to SBEM as its single archetype data model (roadmap C-02), so without a tr
 - v3 could not deliver v2's core workflow, "reduce a detailed model and get a UMI template
   library" (roadmap C-10).
 
-A translator is only trustworthy if it is honest about what it loses. UMI and SBEM do not
-describe a building identically: UMI holds exactly two zones per building (core and perimeter),
-SBEM archetypes may hold several zone groups (roadmap C-11), and some fields exist on only one
-side. Constitution II requires every translation to state what it loses; this spec defines
+A translator is only trustworthy if it is honest about what it loses. UMI and SBEM will not
+describe a building identically. UMI holds exactly two zones per building (core and perimeter).
+SBEM today holds a single zone definition per model; v3 archetypes will hold several zone groups
+once our upstream change to epinterface lands (roadmap C-03, C-11, UP-2). Some fields are also
+expected to exist on only one side; the field correspondence this spec requires (FR-009) is what
+establishes which. Constitution II requires every translation to state what it loses; this spec defines
 what "survives the trip" means and how the user is told when something does not.
 
 ## User Scenarios & Testing *(mandatory)*

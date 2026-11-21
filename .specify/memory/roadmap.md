@@ -1,6 +1,17 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.2.0 → 1.2.1
+Bump rationale: PATCH — status transition (002 planned → specced) and a note on writing order.
+
+Changes this revision:
+  - 002: status specced; spec dir specs/002-reduce-to-sbem/
+  - 001: notes record that it is written after 002 and 003
+
+Specs affected: 001, 002
+Open questions added/resolved: none
+
+Previous revision (1.2.0):
 Version change: 1.1.0 → 1.2.0
 Bump rationale: MINOR — open questions Q1–Q6 resolved into decisions C-11 … C-16; C-03
 broadened from core/perimeter to zone groups (amends 002, 003 and UP-2 without invalidating
@@ -190,11 +201,11 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 - **Depends on:** UP-1, UP-3
 - **Governed by:** C-01, C-07, C-08, C-09
 - **Notes:** Not a release on its own (C-10): it ships together with 002 and 003 as v3.0.
-  Ordered first because 002 and 003 need somewhere to live, but it can be specified alongside
-  them. Whether the `reduce` command keeps its v2 name and arguments is a question for
+  Written after 002 and 003: its public surface and command line describe what those specs
+  deliver, so writing it first would mean guessing at them. Whether the `reduce` command keeps its v2 name and arguments is a question for
   this spec.
 
-### 002 — Reduce a detailed EnergyPlus model to an SBEM archetype  [status: planned]
+### 002 — Reduce a detailed EnergyPlus model to an SBEM archetype  [status: specced]
 
 - **Description:** Turn a detailed, multizone EnergyPlus model (and the results of simulating
   it) into one SBEM archetype made of zone groups (by space use and exposure, C-11), describing
@@ -214,6 +225,7 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   generating EnergyPlus from the archetype (epinterface).
 - **Depends on:** 001, UP-1, UP-2
 - **Governed by:** C-02, C-03, C-04, C-11, C-12
+- **Spec dir:** specs/002-reduce-to-sbem/
 - **Notes:** The spec states the *what* and *why* of reduction, not the *how*, so that
   `/speckit-plan` can design the rewrite freely. Evidence gathered from v2 for the spec's
   motivation: perimeter aggregation includes core zones; zone multipliers are applied by
@@ -324,4 +336,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.2.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.2.1 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

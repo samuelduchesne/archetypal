@@ -263,7 +263,8 @@ divided by the group's matching basis.
 - **Simulation results**: the outputs of simulating the detailed model (or the archetype) for a
   given weather file and run period.
 - **Zone group**: a set of detailed zones that share a space use and an exposure, described by
-  one SBEM zone definition and its share of the conditioned floor area.
+  one SBEM zone definition and its share of the conditioned floor area. Not to be confused with
+  EnergyPlus's `ZoneGroup` object (a zone list with a multiplier), which is unrelated.
 - **Layout**: the rule that decides how zones are grouped: space use × exposure (default), space
   use only, core/perimeter, or single zone.
 - **Archetype**: the SBEM description of the building: its zone groups and building-level

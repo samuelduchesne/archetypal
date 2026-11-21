@@ -42,6 +42,9 @@ what "survives the trip" means and how the user is told when something does not.
   groups; where report data is missing (for example delivered and consumed energy for
   efficiencies), floor-area weighting is used instead and each such parameter is listed in the
   loss report as approximate.
+- Q: How is an archetype with only a perimeter group written to UMI, which needs both a core and
+  a perimeter zone definition? → A: The perimeter definition is used for the core zone too, and
+  the loss report states that the core definition was copied, not derived from core zones.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -145,9 +148,10 @@ original and result field by field.
 - **A value outside SBEM's allowed range** (for example a negative conductivity in a
   hand-edited library): reading stops for that building template, names the value, and
   continues with the others only if the user asked to skip invalid templates.
-- **An archetype with a perimeter group only** (no core): written to UMI with the perimeter
-  definition used for both zones and a core share of zero, and reported. *(Assumption: UMI
-  requires both zones; see Assumptions.)*
+- **An archetype with a perimeter group only** (no core, for example a narrow bar building):
+  written to UMI with the perimeter definition used for the core zone too, because the template
+  may later be applied to buildings that do have a core; the loss report states that the core
+  definition was copied, not derived (FR-006b).
 - **Duplicate building template names** in one library: reading keeps both and reports the
   duplication; writing never produces duplicate names.
 - **UMI library versions**: libraries written by older UMI releases are read where their format
@@ -183,6 +187,9 @@ original and result field by field.
   such parameter MUST be listed in the loss report as approximate.
 - **FR-006a**: Writing MUST drop an archetype's fixed floor-area shares, because UMI derives
   them from each building's geometry, and MUST report them as lost.
+- **FR-006b**: An archetype with only a perimeter group MUST be written with its perimeter
+  definition used for the core zone as well, and the loss report MUST state that the core
+  definition was copied from the perimeter rather than derived from core zones.
 - **FR-007**: Components shared by several archetypes MUST appear once in the written library;
   component names in the written library MUST be unique.
 - **FR-008**: Schedules MUST be written in UMI's year, week and day form, reproducing the same
@@ -248,9 +255,8 @@ original and result field by field.
 
 - UMI's current template library format is the target for writing; older formats are read where
   identifiable (edge cases).
-- UMI requires both a core and a perimeter zone in each building template. If UMI accepts a
-  template without a core, the edge case above becomes a direct write and the assumption is
-  removed during clarification.
+- UMI requires both a core and a perimeter zone definition in each building template, and
+  applies the core definition only to buildings whose geometry has a core (FR-006b).
 - epinterface supports zone groups and the fields required by C-13 (upstream UP-2) before this
   spec is implemented.
 - UMI templates are not offered as editable Python objects (roadmap C-02); editing happens on

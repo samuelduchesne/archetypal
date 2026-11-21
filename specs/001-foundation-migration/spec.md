@@ -49,6 +49,8 @@ This spec is not a release on its own: v3.0 ships only when 001, 002 and 003 are
   of its model, one file per archetype; reports are written as separate files beside it.
 - Q: In what form are the reduction and loss reports written? → A: One structured,
   machine-readable file per report, plus a short human-readable summary printed by the command.
+- Q: For how long after v3.0 does the v2.x line receive security fixes? → A: 12 months after
+  v3.0 or until v3.1 ships (restoring TABULA), whichever is later.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -162,6 +164,7 @@ page belongs to exactly one Diátaxis kind.
   guide points to idfkit's version migration.
 - A user's v2 workflow used the TABULA data portal: v3.0 has no replacement (TABULA comes back
   as a reader in spec 004); the guide says so and suggests staying on v2 for that until then.
+  v2 keeps receiving security fixes at least until v3.1 is released (FR-020).
 
 ## Requirements *(mandatory)*
 
@@ -244,8 +247,9 @@ page belongs to exactly one Diátaxis kind.
   at least, that reduction results differ from v2's because the method was rewritten (spec
   002), and where to find the evidence that v3 is more correct (spec 002, success criteria).
 - **FR-020**: v2 MUST remain installable by pinning `archetypal<3`, MUST be maintained on a
-  `v2.x` branch that receives security fixes only, and the guide MUST state that policy and
-  its end date (C-08).
+  `v2.x` branch that receives security fixes only, for 12 months after v3.0 or until v3.1
+  (which restores TABULA, spec 004) is released, whichever is later. The guide MUST state that
+  policy and its end date (C-08).
 - **FR-021**: Before v3.0 is released, a final v2 release MUST announce v3 and link to the
   migration guide in its documentation and its release notes, so that v2 users learn of the
   change before upgrading.
@@ -326,8 +330,6 @@ page belongs to exactly one Diátaxis kind.
   helpers, the zone adjacency graph, the OpenEI, NREL and Statistics Canada portal requests)
   are removed without replacement; the guide states this. TABULA returns as a reader in spec
   004 (v3.1).
-- The v2.x line receives security fixes for 12 months after v3.0, a common window for a
-  library with a published successor; the guide states the end date.
 - The reduce command keeps the name `reduce` because it is how v2 users know the workflow;
   its default output is a UMI template library, as in v2 (scenario 1.4), and SBEM is chosen
   explicitly.

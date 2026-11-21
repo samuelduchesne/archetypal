@@ -195,7 +195,7 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 
 ### v3.0 — the narrowest useful release
 
-### 001 — archetypal 3 foundation and migration from v2  [status: planned]
+### 001 — archetypal 3 foundation and migration from v2  [status: specced]
 
 - **Description:** What a user gets when they install archetypal 3: a small package built on
   epinterface and idfkit, with v2's general EnergyPlus toolkit removed, a documentation site
@@ -212,8 +212,9 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
 - **Governed by:** C-01, C-07, C-08, C-09
 - **Notes:** Not a release on its own (C-10): it ships together with 002 and 003 as v3.0.
   Written after 002 and 003: its public surface and command line describe what those specs
-  deliver, so writing it first would mean guessing at them. Whether the `reduce` command keeps its v2 name and arguments is a question for
-  this spec.
+  deliver, so writing it first would mean guessing at them. The `reduce` command keeps its v2
+  name and form and defaults to a UMI library (spec FR-012).
+- **Spec dir:** specs/001-foundation-migration/
 
 ### 002 — Reduce a detailed EnergyPlus model to an SBEM archetype  [status: specced]
 

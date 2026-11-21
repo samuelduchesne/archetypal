@@ -106,7 +106,10 @@ Read the model itself (through idfkit's typed accessors, R18) only for what the 
 | Output | Frequency | Used by |
 |---|---|---|
 | Tabular `AllSummary` (Envelope Summary, Annual Building Utility Performance, Input Verification) | — | R1, FR-027 |
-| `Zone Air System Sensible Heating Energy`, `Zone Air System Sensible Cooling Energy` (per zone) | RunPeriod | FR-022 delivered energy |
+| `Zone Air System Sensible Heating Energy`, `Zone Air System Sensible Cooling Energy` (per zone) | Hourly | FR-022 delivered energy, hour by hour for R12's attribution and temperature dependence |
+| `Fan Electricity Energy` and `Fan Air Mass Flow Rate` (per fan) | Hourly | FR-022a fan energy and air volume (R19) |
+| `System Node Mass Flow Rate` (each zone's air inlet nodes) | Hourly | FR-022a: attributing an air loop's fans to the zones it serves (R19) |
+| `Site Outdoor Air Drybulb Temperature` | Hourly | FR-022 temperature dependence (R12) |
 | End-use meters by fuel (`Heating:*`, `Cooling:*`, `Fans:Electricity`, `Pumps:Electricity`, `HeatRejection:*`, `WaterSystems:*`) | Hourly | FR-022 consumed energy, FR-027 peaks |
 | `Zone Mechanical Ventilation Standard Density Volume Flow Rate` (per zone) | Hourly | FR-019 outdoor-air total and profile |
 | `Site Mains Water Temperature` | Hourly | FR-021 |
@@ -383,21 +386,36 @@ v2 defect behind #390, where building-level DHW was multiplied into every zone.
 
 **Decision.**
 
-- **Inputs.** Delivered heating and cooling per zone come from R2's run-period outputs.
-  Consumed energy by fuel and mode comes from the hourly end-use meters.
+- **Inputs.** Delivered heating and cooling per zone come from R2's hourly outputs. Consumed
+  energy by fuel and mode comes from the hourly end-use meters.
 - **Attribution.** Each hour's consumed energy is attributed to zones in proportion to that
   hour's delivered energy in the same mode (heating-mode meters to heating delivery, cooling
   to cooling). Hours with consumption but no delivery (standby, pilot lights) are summed and
   reported, not attributed.
-- **Fans, pumps and heat rejection.**
+- **Fans** are not folded: they are their own quantity, specific fan power (R19, FR-022a).
+- **Pumps and heat rejection.**
   - These support conditioning but SBEM has no end use for them.
-  - Fans are split between heating, cooling and ventilation-only by the hour's delivered modes.
-  - The heating and cooling parts are folded into `DistributionCOP`.
-  - The ventilation-only part is listed as not represented.
+  - Each hour's energy is split between heating and cooling by the hour's delivered modes and
+    folded into that mode's `DistributionCOP`.
+  - SC-002 compares them the same way: added to the heating and cooling end uses they serve.
 - **Group efficiency.**
   - Delivered ÷ consumed, by mode.
   - `SystemCOP` comes from the primary meters and `DistributionCOP` from the folded parts.
   - `Fuel` is the mode's dominant fuel by consumed energy; other fuels' shares go in the report.
+- **Dependence on outdoor temperature** (FR-022, with UP-8).
+  - The model is linear in the energy input ratio, the inverse of COP:
+    `consumed_h = (a + b·(T_h − T_ref))·delivered_h`, with `T_h` the hour's outdoor dry-bulb
+    temperature and `T_ref` a fixed reference (the group's delivered-weighted mean outdoor
+    temperature in that mode).
+  - `a` and `b` are fitted by least squares under the constraint that the annual consumed
+    energy is reproduced exactly. `SystemCOP` is then `1/a` at `T_ref`, and `b` becomes the
+    UP-8 slope.
+  - The fit needs only additive sums (Σd, Σd·T, Σd², Σd²·T, Σd²·T², Σc, Σc·d, Σc·d·T), which
+    the ledger carries, so merging refits exactly.
+  - Equipment whose efficiency does not depend on temperature (boilers, resistance) gives
+    `b ≈ 0`, and a constant COP, as today.
+  - Until UP-8 is released, only `SystemCOP` is written and the slope is reported as not
+    represented (FR-026).
 - **Merging.** The report carries each group's delivered and consumed energy by fuel, so
   merging recomputes efficiencies exactly (FR-010).
 - **No delivery.** A group with no delivery in a mode takes the efficiency of the equipment
@@ -405,15 +423,72 @@ v2 defect behind #390, where building-level DHW was multiplied into every zone.
   coil, from the tabular *Equipment Summary*.
 
 **Rationale.** Energy is conserved by fuel, which is what FR-022 states, and every fold is
-named. Folding fans into distribution efficiency puts their energy into the heating and cooling
-end uses of the archetype. That affects SC-002, see spec feedback F-1.
+named. A constant seasonal COP is exact on the year but misplaces consumption in time: a heat
+pump's consumption is highest in the coldest hours, which is also where peak demand (SC-003)
+is measured. The linear energy input ratio is the simplest form that captures this, and the
+constraint keeps the annual total exact.
+
+**Alternatives considered.** EnergyPlus performance curves (biquadratic in temperatures, plus
+part load): more faithful, but they need the real system's sizing, which ideal loads do not
+have. That belongs to the possible future spec on HVAC templates (roadmap 009).
+
+## R19 — Fan energy (FR-022a)
+
+Numbered after R18 so earlier references stay valid; it extends R12.
+
+**Decision.**
+
+- **What the archetype carries** (UP-8):
+  - `SpecificFanPower`, the fan energy per volume of air moved, in W/(m³/s);
+  - the ideal loads' maximum heating and minimum cooling supply-air temperatures.
+
+  epinterface then reports a fan end use equal to `SpecificFanPower` × the ideal loads' hourly
+  supply air volume.
+- **Attribution in the detailed model.**
+  - A zone equipment fan (unit heater, fan coil, PTAC) belongs to its zone.
+  - An air loop's fan energy and air volume go to the zones the loop serves, in proportion to
+    each hour's mass flow through each zone's air inlet nodes.
+  - Air volume is the fan's mass flow divided by standard air density, matching the ideal
+    loads' standard-density volume.
+- **Group value.** `SpecificFanPower = Σ fan energy ÷ Σ air volume` over the group's zones.
+  Both sums are in the ledger, so merging is exact and `SpecificFanPower × detailed volume`
+  reproduces the detailed fan energy exactly (SC-005).
+- **Air volume in the archetype.**
+  - Ideal loads without flow limits supply air at their supply-temperature limit and vary the
+    flow, and never less than the outdoor air.
+  - Reduction sets each limit from the detailed model's effective supply temperature
+    difference in that mode: `ΔT = Σ delivered ÷ (ρ·c_p·Σ volume in that mode's hours)`,
+    added to the heating setpoint (subtracted from the cooling setpoint).
+  - With the same delivered energy, the archetype then moves the same air volume, so it
+    reproduces the fan energy.
+- **What is still lost.** Air moved when there is neither a load nor outdoor-air demand (a
+  constant-volume fan recirculating) has no counterpart in ideal loads. The report gives the
+  share of detailed air volume in such hours, and the comparison gives the volume ratio, so a
+  fan end-use difference can be traced to it.
+- **Before UP-8.** The fan energy is folded into `DistributionCOP` as before, and the fan end
+  use is listed as not represented (FR-026). SC-002 cannot be met for fans until UP-8 is
+  released.
+
+**Rationale.** Specific fan power is the standard, physically meaningful descriptor of fan
+energy. Tying the archetype's air volume to delivered energy, through supply temperatures
+taken from the detailed model, makes it reproduce fan energy without modelling the air system
+itself.
+
+**Alternatives considered.**
+- Fan energy per unit of delivered heating and cooling: exact on the year, but it misses fan
+  energy in ventilation-only hours and has no physical meaning a modeller can check.
+- Fan power per floor area on an operating schedule: simple, but wrong for variable-volume
+  systems, whose power follows the load.
+- Real fan objects in the archetype: needs air systems, which is roadmap 009.
 
 ## R13 — Comparison (FR-027, FR-028)
 
 **Decision.**
 
 - **End uses.** Compare from each run's SQLite file: the tabular *Annual Building Utility
-  Performance Summary* End Uses table, by fuel.
+  Performance Summary* End Uses table, by fuel. For the archetype, fans come from epinterface's
+  fan end use (R19). On the detailed side, pumps and heat rejection are added to heating and
+  cooling, split by each hour's delivered modes as in R12, before comparing (SC-002).
 - **Peak demand.** Peak heating and cooling demand is the maximum, over the run period, of the
   summed heating (and cooling) end-use meters at the common reporting frequency.
 - **Refusal.** Refuse when any of these differ:
@@ -619,17 +694,15 @@ upstream table in plan.md).
 
 ## Spec feedback
 
-Two points to raise in `/speckit-analyze` (constitution V: the plan satisfies the spec, it does
+Points to raise in `/speckit-analyze` (constitution V: the plan satisfies the spec, it does
 not rewrite it):
 
-- **F-1 — SC-002 and end uses SBEM cannot produce.** epinterface conditions with ideal loads,
-  so an archetype reports no fan, pump or heat-rejection end use. Under R12 that energy moves
-  into heating and cooling. SC-002 compares "each end use" at ±10 % wherever it is ≥5 % of site
-  energy. Fans in the detailed model then fail by construction, while total site energy
-  (SC-001) holds. Two possible fixes:
-  - SC-002 compares end uses after mapping fans, pumps and heat rejection onto the conditioning
-    modes they serve;
-  - UP-2 gives SBEM a fan-energy parameter.
+- ~~**F-1 — SC-002 and end uses SBEM cannot produce.**~~ **Resolved (2026-11-21).**
+  epinterface conditions with ideal loads, so an archetype reported no fan, pump or
+  heat-rejection end use, and fans failed SC-002 by construction. Now:
+  - FR-022a and R19 give SBEM a fan end use through specific fan power (UP-8);
+  - SC-002 adds pumps and heat rejection to the heating and cooling they serve;
+  - FR-022 and R12 add the dependence of efficiency on outdoor temperature (UP-8).
 - **F-2 — FR-023 says schedules are "expressed as `Schedule:Compact`", but SBEM stores
   `YearComponent`s.** R5 emits both, and conserves annual totals exactly. Day types beyond
   weekdays (holidays, design days) need UP-2. The spec could say "expressed in a form

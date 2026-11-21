@@ -17,8 +17,11 @@ asserts they agree.
 
 | Item | Key | Frequency | Used for |
 |---|---|---|---|
-| `Zone Air System Sensible Heating Energy` | every zone | RunPeriod or finer | delivered heating (FR-022) |
-| `Zone Air System Sensible Cooling Energy` | every zone | RunPeriod or finer | delivered cooling (FR-022) |
+| `Zone Air System Sensible Heating Energy` | every zone | Hourly | delivered heating (FR-022) |
+| `Zone Air System Sensible Cooling Energy` | every zone | Hourly | delivered cooling (FR-022) |
+| `Fan Electricity Energy`, `Fan Air Mass Flow Rate` | every fan | Hourly | fan energy and air volume (FR-022a) |
+| `System Node Mass Flow Rate` | each zone's air inlet nodes | Hourly | attributing air-loop fans to zones (FR-022a) |
+| `Site Outdoor Air Drybulb Temperature` | Environment | Hourly | efficiency's dependence on outdoor temperature (FR-022) |
 | `Zone Mechanical Ventilation Standard Density Volume Flow Rate` | every zone | Hourly | outdoor air (FR-019) |
 | `Site Mains Water Temperature` | Environment | Hourly | hot water (FR-021) |
 | `Water Use Equipment Hot Water Volume` | every `WaterUse:Equipment` | Hourly | hot water (FR-021) |

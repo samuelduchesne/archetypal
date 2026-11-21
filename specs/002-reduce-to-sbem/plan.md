@@ -21,8 +21,8 @@ archetype plus a reduction report.
 2. **Group.** It classifies each conditioned zone by exposure and space use, and forms zone
    groups for the chosen layout.
 3. **Ledger.** For each group it keeps a **ledger** of conserved totals: areas, UA, heat
-   capacity, installed gains, hourly profiles, airflows, hot water, and delivered and consumed
-   energy by fuel.
+   capacity, installed gains, hourly profiles, airflows, hot water, delivered and consumed
+   energy by fuel, and fan energy and air volume.
 4. **Convert.** It turns each ledger into epinterface SBEM components. Intensity = conserved
    total ÷ basis. Schedules become representative days per month. Envelopes become equivalent
    three-layer constructions.
@@ -79,8 +79,8 @@ Internal budget: schedule evaluation ≤ 7 s on the largest model (R5).
 - largest model: the hospital and large-office prototypes, with tens of zones and roughly 150
   schedules.
 
-No item is left as NEEDS CLARIFICATION. Every unknown is resolved in research.md: R1–R17, plus
-spec feedback F-1 and F-2.
+No item is left as NEEDS CLARIFICATION. Every unknown is resolved in research.md: R1–R19, plus
+spec feedback F-1 (now resolved) and F-2.
 
 ## Constitution Check
 
@@ -88,10 +88,10 @@ spec feedback F-1 and F-2.
 
 | Principle | Check | Status |
 |---|---|---|
-| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls, made through its typed interface (R18). The SBEM model and its JSON are epinterface's. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6, UP-7. There are two temporary bridges, both tracked and removed when their upstream item is released: normalising `Schedule:Year` month and day fields to `int` until UP-6, and typed row wrappers over `SQLResult.query` until UP-7. | Pass (bridges recorded below) |
+| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls, made through its typed interface (R18). The SBEM model and its JSON are epinterface's. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6, UP-7, UP-8. There are two temporary bridges, both tracked and removed when their upstream item is released: normalising `Schedule:Year` month and day fields to `int` until UP-6, and typed row wrappers over `SQLResult.query` until UP-7. | Pass (bridges recorded below) |
 | **II. One archetype data model** | The output is SBEM only. The ledger is internal working state, not a second archetype model: it is never written as an archetype, and only its totals appear in the report (needed for FR-010 and FR-022). | Pass |
 | **III. Small and focused** | Four runtime dependencies, each justified (R17). There is at most one simulation run, on request. No geometry generation (FR-024 carries ratios only). No calibration. | Pass |
-| **IV. Physically correct and verifiable** | Each SBEM parameter is tied to a conservation rule (data-model.md, "Derivation rules"). The reference tier measures SC-001–SC-008 against stated targets, including v2's baseline (SC-004). | Pass, with spec feedback F-1 (SC-002 and fan end uses) for `/speckit-analyze` |
+| **IV. Physically correct and verifiable** | Each SBEM parameter is tied to a conservation rule (data-model.md, "Derivation rules"). The reference tier measures SC-001–SC-008 against stated targets, including v2's baseline (SC-004). | Pass. Spec feedback F-1 (SC-002 and fan end uses) is resolved by FR-022a and UP-8. |
 | **V. What and why before how** | All "how" lives here and in research.md. No v2 code is carried over; v2 is read only to run the SC-004 baseline in a separate environment. | Pass |
 | **VI. Dependable public library** | Strict pyright, with unknown-type reports as errors so no untyped idfkit object leaks in, and `idfkit check` (R18); py.typed, ruff with `D` (Google docstrings), public behaviour tested, docs in the same PR (below), Python 3.10–3.12, uv, Keep a Changelog. | Pass |
 
@@ -102,7 +102,7 @@ recorded in Complexity Tracking.
 
 | Page | Diátaxis kind | Content |
 |---|---|---|
-| `docs/explanation/reduction.md` | Explanation | What reduction conserves and why: FR-014–FR-024, exposure and space use, representative days, equivalent constructions, what SBEM cannot hold. |
+| `docs/explanation/reduction.md` | Explanation | What reduction conserves and why: FR-014–FR-024, exposure and space use, representative days, equivalent constructions, what SBEM cannot hold, specific fan power and the temperature-dependent COP. |
 | `docs/how-to/reduce-a-model.md` | How-to | Reduce a model with existing results, or with the single run; choose a layout and threshold; supply a space-use mapping. |
 | `docs/how-to/merge-an-archetype.md` | How-to | Merge an archetype to a coarser layout. |
 | `docs/how-to/compare-results.md` | How-to | Compare detailed and archetype results. |
@@ -125,8 +125,9 @@ Spec 002 cannot be marked implemented until the blocking items are released.
 | UP-5 | idfkit | Day-type-aware `Schedule:Compact` creation. Now also a faster day-profile evaluation if the R5 benchmark fails. | No |
 | UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final, so the typed `schedule_weeks[i].start_month: int` really is an `int`. | Yes for release; bridged meanwhile |
 | UP-7 (new) | idfkit | Typed readers for EnergyPlus's static SQLite tables (`Zones`, `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`), in place of raw `SQLResult.query` rows. | No; bridged by `_sql_tables.py` |
+| UP-8 (new) | epinterface | SBEM energy conversion beyond a constant COP, still on ideal loads: a specific fan power and ideal-loads supply-air temperature limits, with fans reported as their own end use; and a COP that depends on outdoor temperature (R12, R19). | For SC-002's fan target and so 002's release. Reduction is built without it: fans are folded into `DistributionCOP` and reported as not represented until it lands. |
 
-The roadmap is updated with UP-6 and UP-7, the broader UP-2 and UP-5 scope, and UP-3 marked
+The roadmap is updated with UP-6, UP-7 and UP-8, the broader UP-2 and UP-5 scope, and UP-3 marked
 as met.
 
 ## Project Structure
@@ -136,7 +137,7 @@ as met.
 ```text
 specs/002-reduce-to-sbem/
 ├── plan.md              # This file
-├── research.md          # Phase 0: decisions R1–R17, spec feedback F-1, F-2
+├── research.md          # Phase 0: decisions R1–R19, spec feedback F-1 (resolved), F-2
 ├── data-model.md        # Phase 1: entities, ledger, derivation rules, pipeline states
 ├── quickstart.md        # Phase 1: validation scenarios
 ├── contracts/
@@ -172,7 +173,8 @@ src/archetypal/
 │   ├── airflow.py           # infiltration, outdoor air, HRV/economiser (R9)
 │   ├── thermostats.py       # FR-020 (R10)
 │   ├── hotwater.py          # FR-021 (R11)
-│   ├── efficiency.py        # FR-022 (R12)
+│   ├── efficiency.py        # FR-022: seasonal COP, outdoor-temperature slope (R12)
+│   ├── fans.py              # FR-022a: specific fan power, supply-air temperatures (R19)
 │   ├── to_sbem.py           # ledger → epinterface components (one function per SBEM component)
 │   ├── report.py            # ReductionReport pydantic models, JSON Schema
 │   └── _bridges.py          # temporary upstream bridges (UP-6), each with its removal condition

@@ -133,6 +133,7 @@ SC-007 hold by construction.
 | `unheated_area`, `uncooled_area` | `float` | FR-020 report |
 | `hot_water` | `HotWaterTotals` | FR-021 |
 | `energy` | `dict[Mode, EnergyTotals]` | FR-022 |
+| `fans` | `FanTotals` | FR-022a |
 | `excluded_envelope` | `tuple[EnvelopeAssignment, ...]` | FR-013 |
 
 The total types:
@@ -151,8 +152,12 @@ The total types:
 - **`HotWaterTotals`**: `volume: Profile` and `heat: Profile` (Σ volume × temperature rise),
   from which the mean rise follows.
 - **`EnergyTotals`**: `delivered` and `consumed_by_fuel: dict[Fuel, float]`, plus
-  `distribution_by_fuel` (fans, pumps and heat rejection folded per R12), `unattributed`
-  (FR-022 standby) and `rated_efficiency: float | None` (used only when `delivered == 0`).
+  `distribution_by_fuel` (pumps and heat rejection folded per R12), `unattributed`
+  (FR-022 standby), `rated_efficiency: float | None` (used only when `delivered == 0`) and
+  `eir_sums`, the additive sums R12's constrained fit of the outdoor-temperature slope needs.
+- **`FanTotals`** (FR-022a, R19): `energy`, `volume` (standard density), and, per mode,
+  `volume_in_mode` and `delivered_in_mode` for the effective supply temperature difference,
+  plus `volume_without_demand` (air moved with neither load nor outdoor-air demand).
 
 **Operations.**
 
@@ -202,6 +207,9 @@ identifier for every parameter.
 | `WaterUseComponent.FlowRatePerPerson`, `Schedule` | `dhw.volume_per_person` | Annual volume ÷ occupant-days; `project(volume profile)` |
 | `DHWComponent` temperatures | `dhw.mains_plus_rise` | Mean mains + `heat / volume` |
 | `ThermalSystemComponent` (`Fuel`, `SystemCOP`, `DistributionCOP`) | `efficiency.delivered_over_consumed` | R12; or `efficiency.rated` when delivered is 0 |
+| COP slope with outdoor temperature (UP-8) | `efficiency.eir_linear` | R12: constrained least squares; annual consumed energy exact |
+| Specific fan power (UP-8) | `fans.energy_per_volume` | R19: `energy / volume`; × detailed volume = detailed fan energy |
+| Ideal-loads supply-air temperature limits (UP-8) | `fans.effective_supply_delta` | R19: setpoint ± `delivered_in_mode / (ρ·c_p·volume_in_mode)` |
 | Attic and basement assumptions | `zone.attic`, `zone.basement` | R8 |
 
 **Validation.** The result must validate as epinterface's archetype model (FR-003). A

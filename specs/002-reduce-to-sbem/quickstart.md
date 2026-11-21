@@ -71,7 +71,7 @@ assert merge(fine, Layout.CORE_PERIMETER).archetype == direct.archetype
 Run `uv run pytest tests/unit/test_conservation.py`. These are property tests on synthetic
 ledgers plus the fixture models.
 
-**Expected:** every total in FR-014–FR-019, FR-021 and FR-022 matches the detailed model
+**Expected:** every total in FR-014–FR-019, FR-021, FR-022 and FR-022a matches the detailed model
 within 0.1 %, and exactly where the detailed total is 0.
 
 ## 6. Single run and generation by epinterface (FR-002, FR-003)
@@ -95,7 +95,8 @@ uv run pytest -m reference                       # weekly workflow / before a re
 **Expected:** a table per building with:
 
 - total site energy within ±5 %;
-- significant end uses within ±10 %, read with spec feedback F-1 in mind;
+- significant end uses within ±10 %, fans on their own and pumps and heat rejection added to
+  the heating and cooling they serve (SC-002);
 - significant peaks within ±15 %;
 - v3 core/perimeter error below v2's baseline for the set and for ≥ 90 % of buildings;
 - the largest building reduced in under 10 s, and the set at least 10× faster than v2.

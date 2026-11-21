@@ -1,6 +1,22 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.4.0 → 1.5.0
+Bump rationale: MINOR — new upstream prerequisite UP-8 (SBEM fan energy and temperature-
+dependent COP, still on ideal loads) and a new undecided spec 009 (real HVAC systems in SBEM).
+Resolves the 002 plan's spec feedback F-1: spec 002 gains FR-022a (fan energy) and SC-002
+compares fans as their own end use.
+
+Changes this revision:
+  - UP-8 (new): epinterface specific fan power, ideal-loads supply-air temperature limits, fan
+    end use, COP depending on outdoor temperature
+  - 002: depends also on UP-8 (for its release); F-1 resolved
+  - 009 (new, undecided): reduce detailed HVAC systems to EnergyPlus HVAC templates in SBEM
+
+Specs affected: 002
+Open questions added/resolved: none
+
+Previous revision (1.4.0):
 Version change: 1.3.0 → 1.4.0
 Bump rationale: MINOR — new upstream prerequisite UP-7 (typed SQLite table readers in idfkit);
 UP-6 also asks that the typed Schedule:Year fields honour their declared int type. Follows
@@ -238,6 +254,16 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   reachable only through `SQLResult.query`, which returns untyped rows. archetypal uses idfkit
   only through its typed interface (002 research R18), so it bridges this with one module of
   typed rows until the readers exist. Not blocking.
+- **UP-8 — epinterface: SBEM energy beyond a constant COP, still on ideal loads.** SBEM
+  converts ideal loads to energy with one constant `SystemCOP × DistributionCOP` per mode, so
+  an archetype has no fan end use and no part of its consumption depends on the weather. Add:
+  a specific fan power (W per m³/s) applied to the ideal loads' supply air volume and reported
+  as a fan end use; the ideal loads' maximum heating and minimum cooling supply-air
+  temperatures as SBEM fields; and an optional linear dependence of the energy input ratio
+  (1/COP) on outdoor dry-bulb temperature around a reference temperature, applied hour by
+  hour. Built by us, contributed by PR (C-14). 002 derives all three (research R12, R19).
+  *Blocking for 002's release* (SC-002's fan target); reduction is built without it and
+  reports what is not yet represented. Real HVAC systems are the separate, undecided 009.
 
 ## Planned Specs
 
@@ -282,10 +308,10 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   demonstrated on reference buildings; the matching explanation page in the docs.
 - **Scope (out):** algorithms and code structure (the plan's job, C-04); calibration (C-05);
   generating EnergyPlus from the archetype (epinterface).
-- **Depends on:** 001, UP-1, UP-2, UP-6 (UP-7 desirable)
+- **Depends on:** 001, UP-1, UP-2, UP-6, UP-8 (UP-7 desirable)
 - **Governed by:** C-02, C-03, C-04, C-11, C-12
-- **Spec dir:** specs/002-reduce-to-sbem/ (plan written; research.md raises spec feedback F-1
-  on SC-002 and F-2 on FR-023 for `/speckit-analyze`)
+- **Spec dir:** specs/002-reduce-to-sbem/ (plan written; spec feedback F-1 on SC-002 resolved
+  by FR-022a and UP-8; F-2 on FR-023 open for `/speckit-analyze`)
 - **Notes:** The spec states the *what* and *why* of reduction, not the *how*, so that
   `/speckit-plan` can design the rewrite freely. Evidence gathered from v2 for the spec's
   motivation: perimeter aggregation includes core zones; zone multipliers are applied by
@@ -375,6 +401,20 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   when its 3.0 version settles one. ClimateStudio was dropped from this entry: that translator
   stays in epinterface (C-16).
 
+### 009 — Reduce detailed HVAC systems to HVAC templates in SBEM  [status: undecided]
+
+- **Description:** Let an SBEM archetype carry a real EnergyPlus HVAC system (for example a
+  packaged heat pump, VAV with reheat or a unitary system, through HVAC templates) in place of
+  ideal loads, and let reduction recognise the detailed model's air and plant loops as one of
+  those systems and size it.
+- **Outcome:** _to be defined_
+- **Scope (in):** _to be defined_; would cover part-load behaviour, sizing, and fan and pump
+  energy from the system itself.
+- **Depends on:** 002, UP-8
+- **Notes:** Undecided because it changes what SBEM is (a simple archetype on ideal loads), so
+  it needs agreement in epinterface first (C-14). UP-8 covers fans and temperature-dependent
+  efficiency without it. Recorded when 002's spec feedback F-1 was resolved.
+
 ## Open Questions
 
 None open. Resolved in revision 1.2.0:
@@ -397,4 +437,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.4.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.5.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21

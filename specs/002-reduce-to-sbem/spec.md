@@ -61,8 +61,8 @@ accounts for every detailed zone.
 3. **Given** a model with zone multipliers (for example one typical floor multiplied by 10),
    **When** it is reduced, **Then** its groups, floor areas and every conserved total of FR-014
    to FR-021 agree within 0.1 % with reducing the same building modelled with every floor drawn
-   explicitly. Parameters derived from simulation results (FR-022) may differ by as much as the
-   two simulations do.
+   explicitly. Parameters derived from simulation results (FR-022, FR-022a) may differ by as
+   much as the two simulations do.
 4. **Given** the same inputs, **When** the reduction is run twice, **Then** both archetypes and
    reports are identical.
 
@@ -251,6 +251,16 @@ divided by the group's matching basis.
   energy by fuel (FR-010). Where a group receives no delivered heating (or cooling), its
   efficiency for that mode MUST be taken from the equipment serving it, and any consumption not
   attributable to delivered energy (standby, pilot lights) MUST be listed in the report.
+  Fan energy is not folded into these efficiencies: it is carried by FR-022a. Where the
+  detailed model's efficiency depends on outdoor temperature (heat pumps, air-cooled
+  chillers), the group's efficiency MUST carry that dependence, and still reproduce the
+  annual consumed energy by fuel exactly.
+- **FR-022a — Fan energy**: each group MUST carry the fan energy of its zones as its own
+  quantity, as energy per volume of air moved (specific fan power), so that the archetype
+  reports a fan end use. The group's fan energy and air volume in the detailed simulation MUST
+  both be conserved, and merged like FR-022's totals. The air volume the archetype moves MUST
+  follow from the same delivered energy and supply-air temperatures as the detailed model, so
+  that the archetype's fan energy matches the detailed model's.
 - **FR-023 — Schedules**: every schedule in the archetype MUST be expressed as an EnergyPlus
   `Schedule:Compact` that keeps the day types present in the source (weekdays, weekends,
   holidays, design days) and reproduces the conserved hourly profile of FR-015, FR-018,
@@ -318,7 +328,9 @@ weather and run period:
 - **SC-001**: Total annual site energy of the archetype is within ±5 % of the detailed model's
   for every building.
 - **SC-002**: Each end use reported in FR-027 is within ±10 % for every building where that end
-  use is at least 5 % of total site energy.
+  use is at least 5 % of total site energy. Fans are compared as their own end use (FR-022a).
+  Pumps and heat rejection have no counterpart in the archetype: they are added to the heating
+  and cooling end uses they serve, in proportion to that service, before comparing.
 - **SC-003**: Annual peak heating and cooling demand are each within ±15 % for every building
   where that peak is at least 10 % of the larger of the building's two peaks.
 - **SC-004**: v3's error on SC-001 to SC-003, with v3 reduced to the core/perimeter layout that
@@ -326,9 +338,9 @@ weather and run period:
   absolute relative error) and for at least 90 % of individual buildings. Comparing at the
   same layout isolates the aggregation rules from the finer zoning. This is what "more correct
   than v2" means.
-- **SC-005**: Every conserved total named in FR-014 to FR-019, FR-021 and FR-022 matches the
-  detailed model within 0.1 % (exactly, where the detailed total is zero) for every building
-  and every layout.
+- **SC-005**: Every conserved total named in FR-014 to FR-019, FR-021, FR-022 and FR-022a
+  matches the detailed model within 0.1 % (exactly, where the detailed total is zero) for
+  every building and every layout.
 - **SC-006**: 100 % of reference buildings reduce without error at every layout, and 100 % of
   detailed zones are accounted for in each report.
 - **SC-007**: Reducing directly to a coarser layout and merging a finer archetype to it give

@@ -40,6 +40,14 @@ with archetypes. This spec defines **what a user gets when they install it**:
 This spec is not a release on its own: v3.0 ships only when 001, 002 and 003 are all done
 (C-10).
 
+## Clarifications
+
+### Session 2026-11-21
+
+- Q: In what file format does the reduce command write an SBEM archetype, so that the merge
+  and compare commands and other tools can read it back? → A: epinterface's own serialisation
+  of its model, one file per archetype; reports are written as separate files beside it.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Reduce a model to a UMI library with archetypal 3 (Priority: P1)
@@ -200,7 +208,10 @@ page belongs to exactly one Diátaxis kind.
 - **FR-012**: The `reduce` command MUST keep its v2 name and the v2 form "models in, weather
   file, output path", and MUST accept several models, directories or patterns, each model
   becoming one archetype (one building template in a UMI library). It MUST let the user choose
-  the output: an SBEM archetype, or a UMI template library (the v2 result).
+  the output: an SBEM archetype, or a UMI template library (the v2 result). An SBEM archetype
+  is written in epinterface's own serialisation of its model, one file per archetype, so
+  epinterface and tools built on it read it without archetypal; its reports are separate files
+  beside it. The merge, compare and translate commands read archetypes in that same form.
 - **FR-013**: Every v2 option or command that v3 does not keep MUST be rejected with a message
   naming it and its replacement or the reason it is gone (scenario 1.5), rather than being
   silently ignored. This applies to at least: `transition`, `--ep_version`, the reduce
@@ -263,6 +274,8 @@ page belongs to exactly one Diátaxis kind.
   with runnable before/after examples for frequent tasks.
 - **Maintenance line (v2.x)**: the branch and releases of archetypal 2 that receive only
   security fixes after v3.0.
+- **Archetype file**: one SBEM archetype stored in epinterface's own serialisation; archetypal
+  adds no format of its own around it. Its reduction report is a separate file beside it.
 - **Documentation site**: the user-facing pages, organised into Diátaxis's four kinds and kept
   in sync with the code.
 

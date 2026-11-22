@@ -243,11 +243,12 @@ def test_fixture_outdoor_air_is_conserved(ten_sources: SourceData) -> None:
     assert isinstance(total, GroupLedger)
     raw = np.zeros(ten_sources.run_period.calendar.hours)
     infiltration = 0.0
+    variable = "Zone Mechanical Ventilation Standard Density Volume Flow Rate"
+    reported = {info.key_value.upper() for info in ten_sources.results.list_variables() if info.name == variable}
     for zone in zones:
-        series = ten_sources.results.get_timeseries(
-            "Zone Mechanical Ventilation Standard Density Volume Flow Rate", zone.zone.name.upper(), frequency="Hourly"
-        )
-        raw += np.asarray(series.values, dtype=np.float64)
+        if zone.zone.name.upper() in reported:
+            series = ten_sources.results.get_timeseries(variable, zone.zone.name.upper(), frequency="Hourly")
+            raw += np.asarray(series.values, dtype=np.float64)
         infiltration += sum(r.design_flow for r in zone.zone.infiltration) * zone.zone.multiplier
     np.testing.assert_allclose(total.outdoor_air.hourly, raw, rtol=1e-9, atol=1e-12)
     assert total.infiltration.design_flow == pytest.approx(infiltration)

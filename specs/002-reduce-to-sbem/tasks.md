@@ -226,7 +226,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
 - [X] T031 [P] [US1] Test the ledger in `tests/unit/test_ledger.py` with hypothesis on
   synthetic ledgers: `+` is associative and commutative, members are a sorted union, every
   total is a sum, and `from_zone` applies the multiplier exactly once.
-- [ ] T032 [P] [US1] Test the envelope in `tests/unit/test_envelope.py`: surface classes by
+- [X] T032 [P] [US1] Test the envelope in `tests/unit/test_envelope.py`: surface classes by
   tilt and boundary; eight 45° orientation sectors; the equivalent three-layer construction
   reproduces UA ÷ A with epinterface's films and the inner and outer heat capacities exactly;
   windows conserve area, UA, Σ A·SHGC and Σ A·VT by orientation; a plenum's roof and walls go
@@ -302,7 +302,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   data-model.md (GroupLedger); `GroupLedger.from_zone(zone, schedules)` applying the
   multiplier once; `__add__` as field-wise addition. The module calls the per-domain
   functions of T049–T054 to fill each field.
-- [ ] T049 [P] [US1] Implement `src/archetypal/reduction/envelope.py`: surface classes and
+- [X] T049 [P] [US1] Implement `src/archetypal/reduction/envelope.py`: surface classes and
   orientation sectors (R6), per-class area, UA and inner/outer capacity, window totals by
   orientation, internal mass, excluded-zone envelope assignment, and
   `equivalent_construction(totals)`, which returns a three-layer epinterface assembly

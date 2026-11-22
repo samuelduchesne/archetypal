@@ -18,9 +18,9 @@ Rules
 
 Hours a heated zone does not heat
 ---------------------------------
-A heated zone can still switch the mode off at some hours: a setback to −100 °C, a control
+A heated zone can still switch the mode off at some hours: a setback to -100 °C, a control
 type that does not set the mode, or an uncontrolled hour (control type 0). A mean needs a value
-at every hour, and the −100 °C itself would drag the mean far outside any real setpoint. So,
+at every hour, and the -100 °C itself would drag the mean far outside any real setpoint. So,
 a decision of this module, each hour's setpoint is **clamped to the band**, and an hour without
 a setpoint takes the band edge that leaves the mode off: 5 °C for heating, 35 °C for cooling.
 In SBEM those values keep the mode off as the detailed model did, except where the zone would
@@ -29,7 +29,7 @@ fall below 5 °C or rise above 35 °C.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
 
@@ -45,7 +45,17 @@ if TYPE_CHECKING:
     from archetypal.reduction.inventory import Mode
     from archetypal.reduction.schedules import Profile, ScheduleEvaluator
 
-__all__ = ["BAND", "band_profile", "is_enabled", "ledger_fields", "setpoint_fields"]
+__all__ = ["BAND", "ThermostatFields", "band_profile", "is_enabled", "ledger_fields", "setpoint_fields"]
+
+
+class ThermostatFields(TypedDict):
+    """The ledger fields this module fills, for one copy of a zone."""
+
+    heating_setpoint: WeightedProfile
+    cooling_setpoint: WeightedProfile
+    unheated_area: float
+    uncooled_area: float
+
 
 _OFF: dict[Mode, float] = {"heating": BAND[0], "cooling": BAND[1]}
 
@@ -75,11 +85,12 @@ def band_profile(setpoint: NDArray[np.float64], mode: Mode) -> NDArray[np.float6
         The clamped hourly setpoint, °C.
     """
     low, high = BAND
-    filled = np.where(np.isnan(setpoint), _OFF[mode], setpoint)
-    return np.clip(filled, low, high)
+    filled = np.array(setpoint, dtype=np.float64)
+    filled[np.isnan(filled)] = _OFF[mode]
+    return filled.clip(low, high)
 
 
-def setpoint_fields(zone: ClassifiedZone, evaluate: Callable[[str], Profile]) -> dict[str, object]:
+def setpoint_fields(zone: ClassifiedZone, evaluate: Callable[[str], Profile]) -> ThermostatFields:
     """Return the thermostat ledger fields of one copy of `zone`.
 
     Args:
@@ -92,26 +103,22 @@ def setpoint_fields(zone: ClassifiedZone, evaluate: Callable[[str], Profile]) ->
     """
     record = zone.zone
     area = record.floor_area
-    fields: dict[str, object] = {
-        "heating_setpoint": WeightedProfile(),
-        "cooling_setpoint": WeightedProfile(),
-        "unheated_area": area,
-        "uncooled_area": area,
-    }
+    fields = ThermostatFields(
+        heating_setpoint=WeightedProfile(), cooling_setpoint=WeightedProfile(), unheated_area=area, uncooled_area=area
+    )
     if record.thermostat is None:
         return fields
     heating, cooling = record.thermostat.setpoints(evaluate)
-    for mode, setpoint, weighted_field, area_field in (
-        ("heating", heating, "heating_setpoint", "unheated_area"),
-        ("cooling", cooling, "cooling_setpoint", "uncooled_area"),
-    ):
-        if is_enabled(setpoint):
-            fields[weighted_field] = WeightedProfile(weight=area, weighted=area * band_profile(setpoint, mode))
-            fields[area_field] = 0.0
+    if is_enabled(heating):
+        fields["heating_setpoint"] = WeightedProfile(weight=area, weighted=area * band_profile(heating, "heating"))
+        fields["unheated_area"] = 0.0
+    if is_enabled(cooling):
+        fields["cooling_setpoint"] = WeightedProfile(weight=area, weighted=area * band_profile(cooling, "cooling"))
+        fields["uncooled_area"] = 0.0
     return fields
 
 
-def ledger_fields(zone: ClassifiedZone, schedules: ScheduleEvaluator) -> dict[str, object]:
+def ledger_fields(zone: ClassifiedZone, schedules: ScheduleEvaluator) -> ThermostatFields:
     """The thermostat domain hook of `GroupLedger.from_zone` (one copy, multiplier not applied).
 
     Args:

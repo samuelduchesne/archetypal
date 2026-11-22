@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
@@ -24,14 +25,20 @@ from archetypal.reduction.envelope import (
     window_construction,
 )
 from archetypal.reduction.inventory import LayerRecord, SurfaceRecord, ZoneRecord, build_inventory, surface_class
-from archetypal.reduction.ledger import EnvelopeTotals, GroupLedger, WindowTotals
+from archetypal.reduction.ledger import EnvelopeTotals, GroupLedger
 from archetypal.reduction.schedules import ScheduleEvaluator
 from archetypal.reduction.sources import load_sources
+
+if TYPE_CHECKING:
+    from archetypal.reduction.classify import Role
+    from archetypal.reduction.inventory import Boundary
+    from archetypal.reduction.ledger import EnvelopeClass
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "tests" / "fixtures" / "models"
 HOURS = 8760
 REL = 1e-12
+NO_SCHEDULES = cast("ScheduleEvaluator", None)  # the envelope hooks read no schedule
 
 
 # --- helpers ------------------------------------------------------------------------------
@@ -56,7 +63,7 @@ GYPSUM = _layer("gypsum", 0.013, 0.25, 800.0, 1090.0)
 WALL_LAYERS = (BRICK, INSULATION, CONCRETE)  # outside first
 
 
-def _surface(
+def _surface(  # noqa: PLR0913 - a surface has many fields
     name: str,
     class_name: str,
     tilt: float,
@@ -73,12 +80,12 @@ def _surface(
     window = class_name == "Window"
     return SurfaceRecord(
         name=name,
-        surface_class=surface_class(class_name, tilt, boundary),  # type: ignore[arg-type]
+        surface_class=surface_class(class_name, tilt, cast("Boundary", boundary)),
         class_name=class_name,
         area=area,
         azimuth=azimuth,
         tilt=tilt,
-        boundary=boundary,  # type: ignore[arg-type]
+        boundary=cast("Boundary", boundary),
         adjacent_zone=adjacent,
         construction="C",
         u_factor=u,
@@ -106,7 +113,7 @@ def _classified(zone: ZoneRecord, role: str = "conditioned") -> ClassifiedZone:
     return ClassifiedZone(
         zone=zone,
         conditioned=role == "conditioned",
-        role=role,  # type: ignore[arg-type]
+        role=cast("Role", role),
         exposure="perimeter",
         space_use="office",
         space_use_source="user",
@@ -114,8 +121,12 @@ def _classified(zone: ZoneRecord, role: str = "conditioned") -> ClassifiedZone:
     )
 
 
-def _fields(zone: ZoneRecord) -> dict[str, object]:
-    return dict(ledger_fields(_classified(zone), None))  # type: ignore[arg-type]
+def _ledger(zone: ZoneRecord) -> GroupLedger:
+    return GroupLedger.from_zone(_classified(zone), NO_SCHEDULES, hooks=[ledger_fields])
+
+
+def _hooked(hook: EnvelopeHook, zone: ClassifiedZone) -> GroupLedger:
+    return GroupLedger.from_zone(zone, NO_SCHEDULES, hooks=[hook])
 
 
 # --- classes and orientation ---------------------------------------------------------------
@@ -142,7 +153,9 @@ def _fields(zone: ZoneRecord) -> dict[str, object]:
         ("Internal Mass", 90.0, "adiabatic", None),
     ],
 )
-def test_surface_classes_follow_tilt_and_boundary(class_name: str, tilt: float, boundary: str, expected: str | None) -> None:
+def test_surface_classes_follow_tilt_and_boundary(
+    class_name: str, tilt: float, boundary: str, expected: str | None
+) -> None:
     assert envelope_class(_surface("S", class_name, tilt, boundary)) == expected
 
 
@@ -182,10 +195,8 @@ def test_area_ua_and_orientation_per_class() -> None:
         _surface("Roof", "Roof", 0.0, "outdoors", area=100.0, u=0.2),
         _surface("Slab", "Floor", 180.0, "ground", area=100.0, u=0.3),
     )
-    envelope = _fields(zone)["envelope"]
-    assert isinstance(envelope, dict)
+    envelope = _ledger(zone).envelope
     wall = envelope["exterior_wall"]
-    assert isinstance(wall, EnvelopeTotals)
     assert wall.area == pytest.approx(55.0, rel=REL)
     assert wall.ua == pytest.approx(20 * 0.4 + 35 * 0.6, rel=REL)
     assert wall.area_by_orientation == pytest.approx({"N": 20.0, "S": 35.0})
@@ -211,7 +222,7 @@ def test_capacities_are_conserved_per_class() -> None:
         _surface("A", "Wall", 90.0, "outdoors", area=10.0),
         _surface("B", "Wall", 90.0, "outdoors", area=4.0, layers=reversed_layers),
     )
-    wall = _fields(zone)["envelope"]["exterior_wall"]  # type: ignore[index]
+    wall = _ledger(zone).envelope["exterior_wall"]
     total = sum(layer.heat_capacity for layer in WALL_LAYERS) * 14.0
     assert wall.capacity_inner + wall.capacity_outer == pytest.approx(total, rel=REL)
     a_inner, a_outer = capacity_split([(x.resistance, x.heat_capacity) for x in WALL_LAYERS])
@@ -225,18 +236,21 @@ def test_internal_mass_conserves_area_times_capacity() -> None:
         _surface("Furniture", "Internal Mass", 90.0, "adiabatic", area=50.0, layers=(CONCRETE,)),
         _surface("Books", "Internal Mass", 90.0, "adiabatic", area=10.0, layers=(GYPSUM,)),
     )
-    fields = _fields(zone)
-    assert fields["internal_mass_area"] == pytest.approx(60.0)
-    assert fields["internal_mass_capacity"] == pytest.approx(
+    ledger = _ledger(zone)
+    assert ledger.internal_mass_area == pytest.approx(60.0)
+    assert ledger.internal_mass_capacity == pytest.approx(
         50 * CONCRETE.heat_capacity + 10 * GYPSUM.heat_capacity, rel=REL
     )
-    assert fields["envelope"] == {}
+    assert ledger.envelope == {}
 
-    assembly = internal_mass_construction(fields["internal_mass_capacity"], fields["internal_mass_area"])  # type: ignore[arg-type]
+    assembly = internal_mass_construction(ledger.internal_mass_capacity, ledger.internal_mass_area)
     assert assembly is not None
     assert assembly.Type == "InternalMass"
-    per_area = sum(layer.Thickness * layer.ConstructionMaterial.Density * layer.ConstructionMaterial.SpecificHeat for layer in assembly.Layers)
-    assert per_area * 60.0 == pytest.approx(fields["internal_mass_capacity"], rel=1e-9)
+    per_area = sum(
+        layer.Thickness * layer.ConstructionMaterial.Density * layer.ConstructionMaterial.SpecificHeat
+        for layer in assembly.Layers
+    )
+    assert per_area * 60.0 == pytest.approx(ledger.internal_mass_capacity, rel=1e-9)
     assert internal_mass_construction(0.0, 0.0) is None
 
 
@@ -249,12 +263,10 @@ def test_windows_conserve_area_ua_shgc_and_vt_by_orientation() -> None:
         _surface("W2", "Window", 90.0, "outdoors", area=6.0, azimuth=170.0, u=1.2, shgc=0.3, vt=0.5),
         _surface("W3", "Window", 90.0, "outdoors", area=3.0, azimuth=90.0, u=5.0, shgc=0.7, vt=0.8),
     ]
-    fields = _fields(_zone("Z", *windows))
-    by_orientation = fields["window_by_orientation"]
-    assert isinstance(by_orientation, dict)
+    ledger = _ledger(_zone("Z", *windows))
+    by_orientation = ledger.window_by_orientation
     assert set(by_orientation) == {"S", "E"}
     south = by_orientation["S"]
-    assert isinstance(south, WindowTotals)
     assert south.area == pytest.approx(10.0)
     assert south.ua == pytest.approx(4 * 2.0 + 6 * 1.2, rel=REL)
     assert south.a_shgc == pytest.approx(4 * 0.4 + 6 * 0.3, rel=REL)
@@ -262,7 +274,7 @@ def test_windows_conserve_area_ua_shgc_and_vt_by_orientation() -> None:
     east = by_orientation["E"]
     assert (east.area, east.ua, east.a_shgc, east.a_vt) == pytest.approx((3.0, 15.0, 2.1, 2.4))
     # Windows are not opaque envelope.
-    assert fields["envelope"] == {}
+    assert ledger.envelope == {}
 
     glazing = window_construction(by_orientation)
     assert glazing is not None
@@ -275,7 +287,7 @@ def test_windows_conserve_area_ua_shgc_and_vt_by_orientation() -> None:
 
 def test_window_without_shgc_is_refused() -> None:
     with pytest.raises(ValueError, match="SHGC"):
-        _fields(_zone("Z", _surface("W", "Window", 90.0, "outdoors", shgc=None, vt=0.5)))
+        _ledger(_zone("Z", _surface("W", "Window", 90.0, "outdoors", shgc=None, vt=0.5)))
 
 
 # --- the equivalent three-layer construction ------------------------------------------------
@@ -284,17 +296,17 @@ def test_window_without_shgc_is_refused() -> None:
 @pytest.mark.parametrize("envelope_class_", sorted(ASSEMBLY_TYPES))
 @pytest.mark.parametrize(("u", "inner", "outer"), [(0.25, 2.0e5, 1.5e4), (1.8, 1.6e4, 1.6e4), (0.12, 3.0e5, 3.0e5)])
 def test_equivalent_construction_reproduces_u_and_both_capacities(
-    envelope_class_: str, u: float, inner: float, outer: float
+    envelope_class_: EnvelopeClass, u: float, inner: float, outer: float
 ) -> None:
     area = 37.0
     totals = EnvelopeTotals(area=area, ua=u * area, capacity_inner=inner * area, capacity_outer=outer * area)
-    assembly = equivalent_construction(totals, envelope_class_, name="G1 equivalent")  # type: ignore[arg-type]
+    assembly = equivalent_construction(totals, envelope_class_, name="G1 equivalent")
     assert len(assembly.Layers) == 3
-    assert assembly.Type == ASSEMBLY_TYPES[envelope_class_]  # type: ignore[index]
+    assert assembly.Type == ASSEMBLY_TYPES[envelope_class_]
     # U with epinterface's films reproduces UA / A.
-    inside, outside = FILMS[envelope_class_]  # type: ignore[index]
+    inside, outside = FILMS[envelope_class_]
     assert 1.0 / (inside + assembly.r_value + outside) == pytest.approx(u, rel=1e-12)
-    assert assembly_u_factor(assembly, envelope_class_) == pytest.approx(u, rel=1e-12)  # type: ignore[arg-type]
+    assert assembly_u_factor(assembly, envelope_class_) == pytest.approx(u, rel=1e-12)
     # Both capacities, by the same split rule, exactly.
     split = assembly_capacities(assembly)
     assert split.inner == pytest.approx(inner, rel=1e-12)
@@ -374,30 +386,32 @@ def _plenum_building(plenum_multiplier: int = 1, perimeter_multiplier: int = 1) 
 def test_plenum_envelope_goes_to_neighbours_by_shared_area() -> None:
     zones = _plenum_building()
     hook = EnvelopeHook(zones)
-    perimeter = dict(hook(zones[1], None))  # type: ignore[arg-type]
-    core = dict(hook(zones[2], None))  # type: ignore[arg-type]
+    perimeter = _hooked(hook, zones[1])
+    core = _hooked(hook, zones[2])
     # Perimeter shares 60 of 100 m² with the plenum, the core 40.
-    assert perimeter["envelope"]["roof"].area == pytest.approx(60.0)  # type: ignore[index]
-    assert core["envelope"]["roof"].area == pytest.approx(40.0)  # type: ignore[index]
-    assert perimeter["envelope"]["exterior_wall"].area == pytest.approx(30.0 + 0.6 * 20.0)  # type: ignore[index]
-    assert perimeter["envelope"]["exterior_wall"].area_by_orientation == pytest.approx({"S": 30 + 7.2, "N": 4.8})  # type: ignore[index]
-    assert core["envelope"]["exterior_wall"].ua == pytest.approx(0.4 * 20.0 * 0.5)  # type: ignore[index]
-    assert perimeter["window_by_orientation"]["S"].a_shgc == pytest.approx(0.6 * 2.0 * 0.4)  # type: ignore[index]
+    assert perimeter.envelope["roof"].area == pytest.approx(60.0)
+    assert core.envelope["roof"].area == pytest.approx(40.0)
+    assert perimeter.envelope["exterior_wall"].area == pytest.approx(30.0 + 0.6 * 20.0)
+    assert perimeter.envelope["exterior_wall"].area_by_orientation == pytest.approx({"S": 30 + 7.2, "N": 4.8})
+    assert core.envelope["exterior_wall"].ua == pytest.approx(0.4 * 20.0 * 0.5)
+    assert perimeter.window_by_orientation["S"].a_shgc == pytest.approx(0.6 * 2.0 * 0.4)
     # Interior surfaces and internal mass of the plenum are not assigned.
-    assert perimeter["internal_mass_capacity"] == 0.0
-    assert perimeter["envelope"]["floor_ceiling"].area == pytest.approx(60.0)  # type: ignore[index]
+    assert perimeter.internal_mass_capacity == 0.0
+    assert perimeter.envelope["floor_ceiling"].area == pytest.approx(60.0)
     # The assignment is recorded.
-    records = {(r.source_zone, r.target_zone, r.envelope_class): r for r in perimeter["excluded_envelope"]}  # type: ignore[union-attr]
+    records = {(r.source_zone, r.target_zone, r.envelope_class): r for r in perimeter.excluded_envelope}
     assert set(records) == {("Plenum", "Perimeter", "roof"), ("Plenum", "Perimeter", "exterior_wall")}
     assert records["Plenum", "Perimeter", "roof"].share == pytest.approx(0.6)
     assert records["Plenum", "Perimeter", "roof"].area == pytest.approx(60.0)
 
 
 @pytest.mark.parametrize(("plenum_multiplier", "perimeter_multiplier"), [(1, 1), (10, 10), (4, 2)])
-def test_plenum_assignment_conserves_envelope_with_multipliers(plenum_multiplier: int, perimeter_multiplier: int) -> None:
+def test_plenum_assignment_conserves_envelope_with_multipliers(
+    plenum_multiplier: int, perimeter_multiplier: int
+) -> None:
     zones = _plenum_building(plenum_multiplier, perimeter_multiplier)
     hook = EnvelopeHook(zones)
-    ledger = sum(GroupLedger.from_zone(zone, None, hooks=[hook]) for zone in zones[1:])  # type: ignore[arg-type]
+    ledger = sum(_hooked(hook, zone) for zone in zones[1:])
     assert isinstance(ledger, GroupLedger)
     m = plenum_multiplier
     assert ledger.envelope["roof"].area == pytest.approx(100.0 * m)
@@ -415,10 +429,10 @@ def test_excluded_zone_without_conditioned_neighbour_passes_through_excluded_nei
     )
     zones = [*_plenum_building(), _classified(attic, "attic")]
     hook = EnvelopeHook(zones)
-    perimeter = dict(hook(zones[1], None))  # type: ignore[arg-type]
+    perimeter = _hooked(hook, zones[1])
     # The plenum's roof (100) plus the attic's (50), both split 60/40.
-    assert perimeter["envelope"]["roof"].area == pytest.approx(0.6 * 150.0)  # type: ignore[index]
-    sources = {r.source_zone for r in perimeter["excluded_envelope"]}  # type: ignore[union-attr]
+    assert perimeter.envelope["roof"].area == pytest.approx(0.6 * 150.0)
+    sources = {r.source_zone for r in perimeter.excluded_envelope}
     assert sources == {"Plenum", "Attic"}
 
 
@@ -426,8 +440,8 @@ def test_isolated_excluded_zone_falls_back_to_floor_area() -> None:
     shed = _zone("Shed", _surface("S roof", "Roof", 0.0, "outdoors", area=10.0, u=0.3))
     zones = [*_plenum_building(), _classified(shed, "excluded")]
     hook = EnvelopeHook(zones)
-    perimeter = dict(hook(zones[1], None))  # type: ignore[arg-type]
-    shed_records = [r for r in perimeter["excluded_envelope"] if r.source_zone == "Shed"]  # type: ignore[union-attr]
+    perimeter = _hooked(hook, zones[1])
+    shed_records = [r for r in perimeter.excluded_envelope if r.source_zone == "Shed"]
     assert len(shed_records) == 1
     assert shed_records[0].share == pytest.approx(0.6)  # 60 of 100 m² of conditioned floor
 
@@ -439,17 +453,17 @@ def test_basement_is_not_assigned_by_default() -> None:
         _surface("B ceiling", "Ceiling", 0.0, "interzone", area=100.0, adjacent="Core", layers=(CONCRETE,)),
     )
     zones = [*_plenum_building(), _classified(basement, "basement")]
-    core = dict(EnvelopeHook(zones)(zones[2], None))  # type: ignore[arg-type]
-    assert "ground_floor" not in core["envelope"]  # type: ignore[operator]
-    core = dict(EnvelopeHook(zones, assigned_roles={"excluded", "attic", "basement"})(zones[2], None))  # type: ignore[arg-type]
-    assert core["envelope"]["ground_floor"].area == pytest.approx(100.0)  # type: ignore[index]
+    core = _hooked(EnvelopeHook(zones), zones[2])
+    assert "ground_floor" not in core.envelope
+    core = _hooked(EnvelopeHook(zones, assigned_roles={"excluded", "attic", "basement"}), zones[2])
+    assert core.envelope["ground_floor"].area == pytest.approx(100.0)
 
 
 def test_module_hook_matches_envelope_hook_without_excluded_zones() -> None:
     zones = _plenum_building()[1:]
     hook = EnvelopeHook(zones)
     for zone in zones:
-        assert GroupLedger.from_zone(zone, None, hooks=[hook]) == GroupLedger.from_zone(zone, None, hooks=[ledger_fields])  # type: ignore[arg-type]
+        assert _hooked(hook, zone) == GroupLedger.from_zone(zone, NO_SCHEDULES, hooks=[ledger_fields])
 
 
 # --- on a fixture --------------------------------------------------------------------------
@@ -467,7 +481,7 @@ def test_fixture_conserves_exterior_envelope_of_conditioned_plenums_and_attic(
 ) -> None:
     hook = EnvelopeHook(ten_classified)
     conditioned = [zone for zone in ten_classified if zone.role == "conditioned"]
-    ledger = sum(GroupLedger.from_zone(zone, None, hooks=[hook]) for zone in conditioned)  # type: ignore[arg-type]
+    ledger = sum(_hooked(hook, zone) for zone in conditioned)
     assert isinstance(ledger, GroupLedger)
     carried = [zone for zone in ten_classified if zone.role in {"conditioned", "excluded", "attic"}]
     for klass in ("exterior_wall", "roof"):
@@ -475,7 +489,10 @@ def test_fixture_conserves_exterior_envelope_of_conditioned_plenums_and_attic(
             s.area * z.zone.multiplier for z in carried for s in z.zone.surfaces if envelope_class(s) == klass
         )
         expected_ua = sum(
-            s.area * s.u_factor * z.zone.multiplier for z in carried for s in z.zone.surfaces if envelope_class(s) == klass
+            s.area * s.u_factor * z.zone.multiplier
+            for z in carried
+            for s in z.zone.surfaces
+            if envelope_class(s) == klass
         )
         assert ledger.envelope[klass].area == pytest.approx(expected_area, rel=1e-12)
         assert ledger.envelope[klass].ua == pytest.approx(expected_ua, rel=1e-12)
@@ -485,4 +502,8 @@ def test_fixture_conserves_exterior_envelope_of_conditioned_plenums_and_attic(
     for klass, totals in ledger.envelope.items():
         assembly = equivalent_construction(totals, klass)
         assert assembly_u_factor(assembly, klass) * totals.area == pytest.approx(totals.ua, rel=1e-9)
-        assert math.isclose(sum(assembly_capacities(assembly)) * totals.area, totals.capacity_inner + totals.capacity_outer, rel_tol=1e-9)
+        assert math.isclose(
+            sum(assembly_capacities(assembly)) * totals.area,
+            totals.capacity_inner + totals.capacity_outer,
+            rel_tol=1e-9,
+        )

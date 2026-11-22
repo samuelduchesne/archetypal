@@ -4,8 +4,8 @@ Expected outcome of reading each file with `read_umi` (spec 003, research R18):
 
 | File | Expected outcome |
 |---|---|
-| `dangling_ref.json` | Refused, `UmiValidationError` (format): `$ref` "99" at `/ZoneLoads/0/OccupancySchedule` points to no `$id`. |
-| `forward_ref.json` | Refused, `UmiValidationError` (format): `/BuildingTemplates/0/Core` and `/Perimeter` point to ids defined later (`Zones` is written after `BuildingTemplates`). |
+| `dangling_ref.json` | Refused, `UmiFormatError`: `$ref` "99" at `/ZoneLoads/0/OccupancySchedule` points to no `$id`. |
+| `forward_ref.json` | Refused, `UmiFormatError`: `/BuildingTemplates/0/Core` and `/Perimeter` point to ids defined later (`Zones` is written after `BuildingTemplates`). |
 | `missing_reference.json` | Refused, `UmiValidationError` (completeness): `/ZoneLoads/0/LightsAvailabilitySchedule` is `null`, template "Office" affected. |
 | `duplicate_names.json` | Read, two archetypes. Collisions reported and the later components renamed with ` #2`: opaque material "Concrete" (conductivity 1.95 and 1.4), glazing and gas material "Clear 6mm", template "Office". |
 | `shared_zone.json` | Read, one archetype whose `core` and `perimeter` groups are equal (one zone definition, as written for a perimeter-only archetype). |
@@ -15,6 +15,11 @@ Expected outcome of reading each file with `read_umi` (spec 003, research R18):
 | `unused_components.json` | Read, one archetype; "Brick", "Brick wall" and "Half on" listed as unused. |
 | `archsim_dialect.json` | Read as the Archsim-era dialect: `Comment` → `Comments`, `GasType` 1 → `ARGON`, material `Type` → `Category`; `Life`, `EmbodiedEnergyStdDev`, `EmbodiedCarbonStdDev`, `PhaseChange`, `Optical` and the other keys without a Core counterpart listed as lost. |
 | `legacy.xml` | Refused, `UmiFormatError`: "Legacy UMI XML library is not supported; open and save it in UMI to convert it to JSON". |
+
+A broken reference is a format problem (research R1, R3): it raises `UmiFormatError`, which
+lists each problem with its JSON pointer and is never skipped by `skip_invalid_templates`, as
+contracts/python-api.md and data-model.md state. `UmiValidationError` is kept for completeness
+and range problems.
 
 All files were written by hand for these tests. Each JSON file except `archsim_dialect.json`
 is in the current Core JSON dialect at Basilisk commit `5cce24e8`, with every key in

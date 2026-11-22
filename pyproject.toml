@@ -44,6 +44,7 @@ dev = [
     "hypothesis>=6.100.0",
     "pytest-markdown-docs>=0.6.0",
     "mkdocs-click>=0.8.1",
+    "jsonschema>=4.26.0",
 ]
 
 [tool.uv.sources]

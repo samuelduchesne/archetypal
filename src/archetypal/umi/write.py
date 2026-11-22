@@ -47,17 +47,13 @@ from archetypal.reduction.envelope import (
     window_construction,
 )
 from archetypal.reduction.grouping import Group, group
-from archetypal.reduction.ledger import APPROXIMATE_PATHS, GroupLedger
+from archetypal.reduction.ledger import APPROXIMATE_PATHS, GainKind, GroupLedger, Mode
 from archetypal.reduction.options import Layout
 from archetypal.reduction.schedules import RunPeriodCalendar, calendar_year, project, to_year_component
 from archetypal.umi._format import (
     BuildingTemplate,
     FormatModel,
-    GasMaterial,
-    GlazingMaterial,
     LibraryComponent,
-    MaterialLayer,
-    WindowConstruction,
     WindowSettings,
     ZoneDefinition,
 )
@@ -88,6 +84,7 @@ from archetypal.umi.serialise import NAME_GROUPS, serialise
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from epinterface.sbem.archetype import ExposureType
     from epinterface.sbem.components.schedules import YearComponent, YearScheduleCategory
     from epinterface.sbem.components.zones import ZoneComponent
     from numpy.typing import NDArray
@@ -177,7 +174,7 @@ def _schedule(profile: NDArray[np.float64], *, name: str, category: YearSchedule
     limits = "Temperature" if category == "Setpoint" else "Fraction"
     days = project(profile, _CALENDAR)
     if limits == "Fraction":
-        days = np.clip(days, 0.0, 1.0)
+        days = np.minimum(np.maximum(days, 0.0), 1.0)
     return to_year_component(days, name=name, category=category, limits=limits)
 
 
@@ -225,11 +222,12 @@ class _ZoneMerger:
         return merged
 
     def gains(self) -> None:
-        for path, kind, density, category in (
+        gains: tuple[tuple[str, GainKind, str, YearScheduleCategory], ...] = (
             ("Operations.SpaceUse.Occupancy", "people", "PeopleDensity", "Occupancy"),
             ("Operations.SpaceUse.Lighting", "lights", "PowerDensity", "Lighting"),
             ("Operations.SpaceUse.Equipment", "electric", "PowerDensity", "Equipment"),
-        ):
+        )
+        for path, kind, density, category in gains:
             if not _differ(self.members, path):
                 continue
             totals = self.ledger.gains.get(kind)
@@ -250,15 +248,15 @@ class _ZoneMerger:
         thermostat = _get(self.zone, path)
         update: dict[str, object] = {}
         for key, totals, pick in (
-            ("Heating", self.ledger.heating_setpoint, np.max),
-            ("Cooling", self.ledger.cooling_setpoint, np.min),
+            ("Heating", self.ledger.heating_setpoint, True),
+            ("Cooling", self.ledger.cooling_setpoint, False),
         ):
             values = totals.value
             if values is None:
                 continue
             schedule = getattr(thermostat, f"{key}Schedule")
             update[f"{key}Schedule"] = _schedule(values, name=_merged_name(schedule.Name), category="Setpoint")
-            update[f"{key}Setpoint"] = float(pick(values))
+            update[f"{key}Setpoint"] = float(values.max() if pick else values.min())
         self.set(path, thermostat.model_copy(update=update))
 
     def systems(self) -> None:
@@ -267,7 +265,8 @@ class _ZoneMerger:
             return
         systems = _get(self.zone, path)
         update: dict[str, object] = {}
-        for key, mode in (("Heating", "heating"), ("Cooling", "cooling")):
+        modes: tuple[tuple[str, Mode], ...] = (("Heating", "heating"), ("Cooling", "cooling"))
+        for key, mode in modes:
             system = _largest_with(self.members, f"{path}.{key}")
             totals = self.ledger.energy.get(mode)
             efficiency = None if totals is None else totals.rated_efficiency
@@ -289,7 +288,9 @@ class _ZoneMerger:
         update = {
             "FreshAirPerFloorArea": peak / self.area,
             "FreshAirPerPerson": 0.0,
-            "Schedule": _schedule(air.hourly / peak, name=_merged_name(ventilation.Schedule.Name), category="Ventilation"),
+            "Schedule": _schedule(
+                air.hourly / peak, name=_merged_name(ventilation.Schedule.Name), category=ventilation.Schedule.Type
+            ),
             "Provider": "Both" if natural else "Mechanical",
             "HRV": max(sorted(air.hrv_weighted), key=lambda key: air.hrv_weighted[key]),
             "Economizer": max(sorted(air.economiser_weighted), key=lambda key: air.economiser_weighted[key]),
@@ -374,7 +375,7 @@ def approximate_merge(archetype: Archetype) -> CorePerimeter:
 
     An archetype that already has core and perimeter groups, or a single group, is returned
     as it is. Otherwise each group's ledger is rebuilt from its parameters
-    (`GroupLedger.approximate_from_group`, floor area = share × 1 m²), the ledgers are grouped
+    (`GroupLedger.approximate_from_group`, floor area = share times 1 m²), the ledgers are grouped
     by exposure with 002's `grouping.group` (by nothing when a group has no exposure, giving
     one group), and each merged group's parameters are derived from its summed ledger:
     densities and setpoints area-weighted with their profiles projected onto SBEM's
@@ -413,7 +414,7 @@ def approximate_merge(archetype: Archetype) -> CorePerimeter:
     merged_groups: list[ZoneGroup] = []
     for result in grouping.groups:
         members = [by_name[name] for name in result.ledger.members]
-        exposures = {member.Exposure for member in members}
+        exposures: set[ExposureType | None] = {member.Exposure for member in members}
         exposure = next(iter(exposures)) if len(exposures) == 1 else None
         name = CORE_GROUP if exposure == "core" else PERIMETER_GROUP
         if len(members) == 1:
@@ -524,7 +525,10 @@ class _TemplateWriter:
             msg = f"{assemblies_path}: no partition construction"
             raise ValueError(msg)
         mass_construction, exposed = internal_mass_to_umi(
-            mass_umi, assemblies.InternalMassExposedAreaPerArea, fallback=fallback, context=context.child("Envelope.Assemblies")
+            mass_umi,
+            assemblies.InternalMassExposedAreaPerArea,
+            fallback=fallback,
+            context=context.child("Envelope.Assemblies"),
         )
         flags = {
             f"is_{slot}_adiabatic": bool(getattr(assemblies, f"Is{slot.capitalize()}Adiabatic", False))
@@ -569,7 +573,9 @@ class _TemplateWriter:
 
     def window(self, archetype: Archetype) -> WindowSettings:
         """The template's window settings, from the perimeter group's window (research R8)."""
-        chosen, losses = template_window({g.Name: g.Zone.Envelope.Window for g in archetype.Groups}, subject=self.subject)
+        chosen, losses = template_window(
+            {g.Name: g.Zone.Envelope.Window for g in archetype.Groups}, subject=self.subject
+        )
         self.context.findings.extend(losses)
         location = next(
             (f"{g.Name}.Envelope.Window" for g in archetype.Groups if g.Zone.Envelope.Window is chosen),
@@ -583,11 +589,9 @@ class _TemplateWriter:
                 rule="window.placement",
                 reason="The archetype has no window; UMI needs one, so a single clear glazing was written.",
             )
-        elif isinstance(chosen, GlazingConstructionSimpleComponent):
+        else:
             construction, layer_losses = equivalent_layer(chosen, subject=self.subject, location=location)
             self.context.findings.extend(layer_losses)
-        else:
-            construction = _layered(chosen)
         always_on = constant_year_schedule(ALWAYS_ON, 1.0)
         self.context.note(
             "WindowSettings",
@@ -636,39 +640,6 @@ class _TemplateWriter:
         return [*self.context.findings, *self.findings.losses, *self.findings.notes]
 
 
-def _layered(window: Any) -> WindowConstruction:
-    """A layered SBEM window as UMI glazing and gas layers, exactly."""
-    layers: list[MaterialLayer[GlazingMaterial | GasMaterial]] = []
-    for layer in window.Layers:
-        if hasattr(layer, "GlazingMaterial"):
-            material = layer.GlazingMaterial
-            umi: GlazingMaterial | GasMaterial = GlazingMaterial.model_validate({
-                "Name": material.Name,
-                **{
-                    alias: getattr(material, alias)
-                    for alias in (
-                        "Conductivity",
-                        "SolarTransmittance",
-                        "SolarReflectanceFront",
-                        "SolarReflectanceBack",
-                        "VisibleTransmittance",
-                        "VisibleReflectanceFront",
-                        "VisibleReflectanceBack",
-                        "IRTransmittance",
-                        "IREmissivityFront",
-                        "IREmissivityBack",
-                        "DirtFactor",
-                    )
-                },
-                "Density": material.Density or 0.0,
-            })
-        else:
-            material = layer.GasMaterial
-            umi = GasMaterial.model_validate({"Name": material.Name, "Type": str(material.GasType).upper()})
-        layers.append(MaterialLayer[GlazingMaterial | GasMaterial](Material=umi, Thickness=layer.Thickness))
-    return WindowConstruction.model_validate({"Name": window.Name, "Layers": tuple(layers)})
-
-
 # --- Assembly (research R13) ------------------------------------------------------------------------
 
 
@@ -710,8 +681,10 @@ class _Assembler:
             return self.component(value, pointer, subject)
         if isinstance(value, tuple):
             items = cast("tuple[object, ...]", value)
-            new = tuple(self.value(item, f"{pointer}/{index}", subject) for index, item in enumerate(items))
-            return value if all(a is b for a, b in zip(new, items, strict=True)) else new
+            new: tuple[object, ...] = tuple(
+                self.value(item, f"{pointer}/{index}", subject) for index, item in enumerate(items)
+            )
+            return items if all(a is b for a, b in zip(new, items, strict=True)) else new
         return value
 
 
@@ -787,7 +760,9 @@ def _export(items: Sequence[ArchetypeLike], *, strict: bool, path: str | os.Path
     assembler = _Assembler()
     templates: list[BuildingTemplate] = []
     for number, ((archetype, losses), subject) in enumerate(zip(layouts, subjects, strict=True)):
-        findings.extend(loss if loss.subject == subject else loss.model_copy(update={"subject": subject}) for loss in losses)
+        findings.extend(
+            loss if loss.subject == subject else loss.model_copy(update={"subject": subject}) for loss in losses
+        )
         writer = _TemplateWriter(subject)
         template = writer.template(archetype)
         findings.extend(writer.all_findings)

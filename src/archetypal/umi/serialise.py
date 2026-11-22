@@ -12,7 +12,7 @@
    references.
 3. **Values.** Enums are integers, integer fields JSON integers, floats Python's shortest
    round-trip `repr`, never rounded. Every field of the Basilisk class is written.
-4. **Bytes.** UTF-8 without BOM, two-space indentation, `\\n`, a final newline. Equal inputs give
+4. **Bytes.** UTF-8 without BOM, two-space indentation, Unix line ends, a final newline. Equal inputs give
    equal text (FR-012).
 
 Names must already be unique per collection (glazing and gas materials together): the writer
@@ -78,7 +78,7 @@ _FIELD_OF: Final[dict[type[LibraryComponent], str]] = {
 }
 
 NAME_GROUPS: Final[dict[type[LibraryComponent], str]] = {
-    **{cls: field for cls, field in _FIELD_OF.items()},
+    **_FIELD_OF,
     GasMaterial: "window_materials",
     GlazingMaterial: "window_materials",
     BuildingTemplate: "building_templates",
@@ -166,7 +166,7 @@ def serialise(templates: Sequence[BuildingTemplate]) -> str:
             already unique per name group.
 
     Returns:
-        The library as Basilisk Core JSON: UTF-8 text with two-space indentation, `\\n` line
+        The library as Basilisk Core JSON: UTF-8 text with two-space indentation, Unix line
         ends and a final newline.
 
     Raises:

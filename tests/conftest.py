@@ -14,7 +14,13 @@ import pytest
 from hypothesis import settings
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Iterator, Sequence
+
+    from archetypal.reduction import Reduction
+    from archetypal.reduction.classify import ClassifiedZone
+    from archetypal.reduction.options import ReductionOptions
+    from archetypal.reduction.schedules import ScheduleEvaluator
+    from archetypal.reduction.sources import SourceData
 
 # The unit tier (the default selection) must finish within this many seconds of wall-clock time.
 UNIT_TIER_BUDGET_S = 120.0
@@ -28,6 +34,9 @@ settings.register_profile("dev", max_examples=100, deadline=timedelta(millisecon
 settings.load_profile(os.environ.get("HYPOTHESIS_PROFILE", "ci" if os.environ.get("CI") else "dev"))
 
 _session_start: dict[str, float] = {}
+
+FIXTURE_MODELS = Path(__file__).resolve().parent / "fixtures" / "models"
+"""The committed fixture models and their results (spec 002, T028)."""
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -90,3 +99,48 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
                 f"Unit tier took {elapsed:.1f} s, over its {UNIT_TIER_BUDGET_S:.0f} s budget.", red=True
             )
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
+
+
+# --- Spec 002: fixture reductions, computed once per session (unit-tier budget) ----------------
+
+
+@pytest.fixture(scope="session")
+def reduced() -> Callable[..., Reduction]:
+    """Return `reduced(fixture, options=None)`: the reduction of a fixture model, cached per session.
+
+    Reductions are immutable, so tests share them; the second call with equal arguments costs nothing.
+    """
+    from archetypal.reduction import reduce  # noqa: PLC0415 - imports epinterface, only when used
+
+    cache: dict[tuple[str, str], Reduction] = {}
+
+    def get(fixture: str, options: ReductionOptions | None = None) -> Reduction:
+        key = (fixture, "" if options is None else options.model_dump_json())
+        if key not in cache:
+            model, results = FIXTURE_MODELS / f"{fixture}.idf", FIXTURE_MODELS / f"{fixture}.sql"
+            cache[key] = reduce(model, results) if options is None else reduce(model, results, options=options)
+        return cache[key]
+
+    return get
+
+
+@pytest.fixture(scope="session")
+def detailed() -> Iterator[Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]]]:
+    """Return `detailed(fixture)`: its checked sources, classified zones and evaluator, cached per session."""
+    from archetypal.reduction.classify import classify  # noqa: PLC0415 - only when used
+    from archetypal.reduction.inventory import build_inventory  # noqa: PLC0415
+    from archetypal.reduction.schedules import ScheduleEvaluator  # noqa: PLC0415
+    from archetypal.reduction.sources import load_sources  # noqa: PLC0415
+
+    cache: dict[str, tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]] = {}
+
+    def get(fixture: str) -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
+        if fixture not in cache:
+            sources = load_sources(FIXTURE_MODELS / f"{fixture}.idf", FIXTURE_MODELS / f"{fixture}.sql")
+            evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
+            cache[fixture] = (sources, classify(build_inventory(sources, evaluate), evaluate), evaluate)
+        return cache[fixture]
+
+    yield get
+    for sources, _, _ in cache.values():
+        sources.results.close()

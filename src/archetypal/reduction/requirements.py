@@ -14,16 +14,20 @@ metered fuels read from the results' End Uses table.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Callable
 
-    from idfkit.simulation import SQLResult
+    from idfkit.simulation import EnergyPlusConfig, SQLResult
+    from idfkit.versioned import IDFDocumentSince22_1
 
 __all__ = [
     "BASEBOARD_VARIABLE",
     "COOLING_COIL_VARIABLE",
+    "ENERGYPLUS_FUELS",
     "HEATING_COIL_VARIABLE",
     "IDEAL_COOLING_VARIABLE",
     "IDEAL_HEATING_VARIABLE",
@@ -32,8 +36,11 @@ __all__ = [
     "RESULTS_REQUIREMENTS",
     "ModelFacts",
     "ResultRequirement",
+    "add_missing_outputs",
     "check_results",
     "delivery_outputs",
+    "run_once",
+    "single_run_facts",
 ]
 
 FUEL = "<fuel>"
@@ -335,3 +342,152 @@ def check_results(results: SQLResult, facts: ModelFacts) -> tuple[ResultRequirem
         if not met:
             missing.append(requirement)
     return tuple(missing)
+
+
+# --- the single run (reduce(..., simulate=True), FR-002) -----------------------------------------
+
+ENERGYPLUS_FUELS: tuple[str, ...] = (
+    "Electricity",
+    "NaturalGas",
+    "Propane",
+    "FuelOilNo1",
+    "FuelOilNo2",
+    "Diesel",
+    "Gasoline",
+    "Coal",
+    "OtherFuel1",
+    "OtherFuel2",
+    "DistrictHeatingWater",
+    "DistrictHeatingSteam",
+    "DistrictCooling",
+)
+"""Every fuel EnergyPlus meters by end use. Before a run, the fuels a model uses are unknown, so
+the single run requests a meter for each; EnergyPlus only warns about a meter that does not exist."""
+
+_METERED_END_USES = ("Heating", "Cooling", "HeatRejection", "WaterSystems")
+
+
+def single_run_facts(facts: ModelFacts) -> ModelFacts:
+    """Return the facts with every fuel metered for every end use, for a run whose fuels are unknown.
+
+    Args:
+        facts: The model's facts, read without results.
+
+    Returns:
+        The same facts with `end_use_fuels` covering `ENERGYPLUS_FUELS`.
+    """
+    pairs = tuple((use, fuel) for use in _METERED_END_USES for fuel in ENERGYPLUS_FUELS)
+    return ModelFacts(
+        zones=facts.zones,
+        fans=facts.fans,
+        pumps=facts.pumps,
+        zone_air_inlet_nodes=facts.zone_air_inlet_nodes,
+        served_zones=facts.served_zones,
+        water_use_equipment=facts.water_use_equipment,
+        end_use_fuels=tuple(dict.fromkeys((*facts.end_use_fuels, *pairs))),
+        hvac_outputs=facts.hvac_outputs,
+    )
+
+
+def add_missing_outputs(doc: IDFDocumentSince22_1, facts: ModelFacts) -> int:
+    """Add to a model every output of `RESULTS_REQUIREMENTS` it needs and does not request.
+
+    Also makes EnergyPlus write the SQLite file with its tabular reports
+    (`Output:SQLite,SimpleAndTabular` and `Output:Table:SummaryReports,AllSummary`). The model
+    is changed in place: pass a copy.
+
+    Args:
+        doc: The model (a copy).
+        facts: The model's facts (`single_run_facts` when the fuels are unknown).
+
+    Returns:
+        The number of objects added or changed.
+    """
+    changed = 0
+    variables = doc["Output:Variable"]
+    have_variables = {
+        (str(o.key_value).casefold(), str(o.variable_name).casefold(), str(o.reporting_frequency).casefold())
+        for o in variables
+    }
+    meters = doc["Output:Meter"]
+    have_meters = {(str(o.key_name).casefold(), str(o.reporting_frequency).casefold()) for o in meters}
+    for requirement in RESULTS_REQUIREMENTS:
+        expected = requirement.expected(facts)
+        if not expected:
+            continue
+        frequency = requirement.frequency
+        if requirement.kind == "variable":
+            if ("*", requirement.item.casefold(), frequency.casefold()) not in have_variables:
+                variables.add(key_value="*", variable_name=requirement.item, reporting_frequency=frequency)
+                changed += 1
+            continue
+        for meter in expected:
+            if (meter.casefold(), frequency.casefold()) not in have_meters:
+                meters.add(key_name=meter, reporting_frequency=frequency)
+                changed += 1
+    return changed + _request_tabular_reports(doc)
+
+
+def _request_tabular_reports(doc: IDFDocumentSince22_1) -> int:
+    """Make EnergyPlus write the SQLite file with its tabular reports; return the objects changed."""
+    changed = 0
+    sqlite = list(doc["Output:SQLite"])
+    if not sqlite:
+        doc["Output:SQLite"].add(option_type="SimpleAndTabular")
+        changed += 1
+    elif str(sqlite[0].option_type).casefold() != "simpleandtabular":
+        sqlite[0].option_type = "SimpleAndTabular"
+        changed += 1
+    reports = list(doc["Output:Table:SummaryReports"])
+    names = {str(r.get("report_name", "")).casefold() for o in reports for r in (o.reports or [])}
+    if "allsummary" not in names:
+        if reports:
+            reports[0].reports.append({"report_name": "AllSummary"})
+        else:
+            doc["Output:Table:SummaryReports"].add(reports=[{"report_name": "AllSummary"}])
+        changed += 1
+    return changed
+
+
+def run_once(
+    doc: IDFDocumentSince22_1,
+    facts: ModelFacts,
+    weather: str | os.PathLike[str],
+    *,
+    energyplus: EnergyPlusConfig | None = None,
+    subject: str = "the model",
+) -> Path:
+    """Run a copy of the model once with the outputs reduction needs (FR-002).
+
+    The run goes through `idfkit.simulation.simulate` with a `SimulationCache`, so running the
+    same model and weather again reuses the stored results.
+
+    Args:
+        doc: The model; it is not changed.
+        facts: The model's facts, read without results.
+        weather: The weather file of the run.
+        energyplus: The EnergyPlus installation; `None` lets idfkit find it.
+        subject: How to name the model in errors.
+
+    Returns:
+        The SQLite file of the run.
+
+    Raises:
+        ReductionError: If EnergyPlus cannot run or fails.
+    """
+    from idfkit.exceptions import IdfKitError  # noqa: PLC0415 - only for a single run
+    from idfkit.simulation import SimulationCache, simulate  # noqa: PLC0415 - only for a single run
+
+    from archetypal.errors import ReductionError  # noqa: PLC0415 - keeps this module light
+
+    model = doc.copy()
+    add_missing_outputs(model, single_run_facts(facts))
+    try:
+        result = simulate(model, Path(weather), energyplus=energyplus, cache=SimulationCache())
+        result.raise_for_status()
+        sql_path = result.sql_path
+    except (IdfKitError, OSError) as exc:
+        raise ReductionError(subject, f"the single EnergyPlus run failed: {exc}") from exc
+    if sql_path is None:
+        raise ReductionError(subject, "the single EnergyPlus run wrote no SQLite file")
+    return Path(sql_path)

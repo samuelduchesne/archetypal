@@ -103,6 +103,7 @@ if TYPE_CHECKING:
 
     from epinterface.sbem.archetype import ZoneGroup
     from epinterface.sbem.components.schedules import YearComponent
+    from epinterface.sbem.components.zones import ZoneComponent
     from typing_extensions import Self
 
     from archetypal.reduction.classify import ClassifiedZone
@@ -762,125 +763,20 @@ class GroupLedger(_Totals):
         Raises:
             ValueError: The floor area is not positive.
         """
-        from archetypal.reduction.envelope import (  # noqa: PLC0415 - envelope imports this module
-            ASSEMBLY_TYPES,
-            assembly_capacities,
-            assembly_u_factor,
-        )
-        from archetypal.reduction.schedules import (  # noqa: PLC0415 - imports epinterface, used only here
-            RunPeriodCalendar,
-            calendar_year,
-            year_values,
-        )
-
         if not floor_area > 0:
             msg = f"group {group.Name!r}: the floor area must be positive, not {floor_area!r}"
             raise ValueError(msg)
         area = float(floor_area)
-        calendar = RunPeriodCalendar(calendar_year(1, 1, 0))
-
-        def profile(year: YearComponent) -> NDArray[np.float64]:
-            return np.asarray(year_values(year, calendar), dtype=np.float64)
-
         zone = group.Zone
-        space_use = zone.Operations.SpaceUse
-        hvac = zone.Operations.HVAC
-        systems = hvac.ConditioningSystems
-        envelope = zone.Envelope
-        values: dict[str, Any] = {}
-
-        gains: dict[GainKind, GainTotals] = {}
-        people = space_use.Occupancy.PeopleDensity * area
-        for kind, component, installed in (
-            ("people", space_use.Occupancy, people),
-            ("lights", space_use.Lighting, space_use.Lighting.PowerDensity * area),
-            ("electric", space_use.Equipment, space_use.Equipment.PowerDensity * area),
-        ):
-            if component.IsOn:
-                gains[kind] = GainTotals(installed=installed, hourly=installed * profile(component.Schedule))
-        values["gains"] = gains
-
-        thermostat = space_use.Thermostat
-        if systems.Heating is not None:
-            values["heating_setpoint"] = WeightedProfile(weight=area, weighted=area * profile(thermostat.HeatingSchedule))
-        else:
-            values["unheated_area"] = area
-        if systems.Cooling is not None:
-            values["cooling_setpoint"] = WeightedProfile(weight=area, weighted=area * profile(thermostat.CoolingSchedule))
-        else:
-            values["uncooled_area"] = area
-
-        ventilation = hvac.Ventilation
-        if ventilation.Provider in {"Mechanical", "Both"}:
-            design = area * ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * people
-            hourly = design * profile(ventilation.Schedule)
-            volume = float(hourly.sum()) * _SECONDS_PER_HOUR
-            values["outdoor_air"] = OutdoorAirTotals(
-                design_flow=design,
-                hourly=hourly,
-                hrv_weighted={ventilation.HRV: volume},
-                economiser_weighted={ventilation.Economizer: volume},
-            )
-
-        dhw = zone.Operations.DHW
-        if dhw.IsOn:
-            water_use = space_use.WaterUse
-            schedule = profile(water_use.Schedule)
-            annual = water_use.FlowRatePerPerson * _DAYS_PER_YEAR * people
-            total = float(schedule.sum())
-            volume_profile = annual * schedule / total if total > 0 else np.zeros_like(schedule)
-            rise = dhw.WaterSupplyTemperature - dhw.WaterTemperatureInlet
-            values["hot_water"] = HotWaterTotals(volume=volume_profile, heat=volume_profile * rise)
-
-        assemblies = envelope.Assemblies
-        values["envelope"] = {
-            envelope_class: _assembly_totals(assembly_u_factor, assembly_capacities, assembly, envelope_class, area)
-            for envelope_class, slot in ASSEMBLY_TYPES.items()
-            if (assembly := getattr(assemblies, f"{slot}Assembly", None)) is not None
-        }
-        mass, exposed = assemblies.InternalMassAssembly, assemblies.InternalMassExposedAreaPerArea
-        if mass is not None and exposed:
-            split = assembly_capacities(mass)
-            values["internal_mass_area"] = exposed * area
-            values["internal_mass_capacity"] = exposed * area * (split.inner + split.outer)
-
-        window = envelope.Window
-        if window is not None and hasattr(window, "UValue"):
-            values["window_by_orientation"] = {
-                "S": WindowTotals(
-                    area=area,
-                    ua=area * window.UValue,  # pyright: ignore[reportAttributeAccessIssue]
-                    a_shgc=area * window.SHGF,  # pyright: ignore[reportAttributeAccessIssue]
-                    a_vt=area * window.TVis,  # pyright: ignore[reportAttributeAccessIssue]
-                )
-            }
-
-        infiltration = envelope.Infiltration
-        if infiltration.IsOn:
-            flow = infiltration.AirChangesPerHour * area * _UNIT_HEIGHT / _SECONDS_PER_HOUR
-            values["infiltration"] = AirflowTotals(
-                design_flow=flow,
-                constant_weighted=flow * infiltration.ConstantCoefficient,
-                temperature_weighted=flow * infiltration.TemperatureCoefficient,
-                velocity_weighted=flow * infiltration.WindVelocityCoefficient,
-                velocity_squared_weighted=flow * infiltration.WindVelocitySquaredCoefficient,
-            )
-
-        energy: dict[Mode, EnergyTotals] = {}
-        for mode, system in (("heating", systems.Heating), ("cooling", systems.Cooling)):
-            if system is not None:
-                energy[mode] = EnergyTotals(rated_weight=area, rated_weighted=area * system.SystemCOP * system.DistributionCOP)
-        if dhw.IsOn:
-            energy["hot_water"] = EnergyTotals(rated_weight=area, rated_weighted=area * dhw.SystemCOP * dhw.DistributionCOP)
-        values["energy"] = energy
-
+        values = {**_exact_fields(zone, area), **_approximate_fields(zone, area)}
+        systems = zone.Operations.HVAC.ConditioningSystems
         approximate = [
             path
             for path, present in (
                 ("Envelope.Assemblies", bool(values["envelope"])),
-                ("Envelope.Infiltration", infiltration.IsOn),
+                ("Envelope.Infiltration", zone.Envelope.Infiltration.IsOn),
                 ("Envelope.Window", "window_by_orientation" in values),
-                ("Operations.DHW", dhw.IsOn),
+                ("Operations.DHW", zone.Operations.DHW.IsOn),
                 ("Operations.HVAC.ConditioningSystems", systems.Heating is not None or systems.Cooling is not None),
             )
             if present
@@ -913,6 +809,129 @@ def _assembly_totals(
         capacity_inner=area * split.inner,
         capacity_outer=area * split.outer,
     )
+
+
+def _profile(year: YearComponent) -> NDArray[np.float64]:
+    """A schedule's hourly values over UMI's reference year (non-leap, starting on a Monday)."""
+    from archetypal.reduction.schedules import (  # noqa: PLC0415 - imports epinterface, used only here
+        RunPeriodCalendar,
+        calendar_year,
+        year_values,
+    )
+
+    return np.asarray(year_values(year, RunPeriodCalendar(calendar_year(1, 1, 0))), dtype=np.float64)
+
+
+def _exact_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
+    """The ledger fields rebuilt exactly from a zone's intensities (R12)."""
+    profile = _profile
+    space_use = zone.Operations.SpaceUse
+    hvac = zone.Operations.HVAC
+    systems = hvac.ConditioningSystems
+    values: dict[str, Any] = {}
+    gains: dict[GainKind, GainTotals] = {}
+    people = space_use.Occupancy.PeopleDensity * area
+    sources: tuple[tuple[GainKind, Any, float], ...] = (
+        ("people", space_use.Occupancy, people),
+        ("lights", space_use.Lighting, space_use.Lighting.PowerDensity * area),
+        ("electric", space_use.Equipment, space_use.Equipment.PowerDensity * area),
+    )
+    for kind, component, installed in sources:
+        if component.IsOn:
+            gains[kind] = GainTotals(installed=installed, hourly=installed * profile(component.Schedule))
+    values["gains"] = gains
+
+    thermostat = space_use.Thermostat
+    if systems.Heating is not None:
+        values["heating_setpoint"] = WeightedProfile(weight=area, weighted=area * profile(thermostat.HeatingSchedule))
+    else:
+        values["unheated_area"] = area
+    if systems.Cooling is not None:
+        values["cooling_setpoint"] = WeightedProfile(weight=area, weighted=area * profile(thermostat.CoolingSchedule))
+    else:
+        values["uncooled_area"] = area
+
+    ventilation = hvac.Ventilation
+    if ventilation.Provider in {"Mechanical", "Both"}:
+        design = area * ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * people
+        hourly = design * profile(ventilation.Schedule)
+        volume = float(hourly.sum()) * _SECONDS_PER_HOUR
+        values["outdoor_air"] = OutdoorAirTotals(
+            design_flow=design,
+            hourly=hourly,
+            hrv_weighted={ventilation.HRV: volume},
+            economiser_weighted={ventilation.Economizer: volume},
+        )
+
+    dhw = zone.Operations.DHW
+    if dhw.IsOn:
+        water_use = space_use.WaterUse
+        schedule = profile(water_use.Schedule)
+        annual = water_use.FlowRatePerPerson * _DAYS_PER_YEAR * people
+        total = float(schedule.sum())
+        volume_profile = annual * schedule / total if total > 0 else np.zeros_like(schedule)
+        rise = dhw.WaterSupplyTemperature - dhw.WaterTemperatureInlet
+        values["hot_water"] = HotWaterTotals(volume=volume_profile, heat=volume_profile * rise)
+    return values
+
+
+def _approximate_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
+    """The ledger fields rebuilt by floor-area weighting (R12, `APPROXIMATE_PATHS`), and internal mass."""
+    from archetypal.reduction.envelope import (  # noqa: PLC0415 - envelope imports this module
+        ASSEMBLY_TYPES,
+        assembly_capacities,
+        assembly_u_factor,
+    )
+
+    envelope = zone.Envelope
+    systems = zone.Operations.HVAC.ConditioningSystems
+    dhw = zone.Operations.DHW
+    values: dict[str, Any] = {}
+    assemblies = envelope.Assemblies
+    values["envelope"] = {
+        envelope_class: _assembly_totals(assembly_u_factor, assembly_capacities, assembly, envelope_class, area)
+        for envelope_class, slot in ASSEMBLY_TYPES.items()
+        if (assembly := getattr(assemblies, f"{slot}Assembly", None)) is not None
+    }
+    mass, exposed = assemblies.InternalMassAssembly, assemblies.InternalMassExposedAreaPerArea
+    if mass is not None and exposed:
+        split = assembly_capacities(mass)
+        values["internal_mass_area"] = exposed * area
+        values["internal_mass_capacity"] = exposed * area * (split.inner + split.outer)
+
+    window = envelope.Window
+    if window is not None and hasattr(window, "UValue"):
+        values["window_by_orientation"] = {
+            "S": WindowTotals(
+                area=area,
+                ua=area * window.UValue,  # pyright: ignore[reportAttributeAccessIssue]
+                a_shgc=area * window.SHGF,  # pyright: ignore[reportAttributeAccessIssue]
+                a_vt=area * window.TVis,  # pyright: ignore[reportAttributeAccessIssue]
+            )
+        }
+
+    infiltration = envelope.Infiltration
+    if infiltration.IsOn:
+        flow = infiltration.AirChangesPerHour * area * _UNIT_HEIGHT / _SECONDS_PER_HOUR
+        values["infiltration"] = AirflowTotals(
+            design_flow=flow,
+            constant_weighted=flow * infiltration.ConstantCoefficient,
+            temperature_weighted=flow * infiltration.TemperatureCoefficient,
+            velocity_weighted=flow * infiltration.WindVelocityCoefficient,
+            velocity_squared_weighted=flow * infiltration.WindVelocitySquaredCoefficient,
+        )
+
+    energy: dict[Mode, EnergyTotals] = {}
+    modes: tuple[tuple[Mode, Any], ...] = (("heating", systems.Heating), ("cooling", systems.Cooling))
+    for mode, system in modes:
+        if system is not None:
+            energy[mode] = EnergyTotals(
+                rated_weight=area, rated_weighted=area * system.SystemCOP * system.DistributionCOP
+            )
+    if dhw.IsOn:
+        energy["hot_water"] = EnergyTotals(rated_weight=area, rated_weighted=area * dhw.SystemCOP * dhw.DistributionCOP)
+    values["energy"] = energy
+    return values
 
 
 # --- domain hooks -------------------------------------------------------------------------

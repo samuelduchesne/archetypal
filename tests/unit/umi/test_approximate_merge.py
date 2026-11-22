@@ -66,9 +66,13 @@ def test_exact_parts_rebuild_from_intensities(office: ZoneComponent) -> None:
     assert ledger.gains["electric"].installed == pytest.approx(space_use.Equipment.PowerDensity * 0.4)
     heating = ledger.heating_setpoint
     assert heating.weight == 0.4
-    np.testing.assert_allclose(heating.weighted / heating.weight, year_values(space_use.Thermostat.HeatingSchedule, CALENDAR))
+    np.testing.assert_allclose(
+        heating.weighted / heating.weight, year_values(space_use.Thermostat.HeatingSchedule, CALENDAR)
+    )
     ventilation = office.Operations.HVAC.Ventilation
-    design = 0.4 * (ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * space_use.Occupancy.PeopleDensity)
+    design = 0.4 * (
+        ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * space_use.Occupancy.PeopleDensity
+    )
     assert ledger.outdoor_air.design_flow == pytest.approx(design)
     np.testing.assert_allclose(ledger.outdoor_air.hourly, design * year_values(ventilation.Schedule, CALENDAR))
     annual = space_use.WaterUse.FlowRatePerPerson * 365 * space_use.Occupancy.PeopleDensity * 0.4
@@ -177,7 +181,9 @@ def test_groups_without_exposure_merge_into_one(office: ZoneComponent) -> None:
 
 
 def test_more_than_two_groups_with_unset_shares_is_refused(office: ZoneComponent) -> None:
-    groups = [group(office, name, None, exposure) for name, exposure in (("a", "core"), ("b", "perimeter"), ("c", None))]
+    groups = [
+        group(office, name, None, exposure) for name, exposure in (("a", "core"), ("b", "perimeter"), ("c", None))
+    ]
     archetype = Archetype.model_construct(Name="unweighted", Groups=groups)
     with pytest.raises(InputError, match="unweighted"):
         approximate_merge(archetype)

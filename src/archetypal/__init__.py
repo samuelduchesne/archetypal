@@ -14,6 +14,30 @@ from typing import TYPE_CHECKING, Any
 from archetypal.comparison import compare as compare
 
 if TYPE_CHECKING:
+    from archetypal.errors import (
+        ArchetypalError as ArchetypalError,
+    )
+    from archetypal.errors import (
+        MissingResults as MissingResults,
+    )
+    from archetypal.errors import (
+        ModelResultsMismatch as ModelResultsMismatch,
+    )
+    from archetypal.errors import (
+        NoConditionedZones as NoConditionedZones,
+    )
+    from archetypal.errors import (
+        NotComparableError as NotComparableError,
+    )
+    from archetypal.errors import (
+        ReductionError as ReductionError,
+    )
+    from archetypal.errors import (
+        UnsupportedEnergyPlusVersion as UnsupportedEnergyPlusVersion,
+    )
+    from archetypal.reduction import reduce as reduce
+    from archetypal.reduction.options import Layout as Layout
+    from archetypal.reduction.options import ReductionOptions as ReductionOptions
     from archetypal.umi.read import read_umi as read_umi
     from archetypal.umi.write import write_umi as write_umi
 
@@ -25,17 +49,46 @@ except PackageNotFoundError:  # pragma: no cover - only when run from an uninsta
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 # Public re-exports of specs 002 and 003 are added here.
-__all__ = ["__version__", "read_umi", "write_umi"]
+__all__ = [
+    "ArchetypalError",
+    "Layout",
+    "MissingResults",
+    "ModelResultsMismatch",
+    "NoConditionedZones",
+    "NotComparableError",
+    "ReductionError",
+    "ReductionOptions",
+    "UnsupportedEnergyPlusVersion",
+    "__version__",
+    "read_umi",
+    "reduce",
+    "write_umi",
+]
 
 # Names imported on first use: their modules import epinterface, whose settings read the
 # environment, and importing archetypal reads none (FR-006).
-_LAZY: dict[str, str] = {"read_umi": "archetypal.umi.read", "write_umi": "archetypal.umi.write"}
+_LAZY: dict[str, str] = {
+    "read_umi": "archetypal.umi.read",
+    "write_umi": "archetypal.umi.write",
+    # Spec 002: reduction and its errors.
+    "reduce": "archetypal.reduction",
+    "Layout": "archetypal.reduction.options",
+    "ReductionOptions": "archetypal.reduction.options",
+    "ArchetypalError": "archetypal.errors",
+    "ReductionError": "archetypal.errors",
+    "NoConditionedZones": "archetypal.errors",
+    "MissingResults": "archetypal.errors",
+    "ModelResultsMismatch": "archetypal.errors",
+    "UnsupportedEnergyPlusVersion": "archetypal.errors",
+    "NotComparableError": "archetypal.errors",
+}
 
 
 def __getattr__(name: str) -> Any:
     """Import a lazy name on first use; raise the migration error for a v2 name (PEP 562, FR-016).
 
-    `read_umi` and `write_umi` are imported from their modules on first use and kept. `archetypal.IDF` and `from archetypal import IDF` raise `RemovedInArchetypal3Error`, which
+    Each name of `_LAZY` (`read_umi`, `write_umi`, `reduce`, `Layout`, `ReductionOptions` and the
+    errors of spec 002) is imported from its module on first use and kept. `archetypal.IDF` and `from archetypal import IDF` raise `RemovedInArchetypal3Error`, which
     names the replacement and the migration guide's section. Because that error is an
     `ImportError`, not an `AttributeError`, `hasattr(archetypal, "IDF")` raises it too instead
     of returning `False`. Any other unknown name raises `AttributeError`.

@@ -310,14 +310,14 @@ merged to core/perimeter and that the report lists the merged groups and dropped
 
 ### Tests for User Story 1 (write first, see them fail)
 
-- [ ] T040 [P] [US1] Test the approximate merge in `tests/unit/umi/test_approximate_merge.py`
+- [X] T040 [P] [US1] Test the approximate merge in `tests/unit/umi/test_approximate_merge.py`
   (R12): `GroupLedger.approximate_from_group(group, floor_area)` rebuilds gains and their
   profiles, setpoints, outdoor air and its profile, and hot water so that merging them equals
   002's `merge` of the matching `Reduction` for those parameters; envelope U and capacity,
   efficiencies, infiltration and the window are floor-area weighted and each is listed as
   `approximate`; an archetype with more than two groups and unset shares raises `InputError`
   naming it.
-- [ ] T041 [P] [US1] Test writing in `tests/unit/umi/test_write.py`: scenario 1 (a
+- [X] T041 [P] [US1] Test writing in `tests/unit/umi/test_write.py`: scenario 1 (a
   core/perimeter archetype gives one template whose values equal the archetype's; the report
   lists the shares as `share_dropped` and every SBEM-only field); scenario 2 (a `Reduction`
   with several groups gives the template of `merge(reduction, Layout.CORE_PERIMETER)`, with
@@ -328,38 +328,38 @@ merged to core/perimeter and that the report lists the merged groups and dropped
   only components reachable from a template are written; an empty sequence raises
   `InputError`; an existing file is refused unless `overwrite`; strict mode raises
   `LossyTranslationError` and writes nothing; the report is written as `<stem>.loss.json`.
-- [ ] T042 [P] [US1] Test the file form in `tests/unit/umi/test_serialise.py`: each of rules
+- [X] T042 [P] [US1] Test the file form in `tests/unit/umi/test_serialise.py`: each of rules
   1–7 of contracts/umi-file.md is one test; `MinFreshAirPerArea = 0.0003` is written as
   `0.0003` (no rounding, R13); writing the same input twice gives identical bytes (FR-012);
   every written library passes `tests/umi/basilisk_rules.py`.
 
 ### Implementation for User Story 1
 
-- [ ] T043 [US1] Add `GroupLedger.approximate_from_group(group, floor_area)` to
+- [X] T043 [US1] Add `GroupLedger.approximate_from_group(group, floor_area)` to
   `src/archetypal/reduction/ledger.py` (R12): the floor area is the group's share × 1 m²;
   rules needing report data use floor-area weighting and return the list of approximated
   parameters.
-- [ ] T044 [US1] Implement `src/archetypal/umi/write.py` (R12, R13): normalise each item's
+- [X] T044 [US1] Implement `src/archetypal/umi/write.py` (R12, R13): normalise each item's
   layout (002's `merge` for a `Reduction`, the approximate merge for a bare archetype, the
   perimeter or core copy), convert each archetype with the registered SBEM → UMI rules,
   assemble the library by content key (canonical JSON without `Name`), share equal components,
   rename clashing names in order of first appearance, keep only reachable components, and
   build the report.
-- [ ] T045 [US1] Implement `src/archetypal/umi/serialise.py` (R13, contracts/umi-file.md): the
+- [X] T045 [US1] Implement `src/archetypal/umi/serialise.py` (R13, contracts/umi-file.md): the
   17 collections in Basilisk's order, components sorted by name, ids from `_refs`, window
   settings inline at first use, templates without `$id`, enums as integers, integer fields as
   integers, shortest round-trip floats, two-space indentation, `\n`, UTF-8 without BOM, final
   newline.
-- [ ] T046 [US1] Add `to_umi`, `write_umi` and `UmiExport` (contracts/python-api.md) in
+- [X] T046 [US1] Add `to_umi`, `write_umi` and `UmiExport` (contracts/python-api.md) in
   `src/archetypal/umi/write.py`, re-exported from `src/archetypal/umi/__init__.py`, and
   `write_umi` from `src/archetypal/__init__.py`. `write_umi` writes the library and
   `<stem>.loss.json` only after the whole translation succeeds (to temporary files, then
   renamed), refuses existing files unless `overwrite`, and in strict mode raises before
   writing.
-- [ ] T047 [P] [US1] Write `docs/how-to/write-archetypes-to-umi.md` with `/project-kit:diataxis`
+- [X] T047 [P] [US1] Write `docs/how-to/write-archetypes-to-umi.md` with `/project-kit:diataxis`
   (how-to): write one or several archetypes, with or without their reductions, read the loss
   report, use strict mode. Code examples run against the fixtures in CI.
-- [ ] T048 [US1] Add `docs/reference/api/umi.md` (mkdocstrings page for `archetypal.umi`) and
+- [X] T048 [US1] Add `docs/reference/api/umi.md` (mkdocstrings page for `archetypal.umi`) and
   wire it into the API reference nav.
 
 **Checkpoint**: the pytest and harness steps of quickstart scenarios 2 and 3 pass (their

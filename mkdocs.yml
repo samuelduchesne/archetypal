@@ -17,12 +17,14 @@ nav:
       - how-to/migrate-from-v2.md
       - how-to/compare-results.md
       - how-to/read-a-umi-library.md
+      - how-to/write-archetypes-to-umi.md
   - Reference:
       - reference/index.md
       - reference/removed.md
       - reference/umi-correspondence.md
       - reference/translation-report.md
       - reference/api/reduction.md
+      - reference/api/umi.md
       - Changelog: reference/changelog.md
   - Explanation:
       - explanation/index.md

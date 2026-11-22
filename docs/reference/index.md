@@ -14,4 +14,6 @@ Reference pages describe archetypal as it is, one page per part of the code or t
   translation lost and assumed.
 - [Reduction and comparison API](api/reduction.md): `compare` and its result types,
   generated from the docstrings.
+- [UMI translation API](api/umi.md): `read_umi`, `write_umi`, `to_umi` and the report types,
+  generated from the docstrings.
 - [Changelog](changelog.md): every notable change, release by release.

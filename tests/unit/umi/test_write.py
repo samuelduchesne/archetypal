@@ -86,6 +86,18 @@ def assert_basilisk_accepts(text: str) -> None:
     assert failures == [], "\n".join(map(str, failures))
 
 
+@pytest.fixture
+def keep(tmp_path: Path, save_library: Callable[[Path], Path | None]) -> Callable[[UmiExport], None]:
+    """Save an exported library under `--write-libraries DIR`, for tools/basilisk-check."""
+
+    def save(export: UmiExport) -> None:
+        path = tmp_path / "library.json"
+        path.write_text(export.text, encoding="utf-8")
+        save_library(path)
+
+    return save
+
+
 # --- Scenario 1: a core/perimeter archetype -------------------------------------------------
 
 
@@ -121,8 +133,11 @@ def test_unset_shares_are_not_a_loss(office: Archetype) -> None:
     assert losses(to_umi([office]).report, LossKind.SHARE_DROPPED) == []
 
 
-def test_every_fixture_archetype_writes_a_library_basilisk_accepts(b2: tuple[Archetype, ...]) -> None:
+def test_every_fixture_archetype_writes_a_library_basilisk_accepts(
+    b2: tuple[Archetype, ...], keep: Callable[[UmiExport], None]
+) -> None:
     export = to_umi(b2)
+    keep(export)
     assert [template.name for template in library(export).building_templates] == [a.Name for a in b2]
     assert_basilisk_accepts(export.text)
 
@@ -166,11 +181,12 @@ def test_two_archetypes_share_equal_components(office: Archetype) -> None:
     assert len(two["BuildingTemplates"]) == 2
 
 
-def test_same_name_different_content_is_renamed(office: Archetype) -> None:
+def test_same_name_different_content_is_renamed(office: Archetype, keep: Callable[[UmiExport], None]) -> None:
     brighter = replace(office, "Name", "Brighter office")
     zone = replace(brighter.Groups[0].Zone, "Operations.SpaceUse.Lighting.PowerDensity", 30.0)
     brighter = with_groups(brighter, ("core", zone, None, "core"), ("perimeter", zone, None, "perimeter"))
     export = to_umi([office, brighter])
+    keep(export)
     loads = {item.name: item for item in library(export).zone_loads}
     name = office.Groups[0].Zone.Operations.SpaceUse.Name
     assert loads[name].lighting_power_density == office.Groups[0].Zone.Operations.SpaceUse.Lighting.PowerDensity
@@ -200,9 +216,12 @@ def test_only_reachable_components_are_written(b2: tuple[Archetype, ...]) -> Non
 
 
 @pytest.mark.parametrize("exposure", ["perimeter", "core"])
-def test_single_group_is_written_once_for_both(office: Archetype, exposure: str) -> None:
+def test_single_group_is_written_once_for_both(
+    office: Archetype, exposure: str, keep: Callable[[UmiExport], None]
+) -> None:
     archetype = with_groups(office, (exposure, office.Groups[1].Zone, None, exposure))
     export = to_umi([archetype])
+    keep(export)
     document = json.loads(export.text)
     template = document["BuildingTemplates"][0]
     assert template["Core"] == {"$ref": template["Core"]["$ref"]}
@@ -225,7 +244,7 @@ def test_empty_sequence_is_refused() -> None:
 def test_more_than_two_unweighted_groups_are_refused(office: Archetype) -> None:
     zone = office.Groups[0].Zone
     groups = [
-        ZoneGroup(Name=name, Zone=zone, FloorAreaShare=None, Exposure=exposure)
+        ZoneGroup.model_validate({"Name": name, "Zone": zone, "FloorAreaShare": None, "Exposure": exposure})
         for name, exposure in (("a", "core"), ("b", "perimeter"), ("c", None))
     ]
     with pytest.raises(InputError, match="unweighted"):

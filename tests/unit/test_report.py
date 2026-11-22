@@ -9,10 +9,10 @@ written by `archetypal.io`. A last test runs the checks on real fixture reductio
 
 from __future__ import annotations
 
-import importlib
 import json
+import math
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytest
@@ -20,7 +20,9 @@ from pydantic import ValidationError
 
 from archetypal import io
 from archetypal.errors import ReductionError
-from archetypal.reduction.features import NotRepresented
+from archetypal.reduction import Reduction
+from archetypal.reduction._sql_tables import read_zones
+from archetypal.reduction.features import NotRepresented, find_unsupported
 from archetypal.reduction.ledger import EnvelopeAssignment, GainTotals, GroupLedger, WeightedProfile
 from archetypal.reduction.options import Layout, ReductionOptions
 from archetypal.reduction.report import (
@@ -51,9 +53,12 @@ from archetypal.reduction.report import (
     raise_for_invariants,
     report_json_schema,
 )
+from archetypal.reduction.to_sbem import set_leaf_paths
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 ROOT = Path(__file__).resolve().parents[2]
-FIXTURES = ROOT / "tests" / "fixtures"
 HOURS = 6
 SHA = "0" * 64
 
@@ -519,26 +524,30 @@ def test_schema_command_without_option_prints_help(capsys: pytest.CaptureFixture
 
 
 @pytest.mark.parametrize("fixture", ["three_zone", "ten_zone_multipliers", "ten_zone_explicit", "bar_building"])
-def test_fixture_reductions_hold_every_invariant(fixture: str, tmp_path: Path) -> None:
-    reduce = getattr(importlib.import_module("archetypal.reduction"), "reduce", None)
-    if reduce is None:
-        pytest.skip("archetypal.reduction.reduce does not exist yet (T059)")
-    model = FIXTURES / "models" / f"{fixture}.idf"
-    results = FIXTURES / "models" / f"{fixture}.sql"
-    reduction = reduce(model, results)
+def test_fixture_reductions_hold_every_invariant(
+    fixture: str, tmp_path: Path, reduced: Callable[[str], Reduction], detailed: Callable[[str], Any]
+) -> None:
+    reduction = reduced(fixture)
     report: ReductionReport = reduction.report
-    from idfkit.simulation import SQLResult  # noqa: PLC0415 - only needed once reduce exists
-
-    from archetypal.reduction._sql_tables import read_zones  # noqa: PLC0415
-
+    sources, zones, _ = detailed(fixture)
     # The results upper-case zone names; the accounting check compares names case-insensitively.
-    zone_names = [row.name for row in read_zones(SQLResult(results))]
-    assert check_report_invariants(report, zone_names=zone_names) == []
-    first, _ = reduction.write(tmp_path / "a", fixture)
-    second, _ = reduce(model, results).write(tmp_path / "b", fixture)
-    assert first.read_bytes() == second.read_bytes()
-    report_a = io.report_path_for(first).read_bytes()
-    report_b = io.report_path_for(second).read_bytes()
-    assert report_a == report_b
+    zone_names = [row.name for row in read_zones(sources.results)]
+    conditioned = math.fsum(z.zone.floor_area * z.zone.multiplier for z in zones if z.role == "conditioned")
+    found = check_report_invariants(
+        report,
+        zone_names=zone_names,
+        zone_roles={z.zone.name: z.role for z in zones},
+        conditioned_floor_area=conditioned,
+        set_parameters=set_leaf_paths(reduction.archetype),
+        expected_not_represented=find_unsupported(sources),
+    )
+    assert found == []
+    archetype_path, report_path = reduction.write(tmp_path, fixture)
+    assert report_path == io.report_path_for(archetype_path)
+    # Writing is deterministic: the report reads back to itself and writes the same bytes again.
+    again = Reduction.read(archetype_path)
+    second, _ = again.write(tmp_path / "again", fixture)
+    assert second.read_bytes() == archetype_path.read_bytes()
+    assert io.report_path_for(second).read_bytes() == report_path.read_bytes()
     jsonschema = pytest.importorskip("jsonschema")
-    jsonschema.Draft202012Validator(report_json_schema()).validate(json.loads(report_a))
+    jsonschema.Draft202012Validator(report_json_schema()).validate(json.loads(report_path.read_bytes()))

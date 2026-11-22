@@ -176,7 +176,7 @@ the correspondence table and every conversion rule in both directions, and the l
   `names.collision`, `layout.merged`, `layout.share_dropped`, `layout.core_copied`,
   `validation.skipped`; every `upstream` is a roadmap UP item; the generated JSON Schema equals
   the committed `docs/schemas/translation-report-1.0.json`.
-- [ ] T015 [P] Test the material rules in `tests/unit/umi/test_rules_materials.py` (R11):
+- [X] T015 [P] Test the material rules in `tests/unit/umi/test_rules_materials.py` (R11):
   `material.carbon_per_m3` (`C_m3 = C_kg × ρ`, inverse `C_kg = C_m3 / ρ`, refused for ρ = 0);
   `ThermalEmittance` ↔ `ThermalAbsorptance`; `Roughness` outside EnergyPlus's six keywords is
   a range problem; SBEM `Type` from `Category` when it names one of the 12 types
@@ -185,7 +185,7 @@ the correspondence table and every conversion rule in both directions, and the l
   table are filled on reading (noted) and listed as lost on writing when they differ; a
   hypothesis property that each rule composed with its inverse is the identity within 1e-12
   relative.
-- [ ] T016 [P] Test the schedule rules in `tests/unit/umi/test_rules_schedules.py` (R7):
+- [X] T016 [P] Test the schedule rules in `tests/unit/umi/test_rules_schedules.py` (R7):
   days are Monday first; a month covered by one year part is copied exactly; a month split by
   part boundaries is projected with 002's projection, conserving the month's sum over the
   reference year (non-leap, starting on Monday), and is listed as approximate; writing merges
@@ -262,9 +262,9 @@ the correspondence table and every conversion rule in both directions, and the l
   summary; deterministic JSON (sorted, `repr` floats, two-space indent, final newline); a
   `python -m archetypal.umi.report --schema` entry that writes
   `docs/schemas/translation-report-1.0.json`, and commit that file.
-- [ ] T029 [P] Implement `src/archetypal/umi/rules/materials.py` (R11): rules for materials,
+- [X] T029 [P] Implement `src/archetypal/umi/rules/materials.py` (R11): rules for materials,
   layers, constructions, construction sets and environmental fields, registered by id.
-- [ ] T030 [P] Implement `src/archetypal/umi/rules/schedules.py` (R7): `schedule.months`,
+- [X] T030 [P] Implement `src/archetypal/umi/rules/schedules.py` (R7): `schedule.months`,
   `schedule.type` and day and week copying, calling 002's
   `archetypal.reduction.schedules` for evaluation and projection (no second evaluator).
 - [ ] T031 [P] Implement `src/archetypal/umi/_bridges.py`: `equivalent_glazing_layer(u, shgc,

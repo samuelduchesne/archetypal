@@ -49,6 +49,7 @@ KEEP_TABLES = (
     "Simulations",
     "EnvironmentPeriods",
     "Time",
+    "Zones",
     "ReportDataDictionary",
     "ReportData",
     "TabularData",

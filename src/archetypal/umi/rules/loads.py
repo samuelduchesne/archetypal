@@ -20,10 +20,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, NamedTuple, TypeAlias, TypeVar, cast
 
 import numpy as np
 from epinterface.constants import assumed_constants
+from epinterface.sbem.components.schedules import YearComponent, YearScheduleCategory
 from epinterface.sbem.components.space_use import EquipmentComponent, LightingComponent, OccupancyComponent
 
 from archetypal.errors import Problem
@@ -43,10 +45,7 @@ from archetypal.umi.correspondence import MappingStatus, mappings_for, rule
 from archetypal.umi.report import Loss, LossKind, Note, NoteKind
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     import numpy.typing as npt
-    from epinterface.sbem.components.schedules import YearComponent, YearScheduleCategory
     from epinterface.sbem.components.space_use import DimmingTypeType, ZoneSpaceUseComponent
     from pydantic import JsonValue
 
@@ -89,15 +88,11 @@ METABOLIC_RATE: float = assumed_constants.MetabolicRate_met
 REFERENCE_CALENDAR = RunPeriodCalendar(calendar_year(1, 1, 0))
 """The reference year of UMI schedules (research R7): non-leap, starting on a Monday."""
 
-ScheduleToSbem = "Callable[[YearSchedule, YearScheduleCategory, str], YearComponent]"
-ScheduleToUmi = "Callable[[YearComponent, str], YearSchedule]"
-# The two aliases above are strings so that the module imports without the type-only names;
-# pyright reads them through the `TYPE_CHECKING` block below.
-if TYPE_CHECKING:
-    ScheduleToSbem = Callable[[YearSchedule, YearScheduleCategory, str], YearComponent]
-    """Converts a UMI schedule: `(schedule, SBEM category, JSON pointer of the field) -> year`."""
-    ScheduleToUmi = Callable[[YearComponent, str], YearSchedule]
-    """Converts an SBEM schedule: `(year, SBEM field path) -> UMI schedule`."""
+ScheduleToSbem: TypeAlias = Callable[[YearSchedule, YearScheduleCategory, str], YearComponent]
+"""Converts a UMI schedule: `(schedule, SBEM category, JSON pointer of the field) -> year`."""
+
+ScheduleToUmi: TypeAlias = Callable[[YearComponent, str], YearSchedule]
+"""Converts an SBEM schedule: `(year, SBEM field path) -> UMI schedule`."""
 
 
 # --- What the operation rules share --------------------------------------------------------------
@@ -632,7 +627,7 @@ def internal_mass_to_umi(
     """
     has_area = ratio is not None and ratio != 0
     if (assembly is None) == has_area:
-        msg = f"{context.location()}: internal mass needs both an assembly and an exposed area, or neither"
+        msg = f"{context.location()}: internal mass needs an assembly and an exposed area, both or neither"
         raise ValueError(msg)
     if assembly is None or ratio is None:
         context.note(

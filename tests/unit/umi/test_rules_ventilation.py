@@ -254,7 +254,12 @@ def test_airflow_network_stays_lost_with_up9() -> None:
     context = reading(POINTER)
     read_ventilation(settings(Afn=True), context)
     [loss] = context.losses
-    assert (loss.location, loss.value, loss.upstream, loss.rule) == (f"{POINTER}/Afn", True, "UP-9", "vent.natural_limits")
+    assert (loss.location, loss.value, loss.upstream, loss.rule) == (
+        f"{POINTER}/Afn",
+        True,
+        "UP-9",
+        "vent.natural_limits",
+    )
 
 
 def test_an_always_on_scheduled_ventilation_schedule_is_none() -> None:
@@ -283,7 +288,9 @@ def test_writing_copies_the_up9_fields_and_notes_what_umi_lacks() -> None:
 
 def test_ventilation_round_trip() -> None:
     original = settings(NatVentMaxOutdoorAirTemp=26.0, IsScheduledVentilationOn=True, ScheduledVentilationAch=1.0)
-    ventilation = read_ventilation(original, reading(POINTER)).model_copy(update={"Schedule": sbem_schedule("nat", 0.0, "Window")})
+    ventilation = read_ventilation(original, reading(POINTER)).model_copy(
+        update={"Schedule": sbem_schedule("nat", 0.0, "Window")}
+    )
     context = writing()
     back = zone_ventilation_to_umi(envelope(infiltration()), ventilation, schedule=write_schedule, context=context)
     assert context.losses == []

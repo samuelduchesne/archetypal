@@ -366,19 +366,19 @@ accounts for every zone (spec US1, SC-005, SC-006).
   `schedule_compact` from `src/archetypal/reduction/__init__.py`, and mark every other module
   of `archetypal.reduction` private
   (contracts/python-api.md, Stability).
-- [ ] T062 [P] [US1] Write `tests/integration/test_single_run.py` (`@pytest.mark.energyplus`):
+- [X] T062 [P] [US1] Write `tests/integration/test_single_run.py` (`@pytest.mark.energyplus`):
   `reduce(model, simulate=True, weather=epw)` on `three_zone.idf` runs EnergyPlus once and
   produces the same archetype as reducing with the committed results (quickstart scenario 6).
-- [ ] T063 [P] [US1] Write `tests/integration/test_epinterface_build.py`
+- [X] T063 [P] [US1] Write `tests/integration/test_epinterface_build.py`
   (`@pytest.mark.energyplus`): epinterface builds and simulates each fixture's archetype
   without modification (FR-003).
-- [ ] T064 [P] [US1] Write `docs/explanation/reduction.md`: what reduction conserves and why
+- [X] T064 [P] [US1] Write `docs/explanation/reduction.md`: what reduction conserves and why
   (FR-014–FR-024), exposure and space use, representative days, equivalent constructions,
   specific fan power and the temperature-dependent COP, and what SBEM cannot hold (FR-030).
-- [ ] T065 [P] [US1] Write `docs/how-to/reduce-a-model.md`: reduce with existing results or
+- [X] T065 [P] [US1] Write `docs/how-to/reduce-a-model.md`: reduce with existing results or
   with the single run, choose the threshold, supply a space-use mapping; its code examples run
   against the unit fixtures.
-- [ ] T066 [P] [US1] Generate `docs/reference/reduction-report.md` from `report_json_schema()`
+- [X] T066 [P] [US1] Generate `docs/reference/reduction-report.md` from `report_json_schema()`
   and `docs/reference/results-requirements.md` from `RESULTS_REQUIREMENTS`, and add
   `docs/reference/api/reduction.md` (mkdocstrings for `archetypal.reduction`).
 
@@ -424,7 +424,7 @@ the default layout and merge; the archetypes match (spec US2, SC-007).
   `<name>.sbem.json`, the name stripped of `.sbem.json`), so `merge` works without the model
   (report invariant 5).
 - [X] T072 [US2] Re-export `merge` from `src/archetypal/__init__.py`.
-- [ ] T073 [P] [US2] Write `docs/how-to/merge-an-archetype.md` and add choosing a layout to
+- [X] T073 [P] [US2] Write `docs/how-to/merge-an-archetype.md` and add choosing a layout to
   `docs/how-to/reduce-a-model.md`; code examples run against the unit fixtures.
 
 **Checkpoint**: US1 and US2 both pass alone; quickstart scenario 4 passes.

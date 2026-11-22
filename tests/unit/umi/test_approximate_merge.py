@@ -11,7 +11,7 @@ rebuilt ledgers with 002's grouping to core and perimeter.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pytest
@@ -49,8 +49,8 @@ def replace(model: Any, path: str, value: object) -> Any:
 
 def _idf_construction(window: GlazingConstructionLayeredComponent) -> Any:
     doc = new_document()
-    window.add_to_idf(doc)
-    return doc["Construction"][window.Name]
+    window.add_to_idf(cast("Any", doc))
+    return doc.constructions[window.Name]
 
 
 def group(zone: ZoneComponent, name: str, share: float | None, exposure: str | None) -> ZoneGroup:
@@ -154,7 +154,8 @@ def test_merge_weights_intensities_by_floor_area(office: ZoneComponent) -> None:
     # The office's window is layered (UP-9): the ledger takes its U from idfkit.thermal.
     assert isinstance(office.Envelope.Window, GlazingConstructionLayeredComponent)
     office_u = calculate_u_value(_idf_construction(office.Envelope.Window))
-    assert window.UValue == pytest.approx((0.3 * office_u + 0.2 * 1.5) / 0.5)  # pyright: ignore[reportAttributeAccessIssue]
+    assert isinstance(window, GlazingConstructionSimpleComponent)
+    assert window.UValue == pytest.approx((0.3 * office_u + 0.2 * 1.5) / 0.5)
     # The core group has one member: it is kept as it is.
     assert by_exposure["core"].Zone == office
 

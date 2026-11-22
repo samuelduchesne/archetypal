@@ -177,7 +177,9 @@ def test_reading_gives_constant_setpoint_schedules() -> None:
 
 def test_writing_takes_the_heating_maximum_and_cooling_minimum() -> None:
     context = writing()
-    written = conditioning_to_umi(hvac(heating=system("Heating")), thermostat(), schedule=write_schedule, context=context)
+    written = conditioning_to_umi(
+        hvac(heating=system("Heating")), thermostat(), schedule=write_schedule, context=context
+    )
     assert (written.heating_setpoint, written.cooling_setpoint) == (20.0, 24.0)
     assert [loss for loss in context.losses if loss.rule == "thermostat.constant"] == []
 
@@ -233,7 +235,9 @@ def test_an_off_system_loses_values_other_than_basilisk_defaults() -> None:
 
 def test_writing_no_system_gives_switch_off_and_defaults() -> None:
     context = writing()
-    written = conditioning_to_umi(hvac(cooling=system("Cooling")), thermostat(), schedule=write_schedule, context=context)
+    written = conditioning_to_umi(
+        hvac(cooling=system("Cooling")), thermostat(), schedule=write_schedule, context=context
+    )
     assert (written.is_heating_on, written.is_cooling_on) == (False, True)
     assert written.heating_coeff_of_perf == 0.0
     assert written.heating_fuel_type is FuelType.NaturalGas
@@ -259,7 +263,10 @@ def test_writing_cop_is_the_product(system_value: float, distribution: float) ->
 def test_split_is_lost_when_distribution_cop_is_not_one() -> None:
     context = writing()
     written = conditioning_to_umi(
-        hvac(heating=system("Heating", cop=4.0, distribution=0.8)), thermostat(), schedule=write_schedule, context=context
+        hvac(heating=system("Heating", cop=4.0, distribution=0.8)),
+        thermostat(),
+        schedule=write_schedule,
+        context=context,
     )
     assert written.heating_coeff_of_perf == pytest.approx(3.2)
     [loss] = [loss for loss in context.losses if loss.rule == "cop.system"]
@@ -401,7 +408,10 @@ def test_mechanical_switch_goes_to_the_provider() -> None:
     parts, _ = read(conditioning(IsMechVentOn=True), natural=True)
     assert parts.ventilation.Provider == "Both"
     written = conditioning_to_umi(
-        hvac(provider="Natural", hrv="NoHRV", economizer="NoEconomizer"), thermostat(), schedule=write_schedule, context=writing()
+        hvac(provider="Natural", hrv="NoHRV", economizer="NoEconomizer"),
+        thermostat(),
+        schedule=write_schedule,
+        context=writing(),
     )
     assert written.is_mech_vent_on is False
 
@@ -478,9 +488,7 @@ def test_a_schedule_without_fraction_limits_is_lost() -> None:
 
 
 def test_limits_map_exactly() -> None:
-    parts, context = read(
-        conditioning(HeatingLimitType="LimitCapacity", MaxHeatingCapacity=50.0, MaxCoolFlow=0.01)
-    )
+    parts, context = read(conditioning(HeatingLimitType="LimitCapacity", MaxHeatingCapacity=50.0, MaxCoolFlow=0.01))
     assert context.losses == []
     systems = parts.systems
     assert (systems.HeatingLimitType, systems.MaxHeatingCapacityPerFloorArea) == ("LimitCapacity", 50.0)
@@ -508,7 +516,9 @@ def test_writing_drops_an_autosized_limit_from_the_limit_type() -> None:
 
 def test_writing_gives_always_on_schedules_and_defaults() -> None:
     context = writing()
-    written = conditioning_to_umi(hvac(heating=system("Heating")), thermostat(), schedule=write_schedule, context=context)
+    written = conditioning_to_umi(
+        hvac(heating=system("Heating")), thermostat(), schedule=write_schedule, context=context
+    )
     for year in (written.heating_schedule, written.cooling_schedule, written.mech_vent_schedule):
         assert year is not None
         assert year.name == ALWAYS_ON

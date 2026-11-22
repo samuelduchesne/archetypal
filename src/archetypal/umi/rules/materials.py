@@ -263,10 +263,6 @@ def cost_from_sbem(cost: float | None, rate_unit: str | None, density: float) ->
 # --- Life-cycle fields (UP-9) ----------------------------------------------------------------
 
 
-def _default(model: type[MaterialBase | ConstructionBase], name: str) -> object:
-    return model.model_fields[name].get_default(call_default_factory=True)
-
-
 def _negative(value: object) -> bool:
     if isinstance(value, tuple):
         return any(_negative(item) for item in cast("tuple[object, ...]", value))
@@ -684,7 +680,7 @@ def construction_to_sbem(
         DataSource=construction.data_source,
         Layers=layers,
         Type=surface_type,
-        **assembly_life_cycle_to_sbem(construction),
+        **assembly_life_cycle_to_sbem(construction),  # pyright: ignore[reportArgumentType]
     )
 
 
@@ -797,7 +793,7 @@ def assemblies_to_sbem(
         InternalMassAssembly=internal_mass,
         InternalMassExposedAreaPerArea=internal_mass_exposed,
         PartitionAreaPerFloorArea=partition_area,
-        **adiabatic_to_sbem(constructions),
+        **adiabatic_to_sbem(constructions),  # pyright: ignore[reportArgumentType]
         **slots,  # pyright: ignore[reportArgumentType]
     )
 

@@ -393,7 +393,10 @@ def test_settings_map_to_the_window_settings_component() -> None:
     assert component.ShadingSystemTransmittance == 0.3
     assert component.ShadingSystemAvailabilitySchedule is not None
     back = windows.settings_to_umi(
-        component, WindowConstruction(Name="W"), schedule=write_schedule, context=writing("perimeter.Envelope.WindowSettings")
+        component,
+        WindowConstruction(Name="W"),
+        schedule=write_schedule,
+        context=writing("perimeter.Envelope.WindowSettings"),
     )
     original = umi_settings()
     for field in (

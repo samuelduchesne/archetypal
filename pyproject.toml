@@ -23,6 +23,9 @@ dependencies = [
     "epinterface>=1.5.0,<1.6",
 ]
 
+[project.scripts]
+archetypal = "archetypal.cli:main"
+
 [project.urls]
 Homepage = "https://samuelduchesne.github.io/archetypal/"
 Repository = "https://github.com/samuelduchesne/archetypal"

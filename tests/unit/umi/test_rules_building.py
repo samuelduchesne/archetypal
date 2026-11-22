@@ -2,8 +2,8 @@
 
 A building template becomes an archetype with two zone groups, `core` and `perimeter`, whose
 floor-area shares are unset (`None`, set by the geometry). The template's single
-window-to-wall ratio becomes the ratio of every orientation. Template-level fields SBEM cannot
-hold yet are lost with `upstream: "UP-9"`. Components without a one-to-one counterpart are
+window-to-wall ratio becomes the ratio of every orientation. Template-level fields map to the
+archetype's fields of UP-9. Components without a one-to-one counterpart are
 named by data-model.md's naming rules, so names survive both round trips.
 """
 
@@ -48,7 +48,7 @@ from epinterface.sbem.components.systems import (
 
 from archetypal.umi import _format
 from archetypal.umi._refs import resolve
-from archetypal.umi.correspondence import get_rule, mapping
+from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind, NoteKind
 from archetypal.umi.rules import building
 from archetypal.umi.rules.building import (
@@ -488,7 +488,9 @@ def test_each_template_level_field_maps_to_the_archetype() -> None:
         **R6_TEMPLATE_FIELDS,
     })
     assert template_losses(template, pointer="/BuildingTemplates/3") == []
-    archetype, losses = archetype_from_template(template, lambda zone: make_zone(zone.name or ""), pointer="/BuildingTemplates/3")
+    archetype, losses = archetype_from_template(
+        template, lambda zone: make_zone(zone.name or ""), pointer="/BuildingTemplates/3"
+    )
     assert losses == []
     assert (archetype.Lifespan, archetype.YearFrom, archetype.YearTo) == (60, 1950, 1980)
     assert (archetype.Country, archetype.ClimateZone) == (["US"], ["5A"])

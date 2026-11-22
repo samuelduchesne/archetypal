@@ -16,23 +16,23 @@ from archetypal.umi.report import Findings, LossKind, NoteKind
 from archetypal.umi.rules import materials
 from archetypal.umi.rules.materials import (
     FILLED_SLOTS,
-    adiabatic_to_sbem,
-    adiabatic_to_umi,
-    assembly_life_cycle_to_sbem,
-    assembly_life_cycle_to_umi,
-    life_cycle_to_sbem,
-    life_cycle_to_umi,
     ROUGHNESS,
     SBEM_MATERIAL_TYPES,
     SET_SLOTS,
+    adiabatic_to_sbem,
+    adiabatic_to_umi,
     assemblies_to_sbem,
     assemblies_to_umi,
+    assembly_life_cycle_to_sbem,
+    assembly_life_cycle_to_umi,
     carbon_per_kg,
     carbon_per_m3,
     construction_to_sbem,
     construction_to_umi,
     cost_from_sbem,
     cost_per_m3,
+    life_cycle_to_sbem,
+    life_cycle_to_umi,
     material_problems,
     material_to_sbem,
     material_to_umi,
@@ -411,7 +411,11 @@ def test_material_life_cycle_maps_per_m3_and_back() -> None:
     assert sbem.EmbodiedEnergy == pytest.approx(2.5 * 1900.0, rel=REL)
     assert sbem.TransportCarbon == pytest.approx(0.01 * 1900.0, rel=REL)
     assert sbem.TransportEnergy == pytest.approx(0.02 * 1900.0, rel=REL)
-    assert (sbem.TransportDistance, sbem.SubstitutionRatePattern, sbem.SubstitutionTimestep) == (300.0, [0.5, 1.0], 20.0)
+    assert (sbem.TransportDistance, sbem.SubstitutionRatePattern, sbem.SubstitutionTimestep) == (
+        300.0,
+        [0.5, 1.0],
+        20.0,
+    )
     assert (sbem.MoistureDiffusionResistance, sbem.DesignStrength, sbem.ModulusOfElasticity) == (10.0, 2.0e7, 1.5e10)
     back = material_to_umi(sbem, "A", "m", findings)
     for key, value in LIFE_CYCLE.items():

@@ -888,7 +888,7 @@ def _window_performance(window: Any) -> tuple[float, float, float]:
 
     doc = new_document()
     window.add_to_idf(doc)
-    construction = doc["Construction"][window.Name]
+    construction = doc.constructions[window.Name]
     return (
         float(calculate_u_value(construction)),
         float(calculate_shgc(construction) or 0.0),

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import calendar as pycalendar
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -14,6 +14,7 @@ from epinterface.sbem.components.schedules import DayComponent, WeekComponent, Y
 from hypothesis import given
 from hypothesis import strategies as st
 from idfkit import load_idf, new_document
+from idfkit.schedules import evaluate as evaluate_at
 from idfkit.schedules import values
 from pydantic import BaseModel
 
@@ -26,7 +27,9 @@ from archetypal.reduction.schedules import (
     ScheduleEvaluator,
     calendar_year,
     expand,
+    holiday_days,
     project,
+    project_holidays,
     representative_days,
     schedule_compact,
     schedule_index,
@@ -540,3 +543,100 @@ def test_a_22_1_file_evaluates_through_the_schedule_year_bridge(tmp_path: Path) 
 def test_schedule_compact_is_public() -> None:
     assert reduction.schedule_compact is schedule_compact
     assert "schedule_compact" in reduction.__all__
+
+
+# --- holiday and design-day slots (UP-2; T087) ------------------------------------------------
+
+
+def _holiday_calendar() -> RunPeriodCalendar:
+    doc = _doc(weekday="Monday", special=(("1/1", 1, "Holiday"), ("7/4", 1, "Holiday"), ("12/25", 2, "Holiday")))
+    return RunPeriodCalendar.from_document(doc)
+
+
+@pytest.mark.parametrize("seed", [1, 2])
+def test_projection_with_holidays_conserves_each_months_energy(seed: int) -> None:
+    cal = _holiday_calendar()
+    profile = _random_profile(cal, seed)
+
+    days, holidays = project_holidays(profile, cal)
+
+    assert days.shape == (12, 7, 24)
+    assert sorted(holidays) == [0, 6, 11]
+    hourly = expand(days, cal, holidays=holidays)
+    np.testing.assert_allclose(_monthly_energy(hourly, cal), _monthly_energy(profile, cal), rtol=1e-13)
+
+
+def test_projection_with_holidays_keeps_the_holiday_profile_apart() -> None:
+    cal = _holiday_calendar()
+    profile = np.ones(cal.hours)
+    july_4 = date(cal.year, 7, 4).timetuple().tm_yday - 1
+    profile[july_4 * 24 : july_4 * 24 + 24] = 0.0
+
+    days, holidays = project_holidays(profile, cal)
+
+    np.testing.assert_array_equal(holidays[6], np.zeros(24))
+    np.testing.assert_array_equal(days[6], np.ones((7, 24)))  # weekday means exclude the holiday
+
+
+def test_to_year_component_writes_holiday_and_design_day_slots() -> None:
+    cal = _holiday_calendar()
+    days = np.full((12, 7, 24), 0.5)
+    holidays = {0: np.full(24, 0.1), 6: np.full(24, 0.2)}
+    summer, winter = np.full(24, 1.0), np.full(24, 0.0)
+
+    year = to_year_component(
+        days,
+        name="Occ",
+        category="Occupancy",
+        holidays=holidays,
+        summer_design_day=summer,
+        winter_design_day=winter,
+    )
+
+    assert year.January.Holiday is not None
+    assert year.January.Holiday.Values == [0.1] * 24
+    assert year.February.Holiday is None
+    assert year.March.SummerDesignDay is not None
+    assert year.March.SummerDesignDay.Values == [1.0] * 24
+    assert year.March.WinterDesignDay is not None
+    assert year.January is not year.February  # weeks differ by their holiday slot
+    assert year.February is year.March
+    np.testing.assert_array_equal(holiday_days(year)[0], holidays[0])
+    expected = expand(days, cal, holidays=holidays)
+    np.testing.assert_array_equal(year_values(year, cal), expected)
+
+
+def test_schedule_compact_writes_holiday_and_design_day_blocks(tmp_path: Path) -> None:
+    doc = _doc(weekday="Monday", special=(("1/1", 1, "Holiday"), ("7/4", 1, "Holiday")))
+    cal = RunPeriodCalendar.from_document(doc)
+    days = np.full((12, 7, 24), 0.5)
+    year = to_year_component(
+        days,
+        name="Occ",
+        category="Occupancy",
+        holidays={0: np.full(24, 0.25), 6: np.full(24, 0.75)},
+        summer_design_day=np.full(24, 1.0),
+        winter_design_day=np.full(24, 0.0),
+    )
+
+    text = schedule_compact(year)
+
+    fors = [line.split("!-")[0].strip().rstrip(",;") for line in text.splitlines() if "For:" in line]
+    assert "For: Holiday" in fors
+    assert "For: SummerDesignDay" in fors
+    assert "For: WinterDesignDay" in fors
+    assert "For: Monday CustomDay1 CustomDay2" in fors
+    hourly = _evaluate_text(tmp_path, text, cal, doc)
+    np.testing.assert_array_equal(hourly, year_values(year, cal))
+    assert hourly[:24].tolist() == [0.25] * 24
+    idf = tmp_path / "compact.idf"
+    (compact,) = load_idf(idf).schedule_compacts
+    assert evaluate_at(compact, datetime(cal.year, 7, 15, 14), day_type="summer") == 1.0
+    assert evaluate_at(compact, datetime(cal.year, 1, 15, 14), day_type="winter") == 0.0
+
+
+def test_schedule_compact_without_slots_is_unchanged() -> None:
+    text = schedule_compact(_fixture_years()[0])
+
+    assert "For: Monday SummerDesignDay WinterDesignDay CustomDay1 CustomDay2" in text
+    assert "For: Sunday Holiday" in text

@@ -378,7 +378,7 @@ the report.
 
 ### Tests for User Story 2 (write first, see them fail)
 
-- [ ] T049 [P] [US2] Test dialects in `tests/unit/umi/test_dialects.py` (R2): B2 and ND are
+- [X] T049 [P] [US2] Test dialects in `tests/unit/umi/test_dialects.py` (R2): B2 and ND are
   `core-json-pre-2023`, with a `defaulted` note per absent field; a library carrying
   `AdvancedModel` is `core-json`; UZ reads through the Archsim key map (`Comment` →
   `Comments`, `GasType` 0–4 → `AIR`, `ARGON`, `KRYPTON`, `XENON`, `SF6`, material `Type` →
@@ -386,14 +386,14 @@ the report.
   lost; `legacy.xml` is refused with "Legacy UMI XML library is not supported; open and save
   it in UMI to convert it to JSON"; a `.umi` zip is refused naming the library file to
   extract; anything else is refused naming the missing marker.
-- [ ] T050 [P] [US2] Test validation in `tests/unit/umi/test_validation.py` (R3, FR-004):
+- [X] T050 [P] [US2] Test validation in `tests/unit/umi/test_validation.py` (R3, FR-004):
   every problem is collected before raising one `UmiValidationError`; each edge fixture yields
   its problems with their JSON pointers; every required reference of R3's list, 24 values per
   day, and year parts covering 1 January–31 December without gap or overlap; range problems
   from the SBEM field constraints and plausibility rules; with `skip_invalid_templates=True`,
   `out_of_range.json` reads its second template and reports the first as
   `skipped_template`; format problems are never skipped; duplicate names are not problems.
-- [ ] T051 [P] [US2] Test reading in `tests/unit/umi/test_read.py`: scenario 1 (B2 gives four
+- [X] T051 [P] [US2] Test reading in `tests/unit/umi/test_read.py`: scenario 1 (B2 gives four
   archetypes in template order, each with `core` and `perimeter` groups and unset shares;
   descriptive fields are lost with `upstream: "UP-9"` until T070); scenario 2
   (`duplicate_names.json` keeps both components and both templates, the second named ` #2`,
@@ -406,18 +406,18 @@ the report.
 
 ### Implementation for User Story 2
 
-- [ ] T052 [P] [US2] Implement `src/archetypal/umi/dialects.py` (R2): detection by shape and
+- [X] T052 [P] [US2] Implement `src/archetypal/umi/dialects.py` (R2): detection by shape and
   the Archsim key map.
-- [ ] T053 [P] [US2] Implement `src/archetypal/umi/validate.py` (R3): completeness and range
+- [X] T053 [P] [US2] Implement `src/archetypal/umi/validate.py` (R3): completeness and range
   problems, each a `Problem` with its pointer, template and rule.
-- [ ] T054 [US2] Implement `src/archetypal/umi/read.py` (R4, R11): dialect → references →
+- [X] T054 [US2] Implement `src/archetypal/umi/read.py` (R4, R11): dialect → references →
   validation → per template, the registered UMI → SBEM rules → archetype; collision
   renaming; unused components; the report with `source` (path, SHA-256, dialect, archetypal
   and epinterface versions).
-- [ ] T055 [US2] Add `read_umi` and `UmiImport` (contracts/python-api.md) in
+- [X] T055 [US2] Add `read_umi` and `UmiImport` (contracts/python-api.md) in
   `src/archetypal/umi/read.py`, re-exported from `src/archetypal/umi/__init__.py`, and
   `read_umi` from `src/archetypal/__init__.py`. `read_umi` never writes files.
-- [ ] T056 [P] [US2] Write `docs/how-to/read-a-umi-library.md` with `/project-kit:diataxis`
+- [X] T056 [P] [US2] Write `docs/how-to/read-a-umi-library.md` with `/project-kit:diataxis`
   (how-to): read a library, read the loss report, skip invalid templates, use strict mode.
 
 **Checkpoint**: quickstart scenario 6 and the pytest step of scenario 1 pass (its `archetypal

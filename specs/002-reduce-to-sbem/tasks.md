@@ -184,7 +184,7 @@ models and results, schedules, deterministic files and test fixtures.
   `<name>.sbem.json` (epinterface's `model_dump_json`, indented, keys in model order) and
   `<name>.report.json`, with the encoding rules of `contracts/reduction-report.md`
   (research R14).
-- [ ] T028 Build the unit fixtures in `tests/fixtures/models/` and the script that regenerates
+- [X] T028 Build the unit fixtures in `tests/fixtures/models/` and the script that regenerates
   their results, `tests/fixtures/regenerate.py` (needs EnergyPlus 24.2; not run in the unit
   tier):
   - `three_zone.idf`: one core and two perimeter zones, two space uses;

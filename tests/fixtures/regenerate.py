@@ -21,6 +21,7 @@ Usage (needs EnergyPlus 24.2; not run by the test suite)::
 from __future__ import annotations
 
 import argparse
+import itertools
 import math
 import shutil
 import sqlite3
@@ -35,7 +36,7 @@ from idfkit.simulation import simulate
 from idfkit.versioned import IDFDocumentV24_2
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Sequence
+    from collections.abc import Callable, Iterable, Mapping, Sequence
 
 HERE = Path(__file__).resolve().parent
 MODELS_DIR = HERE / "models"
@@ -54,7 +55,7 @@ class Model:
     """An EnergyPlus 24.2 document with small helpers for adding objects."""
 
     doc: IDFDocumentV24_2 = field(default_factory=lambda: new_document(IDFDocumentV24_2))
-    surface_counter: dict[str, int] = field(default_factory=dict)
+    surface_counter: dict[str, int] = field(default_factory=dict[str, int])
 
     def __post_init__(self) -> None:
         # new_document seeds these singletons; each model sets its own.
@@ -140,7 +141,7 @@ class Level:
 Owner = tuple[str, str] | None
 
 
-def _wall_segments(level: Level) -> list[tuple[tuple[float, float], tuple[float, float], Owner, Owner]]:
+def _wall_segments(level: Level) -> list[tuple[tuple[float, float], tuple[float, float], Owner, Owner]]:  # noqa: C901
     """Return merged wall segments (p, q, owner on the -side, owner on the +side)."""
     xs = sorted({c for (r, _, _) in level.cells for c in (r[0], r[2])})
     ys = sorted({c for (r, _, _) in level.cells for c in (r[1], r[3])})
@@ -160,7 +161,7 @@ def _wall_segments(level: Level) -> list[tuple[tuple[float, float], tuple[float,
 
     for x in xs:
         runs: list[tuple[float, float, Owner, Owner]] = []
-        for y0, y1 in zip(ys, ys[1:]):
+        for y0, y1 in itertools.pairwise(ys):
             ym = (y0 + y1) / 2
             lo, hi = level.owner(x - eps, ym), level.owner(x + eps, ym)
             if (lo[0] if lo else None) != (hi[0] if hi else None):
@@ -168,7 +169,7 @@ def _wall_segments(level: Level) -> list[tuple[tuple[float, float], tuple[float,
         emit(runs, x, vertical=True)
     for y in ys:
         runs = []
-        for x0, x1 in zip(xs, xs[1:]):
+        for x0, x1 in itertools.pairwise(xs):
             xm = (x0 + x1) / 2
             lo, hi = level.owner(xm, y - eps), level.owner(xm, y + eps)
             if (lo[0] if lo else None) != (hi[0] if hi else None):
@@ -233,7 +234,7 @@ def _add_window(m: Model, wall: str, a: tuple[float, float], b: tuple[float, flo
     )
 
 
-def add_level(m: Model, level: Level) -> None:
+def add_level(m: Model, level: Level) -> None:  # noqa: C901, PLR0912
     """Add a level's walls, windows and its own (unpaired) floors and ceilings."""
     z0, z1 = level.z0, level.z0 + level.height
     for p, q, lo, hi in _wall_segments(level):
@@ -360,29 +361,28 @@ def add_run_control(m: Model, building: str, *, sizing: tuple[bool, bool, bool])
     m.add("Timestep", number_of_timesteps_per_hour=4)
     m.add("Site:Location", "Chicago Ohare Intl Ap", latitude=41.98, longitude=-87.92, time_zone=-6.0, elevation=201.0)
     m.add("Site:WaterMainsTemperature", calculation_method="CorrelationFromWeatherFile")
-    m.add(
-        "Site:GroundTemperature:BuildingSurface",
-        **{
-            f"{month}_ground_temperature": t
-            for month, t in zip(
-                (
-                    "january",
-                    "february",
-                    "march",
-                    "april",
-                    "may",
-                    "june",
-                    "july",
-                    "august",
-                    "september",
-                    "october",
-                    "november",
-                    "december",
-                ),
-                (18.3, 18.2, 18.3, 18.4, 20.1, 22.0, 22.3, 22.5, 22.5, 20.7, 18.9, 18.5),
-            )
-        },
-    )
+    ground: dict[str, float] = {
+        f"{month}_ground_temperature": t
+        for month, t in zip(
+            (
+                "january",
+                "february",
+                "march",
+                "april",
+                "may",
+                "june",
+                "july",
+                "august",
+                "september",
+                "october",
+                "november",
+                "december",
+            ),
+            (18.3, 18.2, 18.3, 18.4, 20.1, 22.0, 22.3, 22.5, 22.5, 20.7, 18.9, 18.5),
+            strict=True,
+        )
+    }
+    m.add("Site:GroundTemperature:BuildingSurface", None, **ground)
     m.add(
         "RunPeriod",
         "Annual",
@@ -1196,7 +1196,7 @@ def add_pthp(m: Model, zone: str) -> None:
     _equipment(m, zone, "ZoneHVAC:PackagedTerminalHeatPump", p, inlet=inlet, exhaust=exhaust)
 
 
-def add_vav_system(m: Model, zones: Sequence[str], plenums: dict[str, Sequence[str]]) -> tuple[str, list[str]]:
+def add_vav_system(m: Model, zones: Sequence[str], plenums: Mapping[str, Sequence[str]]) -> tuple[str, list[str]]:
     """A VAV air loop: heat recovery, economiser, chilled-water cooling, supply fan, hot-water reheat.
 
     ``plenums`` maps each return plenum zone to the zones that return through it; the other
@@ -2271,7 +2271,7 @@ def trim_sql(src: Path, dst: Path) -> None:
                 cur.execute(f'DROP VIEW "{view}"')
         marks = ",".join("?" for _ in KEEP_REPORTS)
         cur.execute(
-            "DELETE FROM TabularData WHERE ReportNameIndex NOT IN "
+            "DELETE FROM TabularData WHERE ReportNameIndex NOT IN "  # noqa: S608 (only ? placeholders)
             f"(SELECT StringIndex FROM Strings WHERE Value IN ({marks}))",
             KEEP_REPORTS,
         )
@@ -2301,9 +2301,12 @@ def run(name: str, *, do_simulate: bool, keep_runs: Path | None = None) -> None:
     drop_unused_constructions(m)
     report = validate_document(m.doc)
     if report.errors:
-        raise SystemExit(f"{name}: schema validation failed\n{report}")
+        raise SystemExit(f"{name}: schema validation failed\n{report}")  # noqa: TRY003
     idf_path = MODELS_DIR / f"{name}.idf"
-    save_idf(m.doc, idf_path)
+    save_idf(m.doc, idf_path, newline="\n")
+    # Strip the writer's trailing blanks so the files pass the repository's whitespace hooks.
+    text = idf_path.read_text(encoding="latin-1")
+    idf_path.write_text("\n".join(line.rstrip() for line in text.splitlines()) + "\n", encoding="latin-1")
     print(f"{name}: wrote {idf_path.relative_to(HERE.parent.parent)}")
     if not do_simulate:
         return
@@ -2313,7 +2316,7 @@ def run(name: str, *, do_simulate: bool, keep_runs: Path | None = None) -> None:
         errs = result.errors
         print(f"{name}: {errs.summary()}")
         if not result.success or errs.has_severe or result.sql_path is None:
-            raise SystemExit(f"{name}: simulation failed; see the summary above")
+            raise SystemExit(f"{name}: simulation failed; see the summary above")  # noqa: TRY003
         trim_sql(result.sql_path, MODELS_DIR / f"{name}.sql")
     size = (MODELS_DIR / f"{name}.sql").stat().st_size / 1e6
     print(f"{name}: wrote {name}.sql ({size:.1f} MB)")

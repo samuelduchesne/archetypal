@@ -329,6 +329,95 @@ def test_evaluation_of_an_unknown_schedule_names_it() -> None:
         evaluate("Nope")
 
 
+def _design_day_doc() -> IDFDocument:
+    doc = _schedule_doc()
+    doc.schedule_compacts.add(
+        "Design",
+        schedule_type_limits_name="Fraction",
+        data=[
+            {"field": "Through: 06/30"},
+            {"field": "For: SummerDesignDay"},
+            {"field": "Until: 24:00"},
+            {"field": "0.2"},
+            {"field": "For: AllOtherDays"},
+            {"field": "Until: 24:00"},
+            {"field": "0.5"},
+            {"field": "Through: 12/31"},
+            {"field": "For: SummerDesignDay"},
+            {"field": "Until: 12:00"},
+            {"field": "0.8"},
+            {"field": "Until: 24:00"},
+            {"field": "1.0"},
+            {"field": "For: WinterDesignDay"},
+            {"field": "Until: 24:00"},
+            {"field": "0.0"},
+            {"field": "For: AllOtherDays"},
+            {"field": "Until: 24:00"},
+            {"field": "0.5"},
+        ],
+    )
+    return doc
+
+
+def test_design_days_follow_the_models_sizing_periods() -> None:
+    doc = _design_day_doc()
+    cal = RunPeriodCalendar.from_document(doc)
+    assert schedules_module.design_dates(doc, cal.year) == schedules_module.DEFAULT_DESIGN_DATES
+    evaluate = ScheduleEvaluator(doc, cal)
+    summer = evaluate.design_day("design", "summer")
+    winter = evaluate.design_day("Design", "winter")
+    assert summer.shape == winter.shape == (24,)
+    np.testing.assert_array_equal(summer, [0.8] * 12 + [1.0] * 12)  # 21 July: the second period
+    np.testing.assert_array_equal(winter, np.full(24, 0.5))  # 21 January: no winter day, AllOtherDays
+    assert evaluate.design_day("DESIGN", "summer") is summer
+    assert not summer.flags.writeable
+    # The Office schedule's design days are its weekend day, not its Monday.
+    np.testing.assert_array_equal(evaluate.design_day("Office", "winter"), np.full(24, 0.1))
+
+    doc.add(
+        "SizingPeriod:DesignDay",
+        "June cooling",
+        validate=False,
+        month=6,
+        day_of_month=15,
+        day_type="SummerDesignDay",
+        maximum_dry_bulb_temperature=30.0,
+        barometric_pressure=101325.0,
+        wind_speed=0.0,
+    )
+    moved = ScheduleEvaluator(doc, cal)
+    assert moved.design_dates["summer"] == (6, 15)
+    np.testing.assert_array_equal(moved.design_day("Design", "summer"), np.full(24, 0.2))
+
+
+def test_design_day_evaluators_need_a_schedule_evaluator() -> None:
+    doc = _design_day_doc()
+    evaluate = ScheduleEvaluator(doc, RunPeriodCalendar.from_document(doc))
+    evaluators = schedules_module.design_day_evaluators(evaluate)
+    assert evaluators is not None
+    np.testing.assert_array_equal(evaluators["summer"]("Design"), evaluate.design_day("Design", "summer"))
+
+    def plain(name: str) -> np.ndarray[Any, Any]:
+        return np.zeros(8760)
+
+    assert schedules_module.design_day_evaluators(plain) is None
+
+
+def test_design_day_slots_take_one_day_or_one_per_month() -> None:
+    days = np.zeros((12, 7, 24))
+    per_month = np.linspace(0.0, 1.0, 12)[:, None] * np.ones((1, 24))
+    year = to_year_component(
+        days, name="S", category="Occupancy", summer_design_day=np.full(24, 0.5), winter_design_day=per_month
+    )
+    for month, week in enumerate(year.Weeks):
+        assert week.SummerDesignDay is not None
+        assert week.WinterDesignDay is not None
+        assert week.SummerDesignDay.Values == [0.5] * 24
+        assert week.WinterDesignDay.Values == pytest.approx([per_month[month, 0]] * 24)
+    with pytest.raises(ValueError, match="summer design day has shape"):
+        to_year_component(days, name="S", category="Occupancy", summer_design_day=np.zeros((7, 24)))
+
+
 # --- projection ------------------------------------------------------------------------------
 
 

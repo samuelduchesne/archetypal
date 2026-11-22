@@ -34,7 +34,8 @@ from typing import TYPE_CHECKING, TypedDict
 import numpy as np
 
 from archetypal.reduction.inventory import BAND
-from archetypal.reduction.ledger import WeightedProfile
+from archetypal.reduction.ledger import DesignDays, WeightedProfile
+from archetypal.reduction.schedules import design_day_evaluators
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -95,6 +96,10 @@ def band_profile(setpoint: NDArray[np.float64], mode: Mode) -> NDArray[np.float6
 def setpoint_fields(zone: ClassifiedZone, evaluate: Callable[[str], Profile]) -> ThermostatFields:
     """Return the thermostat ledger fields of one copy of `zone`.
 
+    Whether a mode is enabled is decided on the run period; an enabled mode's design days (when
+    `evaluate` is a `ScheduleEvaluator`) are the setpoints the thermostat selects on each design
+    day, clamped to `BAND` as the hourly ones.
+
     Args:
         zone: The classified zone.
         evaluate: Returns a schedule's hourly profile by name.
@@ -110,12 +115,26 @@ def setpoint_fields(zone: ClassifiedZone, evaluate: Callable[[str], Profile]) ->
     )
     if record.thermostat is None:
         return fields
-    heating, cooling = record.thermostat.setpoints(evaluate)
+    thermostat = record.thermostat
+    heating, cooling = thermostat.setpoints(evaluate)
+    design = design_day_evaluators(evaluate)
+    days = {kind: thermostat.setpoints(on) for kind, on in design.items()} if design is not None else None
+
+    def design_days(mode: Mode) -> DesignDays:
+        if days is None:
+            return DesignDays()
+        index = 0 if mode == "heating" else 1
+        return DesignDays.of(area, band_profile(days["summer"][index], mode), band_profile(days["winter"][index], mode))
+
     if is_enabled(heating):
-        fields["heating_setpoint"] = WeightedProfile(weight=area, weighted=area * band_profile(heating, "heating"))
+        fields["heating_setpoint"] = WeightedProfile(
+            weight=area, weighted=area * band_profile(heating, "heating"), design_days=design_days("heating")
+        )
         fields["unheated_area"] = 0.0
     if is_enabled(cooling):
-        fields["cooling_setpoint"] = WeightedProfile(weight=area, weighted=area * band_profile(cooling, "cooling"))
+        fields["cooling_setpoint"] = WeightedProfile(
+            weight=area, weighted=area * band_profile(cooling, "cooling"), design_days=design_days("cooling")
+        )
         fields["uncooled_area"] = 0.0
     return fields
 

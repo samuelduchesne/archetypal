@@ -135,7 +135,10 @@ for entry in reduction.report.not_represented:
 ```
 
 ```text
-Design-day schedule profiles -> None
+Design-day outdoor air profile -> None
+Design-day outdoor air profile -> None
+Design-day outdoor air profile -> None
+Ground temperatures -> None
 Infiltration response to weather -> Zone.Envelope.Infiltration.FlowPerExteriorSurfaceArea
 Infiltration response to weather -> Zone.Envelope.Infiltration.FlowPerExteriorSurfaceArea
 Radiant, latent and lost parts of internal gains -> None

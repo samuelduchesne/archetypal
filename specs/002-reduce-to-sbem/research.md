@@ -224,9 +224,12 @@ Classification sorts zones by name first and never depends on model order.
     slots (UP-2) add `For: Holiday`, `SummerDesignDay` and `WinterDesignDay` without a format
     change.
   - **Holidays** are written to UP-2's `Holiday` slots, which the fork has carried since
-    commit d1283ca (archetypal pins dee8d34). **Not represented:** design-day profiles, which
-    the run-period ledger does not hold; the report lists them (FR-026). Design days matter
-    little to epinterface, because it conditions with ideal loads.
+    commit d1283ca (archetypal pins dee8d34). **Design days** are evaluated per schedule on
+    the summer and winter design days (idfkit `values(..., day_type=...)`, on the date of the
+    model's first `SizingPeriod:DesignDay` of each type) and summed in the ledger with the
+    run-period profile's weights (`DesignDays`); every week's `SummerDesignDay` and
+    `WinterDesignDay` slots hold them. Outdoor air and hot water come from run-period results,
+    so their slots repeat each month's Monday and the report lists them (FR-026).
 - **Prerequisite.** idfkit's `Schedule:Year` parsing bug must be fixed upstream before
   release (**UP-6**). Until then a temporary bridge normalises the four month and day fields
   to `int` on a copy of the object before evaluation. The bridge is tracked against UP-6 and

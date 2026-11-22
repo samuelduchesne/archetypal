@@ -722,8 +722,8 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         "schedule.week",
         E,
         "The seven days, Monday first. UMI weeks have no holiday or design-day slots: reading leaves "
-        "SBEM's (UP-2) unset; writing loses a slot only when it differs from the day UMI uses instead, Sunday "
-        "on holidays and Monday on design days.",
+        "SBEM's (UP-2) unset; writing loses a holiday slot when it differs from Sunday's day, which UMI uses "
+        "instead, and every set design-day slot, since UMI uses Monday's day and the slot reads back unset.",
     ),
     _row(
         "YearSchedule",

@@ -63,7 +63,8 @@ from typing import TYPE_CHECKING, Literal, TypedDict
 
 import numpy as np
 
-from archetypal.reduction.ledger import AirflowTotals, OutdoorAirTotals
+from archetypal.reduction.ledger import AirflowTotals, OutdoorAirTotals, schedule_design_days
+from archetypal.reduction.schedules import design_day_evaluators
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -169,12 +170,13 @@ def infiltration_totals(zone: ClassifiedZone, evaluate: Callable[[str], Profile]
             `calendar.hours` (or the length of the zone's outdoor-air profile) gives the length.
 
     Returns:
-        The design flow, hourly flow and flow-weighted coefficient sums; zero without
-        infiltration.
+        The design flow, hourly flow, design days (when `evaluate` is a `ScheduleEvaluator`)
+        and flow-weighted coefficient sums; zero without infiltration.
 
     Raises:
         ValueError: If a row has no schedule and the run period's length is unknown.
     """
+    design = design_day_evaluators(evaluate)
     totals = AirflowTotals()
     for record in zone.zone.infiltration:
         if record.schedule is None:
@@ -193,6 +195,7 @@ def infiltration_totals(zone: ClassifiedZone, evaluate: Callable[[str], Profile]
             temperature_weighted=flow * record.temperature,
             velocity_weighted=flow * record.velocity,
             velocity_squared_weighted=flow * record.velocity_squared,
+            design_days=schedule_design_days(design, record.schedule, flow),
         )
     return totals
 

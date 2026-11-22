@@ -85,8 +85,12 @@ boundary splits is evaluated hour by hour and projected to one representative we
 the mean of that weekday's days in the month. The projection conserves the month's sum over the
 reference year, which is what drives annual energy use, but not the hour-by-hour profile, so the
 month is reported as approximate. Writing turns equal consecutive months into one part. SBEM's
-holiday and design-day slots have no UMI counterpart: UMI uses Sunday's day on holidays and
-Monday's on design days, so writing reports only the slots that differ from those days.
+holiday and design-day slots have no UMI counterpart. UMI uses Sunday's day on holidays, as
+SBEM does without a holiday slot, so writing reports only the holiday slots that differ from it.
+UMI uses Monday's day on design days, but a schedule read back has no design-day slot, and
+SBEM's builder then gives gains, setpoints and availability its own design days, so writing
+reports every design-day slot. A reduction sets them in every schedule, so writing one reports
+two losses per schedule and month.
 
 ## What still waits for an upstream release
 

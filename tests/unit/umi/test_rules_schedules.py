@@ -12,7 +12,7 @@ from epinterface.sbem.components.schedules import DayComponent, WeekComponent, Y
 from hypothesis import given
 from hypothesis import strategies as st
 
-from archetypal.reduction.schedules import expand, representative_days, to_year_component
+from archetypal.reduction.schedules import MONTHS, expand, representative_days, to_year_component
 from archetypal.umi._format import DaySchedule, WeekSchedule, YearSchedule, YearSchedulePart
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import Findings, LossKind, NoteKind
@@ -141,8 +141,8 @@ def test_reading_leaves_the_holiday_and_design_day_slots_unset() -> None:
     assert (sbem.Holiday, sbem.SummerDesignDay, sbem.WinterDesignDay) == (None, None, None)
 
 
-def test_special_days_that_differ_are_lost_on_writing() -> None:
-    """UP-2's slots: a holiday on Sunday's day or a design day on Monday's loses nothing."""
+def test_special_days_are_lost_on_writing_unless_a_holiday_equals_sunday() -> None:
+    """UP-2's slots: a holiday on Sunday's day loses nothing; a set design day is always lost."""
     base = week_to_sbem(NUMBERED_WEEK, **kw())
     peak = day_to_sbem(day("Peak", [1.0] * 24), **kw())
     special = WeekComponent.model_validate({
@@ -154,14 +154,16 @@ def test_special_days_that_differ_are_lost_on_writing() -> None:
     findings = Findings()
     umi = week_to_umi(special, subject="A", location="perimeter.w", findings=findings)
     assert umi == NUMBERED_WEEK
-    (loss,) = findings.losses
-    assert (loss.kind, loss.location, loss.value, loss.replacement, loss.rule) == (
+    summer, winter = findings.losses
+    assert (summer.kind, summer.location, summer.value, summer.replacement, summer.rule) == (
         LossKind.LOST,
         "perimeter.w.SummerDesignDay",
         "Peak",
         "D0",
         "schedule.week",
     )
+    # Equal to Monday's day, but read back unset: epinterface would size gains with its own day.
+    assert (winter.location, winter.value, winter.replacement) == ("perimeter.w.WinterDesignDay", "D0", "D0")
 
 
 # --- schedule.months: UMI to SBEM -------------------------------------------------------------
@@ -277,6 +279,20 @@ def test_writing_merges_equal_consecutive_months() -> None:
     ]
     assert umi.parts[0].schedule == umi.parts[2].schedule
     assert not findings.losses
+
+
+def test_each_months_design_days_are_lost_where_that_month_is() -> None:
+    days = representative([0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0])
+    sbem = to_year_component(
+        days, name="Y", category="Occupancy", summer_design_day=np.ones(24), winter_design_day=np.zeros(24)
+    )
+    findings = Findings()
+    umi = year_to_umi(sbem, subject="A", location="perimeter.Y", findings=findings)
+    assert len(umi.parts) == 3  # equal months still make one part
+    locations = [loss.location for loss in findings.losses]
+    assert locations == [
+        f"perimeter.Y.{month}.{slot}" for month in MONTHS for slot in ("SummerDesignDay", "WinterDesignDay")
+    ]
 
 
 def test_february_parts_end_on_the_29th() -> None:

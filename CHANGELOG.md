@@ -84,6 +84,10 @@ before upgrading.
 - `reduce` refuses results without a weather-file run period, naming the `SimulationControl`
   switch, and its single run turns that switch on: a model set to run only its design days, such
   as many EnergyPlus example files, failed with a NumPy broadcast error.
+- `reduce` gives every schedule of the archetype the detailed model's summer and winter design
+  days, so epinterface sizes with them rather than with always-on gains and extreme setpoints;
+  outdoor air and hot water, read from run-period results, repeat Monday and are reported.
+  Writing to UMI reports each design-day slot as lost.
 - `reduce` given a glob keeps only model files (`.idf`, `.epJSON`).
 - A removed archetypal 2 module nested in another names its own replacement, not its parent's.
 - UMI translation:

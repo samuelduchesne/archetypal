@@ -94,6 +94,15 @@ schedule reproduces the profile. Peak-normalised schedules, as archetypal 2 buil
 conserve neither. Every SBEM schedule converts without loss to an EnergyPlus
 `Schedule:Compact` with `archetypal.reduction.schedule_compact`.
 
+Design days are kept apart from the run period, because they size the equipment rather than
+use energy. Reduction evaluates each schedule once more on the summer and on the winter design
+day, the way EnergyPlus does, and sums those days with the same weights as the hourly profile.
+Every schedule of the archetype carries them in its design-day slots. Without them, SBEM's
+builder would size with its own design days: lights and people always on, and the extreme
+setpoints. Outdoor air and hot water are the exception: their profiles come from the run-period
+results, which hold no design day, so their slots repeat each month's Monday, and the report
+lists them.
+
 ## Equivalent constructions keep heat loss and mass
 
 SBEM wants one layered construction per envelope slot (facade, flat roof, ground slab, ...),

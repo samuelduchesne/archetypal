@@ -13,7 +13,7 @@ import os
 import shutil
 import sqlite3
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from epinterface.sbem.archetype import Archetype
@@ -36,7 +36,7 @@ from archetypal.reduction.requirements import add_missing_outputs, single_run_fa
 from archetypal.reduction.sources import model_facts
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Iterator, Sequence
 
     from archetypal.reduction.inventory import ZoneRecord
     from archetypal.reduction.sources import SourceData
@@ -144,6 +144,52 @@ def test_user_space_uses_keep_operating_rooms_and_corridors_apart(reduced: Calla
     assert keys["South_Perimeter"] == ("corridor", "perimeter")
     assert keys["Core"] == ("corridor", "core")
     assert all(m.space_use_source == "user" for g in report.groups for m in g.members)
+
+
+# --- design days ----------------------------------------------------------------------------------
+
+
+def _years(model: object, path: str = "") -> list[tuple[str, Any]]:
+    from epinterface.sbem.components.schedules import YearComponent  # noqa: PLC0415
+    from pydantic import BaseModel  # noqa: PLC0415
+
+    if isinstance(model, YearComponent):
+        return [(path, model)]
+    found: list[tuple[str, Any]] = []
+    if isinstance(model, BaseModel):
+        for name in type(model).model_fields:
+            found.extend(_years(getattr(model, name), f"{path}.{name}"))
+    elif isinstance(model, list | tuple):
+        items = cast("Sequence[object]", model)
+        for index, item in enumerate(items):
+            found.extend(_years(item, f"{path}[{index}]"))
+    return found
+
+
+def test_every_schedule_carries_the_detailed_models_design_days(reduced: Callable[..., Reduction]) -> None:
+    reduction = reduced("three_zone")
+    years = _years(reduction.archetype)
+    assert years
+    for path, year in years:
+        for week in year.Weeks:
+            assert week.SummerDesignDay is not None, path
+            assert week.WinterDesignDay is not None, path
+    office = reduction.archetype.group("Office / perimeter").Zone.Operations.SpaceUse
+    july = office.Lighting.Schedule.July
+    assert july.SummerDesignDay is not None
+    assert july.WinterDesignDay is not None
+    # The fixture's office lighting has its own design days, unlike any Monday.
+    assert july.SummerDesignDay.Values != july.Monday.Values
+    assert july.WinterDesignDay.Values != july.Monday.Values
+    # The cooling setpoint is 21 °C on the winter design day, 24 °C on Mondays.
+    january = office.Thermostat.CoolingSchedule.January
+    assert january.WinterDesignDay is not None
+    assert january.WinterDesignDay.Values == [21.0] * 24
+    assert january.Monday.Values != january.WinterDesignDay.Values
+    features = {entry.feature for entry in reduction.report.not_represented}
+    assert "Design-day schedule profiles" not in features
+    assert "Design-day outdoor air profile" in features
+    assert not any(feature.startswith("Design-day profile of") for feature in features)
 
 
 # --- acceptance scenario 4 and quickstart 2: reproducible files -------------------------------------

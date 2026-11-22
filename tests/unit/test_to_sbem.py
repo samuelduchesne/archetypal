@@ -549,7 +549,7 @@ def test_up8_and_up2_fields_are_written_not_listed() -> None:
     features = {e.feature for e in conversion.not_represented}
     for gone in ("Fan energy", "Infiltration schedule", "Window ratios by orientation", "Holidays"):
         assert gone not in features
-    assert "Design-day schedule profiles" in features
+    assert "Design-day schedule profiles" not in features
     entries: list[NotRepresented] = list(conversion.not_represented)
     assert all(e.source in {"to_sbem", "schedules", "airflow", "efficiency", "fans", "hotwater"} for e in entries)
 

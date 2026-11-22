@@ -2,7 +2,7 @@
   "$defs": {
     "AirflowTotals": {
       "additionalProperties": false,
-      "description": "An airflow: infiltration, or the base of outdoor air (R9, FR-018, FR-019).\n\nAttributes:\n    design_flow: \u03a3 design flow, m\u00b3/s.\n    hourly: \u03a3 flow per hour, m\u00b3/s.\n    constant_weighted: \u03a3 design flow \u00b7 constant coefficient (infiltration).\n    temperature_weighted: \u03a3 design flow \u00b7 temperature coefficient.\n    velocity_weighted: \u03a3 design flow \u00b7 velocity coefficient.\n    velocity_squared_weighted: \u03a3 design flow \u00b7 velocity-squared coefficient.",
+      "description": "An airflow: infiltration, or the base of outdoor air (R9, FR-018, FR-019).\n\nAttributes:\n    design_flow: \u03a3 design flow, m\u00b3/s.\n    hourly: \u03a3 flow per hour, m\u00b3/s.\n    constant_weighted: \u03a3 design flow \u00b7 constant coefficient (infiltration).\n    temperature_weighted: \u03a3 design flow \u00b7 temperature coefficient.\n    velocity_weighted: \u03a3 design flow \u00b7 velocity coefficient.\n    velocity_squared_weighted: \u03a3 design flow \u00b7 velocity-squared coefficient.\n    design_days: \u03a3 design flow \u00b7 schedule on the design days, weighted by `design_flow`\n        (infiltration; outdoor air comes from run-period results and has none).",
       "properties": {
         "design_flow": {
           "default": 0.0,
@@ -34,6 +34,9 @@
           ],
           "title": "EncodedProfile",
           "type": "object"
+        },
+        "design_days": {
+          "$ref": "#/$defs/DesignDays"
         },
         "constant_weighted": {
           "default": 0.0,
@@ -155,6 +158,71 @@
         "year"
       ],
       "title": "CalendarBlock",
+      "type": "object"
+    },
+    "DesignDays": {
+      "additionalProperties": false,
+      "description": "A schedule-driven profile on the summer and winter design days (24 values each).\n\nThe days are summed with the same weights as the run-period profile they accompany, and\n`weight` is the part of the parent's weight (installed level, design flow or area) they\ncover. A total whose design days cover less than its weight, such as the sum of a member\nwith design days and one without, has no complete design days (`complete`), and its\nschedules keep the builder's design days. Design days are not run-period profiles: the\nledger's single-length rule leaves them out.\n\nAttributes:\n    weight: \u03a3 weight of the members whose design days are known.\n    summer: \u03a3 weight \u00b7 value on the summer design day, per hour.\n    winter: \u03a3 weight \u00b7 value on the winter design day, per hour.",
+      "properties": {
+        "weight": {
+          "default": 0.0,
+          "title": "Weight",
+          "type": "number"
+        },
+        "summer": {
+          "additionalProperties": false,
+          "description": "A profile (for example 8760 hourly values) stored compactly in a JSON file.\n\nAttributes:\n    encoding: Always `\"base64-float64-le\"`: the values as little-endian IEEE 754 float64,\n        base64-encoded (RFC 4648, with padding).\n    length: The number of values.\n    data: The base64 text.",
+          "properties": {
+            "encoding": {
+              "const": "base64-float64-le",
+              "default": "base64-float64-le",
+              "title": "Encoding",
+              "type": "string"
+            },
+            "length": {
+              "title": "Length",
+              "type": "integer"
+            },
+            "data": {
+              "title": "Data",
+              "type": "string"
+            }
+          },
+          "required": [
+            "length",
+            "data"
+          ],
+          "title": "EncodedProfile",
+          "type": "object"
+        },
+        "winter": {
+          "additionalProperties": false,
+          "description": "A profile (for example 8760 hourly values) stored compactly in a JSON file.\n\nAttributes:\n    encoding: Always `\"base64-float64-le\"`: the values as little-endian IEEE 754 float64,\n        base64-encoded (RFC 4648, with padding).\n    length: The number of values.\n    data: The base64 text.",
+          "properties": {
+            "encoding": {
+              "const": "base64-float64-le",
+              "default": "base64-float64-le",
+              "title": "Encoding",
+              "type": "string"
+            },
+            "length": {
+              "title": "Length",
+              "type": "integer"
+            },
+            "data": {
+              "title": "Data",
+              "type": "string"
+            }
+          },
+          "required": [
+            "length",
+            "data"
+          ],
+          "title": "EncodedProfile",
+          "type": "object"
+        }
+      },
+      "title": "DesignDays",
       "type": "object"
     },
     "EirSums": {
@@ -447,7 +515,7 @@
     },
     "GainTotals": {
       "additionalProperties": false,
-      "description": "One kind of internal gain (FR-015).\n\nAttributes:\n    installed: \u03a3 design level: W, or people for occupancy.\n    hourly: \u03a3 design level \u00b7 schedule, per hour (W, or people).\n    radiant: Annual radiant energy, J.\n    latent: Annual latent energy, J.\n    lost: Annual energy lost to the zone (lost fraction, and lights' return-air fraction), J.",
+      "description": "One kind of internal gain (FR-015).\n\nAttributes:\n    installed: \u03a3 design level: W, or people for occupancy.\n    hourly: \u03a3 design level \u00b7 schedule, per hour (W, or people).\n    radiant: Annual radiant energy, J.\n    latent: Annual latent energy, J.\n    lost: Annual energy lost to the zone (lost fraction, and lights' return-air fraction), J.\n    design_days: \u03a3 design level \u00b7 schedule on the design days, weighted by `installed`.",
       "properties": {
         "installed": {
           "default": 0.0,
@@ -479,6 +547,9 @@
           ],
           "title": "EncodedProfile",
           "type": "object"
+        },
+        "design_days": {
+          "$ref": "#/$defs/DesignDays"
         },
         "radiant": {
           "default": 0.0,
@@ -945,6 +1016,9 @@
           "title": "EncodedProfile",
           "type": "object"
         },
+        "design_days": {
+          "$ref": "#/$defs/DesignDays"
+        },
         "constant_weighted": {
           "default": 0.0,
           "title": "Constant Weighted",
@@ -1225,7 +1299,7 @@
     },
     "WeightedProfile": {
       "additionalProperties": false,
-      "description": "An area-weighted hourly profile, such as a setpoint (FR-020).\n\nAttributes:\n    weight: \u03a3 area of the members that count, m\u00b2.\n    weighted: \u03a3 area \u00b7 value per hour.",
+      "description": "An area-weighted hourly profile, such as a setpoint (FR-020).\n\nAttributes:\n    weight: \u03a3 area of the members that count, m\u00b2.\n    weighted: \u03a3 area \u00b7 value per hour.\n    design_days: \u03a3 area \u00b7 value on the design days, weighted by `weight`.",
       "properties": {
         "weight": {
           "default": 0.0,
@@ -1257,6 +1331,9 @@
           ],
           "title": "EncodedProfile",
           "type": "object"
+        },
+        "design_days": {
+          "$ref": "#/$defs/DesignDays"
         }
       },
       "title": "WeightedProfile",

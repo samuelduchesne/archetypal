@@ -24,6 +24,13 @@ Two data-model fields are held in additive form (a decision of this module):
   `economiser_weighted` (SBEM category → Σ annual outdoor-air volume it serves, m³) and
   `effectiveness_weighted` (Σ volume · sensible effectiveness).
 
+Design days (`DesignDays`) accompany the schedule-driven profiles: gains, infiltration and
+setpoints. They hold Σ weight · value on the summer and winter design days (24 values each),
+summed with the same weights as the run-period profile, and the weight they cover, so a sum
+whose members do not all know their design days is recognised (`DesignDays.complete`). They are
+additive like every other total, and not run-period profiles: the ledger's single-length rule
+leaves them out.
+
 `GroupLedger.internal_mass_area` is added next to `internal_mass_capacity`, since
 `InternalMassExposedAreaPerArea` needs the area (R6).
 
@@ -79,6 +86,7 @@ heat capacity.
 from __future__ import annotations
 
 import importlib
+import math
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NamedTuple, Protocol, TypeAlias, cast
 
@@ -107,7 +115,7 @@ if TYPE_CHECKING:
     from typing_extensions import Self
 
     from archetypal.reduction.classify import ClassifiedZone
-    from archetypal.reduction.schedules import ScheduleEvaluator
+    from archetypal.reduction.schedules import DesignDayKind, ScheduleEvaluator
 
 __all__ = [
     "APPROXIMATE_PATHS",
@@ -115,6 +123,7 @@ __all__ = [
     "FIELD_OWNERS",
     "AirflowTotals",
     "ApproximateLedger",
+    "DesignDays",
     "EirSums",
     "EnergyTotals",
     "EnvelopeAssignment",
@@ -135,6 +144,7 @@ __all__ = [
     "ZoneHook",
     "default_hooks",
     "gain_fields",
+    "schedule_design_days",
 ]
 
 EnvelopeClass = Literal[
@@ -153,6 +163,7 @@ Fuel: TypeAlias = str
 """An EnergyPlus resource name as its meters report it, for example `Electricity`, `NaturalGas`."""
 
 _SECONDS_PER_HOUR = 3600.0
+_HOURS_PER_DAY = 24
 _DAYS_PER_YEAR = 365.0
 _UNIT_HEIGHT = 1.0  # m: the storey height the approximate infiltration assumes in every group
 _REFERENCE_HOURS = 8760  # hours of UMI's reference year (non-leap), over which `_profile` evaluates
@@ -272,6 +283,8 @@ def _equal(a: Any, b: Any) -> bool:
 
 
 def _profiles_in(value: Any) -> Iterator[NDArray[np.float64]]:
+    if isinstance(value, DesignDays):  # 24 values, not the run period's
+        return
     if isinstance(value, BaseModel):
         for name in type(value).model_fields:
             yield from _profiles_in(getattr(value, name))
@@ -375,6 +388,57 @@ class WindowTotals(_Totals):
     a_vt: float = 0.0
 
 
+class DesignDays(_Totals):
+    """A schedule-driven profile on the summer and winter design days (24 values each).
+
+    The days are summed with the same weights as the run-period profile they accompany, and
+    `weight` is the part of the parent's weight (installed level, design flow or area) they
+    cover. A total whose design days cover less than its weight, such as the sum of a member
+    with design days and one without, has no complete design days (`complete`), and its
+    schedules keep the builder's design days. Design days are not run-period profiles: the
+    ledger's single-length rule leaves them out.
+
+    Attributes:
+        weight: Σ weight of the members whose design days are known.
+        summer: Σ weight · value on the summer design day, per hour.
+        winter: Σ weight · value on the winter design day, per hour.
+    """
+
+    weight: float = 0.0
+    summer: ProfileArray = Field(default_factory=_empty_profile)
+    winter: ProfileArray = Field(default_factory=_empty_profile)
+
+    @model_validator(mode="after")
+    def _days(self) -> Self:
+        for profile in (self.summer, self.winter):
+            if profile.size not in {0, _HOURS_PER_DAY}:
+                msg = f"a design day has {_HOURS_PER_DAY} hourly values, not {profile.size}"
+                raise ValueError(msg)
+        return self
+
+    def complete(self, weight: float) -> bool:
+        """Whether these design days cover all of `weight`, the parent's total weight."""
+        return (
+            self.summer.size == _HOURS_PER_DAY
+            and self.winter.size == _HOURS_PER_DAY
+            and math.isclose(self.weight, weight, rel_tol=1e-9, abs_tol=0.0)
+        )
+
+    @classmethod
+    def of(
+        cls,
+        weight: float,
+        summer: Sequence[float] | NDArray[np.floating[Any]],
+        winter: Sequence[float] | NDArray[np.floating[Any]],
+    ) -> DesignDays:
+        """Return the design days of one member: `weight` times its design-day values."""
+        return cls(
+            weight=weight,
+            summer=weight * np.asarray(summer, dtype=np.float64),
+            winter=weight * np.asarray(winter, dtype=np.float64),
+        )
+
+
 class GainTotals(_Totals):
     """One kind of internal gain (FR-015).
 
@@ -384,10 +448,12 @@ class GainTotals(_Totals):
         radiant: Annual radiant energy, J.
         latent: Annual latent energy, J.
         lost: Annual energy lost to the zone (lost fraction, and lights' return-air fraction), J.
+        design_days: Σ design level · schedule on the design days, weighted by `installed`.
     """
 
     installed: float = 0.0
     hourly: ProfileArray = Field(default_factory=_empty_profile)
+    design_days: DesignDays = Field(default_factory=DesignDays)
     radiant: float = 0.0
     latent: float = 0.0
     lost: float = 0.0
@@ -403,10 +469,13 @@ class AirflowTotals(_Totals):
         temperature_weighted: Σ design flow · temperature coefficient.
         velocity_weighted: Σ design flow · velocity coefficient.
         velocity_squared_weighted: Σ design flow · velocity-squared coefficient.
+        design_days: Σ design flow · schedule on the design days, weighted by `design_flow`
+            (infiltration; outdoor air comes from run-period results and has none).
     """
 
     design_flow: float = 0.0
     hourly: ProfileArray = Field(default_factory=_empty_profile)
+    design_days: DesignDays = Field(default_factory=DesignDays)
     constant_weighted: float = 0.0
     temperature_weighted: float = 0.0
     velocity_weighted: float = 0.0
@@ -433,10 +502,12 @@ class WeightedProfile(_Totals):
     Attributes:
         weight: Σ area of the members that count, m².
         weighted: Σ area · value per hour.
+        design_days: Σ area · value on the design days, weighted by `weight`.
     """
 
     weight: float = 0.0
     weighted: ProfileArray = Field(default_factory=_empty_profile)
+    design_days: DesignDays = Field(default_factory=DesignDays)
 
     @property
     def value(self) -> NDArray[np.float64] | None:
@@ -747,7 +818,8 @@ class GroupLedger(_Totals):
         floor area is the group's share times 1 m²: only ratios between groups matter. Profiles
         are evaluated over UMI's reference year (non-leap, starting on a Monday).
 
-        - **Exact**, from intensities: gains and their profiles (people, lights and equipment as
+        - **Exact**, from intensities: gains and their profiles, with their design days when
+          every week of the schedule sets the same ones (people, lights and equipment as
           `electric`), the heating and cooling setpoints of a heated or cooled group (else
           `unheated_area` or `uncooled_area`), mechanical outdoor air at design occupancy
           times `MechVentSchedule`, constant without one (with its HRV and economiser categories
@@ -830,6 +902,23 @@ def _profile(year: YearComponent) -> NDArray[np.float64]:
     return np.asarray(year_values(year, RunPeriodCalendar(calendar_year(1, 1, 0))), dtype=np.float64)
 
 
+def _design_days(year: YearComponent, weight: float) -> DesignDays:
+    """`weight` · a schedule's design days, when every week sets the same ones; else none.
+
+    A reduction sets one summer and one winter design day in every week; a schedule read from
+    UMI, which has no design-day slots, sets none, and its design days stay unknown.
+    """
+    slots: set[tuple[tuple[float, ...], tuple[float, ...]]] = set()
+    for week in year.Weeks:
+        if week.SummerDesignDay is None or week.WinterDesignDay is None:
+            return DesignDays()
+        slots.add((tuple(week.SummerDesignDay.Values), tuple(week.WinterDesignDay.Values)))
+    if len(slots) != 1:
+        return DesignDays()
+    summer, winter = slots.pop()
+    return DesignDays.of(weight, summer, winter)
+
+
 def _exact_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
     """The ledger fields rebuilt exactly from a zone's intensities (R12)."""
     profile = _profile
@@ -846,16 +935,28 @@ def _exact_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
     )
     for kind, component, installed in sources:
         if component.IsOn:
-            gains[kind] = GainTotals(installed=installed, hourly=installed * profile(component.Schedule))
+            gains[kind] = GainTotals(
+                installed=installed,
+                hourly=installed * profile(component.Schedule),
+                design_days=_design_days(component.Schedule, installed),
+            )
     values["gains"] = gains
 
     thermostat = space_use.Thermostat
     if systems.Heating is not None:
-        values["heating_setpoint"] = WeightedProfile(weight=area, weighted=area * profile(thermostat.HeatingSchedule))
+        values["heating_setpoint"] = WeightedProfile(
+            weight=area,
+            weighted=area * profile(thermostat.HeatingSchedule),
+            design_days=_design_days(thermostat.HeatingSchedule, area),
+        )
     else:
         values["unheated_area"] = area
     if systems.Cooling is not None:
-        values["cooling_setpoint"] = WeightedProfile(weight=area, weighted=area * profile(thermostat.CoolingSchedule))
+        values["cooling_setpoint"] = WeightedProfile(
+            weight=area,
+            weighted=area * profile(thermostat.CoolingSchedule),
+            design_days=_design_days(thermostat.CoolingSchedule, area),
+        )
     else:
         values["uncooled_area"] = area
 
@@ -985,6 +1086,28 @@ def _approximate_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
 # --- domain hooks -------------------------------------------------------------------------
 
 
+def schedule_design_days(
+    evaluators: Mapping[DesignDayKind, Callable[[str], NDArray[np.float64]]] | None,
+    schedule: str | None,
+    weight: float,
+) -> DesignDays:
+    """The design days of `weight` · a schedule (always on without one), or none without evaluators.
+
+    Args:
+        evaluators: `schedules.design_day_evaluators(...)`; `None` gives empty design days.
+        schedule: The schedule's name, or `None` for always on.
+        weight: The design level, flow or area the schedule multiplies.
+
+    Returns:
+        The design days.
+    """
+    if evaluators is None:
+        return DesignDays()
+    if schedule is None:
+        return DesignDays.of(weight, np.ones(_HOURS_PER_DAY), np.ones(_HOURS_PER_DAY))
+    return DesignDays.of(weight, evaluators["summer"](schedule), evaluators["winter"](schedule))
+
+
 class ZoneHook(Protocol):
     """A domain's contribution to a zone's ledger: field name → value, for one copy of the zone."""
 
@@ -1034,7 +1157,8 @@ def gain_fields(
     """The `gains` hook: installed level, hourly profile and annual parts per gain kind, one copy.
 
     For each `GainRecord` of the zone, the hourly profile is design level · its schedule (a
-    gain without a schedule is always on). Annual radiant, latent and lost energy are the
+    gain without a schedule is always on), and so are its design days when `schedules` is a
+    `ScheduleEvaluator` (`schedule_design_days`). Annual radiant, latent and lost energy are the
     annual energy (Σ hourly · 3600 s) times the record's fractions; lights' return-air fraction
     counts as lost. People's parts are 0: their heat follows an activity level the record does
     not carry, and `installed` counts people.
@@ -1051,8 +1175,11 @@ def gain_fields(
     Raises:
         ValueError: If a gain has no schedule and the profile length is unknown.
     """
+    from archetypal.reduction.schedules import design_day_evaluators  # noqa: PLC0415 - imports epinterface
+
     totals: dict[GainKind, GainTotals] = {}
     record = zone.zone
+    design = design_day_evaluators(schedules)
     for gain in record.gains:
         if gain.schedule is None:
             length = hours if hours is not None else getattr(getattr(schedules, "calendar", None), "hours", None)
@@ -1070,6 +1197,13 @@ def gain_fields(
             radiant = energy * gain.fraction_radiant
             latent = energy * (gain.fraction_latent or 0.0)
             lost = energy * (gain.fraction_lost + gain.fraction_return_air)
-        part = GainTotals(installed=gain.design_level, hourly=hourly, radiant=radiant, latent=latent, lost=lost)
+        part = GainTotals(
+            installed=gain.design_level,
+            hourly=hourly,
+            radiant=radiant,
+            latent=latent,
+            lost=lost,
+            design_days=schedule_design_days(design, gain.schedule, gain.design_level),
+        )
         totals[gain.kind] = totals[gain.kind] + part if gain.kind in totals else part
     return {"gains": totals}

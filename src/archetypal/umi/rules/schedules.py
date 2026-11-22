@@ -9,8 +9,10 @@
   sum; the month is listed as approximate.
 - **SBEM to UMI.** Consecutive equal months become one part ending on a month's last day,
   February on the 29th; equal weeks and days are one object. UMI weeks have no holiday or
-  design-day slots: reading leaves SBEM's (UP-2) unset, and writing loses a set slot only when it
-  differs from the day UMI uses instead (Sunday on holidays, Monday on design days).
+  design-day slots: reading leaves SBEM's (UP-2) unset. Writing loses a holiday slot when it
+  differs from Sunday's day, which UMI uses instead, and every set design-day slot: UMI uses
+  Monday's day, but read back the slot is unset, and epinterface's builder then gives gains,
+  setpoints and availability its own design days. Each month's week reports its own losses.
 - **Metadata** (`schedule.metadata`, UP-9). `Comments` and `DataSource` map to the SBEM
   schedule's `Comment` and `DataSource`. Basilisk fixes each schedule's `Category` (`Day`,
   `Week`, `Year`): it reads as an unset SBEM category, and another SBEM category is lost on
@@ -260,13 +262,15 @@ def week_to_umi(week: WeekComponent, subject: str, location: str, findings: Find
         week: The week.
         subject: The archetype being written.
         location: The week's SBEM field path.
-        findings: Collects the losses: each holiday or design-day slot (UP-2) that differs from
-            the day it would be replaced by in UMI, which has no such slots.
+        findings: Collects the losses: each holiday slot (UP-2) that differs from Sunday's day,
+            and each set design-day slot, which UMI has no slot for.
 
     Returns:
         The week schedule, its type the days' type.
     """
-    return _Writer(subject, findings).week(week, location)
+    writer = _Writer(subject, findings)
+    writer.lose_slots(week, location)
+    return writer.week(week, location)
 
 
 class _Writer:
@@ -285,23 +289,41 @@ class _Writer:
             self.days[key] = day_to_umi(day)
         return self.days[key]
 
+    def lose_slots(self, week: WeekComponent, location: str) -> None:
+        """Report the week's special-day slots UMI cannot hold, at `location` (one month's week).
+
+        A holiday slot is lost when it differs from Sunday's day, which both UMI and
+        epinterface's builder use without one. A design-day slot is lost whenever it is set:
+        reading leaves it unset, and the builder then uses its own design day for gains,
+        setpoints and availability (always on, extreme setpoints), Monday's elsewhere.
+        """
+        for slot, weekday in SPECIAL_DAYS:
+            special = cast("DayComponent | None", getattr(week, slot))
+            if special is None:
+                continue
+            replaced = week.Days[weekday]
+            if slot == "Holiday" and special.model_dump() == replaced.model_dump():
+                continue
+            reason = f"UMI weeks have no {slot} slot; UMI uses the {WEEKDAYS[weekday]} day instead"
+            if slot != "Holiday":
+                reason += (
+                    ", and reading leaves the slot unset, so epinterface's builder uses its own design day "
+                    "where it gives one (gains, setpoints, availability)"
+                )
+            self.findings.lose(
+                LossKind.LOST,
+                self.subject,
+                _path(location, slot),
+                special.Name,
+                "schedule.week",
+                f"{reason}.",
+                replacement=replaced.Name,
+            )
+
     def week(self, week: WeekComponent, location: str) -> WeekSchedule:
         key = week.model_dump_json()
         if key in self.weeks:
             return self.weeks[key]
-        for slot, weekday in SPECIAL_DAYS:
-            special = cast("DayComponent | None", getattr(week, slot))
-            replaced = week.Days[weekday]
-            if special is not None and special.model_dump() != replaced.model_dump():
-                self.findings.lose(
-                    LossKind.LOST,
-                    self.subject,
-                    _path(location, slot),
-                    special.Name,
-                    "schedule.week",
-                    f"UMI weeks have no {slot} slot; UMI uses the {WEEKDAYS[weekday]} day instead.",
-                    replacement=replaced.Name,
-                )
         schedule = WeekSchedule.model_validate({
             "Name": week.Name,
             **metadata_to_umi(week, self.subject, location, self.findings),
@@ -467,6 +489,7 @@ def year_to_umi(year: YearComponent, subject: str, location: str, findings: Find
     weeks = year.Weeks
     first = 0
     for month in range(1, len(weeks) + 1):
+        writer.lose_slots(weeks[month - 1], _path(location, MONTHS[month - 1]))
         if month < len(weeks) and weeks[month].model_dump() == weeks[first].model_dump():
             continue
         parts.append(

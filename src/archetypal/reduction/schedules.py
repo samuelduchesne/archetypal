@@ -21,7 +21,13 @@ kept apart: each weekday's day is the mean over that month's non-holiday days of
 and the month's holiday day the mean over its holidays. Each month's energy is still conserved
 exactly (`expand(..., holidays=...)`). `to_year_component(..., holidays=...)` writes the holiday
 days into the weeks' `Holiday` slots, and design days into `SummerDesignDay` and
-`WinterDesignDay` when given.
+`WinterDesignDay` when given, as one day for every week or one per month.
+
+Design days. `ScheduleEvaluator.design_day` evaluates a schedule on the summer or winter design
+day (`DesignDayKind`): one 24-hour day, hourly as the run-period profiles, with idfkit's
+`values(..., day_type=...)`, which picks the `For: SummerDesignDay` / `WinterDesignDay` day as
+EnergyPlus does. The day's date is that of the model's first `SizingPeriod:DesignDay` of that
+day type (it decides which `Through:` period applies), else `DEFAULT_DESIGN_DATES`.
 """
 
 from __future__ import annotations
@@ -31,7 +37,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from functools import cached_property
 from itertools import count
-from typing import TYPE_CHECKING, Any, TypeAlias, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
 
 import numpy as np
 from epinterface.sbem.components.schedules import DayComponent, WeekComponent, YearComponent
@@ -55,15 +61,20 @@ if TYPE_CHECKING:
     from idfkit.versioned import IDFDocumentSince22_1, ScheduleYear_v9_0_to_v22_1
 
 __all__ = [
+    "DEFAULT_DESIGN_DATES",
+    "DESIGN_DAY_KINDS",
     "MONTHS",
     "WEEKDAYS",
     "AnySchedule",
+    "DesignDayKind",
     "HolidayDays",
     "Profile",
     "RepresentativeDays",
     "RunPeriodCalendar",
     "ScheduleEvaluator",
     "calendar_year",
+    "design_dates",
+    "design_day_evaluators",
     "expand",
     "holiday_days",
     "project",
@@ -83,6 +94,16 @@ RepresentativeDays: TypeAlias = "npt.NDArray[np.float64]"
 
 HolidayDays: TypeAlias = "dict[int, npt.NDArray[np.float64]]"
 """The holiday day of each month that has holidays: month index (0 for January) → 24 values."""
+
+DesignDayKind: TypeAlias = Literal["summer", "winter"]
+"""A design day type: `summer` (`SummerDesignDay`) or `winter` (`WinterDesignDay`)."""
+
+DESIGN_DAY_KINDS: tuple[DesignDayKind, ...] = ("summer", "winter")
+
+DEFAULT_DESIGN_DATES: dict[DesignDayKind, tuple[int, int]] = {"summer": (7, 21), "winter": (1, 21)}
+"""The (month, day) a design day is evaluated on when the model has no `SizingPeriod:DesignDay` of its type."""
+
+_DESIGN_DAY_TYPES: dict[str, DesignDayKind] = {"summerdesignday": "summer", "winterdesignday": "winter"}
 
 AnySchedule: TypeAlias = "ScheduleCompact | AnyScheduleYear | ScheduleConstant | AnyScheduleFile"
 """A schedule object that covers a whole year, as loads and setpoints reference it."""
@@ -285,7 +306,19 @@ class ScheduleEvaluator:
         self.calendar = calendar
         self.base_path = base_path
         self.index = schedule_index(doc)
+        self.design_dates = design_dates(doc, calendar.year)
         self._profiles: dict[str, Profile] = {}
+        self._design_days: dict[tuple[str, DesignDayKind], Profile] = {}
+
+    def _object(self, name: str) -> AnySchedule:
+        try:
+            obj = self.index[name.upper()]
+        except KeyError:
+            msg = f"the model has no Schedule:Compact, Schedule:Year, Schedule:Constant or Schedule:File named {name!r}"
+            raise KeyError(msg) from None
+        if obj.obj_type == "Schedule:Year":
+            return normalise_schedule_year(cast("ScheduleYear | ScheduleYear_v9_0_to_v22_1", obj))
+        return obj
 
     def __call__(self, name: str) -> Profile:
         """Return the hourly profile of the schedule called `name` (case-insensitive).
@@ -297,19 +330,95 @@ class ScheduleEvaluator:
         cached = self._profiles.get(key)
         if cached is not None:
             return cached
-        try:
-            obj = self.index[key]
-        except KeyError:
-            msg = f"the model has no Schedule:Compact, Schedule:Year, Schedule:Constant or Schedule:File named {name!r}"
-            raise KeyError(msg) from None
-        if obj.obj_type == "Schedule:Year":
-            obj = normalise_schedule_year(cast("ScheduleYear | ScheduleYear_v9_0_to_v22_1", obj))
         evaluate = cast("Callable[..., list[float]]", values)
-        hourly = evaluate(obj, year=self.calendar.year, document=self.doc, base_path=self.base_path)
+        hourly = evaluate(self._object(name), year=self.calendar.year, document=self.doc, base_path=self.base_path)
         profile = np.asarray(hourly, dtype=np.float64)
         profile.flags.writeable = False
         self._profiles[key] = profile
         return profile
+
+    def design_day(self, name: str, kind: DesignDayKind) -> Profile:
+        """Return the 24 hourly values of the schedule called `name` on a design day.
+
+        The day is evaluated as the run-period profiles are (hourly, default interpolation), on
+        the date `design_dates[kind]`, with the design day's type, so a `For: SummerDesignDay`
+        or `For: WinterDesignDay` day applies as in EnergyPlus.
+
+        Args:
+            name: The schedule's name (case-insensitive).
+            kind: `summer` or `winter`.
+
+        Returns:
+            The read-only values, one per hour.
+
+        Raises:
+            KeyError: If the model has no whole-year schedule of that name.
+        """
+        key = (name.upper(), kind)
+        cached = self._design_days.get(key)
+        if cached is not None:
+            return cached
+        date_ = self.design_dates[kind]
+        evaluate = cast("Callable[..., list[float]]", values)
+        hourly = evaluate(
+            self._object(name),
+            year=self.calendar.year,
+            start_date=date_,
+            end_date=date_,
+            day_type=kind,
+            document=self.doc,
+            base_path=self.base_path,
+        )
+        profile = np.asarray(hourly, dtype=np.float64)
+        profile.flags.writeable = False
+        self._design_days[key] = profile
+        return profile
+
+
+def design_dates(doc: IDFDocumentSince22_1, year: int) -> dict[DesignDayKind, tuple[int, int]]:
+    """Return the (month, day) each design day kind is evaluated on.
+
+    It is the date of the model's first `SizingPeriod:DesignDay` of that day type, else
+    `DEFAULT_DESIGN_DATES`. A 29 February outside a leap year becomes the 28th.
+
+    Args:
+        doc: The model.
+        year: The calendar year of the evaluation.
+
+    Returns:
+        The date of each kind.
+    """
+    dates = dict(DEFAULT_DESIGN_DATES)
+    found: set[DesignDayKind] = set()
+    for design_day in doc.sizing_period_design_days:
+        kind = _DESIGN_DAY_TYPES.get(str(design_day.day_type or "").casefold())
+        if kind is None or kind in found:
+            continue
+        month = int(design_day.month)
+        day = min(int(design_day.day_of_month), calendar.monthrange(year, month)[1])
+        dates[kind] = (month, day)
+        found.add(kind)
+    return dates
+
+
+def design_day_evaluators(schedules: object) -> dict[DesignDayKind, Callable[[str], Profile]] | None:
+    """Return one evaluator per design day kind, when `schedules` evaluates design days.
+
+    Args:
+        schedules: A `ScheduleEvaluator`, or any callable from a schedule name to its hourly
+            profile (which evaluates no design day).
+
+    Returns:
+        `kind → (name → 24 values)`, or `None` when `schedules` is not a `ScheduleEvaluator`.
+    """
+    if not isinstance(schedules, ScheduleEvaluator):
+        return None
+    evaluator = schedules
+
+    def on(kind: DesignDayKind) -> Callable[[str], Profile]:
+        return lambda name: evaluator.design_day(name, kind)
+
+    return {kind: on(kind) for kind in DESIGN_DAY_KINDS}
 
 
 def project(
@@ -498,8 +607,9 @@ def to_year_component(
             setpoint and `"Fraction"` otherwise.
         holidays: Holiday days by month (`project_holidays`); each listed month's week gets a
             `Holiday` slot, the others keep none (Sunday's day applies).
-        summer_design_day: 24 values for every week's `SummerDesignDay` slot, or `None`.
-        winter_design_day: 24 values for every week's `WinterDesignDay` slot, or `None`.
+        summer_design_day: The `SummerDesignDay` slots: 24 values for every week, an array of
+            shape (12, 24) for each month's week, or `None` to leave the slots unset.
+        winter_design_day: The `WinterDesignDay` slots, likewise.
 
     Returns:
         The schedule.
@@ -516,18 +626,11 @@ def to_year_component(
         raise ValueError(msg)
     kind = _default_limits(category) if limits is None else limits
 
-    def special(day_values: object, what: str) -> tuple[float, ...] | None:
-        if day_values is None:
-            return None
-        hours = np.asarray(day_values, dtype=np.float64)
-        if hours.shape != (24,):
-            msg = f"{name}: a {what} day has shape {hours.shape}, not (24,)"
-            raise ValueError(msg)
-        return tuple(float(v) for v in _checked_values(hours, name, kind))
-
-    holiday_keys = {month: special(day_values, "holiday") for month, day_values in (holidays or {}).items()}
-    summer = special(summer_design_day, "summer design")
-    winter = special(winter_design_day, "winter design")
+    holiday_keys = {
+        month: _special_day(day_values, name, kind, "holiday") for month, day_values in (holidays or {}).items()
+    }
+    summer = _design_slots(summer_design_day, name, kind, "summer design")
+    winter = _design_slots(winter_design_day, name, kind, "winter design")
 
     day_components: dict[tuple[float, ...], DayComponent] = {}
 
@@ -547,7 +650,11 @@ def to_year_component(
         keys = [tuple(float(v) for v in array[month, weekday]) for weekday in range(7)]
         for key in keys:
             day(key)
-        slots = {"Holiday": holiday_keys.get(month), "SummerDesignDay": summer, "WinterDesignDay": winter}
+        slots = {
+            "Holiday": holiday_keys.get(month),
+            "SummerDesignDay": summer[month],
+            "WinterDesignDay": winter[month],
+        }
         week_key = (*keys, *slots.values())
         if week_key not in week_components:
             extra = {slot: day(key) for slot, key in slots.items() if key is not None}
@@ -562,6 +669,26 @@ def to_year_component(
         "Type": category,
         **dict(zip(MONTHS, weeks, strict=True)),
     })
+
+
+def _special_day(day_values: object, name: str, kind: ScheduleTypeLimitType, what: str) -> tuple[float, ...]:
+    hours = np.asarray(day_values, dtype=np.float64)
+    if hours.shape != (24,):
+        msg = f"{name}: a {what} day has shape {hours.shape}, not (24,) or, for a design day, (12, 24)"
+        raise ValueError(msg)
+    return tuple(float(v) for v in _checked_values(hours, name, kind))
+
+
+def _design_slots(
+    day_values: object, name: str, kind: ScheduleTypeLimitType, what: str
+) -> list[tuple[float, ...] | None]:
+    """Each month's design-day values: one day for every month, or one per month (shape (12, 24))."""
+    if day_values is None:
+        return [None] * 12
+    hours = np.asarray(day_values, dtype=np.float64)
+    if hours.shape == (12, 24):
+        return [_special_day(hours[month], name, kind, what) for month in range(12)]
+    return [_special_day(hours, name, kind, what)] * 12
 
 
 def _checked_values(array: npt.NDArray[np.float64], name: str, kind: ScheduleTypeLimitType) -> npt.NDArray[np.float64]:

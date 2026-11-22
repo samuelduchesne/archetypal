@@ -32,7 +32,7 @@ from archetypal.umi.report import LossKind, Note
 from archetypal.umi.write import _core_perimeter  # pyright: ignore[reportPrivateUsage]  # the layout write uses
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
     from epinterface.sbem.archetype import Archetype
 
@@ -128,6 +128,33 @@ def _matches(loss: Loss, difference: Difference) -> bool:
     return _within(loss.location, difference.location, separator)
 
 
+def _prefixes(location: str) -> list[str]:
+    """`location` and every location it is below (`_within`), for both separators."""
+    found = [location]
+    for index, character in enumerate(location):
+        if index and character in "./[":
+            found.append(location[:index])
+    return found
+
+
+def _by_location(losses: Iterable[Loss]) -> dict[str, set[str]]:
+    """Each loss location → the subjects of the losses there."""
+    located: dict[str, set[str]] = {}
+    for loss in losses:
+        located.setdefault(loss.location, set()).add(loss.subject)
+    return located
+
+
+def _located_at(located: Mapping[str, set[str]], difference: Difference) -> bool:
+    """Whether a loss is at or above the difference (`_at`), found by location."""
+    for place in (difference.location, *difference.via):
+        for prefix in _prefixes(place):
+            subjects = located.get(prefix)
+            if subjects and ("" in subjects or difference.subject in subjects):
+                return True
+    return False
+
+
 @dataclass
 class Audit:
     """What one audit found."""
@@ -139,8 +166,11 @@ class Audit:
     """The libraries the audit wrote, for `--write-libraries` (`save_library`)."""
 
     def unexplained(self, differences: Iterable[Difference], losses: Sequence[Loss | Note], what: str) -> None:
+        located = _by_location(entry for entry in losses if not isinstance(entry, Note))
         for difference in differences:
             self.differences += 1
+            if _located_at(located, difference):  # the common case, without scanning every loss
+                continue
             if not any(explains(loss, difference) for loss in losses):
                 self.problems.append(
                     f"{what}: unreported difference at {difference.location} (subject {difference.subject!r}, "
@@ -150,12 +180,19 @@ class Audit:
     def unmatched(
         self, losses: Iterable[Loss], differences: Sequence[Difference], what: str, no_counterpart: set[str]
     ) -> None:
+        prefixes: dict[str, set[str]] = {}
+        for difference in differences:
+            places = prefixes.setdefault(difference.subject, set())
+            for place in (difference.location, *difference.via):
+                places.update(_prefixes(place))
         for loss in losses:
             self.losses += 1
             if loss.kind in _NO_COUNTERPART_KINDS or loss.upstream is not None or loss.location in no_counterpart:
                 continue
             if loss.rule.startswith("layout.") or loss.rule == "names.collision":
                 continue
+            if loss.location in prefixes.get(loss.subject, set()):
+                continue  # a difference at or below the loss
             if not any(_matches(loss, difference) for difference in differences):
                 self.problems.append(
                     f"{what}: loss at {loss.location} (subject {loss.subject!r}, rule {loss.rule}) matches no difference"

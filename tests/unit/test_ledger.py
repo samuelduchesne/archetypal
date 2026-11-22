@@ -24,6 +24,7 @@ from archetypal.reduction.inventory import GainRecord, ZoneRecord
 from archetypal.reduction.ledger import (
     DOMAIN_MODULES,
     AirflowTotals,
+    DesignDays,
     EirSums,
     EnergyTotals,
     EnvelopeAssignment,
@@ -68,6 +69,12 @@ def profiles(values: st.SearchStrategy[float]) -> st.SearchStrategy[np.ndarray[A
     return st.lists(values, min_size=HOURS, max_size=HOURS).map(lambda v: np.asarray(v, dtype=np.float64))
 
 
+def design_days(values: st.SearchStrategy[float]) -> st.SearchStrategy[DesignDays]:
+    # A ramp scaled by one drawn value keeps the example small; the days still vary by hour.
+    day = values.map(lambda v: v * np.arange(1.0, 25.0))
+    return st.builds(DesignDays, weight=values, summer=day, winter=day)
+
+
 def keyed(keys: tuple[str, ...], values: st.SearchStrategy[Any]) -> st.SearchStrategy[dict[Any, Any]]:
     return st.dictionaries(st.sampled_from(keys), values, max_size=len(keys))
 
@@ -84,7 +91,8 @@ def ledgers(draw: st.DrawFn, prefix: str, values: st.SearchStrategy[float] = exa
         area_by_orientation=keyed(ORIENTATIONS, values),
     )
     window = st.builds(WindowTotals, area=values, ua=values, a_shgc=values, a_vt=values)
-    gain = st.builds(GainTotals, installed=values, hourly=p, radiant=values, latent=values, lost=values)
+    d = design_days(values)
+    gain = st.builds(GainTotals, installed=values, hourly=p, radiant=values, latent=values, lost=values, design_days=d)
     eir = st.builds(
         EirSums, d=values, d_t=values, d2=values, d2_t=values, d2_t2=values, c=values, c_d=values, c_d_t=values
     )
@@ -125,6 +133,7 @@ def ledgers(draw: st.DrawFn, prefix: str, values: st.SearchStrategy[float] = exa
                 temperature_weighted=values,
                 velocity_weighted=values,
                 velocity_squared_weighted=values,
+                design_days=d,
             )
         ),
         outdoor_air=draw(
@@ -137,8 +146,8 @@ def ledgers(draw: st.DrawFn, prefix: str, values: st.SearchStrategy[float] = exa
                 effectiveness_weighted=values,
             )
         ),
-        heating_setpoint=draw(st.builds(WeightedProfile, weight=values, weighted=p)),
-        cooling_setpoint=draw(st.builds(WeightedProfile, weight=values, weighted=p)),
+        heating_setpoint=draw(st.builds(WeightedProfile, weight=values, weighted=p, design_days=d)),
+        cooling_setpoint=draw(st.builds(WeightedProfile, weight=values, weighted=p, design_days=d)),
         unheated_area=draw(values),
         uncooled_area=draw(values),
         hot_water=draw(st.builds(HotWaterTotals, volume=p, heat=p)),
@@ -496,6 +505,75 @@ def test_gain_without_schedule_is_always_on() -> None:
     fields = gain_fields(zone, schedule_lookup({"x": np.zeros(3)}), hours=3)  # pyright: ignore[reportArgumentType]
     totals = cast("dict[str, GainTotals]", fields["gains"])
     np.testing.assert_array_equal(totals["other"].hourly, [7.0, 7.0, 7.0])
+
+
+# --- design days ----------------------------------------------------------------------------
+
+
+def test_design_days_are_summed_with_the_profiles_weights() -> None:
+    a = GainTotals(
+        installed=100.0, hourly=np.full(HOURS, 50.0), design_days=DesignDays.of(100.0, [1.0] * 24, [0.0] * 24)
+    )
+    b = GainTotals(
+        installed=300.0, hourly=np.full(HOURS, 30.0), design_days=DesignDays.of(300.0, [0.5] * 24, [1.0] * 24)
+    )
+    total = (a + b).design_days
+    assert total.weight == 400.0
+    np.testing.assert_array_equal(total.summer / total.weight, np.full(24, 250.0 / 400.0))
+    np.testing.assert_array_equal(total.winter / total.weight, np.full(24, 300.0 / 400.0))
+    assert total.complete(400.0)
+    assert a.scaled(3).design_days == DesignDays.of(300.0, [1.0] * 24, [0.0] * 24)
+
+
+def test_design_days_missing_on_a_member_leave_the_sum_incomplete() -> None:
+    known = GainTotals(installed=100.0, design_days=DesignDays.of(100.0, [1.0] * 24, [1.0] * 24))
+    unknown = GainTotals(installed=50.0)
+    assert not (known + unknown).design_days.complete(150.0)
+    assert (known + unknown).design_days.complete(100.0)
+
+
+def test_design_days_are_not_run_period_profiles() -> None:
+    gain = GainTotals(installed=1.0, hourly=np.ones(HOURS), design_days=DesignDays.of(1.0, [1.0] * 24, [1.0] * 24))
+    ledger = GroupLedger(members=("Z",), floor_area=1.0, gains={"lights": gain})
+    assert ledger.hours == HOURS
+    with pytest.raises(ValidationError, match="24 hourly values"):
+        DesignDays(weight=1.0, summer=np.ones(HOURS))
+
+
+def test_gain_fields_take_design_days_from_a_schedule_evaluator() -> None:
+    from idfkit import new_document  # noqa: PLC0415
+
+    from archetypal.reduction.schedules import RunPeriodCalendar, ScheduleEvaluator  # noqa: PLC0415
+
+    doc = new_document()
+    doc.schedule_compacts.add(
+        "Lights",
+        data=[
+            {"field": "Through: 12/31"},
+            {"field": "For: SummerDesignDay"},
+            {"field": "Until: 24:00"},
+            {"field": "1.0"},
+            {"field": "For: WinterDesignDay"},
+            {"field": "Until: 24:00"},
+            {"field": "0.0"},
+            {"field": "For: AllOtherDays"},
+            {"field": "Until: 24:00"},
+            {"field": "0.5"},
+        ],
+    )
+    evaluate = ScheduleEvaluator(doc, RunPeriodCalendar(year=2023))
+    gains = (
+        GainRecord("lights", "L", 200.0, "Lights", 0.4, 0.0, 0.0),
+        GainRecord("other", "O", 10.0, None, 0.0, 0.0, 0.0),
+    )
+    zone = FakeZone(FakeRecord("Z", 2, 10.0, gains))
+    ledger = GroupLedger.from_zone(zone, evaluate, hooks=[gain_fields])  # pyright: ignore[reportArgumentType]
+    lights = ledger.gains["lights"]
+    assert lights.design_days.complete(lights.installed)
+    np.testing.assert_array_equal(lights.design_days.summer, np.full(24, 400.0))
+    np.testing.assert_array_equal(lights.design_days.winter, np.zeros(24))
+    np.testing.assert_array_equal(ledger.gains["other"].design_days.summer, np.full(24, 20.0))
+    assert float(lights.hourly[0]) == 200.0  # 0.5 on ordinary days, two copies
 
 
 # --- the report's JSON form ---------------------------------------------------------------

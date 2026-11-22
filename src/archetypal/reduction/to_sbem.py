@@ -40,14 +40,21 @@ Decisions of this module (spec gaps)
   (`Zone.Operations.SpaceUse.Occupancy.PeopleDensity`) or, with `group = None`, from the
   `Archetype` (`Geometry.Storeys`). `set_leaf_paths` lists them for invariant 3.
 - **Schedules** are projected with each month's holidays kept apart (`project_holidays`) and
-  written to UP-2's `Holiday` slots. The ledger carries run-period profiles only, so no
-  design-day profile is known: design-day slots stay unset and are listed as not represented.
+  written to UP-2's `Holiday` slots. Every schedule sets its `SummerDesignDay` and
+  `WinterDesignDay` slots in every week, so epinterface's builder sizes with them instead of its
+  own design days (always-on gains, extreme setpoints). Gains, setpoints and infiltration take
+  the ledger's design days (`DesignDays`), weighted as their run-period profiles and normalised
+  by the same level. Outdoor air and hot water come from run-period results, which hold no
+  design day: their slots repeat each month's Monday and are listed as not represented
+  (`design_days_from_results`). A total whose design days do not cover every member (only
+  when merging ledgers rebuilt from an archetype) leaves the slots unset, listed too.
 - **Infiltration** carries the annual-mean flow per exterior area (exterior walls, roofs,
   exposed floors and windows: the gross outdoor area EnergyPlus's `Flow/ExteriorArea` uses)
   and, with UP-2's schedule, `project(hourly / mean)` as an `AnyNumber` multiplier, so mean ·
   schedule reproduces the hourly profile.
 - **Supply-air temperature limits** start from the group's highest heating and lowest cooling
-  setpoint (the occupied setpoints, where most delivery happens). A pair that would put the
+  setpoint (the occupied setpoints, where most delivery happens), design days included, since
+  the ideal loads refuse a limit beyond the setpoint they size with. A pair that would put the
   heating limit at or below the cooling limit keeps the mode with more delivered energy and
   leaves the other at epinterface's default, listing it as not represented.
 - **Assemblies** take the first class of `SLOT_CLASSES` the group has, else the building
@@ -64,7 +71,7 @@ Decisions of this module (spec gaps)
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
@@ -113,12 +120,14 @@ from archetypal.reduction.envelope import (
 from archetypal.reduction.fans import effective_supply_delta, specific_fan_power, standard_air_density
 from archetypal.reduction.features import NotRepresented
 from archetypal.reduction.ledger import (
+    DesignDays,
     EnvelopeClass,
     EnvelopeTotals,
     GainKind,
     GroupLedger,
     Mode,
     Orientation,
+    WeightedProfile,
     WindowTotals,
 )
 from archetypal.reduction.report import Parameter, group_name
@@ -147,6 +156,7 @@ __all__ = [
     "attic",
     "basement",
     "conditioning_systems",
+    "design_days_from_results",
     "dhw",
     "equipment",
     "floor_area_share",
@@ -208,6 +218,7 @@ _SUPPLY_HEATING_RANGE = (0.0, 100.0)  # epinterface's open bounds, °C
 _SUPPLY_COOLING_RANGE = (-100.0, 50.0)
 _HEATING_OFF, _COOLING_OFF = 5.0, 35.0  # thermostats.BAND edges: the mode stays off
 _SECONDS_PER_HOUR = 3600.0
+_HOURS_PER_DAY = 24
 _METADATA = frozenset({"Name", "Category", "Comment", "DataSource", "Version"})
 _ATOMIC: tuple[type[BaseModel], ...] = (YearComponent, ConstructionAssemblyComponent)
 
@@ -349,6 +360,10 @@ def _profile(values: npt.NDArray[np.float64], calendar: RunPeriodCalendar) -> np
     return np.zeros(calendar.hours) if array.size == 0 else array
 
 
+DesignValues = tuple["npt.NDArray[np.float64]", "npt.NDArray[np.float64]"]
+"""A schedule's summer and winter design days: 24 values each, or (12, 24) for one per month."""
+
+
 def _schedule(
     hourly: npt.NDArray[np.float64],
     calendar: RunPeriodCalendar,
@@ -356,9 +371,77 @@ def _schedule(
     name: str,
     category: YearScheduleCategory,
     limits: ScheduleTypeLimitType | None = None,
+    design: DesignValues | Literal["monday"] | None = None,
 ) -> YearComponent:
+    """Project an hourly profile into a schedule, its design-day slots from `design`.
+
+    `design` gives the slots' values; `"monday"` sets each month's slots to that month's Monday,
+    the day epinterface's builder would use; `None` leaves them unset.
+    """
     days, holidays = project_holidays(_profile(hourly, calendar), calendar)
-    return to_year_component(days, name=name, category=category, limits=limits, holidays=holidays)
+    if isinstance(design, str):
+        design = (days[:, 0, :], days[:, 0, :])
+    summer, winter = (None, None) if design is None else design
+    return to_year_component(
+        days,
+        name=name,
+        category=category,
+        limits=limits,
+        holidays=holidays,
+        summer_design_day=summer,
+        winter_design_day=winter,
+    )
+
+
+def _design(days: DesignDays, weight: float, scale: float | None = None) -> DesignValues | None:
+    """The design days of a total of `weight`, divided by `scale` (default `weight`), when complete.
+
+    A total with no weight has design days of zero, as its run-period profile; one whose design
+    days do not cover its weight has none (`None`).
+    """
+    divisor = weight if scale is None else scale
+    if weight == 0 or divisor == 0:
+        zeros = np.zeros(_HOURS_PER_DAY)
+        return zeros, zeros
+    if not days.complete(weight):
+        return None
+    return days.summer / divisor, days.winter / divisor
+
+
+def design_days_from_results(ledger: GroupLedger, name: str, quantity: str, path: str) -> NotRepresented:
+    """The entry for a schedule whose profile comes from run-period results (outdoor air, hot water).
+
+    The results of the weather-file run period hold no design day, so the schedule's design-day
+    slots are set to each month's Monday, the day epinterface's builder would use without them.
+
+    Args:
+        ledger: The group's ledger.
+        name: The group's name.
+        quantity: What the schedule carries, for example `outdoor air`.
+        path: The SBEM component whose schedule it is.
+
+    Returns:
+        The entry.
+    """
+    return _entry(
+        ledger,
+        name,
+        f"Design-day {quantity} profile",
+        f"The {quantity} profile comes from the run-period results, which hold no design day, so the design-day "
+        f"slots of its schedules in {path} repeat each month's Monday.",
+        source="schedules",
+    )
+
+
+def _design_lost(ledger: GroupLedger, name: str, schedule: str) -> NotRepresented:
+    return _entry(
+        ledger,
+        name,
+        f"Design-day profile of the {schedule} schedule",
+        "Some members' design-day profiles are unknown, so the schedule's design-day slots are unset and "
+        "epinterface's builder uses its own design days.",
+        source="schedules",
+    )
 
 
 def _ratio(numerator: npt.NDArray[np.float64], denominator: float) -> npt.NDArray[np.float64]:
@@ -522,6 +605,35 @@ def _gain(
     return installed, hourly
 
 
+def _gain_design(ledger: GroupLedger, kinds: Sequence[GainKind]) -> DesignValues | None:
+    """The gains' design days divided by their installed level, or `None` when incomplete."""
+    installed = 0.0
+    days = DesignDays()
+    for kind in kinds:
+        totals = ledger.gains.get(kind)
+        if totals is not None:
+            installed += totals.installed
+            days = days + totals.design_days
+    return _design(days, installed)
+
+
+def _gain_schedule(
+    ledger: GroupLedger,
+    kinds: Sequence[GainKind],
+    calendar: RunPeriodCalendar,
+    *,
+    name: str,
+    label: str,
+    category: YearScheduleCategory,
+) -> tuple[float, YearComponent, list[NotRepresented]]:
+    """The installed level of `kinds` and their normalised schedule, design days included."""
+    installed, hourly = _gain(ledger, kinds, calendar)
+    design = _gain_design(ledger, kinds)
+    schedule = _schedule(_ratio(hourly, installed), calendar, name=f"{name} {label}", category=category, design=design)
+    lost = [] if design is not None else [_design_lost(ledger, name, label)]
+    return installed, schedule, lost
+
+
 def occupancy(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -> Derived[OccupancyComponent]:
     """`OccupancyComponent`: people per m² (`gain.density`) and the normalised schedule.
 
@@ -533,14 +645,18 @@ def occupancy(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
     Returns:
         The component.
     """
-    installed, hourly = _gain(ledger, ("people",), calendar)
+    installed, schedule, lost = _gain_schedule(
+        ledger, ("people",), calendar, name=name, label="occupancy", category="Occupancy"
+    )
     value = OccupancyComponent(
         Name=f"{name} occupancy",
         PeopleDensity=installed / ledger.floor_area,
-        Schedule=_schedule(_ratio(hourly, installed), calendar, name=f"{name} occupancy", category="Occupancy"),
+        Schedule=schedule,
         IsOn=installed > 0,
     )
-    return Derived(value, "gain.density", _leaves(value, {"Schedule": "schedule.normalised"}, "gain.density"))
+    return Derived(
+        value, "gain.density", _leaves(value, {"Schedule": "schedule.normalised"}, "gain.density"), tuple(lost)
+    )
 
 
 def lighting(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -> Derived[LightingComponent]:
@@ -554,15 +670,19 @@ def lighting(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -> 
     Returns:
         The component.
     """
-    installed, hourly = _gain(ledger, ("lights",), calendar)
+    installed, schedule, lost = _gain_schedule(
+        ledger, ("lights",), calendar, name=name, label="lighting", category="Lighting"
+    )
     value = LightingComponent(
         Name=f"{name} lighting",
         PowerDensity=installed / ledger.floor_area,
         DimmingType="Off",
-        Schedule=_schedule(_ratio(hourly, installed), calendar, name=f"{name} lighting", category="Lighting"),
+        Schedule=schedule,
         IsOn=installed > 0,
     )
-    return Derived(value, "gain.density", _leaves(value, {"Schedule": "schedule.normalised"}, "gain.density"))
+    return Derived(
+        value, "gain.density", _leaves(value, {"Schedule": "schedule.normalised"}, "gain.density"), tuple(lost)
+    )
 
 
 def equipment(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -> Derived[EquipmentComponent]:
@@ -579,14 +699,15 @@ def equipment(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
     Returns:
         The component.
     """
-    installed, hourly = _gain(ledger, EQUIPMENT_KINDS, calendar)
+    installed, schedule, lost = _gain_schedule(
+        ledger, EQUIPMENT_KINDS, calendar, name=name, label="equipment", category="Equipment"
+    )
     value = EquipmentComponent(
         Name=f"{name} equipment",
         PowerDensity=installed / ledger.floor_area,
-        Schedule=_schedule(_ratio(hourly, installed), calendar, name=f"{name} equipment", category="Equipment"),
+        Schedule=schedule,
         IsOn=installed > 0,
     )
-    lost: list[NotRepresented] = []
     _, fuelled = _gain(ledger, _NON_ELECTRIC_KINDS, calendar)
     energy = float(fuelled.sum()) * _SECONDS_PER_HOUR
     if energy > 0:
@@ -642,7 +763,10 @@ def thermostat(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -
     """`ThermostatComponent`: the floor-area-weighted mean setpoints (rule `setpoint.area_mean`, FR-020).
 
     A group without heated (cooled) members keeps the mode off with a constant 5 °C (35 °C), the
-    thermostats module's mode-off edge. The scalar setpoints are the schedules' annual means.
+    thermostats module's mode-off edge, design days included. The scalar setpoints are the
+    schedules' annual means. The design-day slots hold the area-weighted design-day setpoints;
+    set, they take precedence over the constant extremes epinterface's builder would give its
+    design days for sizing (`HeatingSchedule`'s highest and `CoolingSchedule`'s lowest value).
 
     Args:
         ledger: The group's ledger.
@@ -656,15 +780,32 @@ def thermostat(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -
     cooling = ledger.cooling_setpoint.value
     heat = np.full(calendar.hours, _HEATING_OFF) if heating is None else heating
     cool = np.full(calendar.hours, _COOLING_OFF) if cooling is None else cooling
+    lost: list[NotRepresented] = []
+
+    def design(setpoint: WeightedProfile, off: float, label: str) -> DesignValues | None:
+        if setpoint.weight == 0:
+            constant = np.full(_HOURS_PER_DAY, off)
+            return constant, constant
+        days = _design(setpoint.design_days, setpoint.weight)
+        if days is None:
+            lost.append(_design_lost(ledger, name, label))
+        return days
+
+    heat_design = design(ledger.heating_setpoint, _HEATING_OFF, "heating setpoint")
+    cool_design = design(ledger.cooling_setpoint, _COOLING_OFF, "cooling setpoint")
     value = ThermostatComponent(
         Name=f"{name} thermostat",
         IsOn=heating is not None or cooling is not None,
         HeatingSetpoint=float(np.mean(heat)),
-        HeatingSchedule=_schedule(heat, calendar, name=f"{name} heating setpoint", category="Setpoint"),
+        HeatingSchedule=_schedule(
+            heat, calendar, name=f"{name} heating setpoint", category="Setpoint", design=heat_design
+        ),
         CoolingSetpoint=float(np.mean(cool)),
-        CoolingSchedule=_schedule(cool, calendar, name=f"{name} cooling setpoint", category="Setpoint"),
+        CoolingSchedule=_schedule(
+            cool, calendar, name=f"{name} cooling setpoint", category="Setpoint", design=cool_design
+        ),
     )
-    return Derived(value, "setpoint.area_mean", _leaves(value, {}, "setpoint.area_mean"))
+    return Derived(value, "setpoint.area_mean", _leaves(value, {}, "setpoint.area_mean"), tuple(lost))
 
 
 # --- hot water -----------------------------------------------------------------------------------
@@ -675,7 +816,9 @@ def water_use(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
 
     epinterface draws `FlowRatePerPerson · PeopleDensity · floor area` each day, so the
     occupant-days are the installed occupants times the days of the run period, and the annual
-    volume is conserved. The schedule is the projected volume profile divided by its peak.
+    volume is conserved. The schedule is the projected volume profile divided by its peak; the
+    volume comes from run-period results, so its design-day slots repeat each month's Monday
+    (`design_days_from_results`).
 
     Args:
         ledger: The group's ledger.
@@ -710,7 +853,19 @@ def water_use(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
     if peak > 0:
         days = days / peak
         holidays = {m: h / peak for m, h in holidays.items()}
-    schedule = to_year_component(days, name=f"{name} water use", category="WaterUse", holidays=holidays)
+    # The volume comes from run-period results, which hold no design day: each month's Monday,
+    # which the builder would use anyway, is set explicitly (`design_days_from_results`).
+    mondays = days[:, 0, :]
+    schedule = to_year_component(
+        days,
+        name=f"{name} water use",
+        category="WaterUse",
+        holidays=holidays,
+        summer_design_day=mondays,
+        winter_design_day=mondays,
+    )
+    if total > 0:
+        lost.append(design_days_from_results(ledger, name, "hot water", "Zone.Operations.SpaceUse.WaterUse"))
     value = WaterUseComponent(Name=f"{name} water use", FlowRatePerPerson=per_person, Schedule=schedule)
     rules = {"Schedule": "schedule.normalised"}
     return Derived(value, "dhw.volume_per_person", _leaves(value, rules, "dhw.volume_per_person"), tuple(lost))
@@ -945,7 +1100,8 @@ def infiltration(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str)
     """`InfiltrationComponent`: annual-mean flow ÷ exterior area (rule `airflow.mean_per_exterior_area`, FR-018).
 
     The flow-weighted mean coefficients are written; UP-2's schedule is `project(hourly / mean)`
-    (`AnyNumber`), so mean · schedule reproduces the hourly design-flow profile. epinterface's
+    (`AnyNumber`), so mean · schedule reproduces the hourly design-flow profile, and its
+    design-day slots are the design days divided by the same mean. epinterface's
     builder applies the coefficients 1/0/0/0, so the weather response is listed as not
     represented. A group with infiltration but no exterior area cannot hold it.
 
@@ -982,6 +1138,7 @@ def infiltration(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str)
             value, "airflow.mean_per_exterior_area", _leaves(value, {}, "airflow.mean_per_exterior_area"), tuple(lost)
         )
     flow = totals.design_flow
+    design = _design(totals.design_days, flow, mean)
     value = InfiltrationComponent(
         Name=f"{name} infiltration",
         IsOn=True,
@@ -994,9 +1151,16 @@ def infiltration(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str)
         FlowPerExteriorSurfaceArea=mean / area,
         CalculationMethod="Flow/ExteriorArea",
         Schedule=_schedule(
-            hourly / mean, calendar, name=f"{name} infiltration", category="Infiltration", limits="AnyNumber"
+            hourly / mean,
+            calendar,
+            name=f"{name} infiltration",
+            category="Infiltration",
+            limits="AnyNumber",
+            design=design,
         ),
     )
+    if design is None:
+        lost.append(_design_lost(ledger, name, "infiltration"))
     lost.append(
         _entry(
             ledger,
@@ -1022,7 +1186,9 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
 
     The projected fraction is the mechanical outdoor air's schedule (UP-9's `MechVentSchedule`),
     so peak · schedule reproduces the hourly profile; it is also the `Schedule` of natural
-    ventilation, which the provider `Mechanical` leaves unused.
+    ventilation, which the provider `Mechanical` leaves unused. The profile comes from
+    run-period results, so the design-day slots repeat each month's Monday
+    (`design_days_from_results`).
 
     HRV and economiser take the category serving the most outdoor-air volume, and the sensible
     effectiveness its volume-weighted mean over the volume with heat recovery (UP-2's numeric
@@ -1041,7 +1207,7 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
     hourly = _profile(oa.hourly, calendar)
     peak = float(hourly.max()) if hourly.size else 0.0
     lost: list[NotRepresented] = []
-    schedule = _schedule(_ratio(hourly, peak), calendar, name=f"{name} ventilation", category="Window")
+    schedule = _schedule(_ratio(hourly, peak), calendar, name=f"{name} ventilation", category="Window", design="monday")
     if peak <= 0:
         value = VentilationComponent(
             Name=f"{name} ventilation",
@@ -1062,8 +1228,14 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
     if hrv != "NoHRV" and recovered > 0:
         extra["SensibleHeatRecoveryEffectiveness"] = min(max(oa.effectiveness_weighted / recovered, 0.0), 1.0)
     mechanical = _schedule(
-        _ratio(hourly, peak), calendar, name=f"{name} mechanical ventilation", category="Window", limits="Fraction"
+        _ratio(hourly, peak),
+        calendar,
+        name=f"{name} mechanical ventilation",
+        category="Window",
+        limits="Fraction",
+        design="monday",
     )
+    lost.append(design_days_from_results(ledger, name, "outdoor air", "Zone.Operations.HVAC.Ventilation"))
     value = VentilationComponent.model_validate({
         "Name": f"{name} ventilation",
         "FreshAirPerFloorArea": peak / ledger.floor_area,
@@ -1176,6 +1348,19 @@ not held by the archetype.
 """
 
 
+def _extreme(hourly: npt.NDArray[np.float64], setpoint: WeightedProfile, pick: Callable[..., float]) -> float:
+    """The highest (`max`) or lowest (`min`) setpoint the schedule takes, its design days included.
+
+    The ideal loads refuse a heating supply limit below the setpoint (and a cooling one above),
+    including on the design days the archetype sizes with.
+    """
+    values = [float(pick(hourly))]
+    days = _design(setpoint.design_days, setpoint.weight)
+    if days is not None:
+        values.extend(float(pick(day)) for day in days)
+    return float(pick(values))
+
+
 def _supply_limits(ledger: GroupLedger, air_density: float, name: str) -> tuple[dict[str, float], list[NotRepresented]]:
     fans = ledger.fans
     limits: dict[str, float] = {}
@@ -1185,11 +1370,11 @@ def _supply_limits(ledger: GroupLedger, air_density: float, name: str) -> tuple[
     delta_c = effective_supply_delta(fans, "cooling", air_density=air_density)
     candidates: dict[str, tuple[float, float]] = {}  # field -> (value, delivered)
     if heating is not None and delta_h is not None:
-        value = float(heating.max()) + delta_h
+        value = _extreme(heating, ledger.heating_setpoint, max) + delta_h
         if _SUPPLY_HEATING_RANGE[0] < value < _SUPPLY_HEATING_RANGE[1]:
             candidates["MaximumHeatingSupplyAirTemperature"] = (value, fans.delivered_in_mode.get("heating", 0.0))
     if cooling is not None and delta_c is not None:
-        value = float(cooling.min()) - delta_c
+        value = _extreme(cooling, ledger.cooling_setpoint, min) - delta_c
         if _SUPPLY_COOLING_RANGE[0] < value < _SUPPLY_COOLING_RANGE[1]:
             candidates["MinimumCoolingSupplyAirTemperature"] = (value, fans.delivered_in_mode.get("cooling", 0.0))
     defaults = {"MaximumHeatingSupplyAirTemperature": 30.0, "MinimumCoolingSupplyAirTemperature": 13.0}
@@ -1453,16 +1638,6 @@ def to_archetype(groups: Sequence[Group], layout: Layout, facts: BuildingFacts, 
             Parameter(group=None, path=leaf.path, value=leaf.value, rule=leaf.rule)
             for leaf in _nested(prefix, derived_building)
         )
-    lost.append(
-        NotRepresented(
-            feature="Design-day schedule profiles",
-            effect="The ledger carries run-period profiles only, so the archetype's schedules have no "
-            "design-day slots; epinterface uses its own design days for sizing.",
-            affected_groups=tuple(sorted(group_name(g.key) for g in groups)),
-            affected_zones=building.members,
-            source="schedules",
-        )
-    )
     return Conversion(
         archetype=archetype,
         parameters=tuple(parameters),

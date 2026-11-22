@@ -26,7 +26,16 @@ Annual energy comes from the results' tabular reports where they give it:
 
 - `Exterior:Lights`: *Lighting Summary*, Exterior Lighting, per object `Consumption`;
 - `Exterior:FuelEquipment`: *Annual Building Utility Performance Summary*, End Uses, row
-  `Exterior Equipment`, summed over fuels (water excluded).
+  `Exterior Equipment`, summed over fuels (water excluded);
+- `Daylighting:Controls`: the lighting energy daylight saved, which the archetype's undimmed
+  lighting adds back. *Lighting Summary*, Interior Lighting, gives for each `Lights` object
+  its `Consumption` and its `Scheduled Hours/Week` and `Full Load Hours/Week`; in a daylit
+  zone the saving is `Consumption · (scheduled - full load) / full load`.
+
+`Site:GroundTemperature:BuildingSurface` has no energy: its magnitude is the conductance of
+the ground-contact surfaces it drives, W/K (`Surfaces` with a ground boundary, the nominal U of
+`Constructions` with ISO 6946's inside film: 0.17 m²K/W for floors, 0.13 otherwise; no outside
+film against the ground), counting every copy of a multiplied zone.
 
 Other types have no per-object energy in the tabular reports, so their magnitude is `None`.
 
@@ -199,10 +208,29 @@ UNSUPPORTED_FEATURES: tuple[UnsupportedFeature, ...] = (
         "Zone air mass-flow conservation",
         "Balances zone mixing, return and infiltration flows.",
     ),
+    UnsupportedFeature(
+        "AirLoopHVAC",
+        "Air-side control of central air systems",
+        "Supplies air at a set or reset temperature, reheats it at the terminals and holds the "
+        "economiser to the mixed-air setpoint and its limits; the archetype's ideal loads supply air "
+        "only as cold or warm as each zone needs and economise up to the zone temperature, so the "
+        "coil energy the efficiency divides differs.",
+    ),
+    UnsupportedFeature(
+        "Site:GroundTemperature:BuildingSurface",
+        "Ground temperatures",
+        "Sets the temperature under the ground-contact surfaces; epinterface derives its own from the "
+        "archetype's thermostat and the weather file.",
+    ),
 )
 """EnergyPlus object types with an effect SBEM cannot hold, in report order (research R20)."""
 
 _GJ = 1.0e9
+_GROUND_BOUNDARY = -1
+"""`Surfaces.ExtBoundCond` of a surface against the ground (`Site:GroundTemperature:BuildingSurface`)."""
+_INSIDE_FILM = {"Floor": 0.17}
+_INSIDE_FILM_DEFAULT = 0.13
+"""ISO 6946 inside surface resistances, m²K/W, as `envelope.FILMS` uses them for ground classes."""
 _ENERGY_UNITS: dict[str, float] = {"J": 1.0, "kJ": 1.0e3, "MJ": 1.0e6, "GJ": _GJ, "kWh": 3.6e6, "kBtu": 1055.05585262}
 
 
@@ -275,6 +303,26 @@ class _Zones:
             if material is not None and construction is not None:
                 found.setdefault(material, set()).add(construction)
         return {name: frozenset(names) for name, names in found.items()}
+
+    @cached_property
+    def ground_contact(self) -> dict[str, float]:
+        """Conductance of each zone's ground-contact surfaces, W/K, over every copy of the zone."""
+        u_values = {row.index: row.u_value for row in read_constructions(self._results)}
+        multipliers = {
+            self._by_name.get(row.name.upper(), row.name): row.multiplier * row.list_multiplier
+            for row in read_zones(self._results)
+        }
+        found: dict[str, float] = {}
+        for row in self._surfaces:
+            if row.exterior_boundary != _GROUND_BOUNDARY or not row.heat_transfer:
+                continue
+            zone = self._surface_zone.get(row.index)
+            u_value = u_values.get(row.construction_index or 0, 0.0)
+            if zone is None or u_value <= 0.0:
+                continue
+            film = _INSIDE_FILM.get(row.class_name, _INSIDE_FILM_DEFAULT)
+            found[zone] = found.get(zone, 0.0) + row.area * multipliers.get(zone, 1.0) / (1.0 / u_value + film)
+        return found
 
     def zone(self, name: str | None) -> tuple[str, ...]:
         """The zone a zone or space name names."""
@@ -358,7 +406,21 @@ def _readers(doc: IDFDocumentSince22_1, z: _Zones) -> dict[str, Callable[[], _Fo
         "ZoneAirMassFlowConservation": lambda: [
             ("ZoneAirMassFlowConservation", z.all) for _ in doc["ZoneAirMassFlowConservation"]
         ],
+        "AirLoopHVAC": lambda: _air_loops(doc, z),
+        "Site:GroundTemperature:BuildingSurface": lambda: [
+            ("Site:GroundTemperature:BuildingSurface", tuple(sorted(z.ground_contact)))
+            for _ in doc["Site:GroundTemperature:BuildingSurface"]
+        ],
     }
+
+
+def _air_loops(doc: IDFDocumentSince22_1, z: _Zones) -> _Found:
+    # Imported here: `airflow` is a domain module, only needed when the model has air loops.
+    from archetypal.reduction.airflow import air_loop_zones  # noqa: PLC0415
+
+    if not doc["AirLoopHVAC"]:
+        return []
+    return [(name, z.zones(served)) for name, served in air_loop_zones(doc).items()]
 
 
 # --- Annual energy ---------------------------------------------------------------------------------
@@ -412,12 +474,51 @@ def _exterior_equipment_energy(results: SQLResult) -> float | None:
     return total if found else None
 
 
-def _energy(results: SQLResult, object_type: str, names: tuple[str, ...]) -> float | None:
+def _daylighting_saving(results: SQLResult, z: _Zones, zones: Iterable[str]) -> float | None:
+    """Lighting energy daylight saved in `zones`, J: `Consumption · (scheduled - full load) / full load`."""
+    try:
+        rows = results.get_tabular_data("LightingSummary", "Interior Lighting", report_for="Entire Facility")
+    except ResultLookupError:
+        return None
+    daylit = set(zones)
+    columns: dict[str, dict[str, tuple[str, str]]] = {}
+    for row in rows:
+        columns.setdefault(row.row_name, {})[row.column_name] = (str(row.value), row.units or "")
+    total = 0.0
+    found = False
+    for values in columns.values():
+        zone = z.zone(values.get("Zone Name", ("", ""))[0].strip())
+        if not zone or zone[0] not in daylit:
+            continue
+        try:
+            consumption, units = float(values["Consumption"][0]), values["Consumption"][1] or "GJ"
+            scheduled = float(values["Scheduled Hours/Week"][0])
+            full_load = float(values["Full Load Hours/Week"][0])
+        except (KeyError, ValueError):
+            continue
+        joules = _to_joules(consumption, units)
+        if joules is None or full_load <= 0.0:
+            continue
+        total += joules * max(scheduled - full_load, 0.0) / full_load
+        found = True
+    return total if found else None
+
+
+def _magnitude(
+    results: SQLResult, z: _Zones, object_type: str, names: tuple[str, ...], zones: tuple[str, ...]
+) -> tuple[float | None, str | None]:
+    """An entry's magnitude and its unit, or `(None, None)` when the results do not give it."""
+    value: float | None = None
     if object_type == "Exterior:Lights":
-        return _exterior_lights_energy(results, names)
-    if object_type == "Exterior:FuelEquipment":
-        return _exterior_equipment_energy(results)
-    return None
+        value = _exterior_lights_energy(results, names)
+    elif object_type == "Exterior:FuelEquipment":
+        value = _exterior_equipment_energy(results)
+    elif object_type == "Daylighting:Controls":
+        value = _daylighting_saving(results, z, zones)
+    elif object_type == "Site:GroundTemperature:BuildingSurface":
+        conductance = sum(z.ground_contact.get(zone, 0.0) for zone in zones)
+        return (conductance, "W/K") if conductance > 0.0 else (None, None)
+    return (value, "J") if value is not None else (None, None)
 
 
 # --- Public ----------------------------------------------------------------------------------------
@@ -431,25 +532,28 @@ def find_unsupported(source: SourceData) -> tuple[NotRepresented, ...]:
 
     Returns:
         One entry per object type present, in table order, with the objects' names, the zones
-        they affect and, where the results give it, their annual energy in J.
+        they affect and, where the results give it, their magnitude (annual energy in J; the
+        ground temperatures' conductance in W/K).
     """
-    readers = _readers(source.model, _Zones(source.model, source.results))
+    zones = _Zones(source.model, source.results)
+    readers = _readers(source.model, zones)
     entries: list[NotRepresented] = []
     for feature in UNSUPPORTED_FEATURES:
         found = readers[feature.object_type]()
         if not found:
             continue
         names = tuple(sorted(name for name, _ in found))
-        energy = _energy(source.results, feature.object_type, names)
+        affected = tuple(sorted({zone for _, found_zones in found for zone in found_zones}))
+        magnitude, unit = _magnitude(source.results, zones, feature.object_type, names, affected)
         entries.append(
             NotRepresented(
                 feature=feature.feature,
                 effect=feature.effect,
                 object_type=feature.object_type,
                 objects=names,
-                affected_zones=tuple(sorted({zone for _, zones in found for zone in zones})),
-                magnitude=energy,
-                unit="J" if energy is not None else None,
+                affected_zones=affected,
+                magnitude=magnitude,
+                unit=unit,
                 folded_into=feature.folded_into,
             )
         )

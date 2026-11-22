@@ -10,9 +10,11 @@ delivered energy in the same mode, counting every copy of a multiplied zone
 and latent loads included (`delivery.delivered_energy`, per copy, research R12): its own coils,
 terminals, baseboards and ideal loads, and its share of its air loop's coils by inlet flow. That
 is what the archetype's ideal loads meet, so consumption ÷ delivery is the efficiency of the
-equipment alone. For hot water, delivery is the heat its volume needs above mains temperature
-(`HotWaterRecord.volume · (target - mains) · rho·c`, unless the caller passes the hot water
-module's own heat profile).
+equipment alone. For hot water, delivery is the heat its volume needs above mains temperature,
+the hot-water module's `volume · (supply - mains) · rho·c` (`hotwater.hot_water_totals`: the
+equipment's hot-water supply temperature, its target temperature without one), unless the
+caller passes another heat profile. The archetype's hot-water supply temperature gives the same
+heat back, so the efficiency reproduces the consumption.
 
 - **Standby.** Consumption in hours without delivery in that mode (standby, pilot lights) is
   not attributed hour by hour. It is reported as the building's total
@@ -608,14 +610,26 @@ def rated_efficiencies(sources: SourceData, zones: Sequence[ClassifiedZone]) -> 
 # --- building data -------------------------------------------------------------------------------
 
 
-def _hot_water_heat(zone: ClassifiedZone, mains: Profile, evaluate: Callable[[str], Profile], hours: int) -> Profile:
-    heat = np.zeros(hours)
-    for record in zone.zone.hot_water:
-        if record.target_temperature_schedule is None:
-            continue
-        rise = np.maximum(np.asarray(evaluate(record.target_temperature_schedule), dtype=np.float64) - mains, 0.0)
-        heat += np.asarray(record.volume, dtype=np.float64) * rise * WATER_VOLUMETRIC_HEAT
-    return heat
+def _hot_water_heat(
+    zone: ClassifiedZone,
+    mains: Profile,
+    evaluate: Callable[[str], Profile],
+    hours: int,
+    supply_schedules: Mapping[str, str | None],
+) -> Profile:
+    """Heat of one copy's hot water, J per hour: the hot-water module's `volume · rise · rho·c`.
+
+    The rise follows the equipment's hot-water supply temperature (its target temperature
+    without one), as `hotwater.hot_water_totals` does, so that the efficiency divides the
+    consumption by the same heat the archetype's supply temperature gives back.
+    """
+    # Imported here: `hotwater` is a sibling domain module, loaded only with hot water.
+    from archetypal.reduction.hotwater import hot_water_totals  # noqa: PLC0415
+
+    heat = hot_water_totals(zone, evaluate, mains, supply_schedules).heat
+    if not heat.size:
+        return np.zeros(hours)
+    return np.asarray(heat, dtype=np.float64) * WATER_VOLUMETRIC_HEAT
 
 
 def building_energy(
@@ -630,10 +644,9 @@ def building_energy(
     Args:
         sources: The checked model and results.
         zones: The classified zones; only conditioned ones are attributed to.
-        evaluate: The schedule evaluator (hot-water target temperatures).
+        evaluate: The schedule evaluator (hot-water temperatures).
         hot_water_heat: Hot water heat delivered each hour to one copy, J, by zone name, to use
-            instead of `volume · (target - mains) · rho·c` (pass the hot-water module's heat so
-            both agree).
+            instead of the hot-water module's `volume · (supply - mains) · rho·c`.
 
     Returns:
         The data.
@@ -668,11 +681,14 @@ def building_energy(
         for meter, fuel in meters.get(end_use, []):
             consumed.setdefault(mode, {})[fuel] = get(meter, "")
     if "hot_water" in consumed or any(zone.zone.hot_water for zone in conditioned):
+        from archetypal.reduction.hotwater import supply_schedules  # noqa: PLC0415
+
+        schedules = supply_schedules(sources.model)
         delivered["hot_water"] = {
             zone.zone.name: (
                 np.asarray(hot_water_heat[zone.zone.name], dtype=np.float64)
                 if hot_water_heat is not None and zone.zone.name in hot_water_heat
-                else _hot_water_heat(zone, mains, evaluate, hours)
+                else _hot_water_heat(zone, mains, evaluate, hours, schedules)
             )
             for zone in conditioned
         }

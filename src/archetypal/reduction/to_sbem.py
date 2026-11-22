@@ -135,6 +135,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "EQUIPMENT_KINDS",
+    "IDEAL_LOADS_LIMITS",
     "LOWEST_LEVEL_TOLERANCE",
     "SLOT_CLASSES",
     "BuildingFacts",
@@ -1126,6 +1127,20 @@ def thermal_system(
     return Derived(value, rule, _leaves(value, rules, rule), tuple(lost))
 
 
+IDEAL_LOADS_LIMITS: dict[str, str] = {"HeatingLimitType": "NoLimit", "CoolingLimitType": "LimitFlowRate"}
+"""The ideal loads' limits whenever the supply-air limits come from the effective temperature differences (R19).
+
+The supply-air limits are set so the ideal loads move the detailed model's annual air volume;
+they are not design temperatures, so the flow and capacity epinterface autosizes from them on its
+own design days describe no equipment of the detailed model. With them, the autosized capacity
+clipped `three_zone`'s morning recovery after the night setback (stand-in diagnosis). Heating
+therefore follows the load (its air volume is then load / (rho·c_p·delta), the volume R19
+reproduces), and cooling keeps only its autosized air flow, which bounds the outdoor air the
+ideal loads' economiser draws. Neither capacity is limited: the detailed equipment's capacity is
+not held by the archetype.
+"""
+
+
 def _supply_limits(ledger: GroupLedger, air_density: float, name: str) -> tuple[dict[str, float], list[NotRepresented]]:
     fans = ledger.fans
     limits: dict[str, float] = {}
@@ -1175,7 +1190,8 @@ def conditioning_systems(
 
     `SpecificFanPower = fan energy / air volume` (`fans.energy_per_volume`); the ideal loads'
     supply-air limits are the setpoint ± the detailed model's effective supply temperature
-    difference in that mode (`fans.effective_supply_delta`).
+    difference in that mode (`fans.effective_supply_delta`), and their limit types are then
+    `IDEAL_LOADS_LIMITS` (same rule).
 
     Args:
         ledger: The group's ledger.
@@ -1188,13 +1204,14 @@ def conditioning_systems(
     """
     heating = thermal_system(ledger, building, "heating", name=name)
     cooling = thermal_system(ledger, building, "cooling", name=name)
-    extra: dict[str, float] = {}
+    extra: dict[str, float | str] = {}
     lost: list[NotRepresented] = [*heating.not_represented, *cooling.not_represented]
     sfp = specific_fan_power(ledger.fans)
     if sfp is not None:
         extra["SpecificFanPower"] = sfp
         limits, limit_lost = _supply_limits(ledger, air_density, name)
         extra.update(limits)
+        extra.update(IDEAL_LOADS_LIMITS)
         lost.extend(limit_lost)
         if ledger.fans.volume_without_demand > 0:
             lost.append(
@@ -1219,9 +1236,9 @@ def conditioning_systems(
         leaves.append(LeafRule("Heating", None, heating.rule))
     if value.Cooling is None:
         leaves.append(LeafRule("Cooling", None, cooling.rule))
-    for key, number in extra.items():
+    for key, setting in extra.items():
         rule = "fans.energy_per_volume" if key == "SpecificFanPower" else "fans.effective_supply_delta"
-        leaves.append(LeafRule(key, number, rule))
+        leaves.append(LeafRule(key, setting, rule))
     return Derived(value, "efficiency.delivered_over_consumed", tuple(leaves), tuple(lost))
 
 

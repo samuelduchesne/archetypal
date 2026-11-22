@@ -40,7 +40,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple, cast
 
 import numpy as np
 from epinterface.sbem.components.space_use import ThermostatComponent
@@ -795,8 +795,8 @@ def limits_to_umi(systems: ConditioningSystemsComponent, *, context: RuleContext
     """Write the ideal-loads limits (UP-9).
 
     A flow or capacity the limit type names that SBEM autosizes (`None`) has no UMI value: it is
-    dropped from the limit type, and lost. An unset value takes Basilisk's default (noted when
-    the limit type names it).
+    dropped from the limit type, and lost. An unset value the limit type does not name takes
+    Basilisk's default, and is lost too (the reader gives the default back).
 
     Args:
         systems: The SBEM conditioning systems.
@@ -812,6 +812,15 @@ def limits_to_umi(systems: ConditioningSystemsComponent, *, context: RuleContext
                 fields[field] = value
                 continue
             fields[field] = _default(field)
+            if not used:
+                # The reader copies every value, so the default comes back in place of `None`.
+                context.lose(
+                    target,
+                    None,
+                    replacement=cast("float", fields[field]),
+                    rule="conditioning.limits",
+                    reason=f"UMI has no unset limit; {target}, which {type_target} does not use, takes Basilisk's default",
+                )
             if used:
                 uses[field, target] = False
                 context.lose(

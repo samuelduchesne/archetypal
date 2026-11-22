@@ -87,6 +87,7 @@ def test_only_present_features_listed(bar_building: tuple[NotRepresented, ...]) 
         "Daylighting:Controls",
         "Daylighting:ReferencePoint",
         "Exterior:Lights",
+        "Site:GroundTemperature:BuildingSurface",
     }
 
 
@@ -113,9 +114,10 @@ def test_shading_resolves_zones_through_surfaces() -> None:
     assert _entry(entries, "Shading:Site:Detailed").affected_zones == ("North_Perimeter", "South_Perimeter")
 
 
-def test_three_zone_has_no_unsupported_feature() -> None:
+def test_three_zone_has_only_its_ground_temperatures() -> None:
     # Runs every reader of the table: a row without one raises KeyError.
-    assert find_unsupported(_sources("three_zone")) == ()
+    found = find_unsupported(_sources("three_zone"))
+    assert [entry.object_type for entry in found] == ["Site:GroundTemperature:BuildingSurface"]
 
 
 def test_not_represented_is_frozen_and_strict() -> None:

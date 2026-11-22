@@ -55,7 +55,7 @@ def shoebox(archetype: Archetype) -> ShoeboxGeometry:
 
     The footprint is the conditioned floor area over the storeys; its sides are in the ratio of
     the north to the east facade area, and the floor-to-floor height gives the north facade's
-    area. Core/perimeter zoning is used whenever a group has an exposure.
+    area. Core/perimeter zoning is used whenever a group is a core group.
     """
     from epinterface.geometry import ShoeboxGeometry  # noqa: PLC0415
 
@@ -69,7 +69,8 @@ def shoebox(archetype: Archetype) -> ShoeboxGeometry:
     width = math.sqrt(footprint * north / east) if north > 0 and east > 0 else math.sqrt(footprint)
     depth = footprint / width
     height = north * area / (storeys * width) if north > 0 else 3.0
-    zoning = "core/perim" if any(g.Exposure is not None for g in archetype.Groups) else "by_storey"
+    # A core only when the archetype has one: a perimeter-only archetype gives every zone a facade.
+    zoning = "core/perim" if any(g.Exposure == "core" for g in archetype.Groups) else "by_storey"
     return ShoeboxGeometry(
         x=0.0, y=0.0, w=width, d=depth, h=height, num_stories=storeys, zoning=zoning, perim_depth=min(4.5, depth / 3)
     )

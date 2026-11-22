@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import math
 import os
 import tempfile
 from dataclasses import dataclass
@@ -642,7 +641,6 @@ def _layered(window: Any) -> WindowConstruction:
             material = layer.GlazingMaterial
             umi: GlazingMaterial | GasMaterial = GlazingMaterial.model_validate({
                 "Name": material.Name,
-                **{key: getattr(material, key) for key in GlazingMaterial.model_fields if False},
                 **{
                     alias: getattr(material, alias)
                     for alias in (
@@ -892,6 +890,3 @@ def write_umi(
     export = _export(archetypes, strict=strict, path=path)
     export.write(path, overwrite=overwrite)
     return export.report
-
-
-_ = math  # math is kept for finite checks by callers of this module's helpers

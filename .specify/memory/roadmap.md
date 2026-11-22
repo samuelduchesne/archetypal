@@ -1,6 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.6.0 → 1.7.0
+Bump rationale: MINOR — C-17 amended: the fork is not published on PyPI. Publishing is
+reserved for after upstream epinterface accepts our pull requests. archetypal depends on the
+fork through a git source during development, so no archetypal 3 release can go to PyPI until
+upstream releases the changes it needs; UP-3 now means exactly that.
+
+Changes this revision:
+  - C-17: no PyPI package for the fork; git tags pinned through `[tool.uv.sources]`; the
+    distribution stays `epinterface`
+  - UP-3: upstream epinterface releases on PyPI with the changes archetypal depends on;
+    blocking for v3's PyPI release, not for implementing or verifying specs
+  - 001: its "pip install archetypal" outcome waits for UP-3
+
+Specs affected: 001, 002, 003
+Open questions added/resolved: none
+
+Previous revision (1.6.0):
 Version change: 1.5.0 → 1.6.0
 Bump rationale: MINOR — new decision C-17: archetypal depends on a maintained fork of
 epinterface, because the main epinterface repository is not expected to accept archetypal's
@@ -243,14 +260,18 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   - *Home:* `samuelduchesne/epinterface`. Its `main` is upstream `main` plus one topic branch
     per prerequisite (UP-1, UP-2, UP-4, UP-8), merged in that order. Each topic branch is also
     an open pull request to upstream.
-  - *Package:* published on PyPI under its own distribution name (working name
-    `epinterface-sbem`, checked for availability and confirmed at its first release), with
-    the import name `epinterface` unchanged. Code that uses SBEM is then identical against the
-    fork and upstream, and a merged pull request needs no change in archetypal. The fork and
-    upstream epinterface cannot be installed in the same environment; that is documented in
-    the fork's README and in archetypal's installation page.
-  - *Versions:* upstream base version plus a post-release number (`1.5.0.post1`, …), so the
-    upstream release each fork release builds on is visible.
+  - *Package:* not published on PyPI; publishing is reserved for after upstream accepts our
+    pull requests. The distribution and import names stay `epinterface`. archetypal declares
+    `epinterface>=X` as usual and points it at a fork tag through `[tool.uv.sources]` (git,
+    pinned to a tag), so uv, CI and contributors install the fork while the declared
+    dependency stays upstream's. Code that uses SBEM is identical against both, and switching
+    back is deleting the source entry.
+  - *Versions:* fork releases are git tags: the upstream base version plus a post-release
+    number (`v1.5.0.post1`, …), so the upstream release each builds on is visible.
+  - *Consequence:* a package on PyPI cannot depend on a git source, so no archetypal 3
+    release goes to PyPI before upstream releases what it uses (UP-3). Until then archetypal 3
+    is installed from its git repository; that is stated in its installation page.
+  ~~Revision 1.6.0: the fork was to be published on PyPI under its own distribution name.~~
   - *Licence:* MIT, as upstream; the copyright notice is kept and upstream is credited.
   - *Sync:* the fork is rebased on every upstream release, and its own tests run on every
     change. Conflicts are resolved in the fork, never in archetypal.
@@ -288,11 +309,13 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   helpers with a schema version. Zone groups block 002; each added field does not (its loss is
   reported until it lands).
   ~~Revision 1.0.0: separate core and perimeter zones only.~~
-- **UP-3 — the SBEM fork is published on PyPI.** A package on PyPI cannot depend on a git
-  repository, so no v3 release can ship before this. Upstream epinterface is on PyPI
-  (1.0.0–1.5.0, checked 2026-11-21), but archetypal now depends on the fork (C-17), which is
-  not yet published. *Blocking for every v3 release.*
-  ~~Revision 1.5.0: met by upstream's PyPI releases.~~
+- **UP-3 — upstream epinterface releases on PyPI what archetypal uses.** A package on PyPI
+  cannot depend on a git repository, and the fork is not published (C-17). archetypal 3
+  therefore goes to PyPI only once upstream has released UP-1 and every SBEM field
+  archetypal's released specs use. *Blocking for v3's PyPI release only*: specs can be
+  implemented and verified against the fork before it.
+  ~~Revision 1.5.0: met by upstream's PyPI releases (1.0.0–1.5.0).~~
+  ~~Revision 1.6.0: the fork published on PyPI.~~
 - **UP-4 — epinterface's heavy dependencies become optional extras** (Prisma, geopandas,
   ladybug). Desirable, not blocking; keeps archetypal's install small (C-06, constitution III).
   ladybug-core is used once, in `sbem/builder.py`, to read monthly ground temperatures from the
@@ -342,7 +365,8 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   readers, schedules, data portal, vendored geomeppy); v2 → v3 migration guide; documentation
   site structure; v2 maintenance branch.
 - **Scope (out):** reduction and translation behaviour themselves (002, 003).
-- **Depends on:** UP-1, UP-3
+- **Depends on:** UP-1 (in the fork, C-17); UP-3 for the PyPI release that delivers its
+  outcome
 - **Governed by:** C-01, C-07, C-08, C-09
 - **Notes:** Not a release on its own (C-10): it ships together with 002 and 003 as v3.0.
   Written after 002 and 003: its public surface and command line describe what those specs
@@ -498,4 +522,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.6.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
+**Version**: 1.7.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

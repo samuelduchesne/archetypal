@@ -44,8 +44,9 @@ All decisions and their evidence are in [research.md](research.md).
 epinterface; research R15, R17).
 
 **Primary Dependencies**:
-- the SBEM fork of epinterface (roadmap C-17; working distribution name `epinterface-sbem`,
-  imported as `epinterface`): SBEM data model, first fork release with UP-1 and UP-2;
+- epinterface, from the maintained fork (roadmap C-17): declared as `epinterface>=X` and
+  resolved to a fork tag through `[tool.uv.sources]`; SBEM data model, first fork tag with
+  UP-1 and UP-2;
 - idfkit `>=1.3,<2` (model I/O, schedule evaluation, SQLite and tabular results, single
   simulation run), used through its typed interface only (R18);
 - numpy;
@@ -119,14 +120,15 @@ Spec 002 cannot be marked implemented until the blocking items are released. The
 epinterface repository is not expected to accept our pull requests for a long time, so every
 epinterface item is built and released in the SBEM fork (roadmap C-17) and offered upstream
 as a pull request. "Released" below means released by the fork; the upstream merge is not a
-dependency. This changes who releases, not what 002 needs, so no blocking status changes,
-except UP-3.
+dependency. A fork release is a git tag; the fork is not published on PyPI. This changes who
+releases, not what 002 needs, so no blocking status changes, except UP-3, which now gates
+only v3's PyPI release.
 
 | Item | Repository | What | Blocking? |
 |---|---|---|---|
 | UP-1 | epinterface | Depend on idfkit instead of `archetypal==2.18.10`. `sbem.components` must be importable without archetypal, eppy or a generated Prisma client, and PyYAML must be declared. | Yes |
 | UP-2 | epinterface | Several zone groups per archetype. It also adds these fields, which this plan's research showed are missing: per-orientation envelope and window ratios (FR-024), an infiltration schedule (FR-018), numeric heat-recovery effectiveness (FR-019), holiday and design-day slots in `WeekComponent` (FR-023), and save/load helpers with a schema version (R14). | Zone groups: yes. Each extra field: no (until it lands, its loss is reported under FR-026). |
-| UP-3 | epinterface (fork) | The fork published on PyPI under its own distribution name. | Yes, for any release (upstream's own PyPI releases no longer count, C-17) |
+| UP-3 | epinterface | Upstream releases on PyPI what archetypal uses (UP-1 and the SBEM fields). The fork is not published (C-17). | Not for implementing or verifying 002; only for v3's PyPI release |
 | UP-4 | epinterface | Heavy dependencies become optional (Prisma, geopandas, ladybug), and exact pins are loosened (`click==8.1.7`, `pandas<2.3`). | No (install size and conflicts) |
 | UP-5 | idfkit | Day-type-aware `Schedule:Compact` creation. Now also a faster day-profile evaluation if the R5 benchmark fails. | No |
 | UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final, so the typed `schedule_weeks[i].start_month: int` really is an `int`. | Yes for release; bridged meanwhile |

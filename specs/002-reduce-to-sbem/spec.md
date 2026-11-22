@@ -356,8 +356,10 @@ baseline has been measured, but none may be removed (roadmap C-12).
 
 - The detailed model is in an EnergyPlus version that idfkit reads; older models are migrated
   with idfkit before reduction.
-- epinterface supports archetypes with several zone groups (upstream UP-2) and is published on
-  PyPI (UP-3) before this spec is implemented.
+- epinterface supports archetypes with several zone groups (UP-2) before this spec is
+  implemented. Until upstream accepts it, that support comes from the maintained fork archetypal
+  depends on (roadmap C-17), which is not published on PyPI; publishing archetypal 3 there
+  waits for upstream (UP-3).
 - The residential reference model is the DOE residential prototype (single-family detached);
   further residential models may be added.
 - "Typical laptop" in SC-008 means a recent four-core machine; the plan fixes the benchmark

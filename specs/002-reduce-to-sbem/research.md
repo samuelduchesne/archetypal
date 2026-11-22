@@ -541,7 +541,7 @@ linked with cruft. These are the template answers:
 | `development_python_version` | `3.12` | Highest version epinterface allows. |
 | `type_checker` | `pyright` (strict) | Constitution VI; idfkit is pyright-strict clean. |
 | `include_py_typed`, `include_github_actions`, `codecov`, `deptry`, `changelog`, `mkdocs` | yes | Typed public library, CI, dependency hygiene, Keep a Changelog, Diátaxis docs site. |
-| `publish_to_pypi` | yes | v3 ships to PyPI. |
+| `publish_to_pypi` | yes | v3 ships to PyPI, once upstream epinterface has released what it uses (roadmap UP-3). The publish workflow stays in place but no release is cut before then. |
 | `dockerfile`, `devcontainer`, `dvc` | no | Library, no deployment; no large data tracked in git. |
 | `agent_instructions` / `agent_profile` | `claude` / `full` | Matches how the project is developed. |
 | `open_source_license` | MIT | Unchanged from v2. |
@@ -607,7 +607,7 @@ every push, and reserves the slow evidence for its own workflow.
 
 | Dependency | Range | Justification |
 |---|---|---|
-| SBEM fork of `epinterface` (working name `epinterface-sbem`, imported as `epinterface`) | `>=X,<Y` (X = first fork release with UP-1 and UP-2; Y = next upstream minor) | SBEM data model, the only archetype model (C-02), from the maintained fork (roadmap C-17). |
+| `epinterface`, resolved to the maintained fork | declared `>=X,<Y` (X = first version with UP-1 and UP-2; Y = next upstream minor); `[tool.uv.sources]` pins a fork git tag | SBEM data model, the only archetype model (C-02), from the maintained fork (roadmap C-17). |
 | `idfkit` | `>=1.3,<2` (`>=1.3.0rc2` until 1.3.0 is final) | Model reading, schedules, SQLite results, simulation. Zero runtime dependencies. |
 | `numpy` | `>=1.26` | 8760-hour profiles and float64 sums. Already pulled in by epinterface's pandas, but used directly, so declared (deptry). |
 | `pydantic` | `>=2.9,<3` | Report models and JSON Schema. Already required by epinterface, but used directly, so declared. |
@@ -624,9 +624,11 @@ upstream table in plan.md), released in the fork.
 
 **Why a fork.** Upstream epinterface is not expected to accept our pull requests for a long
 time, and its releases pin `archetypal==2.18.10`, so archetypal 3 cannot depend on them in
-the same environment. The fork keeps the import name, so archetypal's code is the same
-whichever package provides `epinterface`; switching back when upstream catches up changes one
-line of `pyproject.toml`. The alternative, carrying the SBEM extensions inside archetypal,
+the same environment. The fork keeps the distribution and import names and is installed through a uv
+git source, so archetypal's code and declared dependency are the same whichever provides
+`epinterface`; switching back when upstream catches up deletes one `[tool.uv.sources]`
+entry. The fork is not published on PyPI, so archetypal 3 cannot be published there before
+upstream releases these changes (roadmap UP-3). The alternative, carrying the SBEM extensions inside archetypal,
 was rejected (roadmap C-17).
 
 ## R18 — idfkit's typed interface first

@@ -497,7 +497,7 @@ with `diff_umi`; every difference is in a report.
 **Purpose**: replace each upstream loss and the bridge as its item is released (constitution
 I). T068 and T069 are independent; T070 follows T068 field by field.
 
-- [ ] T068 In the SBEM fork, implement UP-9's simulation fields (research R6), one topic
+- [X] T068 In the SBEM fork, implement UP-9's simulation fields (research R6), one topic
   branch each: `up-9-layered-glazing`, `up-9-window-settings`, `up-9-partition-ratio`,
   `up-9-natvent-limits`, `up-9-scheduled-ventilation`, `up-9-mechvent-schedule`,
   `up-9-ideal-loads-limits`, `up-9-availability`, `up-9-daylighting`, `up-9-adiabatic`; and
@@ -505,7 +505,7 @@ I). T068 and T069 are independent; T070 follows T068 field by field.
   `sbem/components/schedules.py:634`) and `up-9-provider-both`
   (`sbem/components/operations.py:311`). Each field is written to EnergyPlus by the fork's
   builder. Tag the fork, update `[tool.uv.sources]`, and open each upstream.
-- [ ] T069 [P] In the SBEM fork, implement UP-9's life-cycle and descriptive fields
+- [X] T069 [P] In the SBEM fork, implement UP-9's life-cycle and descriptive fields
   (archetype metadata, structure, environmental fields on materials and assemblies, schedule
   metadata), one topic branch each; tag and open upstream. Not blocking.
 - [ ] T070 After each UP-9 field is released (T068, T069): change its rows in

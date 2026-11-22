@@ -166,7 +166,7 @@ def _replace(model: Any, path: str, value: object) -> Any:
 
 
 def _dump(value: Any) -> str:
-    return json.dumps(value.model_dump(mode="json") if value is not None else None, sort_keys=True)
+    return json.dumps(value.model_dump(mode="json") if hasattr(value, "model_dump") else value, sort_keys=True)
 
 
 def _differ(members: Sequence[ZoneGroup], path: str) -> bool:
@@ -453,8 +453,8 @@ def approximate_merge(archetype: Archetype) -> CorePerimeter:
 
 
 def _json(value: Any) -> JsonValue:
-    if value is None:
-        return None
+    if not hasattr(value, "model_dump"):
+        return cast("JsonValue", value)
     return cast("JsonValue", value.model_dump(mode="json", exclude_none=True))
 
 
@@ -531,18 +531,21 @@ class _TemplateWriter:
             for slot in ("facade", "ground", "partition", "roof", "slab")
         }
         constructions = constructions.model_copy(update=flags)
-        if assemblies.PartitionAreaPerFloorArea:
+        # Fields of later fork versions (UP-9 work), read only when the installed fork has them.
+        partition_area: float = getattr(assemblies, "PartitionAreaPerFloorArea", 0.0)
+        if partition_area:
             context.lose(
                 "Envelope.Assemblies.PartitionAreaPerFloorArea",
-                assemblies.PartitionAreaPerFloorArea,
+                partition_area,
                 rule="building.partition_ratio",
                 reason="A UMI zone definition has no partition area; the template's PartitionRatio is not written "
                 "from it.",
             )
-        if envelope.WindowSettings is not None:
+        window_settings = getattr(envelope, "WindowSettings", None)
+        if window_settings is not None:
             context.lose(
                 "Envelope.WindowSettings",
-                _json(envelope.WindowSettings),
+                _json(window_settings),
                 rule="window.settings",
                 reason="The window settings of an SBEM zone are not written to UMI yet; Basilisk's defaults are.",
                 upstream="UP-9",

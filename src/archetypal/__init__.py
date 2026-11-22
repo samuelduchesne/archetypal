@@ -15,6 +15,7 @@ from archetypal.comparison import compare as compare
 
 if TYPE_CHECKING:
     from archetypal.umi.read import read_umi as read_umi
+    from archetypal.umi.write import write_umi as write_umi
 
 try:
     __version__: str = version("archetypal")
@@ -24,17 +25,17 @@ except PackageNotFoundError:  # pragma: no cover - only when run from an uninsta
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 # Public re-exports of specs 002 and 003 are added here.
-__all__ = ["__version__", "read_umi"]
+__all__ = ["__version__", "read_umi", "write_umi"]
 
 # Names imported on first use: their modules import epinterface, whose settings read the
 # environment, and importing archetypal reads none (FR-006).
-_LAZY: dict[str, str] = {"read_umi": "archetypal.umi.read"}
+_LAZY: dict[str, str] = {"read_umi": "archetypal.umi.read", "write_umi": "archetypal.umi.write"}
 
 
 def __getattr__(name: str) -> Any:
     """Import a lazy name on first use; raise the migration error for a v2 name (PEP 562, FR-016).
 
-    `read_umi` is imported from its module on first use and kept. `archetypal.IDF` and `from archetypal import IDF` raise `RemovedInArchetypal3Error`, which
+    `read_umi` and `write_umi` are imported from their modules on first use and kept. `archetypal.IDF` and `from archetypal import IDF` raise `RemovedInArchetypal3Error`, which
     names the replacement and the migration guide's section. Because that error is an
     `ImportError`, not an `AttributeError`, `hasattr(archetypal, "IDF")` raises it too instead
     of returning `False`. Any other unknown name raises `AttributeError`.

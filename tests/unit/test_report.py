@@ -524,7 +524,8 @@ def test_fixture_reductions_hold_every_invariant(fixture: str, tmp_path: Path) -
 
     from archetypal.reduction._sql_tables import read_zones  # noqa: PLC0415
 
-    zone_names = [row.zone_name for row in read_zones(SQLResult(results))]
+    # The results upper-case zone names; the accounting check compares names case-insensitively.
+    zone_names = [row.name for row in read_zones(SQLResult(results))]
     assert check_report_invariants(report, zone_names=zone_names) == []
     first, _ = reduction.write(tmp_path / "a", fixture)
     second, _ = reduce(model, results).write(tmp_path / "b", fixture)

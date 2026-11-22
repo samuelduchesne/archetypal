@@ -306,7 +306,7 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
         zones[name] = per_mode
     return EnergyAttribution(
         zones=zones,
-        unattributed={mode: _nonzero(values) for mode, values in sorted(unattributed.items())},
+        unattributed={mode: _nonzero(unattributed.get(mode, {})) for mode in modes},
         unattributed_distribution=_nonzero(unattributed_distribution),
     )
 

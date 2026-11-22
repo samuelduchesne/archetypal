@@ -22,7 +22,7 @@ from archetypal.reduction.airflow import (
     outdoor_air_controls,
     outdoor_air_totals,
 )
-from archetypal.reduction.classify import ClassifiedZone
+from archetypal.reduction.classify import ClassifiedZone, classify
 from archetypal.reduction.inventory import AirflowRecord, GainRecord, ZoneRecord, build_inventory
 from archetypal.reduction.ledger import GroupLedger
 from archetypal.reduction.schedules import ScheduleEvaluator
@@ -235,8 +235,6 @@ def test_air_loop_heat_recovery_and_economiser_reach_the_zones_it_serves(ten_sou
 def test_fixture_outdoor_air_is_conserved(ten_sources: SourceData) -> None:
     evaluator = ScheduleEvaluator(ten_sources.model, ten_sources.run_period.calendar)
     hook = AirflowHook.from_model(ten_sources.model)
-    from archetypal.reduction.classify import classify
-
     zones = classify(build_inventory(ten_sources, evaluator), evaluator)
     ledgers = [GroupLedger.from_zone(zone, evaluator, hooks=[hook]) for zone in zones]
     total = sum(ledgers)

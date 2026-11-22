@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
@@ -13,13 +12,11 @@ from epinterface.sbem.archetype import Archetype
 from archetypal.errors import ReductionError
 from archetypal.reduction import thermostats
 from archetypal.reduction.airflow import AirflowHook
-from archetypal.reduction.classify import classify
 from archetypal.reduction.efficiency import efficiency_hook, fit_eir
 from archetypal.reduction.envelope import FILMS, EnvelopeHook, assembly_capacities, assembly_u_factor
 from archetypal.reduction.fans import effective_supply_delta, fans_hook, standard_air_density
 from archetypal.reduction.grouping import Group, group_zones
 from archetypal.reduction.hotwater import HotWaterHook
-from archetypal.reduction.inventory import build_inventory
 from archetypal.reduction.ledger import (
     AirflowTotals,
     EirSums,
@@ -38,7 +35,6 @@ from archetypal.reduction.ledger import (
 from archetypal.reduction.options import Layout
 from archetypal.reduction.report import RULE_IDS, check_parameters
 from archetypal.reduction.schedules import RunPeriodCalendar, ScheduleEvaluator, year_values
-from archetypal.reduction.sources import load_sources
 from archetypal.reduction.to_sbem import (
     BuildingFacts,
     Conversion,
@@ -64,10 +60,14 @@ from archetypal.reduction.to_sbem import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from archetypal.reduction.classify import ClassifiedZone
     from archetypal.reduction.features import NotRepresented
+    from archetypal.reduction.sources import SourceData
 
-MODELS = Path(__file__).resolve().parents[1] / "fixtures" / "models"
+    Detailed = Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]]
+
 CAL = RunPeriodCalendar(year=2023)
 HOURS = CAL.hours
 HOUR = np.arange(HOURS)
@@ -524,32 +524,24 @@ def test_validation_failure_raises_reduction_error_with_epinterfaces_message() -
 # --- storeys on the fixtures (R6, FR-024) ------------------------------------------------------------
 
 
-def _classified(model: str) -> tuple[ClassifiedZone, ...]:
-    sources = load_sources(MODELS / f"{model}.idf", MODELS / f"{model}.sql")
-    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    return classify(build_inventory(sources, evaluate), evaluate)
-
-
 @pytest.mark.parametrize(("model", "expected"), [("ten_zone_multipliers", 12), ("three_zone", 1)])
-def test_storeys_of_the_fixtures(model: str, expected: int) -> None:
-    zones = _classified(model)
+def test_storeys_of_the_fixtures(model: str, expected: int, detailed: Detailed) -> None:
+    zones = detailed(model)[1]
     ratio = storey_ratio(zones)
     assert storeys(ratio).value == expected
 
 
-def test_storey_ratio_counts_multiplied_typical_floors_like_drawn_ones() -> None:
-    assert storey_ratio(_classified("ten_zone_multipliers")) == pytest.approx(
-        storey_ratio(_classified("ten_zone_explicit")), rel=1e-3
+def test_storey_ratio_counts_multiplied_typical_floors_like_drawn_ones(detailed: Detailed) -> None:
+    assert storey_ratio(detailed("ten_zone_multipliers")[1]) == pytest.approx(
+        storey_ratio(detailed("ten_zone_explicit")[1]), rel=1e-3
     )
 
 
 # --- real ledgers -----------------------------------------------------------------------------------
 
 
-def _reduce_fixture(model: str, layout: Layout) -> Conversion:
-    sources = load_sources(MODELS / f"{model}.idf", MODELS / f"{model}.sql")
-    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    zones = classify(build_inventory(sources, evaluate), evaluate)
+def _reduce_fixture(model: str, layout: Layout, detailed: Detailed) -> Conversion:
+    sources, zones, evaluate = detailed(model)
     conditioned = [z for z in zones if z.role == "conditioned"]
     hot_water = HotWaterHook.from_sources(sources)
     hooks = [
@@ -571,8 +563,8 @@ def _reduce_fixture(model: str, layout: Layout) -> Conversion:
 
 
 @pytest.mark.parametrize("model", ["three_zone", "ten_zone_multipliers"])
-def test_fixture_reductions_validate_with_a_parameter_per_set_leaf(model: str) -> None:
-    conversion = _reduce_fixture(model, Layout.SPACE_USE_EXPOSURE)
+def test_fixture_reductions_validate_with_a_parameter_per_set_leaf(model: str, detailed: Detailed) -> None:
+    conversion = _reduce_fixture(model, Layout.SPACE_USE_EXPOSURE, detailed)
     archetype = conversion.archetype
     assert Archetype.from_json(archetype.to_json()) == archetype
     listed = {(p.group, p.path) for p in conversion.parameters}

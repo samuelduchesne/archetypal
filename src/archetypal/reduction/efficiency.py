@@ -25,10 +25,10 @@ module's own heat profile).
   as above, into `EnergyTotals.distribution_by_fuel`. Hours with neither go to
   `EnergyAttribution.unattributed_distribution`, and into the zones' `unattributed`, split
   between the modes by annual delivery.
-- **Fans are not folded** (FR-022, R19): their energy is the `fans` module's `FanTotals`. Before
-  UP-8, a conversion that must fold them into `DistributionCOP` adds `FanTotals.energy` itself.
-- **Only conditioned zones** take part. A return plenum reports a zone-air load (its
-  `Zone Air System` outputs), but it is excluded from the archetype, so it must not take a share.
+- **Fans are not folded** (FR-022, R19): their energy is the `fans` module's `FanTotals`, which
+  the SBEM conversion writes as `ConditioningSystems.SpecificFanPower` (UP-8).
+- **Only conditioned zones** take part. A return plenum or another unconditioned zone is
+  excluded from the archetype, so it must not take a share.
 - **Rated efficiency** (`rated_efficiencies`) comes from the tabular *Equipment Summary*: the
   zone's own zone-equipment coils (supplemental heaters excluded), else the plant serving the
   mode (boilers, chillers, water heaters), else every coil of the mode, each weighted by its

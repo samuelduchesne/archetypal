@@ -23,8 +23,11 @@ both SQLite result files.
   `AllSummary`.
 
 If the detailed model has pumps or heat rejection, its results also need their meters
-(`Pumps:<fuel>`, `HeatRejection:<fuel>`) and the per-zone `Zone Air System Sensible Heating
-Energy` and `Zone Air System Sensible Cooling Energy`, at the same frequency. Results written
+(`Pumps:<fuel>`, `HeatRejection:<fuel>`) and the energy its HVAC equipment delivered
+(`Zone Ideal Loads Supply Air Total Heating/Cooling Energy`, `Heating Coil Heating Energy`,
+`Cooling Coil Total Cooling Energy`, `Baseboard Total Heating Energy`, `Zone Radiant HVAC
+Heating/Cooling Energy`, for each object present), at the same frequency: pumps and heat
+rejection are split between heating and cooling as a reduction splits them. Results written
 for a reduction already have all of these.
 
 ## Compare the results

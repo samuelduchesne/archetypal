@@ -19,16 +19,16 @@ from archetypal.reduction.inventory import (
     ThermostatControl,
     ThermostatRecord,
     ZoneRecord,
-    build_inventory,
     surface_class,
 )
-from archetypal.reduction.schedules import ScheduleEvaluator
-from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from archetypal.reduction.classify import ClassifiedZone
     from archetypal.reduction.inventory import Boundary
-    from archetypal.reduction.schedules import Profile
+    from archetypal.reduction.schedules import Profile, ScheduleEvaluator
+    from archetypal.reduction.sources import SourceData
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "tests" / "fixtures" / "models"
@@ -262,10 +262,10 @@ def test_classification_does_not_depend_on_zone_order(zones: list[ZoneRecord]) -
 
 
 @pytest.fixture(scope="module")
-def ten() -> dict[str, ClassifiedZone]:
-    sources = load_sources(MODELS / "ten_zone_multipliers.idf", MODELS / "ten_zone_multipliers.sql")
-    evaluator = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    return {z.zone.name: z for z in classify(build_inventory(sources, evaluator), evaluator)}
+def ten(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> dict[str, ClassifiedZone]:
+    return {z.zone.name: z for z in detailed("ten_zone_multipliers")[1]}
 
 
 def test_ten_zone_roles(ten: dict[str, ClassifiedZone]) -> None:
@@ -298,10 +298,10 @@ def test_ten_zone_exposure_and_space_use(ten: dict[str, ClassifiedZone]) -> None
     assert {zone.space_use_source for zone in conditioned.values()} == {"signature"}
 
 
-def test_three_zone_space_types() -> None:
-    sources = load_sources(MODELS / "three_zone.idf", MODELS / "three_zone.sql")
-    evaluator = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    result = {z.zone.name: z for z in classify(build_inventory(sources, evaluator), evaluator)}
+def test_three_zone_space_types(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> None:
+    result = {z.zone.name: z for z in detailed("three_zone")[1]}
     assert {name: (z.space_use, z.space_use_source) for name, z in result.items()} == {
         "Core": ("Office", "space_type"),
         "North_Perimeter": ("Office", "space_type"),

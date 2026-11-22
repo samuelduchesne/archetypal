@@ -182,7 +182,15 @@ def test_fields_up9_does_not_add_stay_lost_naming_up9() -> None:
     for cls, key in UP9_NOT_ADDED:
         row = mapping(cls, key)
         assert row.status is MappingStatus.UPSTREAM, (cls, key)
-    assert mapping("ZoneConditioning", "HeatRecoveryEfficiencySensible").upstream == "UP-2"
+    assert not [row for row in CORRESPONDENCE if row.upstream == "UP-2"], "UP-2's fields are all mapped"
+
+
+def test_heat_recovery_effectiveness_maps_to_up2_fields() -> None:
+    """T071: UP-2's numeric effectiveness holds UMI's."""
+    for kind in ("Sensible", "Latent"):
+        row = mapping("ZoneConditioning", f"HeatRecoveryEfficiency{kind}")
+        assert row.status is MappingStatus.EXACT
+        assert row.sbem_paths == (f"Operations.HVAC.Ventilation.{kind}HeatRecoveryEffectiveness",)
 
 
 def test_fields_up9_adds_are_mapped() -> None:

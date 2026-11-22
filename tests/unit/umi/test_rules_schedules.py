@@ -136,18 +136,16 @@ def test_week_days_are_monday_first() -> None:
     assert not findings.losses
 
 
-class _WeekWithSpecialDays(WeekComponent):
-    """A week with UP-2's holiday and design-day slots (absent from the current SBEM model)."""
-
-    Holiday: DayComponent | None = None
-    SummerDesignDay: DayComponent | None = None
-    WinterDesignDay: DayComponent | None = None
+def test_reading_leaves_the_holiday_and_design_day_slots_unset() -> None:
+    sbem = week_to_sbem(NUMBERED_WEEK, **kw())
+    assert (sbem.Holiday, sbem.SummerDesignDay, sbem.WinterDesignDay) == (None, None, None)
 
 
 def test_special_days_that_differ_are_lost_on_writing() -> None:
+    """UP-2's slots: a holiday on Sunday's day or a design day on Monday's loses nothing."""
     base = week_to_sbem(NUMBERED_WEEK, **kw())
     peak = day_to_sbem(day("Peak", [1.0] * 24), **kw())
-    special = _WeekWithSpecialDays.model_validate({
+    special = WeekComponent.model_validate({
         **{name: getattr(base, name) for name in ("Name", *schedules.WEEKDAYS)},
         "Holiday": base.Sunday,
         "SummerDesignDay": peak,

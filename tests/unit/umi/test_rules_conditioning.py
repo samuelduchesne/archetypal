@@ -25,7 +25,7 @@ from archetypal.umi._format import (
     ZoneVentilation,
 )
 from archetypal.umi.correspondence import get_rule
-from archetypal.umi.report import LossKind, NoteKind
+from archetypal.umi.report import LossKind
 from archetypal.umi.rules import conditioning as module
 from archetypal.umi.rules._common import constant_year_schedule
 from archetypal.umi.rules.conditioning import (
@@ -433,13 +433,39 @@ def test_reading_uses_the_natural_ventilation_schedule() -> None:
     assert (parts.ventilation.Schedule.Name, parts.ventilation.DCV) == ("nat", "NoDCV")
 
 
-# --- upstream fields -----------------------------------------------------------------------------
+# --- heat-recovery effectiveness (UP-2), availability, outdoor-air schedule and limits (UP-9) -----
 
 
-def test_heat_recovery_effectiveness_is_lost_with_up2() -> None:
-    _, context = read(conditioning(HeatRecoveryEfficiencySensible=0.8))
+def test_heat_recovery_effectiveness_maps_to_up2_fields() -> None:
+    parts, context = read(conditioning(HeatRecoveryEfficiencySensible=0.8, HeatRecoveryEfficiencyLatent=0.5))
+    assert context.losses == []
+    ventilation = parts.ventilation
+    assert (ventilation.SensibleHeatRecoveryEffectiveness, ventilation.LatentHeatRecoveryEffectiveness) == (0.8, 0.5)
+
+
+def test_heat_recovery_effectiveness_outside_zero_to_one_is_lost() -> None:
+    parts, context = read(conditioning(HeatRecoveryEfficiencySensible=1.2))
     [loss] = context.losses
-    assert (loss.location, loss.value, loss.upstream) == (f"{POINTER}/HeatRecoveryEfficiencySensible", 0.8, "UP-2")
+    assert (loss.location, loss.value, loss.rule, loss.upstream) == (
+        f"{POINTER}/HeatRecoveryEfficiencySensible",
+        1.2,
+        "conditioning.heat_recovery_efficiency",
+        None,
+    )
+    assert parts.ventilation.SensibleHeatRecoveryEffectiveness is None
+    assert parts.ventilation.sensible_heat_recovery_effectiveness == 0.7
+
+
+def test_writing_gives_the_heat_recovery_effectiveness_sbem_uses() -> None:
+    use = hvac()
+    use = use.model_copy(
+        update={"Ventilation": use.Ventilation.model_copy(update={"SensibleHeatRecoveryEffectiveness": 0.85})}
+    )
+    context = writing()
+    written = conditioning_to_umi(use, thermostat(), schedule=write_schedule, context=context)
+    # SBEM's None latent effectiveness is its assumed constant, Basilisk's default too.
+    assert (written.heat_recovery_efficiency_sensible, written.heat_recovery_efficiency_latent) == (0.85, 0.65)
+    assert not [note for note in context.notes if note.rule == "conditioning.heat_recovery_efficiency"]
 
 
 def test_the_written_always_on_schedule_reads_as_none() -> None:
@@ -539,8 +565,6 @@ def test_writing_gives_always_on_schedules_and_defaults() -> None:
         assert year is not None
         assert year.name == ALWAYS_ON
     assert (written.max_heating_capacity, written.heat_recovery_efficiency_sensible) == (100.0, 0.7)
-    defaulted = {note.rule for note in context.notes if note.kind is NoteKind.DEFAULTED}
-    assert "conditioning.heat_recovery_efficiency" in defaulted
     always_on = {note.rule for note in context.notes if note.value == ALWAYS_ON}
     assert {"conditioning.availability", "conditioning.mech_vent_schedule"} <= always_on
     assert written.name == "C"

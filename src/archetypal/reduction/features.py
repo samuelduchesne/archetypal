@@ -4,8 +4,8 @@ FR-026 forbids silent drops: every feature of the detailed model the archetype c
 listed in the report's `not_represented[]`. This module holds
 
 - `NotRepresented`, one entry of that list. The report (`report.py`) gathers entries from
-  here and from the modules that fold a value into another parameter (fans before UP-8,
-  per-orientation windows, the infiltration schedule, heat-recovery effectiveness, holidays);
+  here and from the modules that fold a value into another parameter (per-orientation
+  windows, the infiltration schedule, heat-recovery effectiveness, holidays);
 - `UNSUPPORTED_FEATURES`, the explicit table of EnergyPlus object types whose effect SBEM
   cannot hold, each with what it does and the SBEM parameter its effect is folded into, or
   `None`;

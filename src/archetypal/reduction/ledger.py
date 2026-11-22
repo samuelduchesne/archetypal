@@ -531,8 +531,9 @@ class EnergyTotals(_Totals):
     Attributes:
         delivered: Σ delivered energy, J.
         consumed_by_fuel: Σ consumed energy of the primary meters per fuel, J.
-        distribution_by_fuel: Σ pump and heat-rejection energy folded into this mode (and fans
-            until UP-8, R19) per fuel, J.
+        distribution_by_fuel: Σ pump and heat-rejection energy folded into this mode per fuel, J.
+            Fans are not folded here: their energy is in `FanTotals` and is written as
+            `SpecificFanPower` (R19).
         unattributed: Consumption in hours without delivery (standby, pilot) per fuel, J.
         rated_weight: Σ weight of the rated efficiencies (for example rated capacity).
         rated_weighted: Σ weight · rated efficiency, from *Equipment Summary*.

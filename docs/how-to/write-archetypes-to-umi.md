@@ -59,7 +59,8 @@ other layouts to core and perimeter first. How it merges depends on what you giv
   detailed model directly to that layout gives. Pass the reduction itself, not its
   `archetype`.
 - **A bare archetype** is merged approximately, weighting its groups by their floor-area
-  shares. Densities, setpoints, outdoor air and hot water merge exactly with their schedules;
+  shares. Densities, setpoints, outdoor air and hot water merge exactly with their schedules,
+  by the same derivations as spec 002's reduction;
   the envelope, the window, infiltration and the efficiencies need surface areas or energies
   the archetype does not hold, so they are floor-area weighted and reported as `approximate`
   wherever the groups differ.
@@ -68,8 +69,7 @@ other layouts to core and perimeter first. How it merges depends on what you giv
 
 An archetype with more than two groups and unset floor-area shares cannot be weighted.
 `write_umi` refuses it with `InputError`, naming the archetype: set its shares, or write its
-reduction instead. Until spec 002's `merge` exists, a reduction with finer groups is merged
-approximately, as a bare archetype.
+reduction instead.
 
 ## Read the loss report
 

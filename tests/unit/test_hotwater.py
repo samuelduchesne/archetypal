@@ -12,7 +12,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from archetypal.reduction.classify import ClassifiedZone, classify
+from archetypal.reduction.classify import ClassifiedZone
 from archetypal.reduction.hotwater import (
     MAINS_VARIABLE,
     HotWaterHook,
@@ -21,13 +21,13 @@ from archetypal.reduction.hotwater import (
     ledger_fields,
     supply_temperature,
 )
-from archetypal.reduction.inventory import HotWaterRecord, ZoneRecord, build_inventory
+from archetypal.reduction.inventory import HotWaterRecord, ZoneRecord
 from archetypal.reduction.ledger import GroupLedger
-from archetypal.reduction.schedules import ScheduleEvaluator
-from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
-    from archetypal.reduction.schedules import Profile
+    from collections.abc import Callable
+
+    from archetypal.reduction.schedules import Profile, ScheduleEvaluator
     from archetypal.reduction.sources import SourceData
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -132,17 +132,25 @@ def test_group_volume_and_heat_are_conserved(members: list[tuple[float, int, boo
 
 
 @pytest.fixture(scope="module")
-def ten_sources() -> SourceData:
-    return load_sources(MODELS / "ten_zone_multipliers.idf", MODELS / "ten_zone_multipliers.sql")
+def ten_detailed(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
+    return detailed("ten_zone_multipliers")
+
+
+@pytest.fixture(scope="module")
+def ten_sources(ten_detailed: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]) -> SourceData:
+    return ten_detailed[0]
 
 
 def _raw(sources: SourceData, variable: str, key: str) -> Profile:
     return np.asarray(sources.results.get_timeseries(variable, key, frequency="Hourly").values, dtype=np.float64)
 
 
-def test_fixture_conserves_volume_and_heat(ten_sources: SourceData) -> None:
-    evaluator = ScheduleEvaluator(ten_sources.model, ten_sources.run_period.calendar)
-    zones = classify(build_inventory(ten_sources, evaluator), evaluator)
+def test_fixture_conserves_volume_and_heat(
+    ten_detailed: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator],
+) -> None:
+    ten_sources, zones, evaluator = ten_detailed
     hook = HotWaterHook.from_sources(ten_sources)
     mains = _raw(ten_sources, MAINS_VARIABLE, "Environment")
     np.testing.assert_allclose(hook.mains, mains)

@@ -26,8 +26,10 @@ Spec 003, research R9 and R10.
   ideal-loads limit types and the flows and capacities per floor area map exactly; SBEM's
   autosized (`None`) flow or capacity has no UMI value, so writing drops it from the limit type
   (lost) and gives Basilisk's default value.
-- **Upstream** (`conditioning.heat_recovery_efficiency`, UP-2). Reading reports effectiveness
-  that differs from Basilisk's defaults as lost; writing gives the defaults (noted).
+- **Heat-recovery effectiveness** (`conditioning.heat_recovery_efficiency`, UP-2). Sensible and
+  latent effectiveness map exactly to SBEM's numeric fields; a value outside [0, 1] is lost and
+  SBEM's assumed constant kept. Writing gives the value SBEM uses: its `None` is the assumed
+  constant (0.70 sensible, 0.65 latent, Basilisk's defaults too).
 
 `ventilation_to_sbem` assembles SBEM's `VentilationComponent` from the conditioning and the
 ventilation settings; `conditioning_to_sbem` and `conditioning_to_umi` translate a whole
@@ -60,8 +62,6 @@ from archetypal.umi.rules._common import (
     json_value,
     optional_schedule_to_sbem,
     optional_schedule_to_umi,
-    report_upstream,
-    upstream_defaults,
 )
 from archetypal.umi.rules.ventilation import (
     natural_limits_to_sbem,
@@ -589,24 +589,56 @@ def ventilation_to_sbem(
         "HRV": heat_recovery,
         "Economizer": economizer,
         "DCV": "NoDCV",
+        **heat_recovery_efficiency_to_sbem(conditioning, context=context),
         **natural_limits_to_sbem(ventilation, context=ventilation_context),
         **scheduled_to_sbem(ventilation, schedule=schedule, context=ventilation_context),
     })
 
 
-# --- Effectiveness (UP-2, upstream), availability, outdoor-air schedule and limits (UP-9) -----------
+# --- Effectiveness (UP-2), availability, outdoor-air schedule and limits (UP-9) -----------
+
+
+_EFFECTIVENESS: tuple[tuple[str, str, str], ...] = (
+    ("heat_recovery_efficiency_sensible", "SensibleHeatRecoveryEffectiveness", "sensible_heat_recovery_effectiveness"),
+    ("heat_recovery_efficiency_latent", "LatentHeatRecoveryEffectiveness", "latent_heat_recovery_effectiveness"),
+)
+"""UMI field, SBEM field and SBEM property (the value used) of each heat-recovery effectiveness."""
 
 
 @rule("conditioning.heat_recovery_efficiency", to="sbem")
-def heat_recovery_efficiency_to_sbem(conditioning: ZoneConditioning, *, context: RuleContext) -> None:
-    """Report heat-recovery effectiveness that differs from Basilisk's default as lost (UP-2)."""
-    report_upstream(conditioning, "conditioning.heat_recovery_efficiency", context)
+def heat_recovery_efficiency_to_sbem(conditioning: ZoneConditioning, *, context: RuleContext) -> dict[str, float]:
+    """Return UMI's heat-recovery effectiveness as SBEM's (UP-2); a value outside [0, 1] is lost.
+
+    Args:
+        conditioning: The UMI conditioning.
+        context: Its reading context; a lost value keeps SBEM's assumed constant.
+
+    Returns:
+        SBEM's `SensibleHeatRecoveryEffectiveness` and `LatentHeatRecoveryEffectiveness` that
+        are in range, by name.
+    """
+    fields: dict[str, float] = {}
+    for name, key, _ in _EFFECTIVENESS:
+        value: float = getattr(conditioning, name)
+        if 0 <= value <= 1:
+            fields[key] = value
+        else:
+            context.lose(
+                _key(name),
+                value,
+                rule="conditioning.heat_recovery_efficiency",
+                reason="SBEM accepts an effectiveness of 0 to 1; its assumed constant is kept",
+            )
+    return fields
 
 
 @rule("conditioning.heat_recovery_efficiency", to="umi")
-def heat_recovery_efficiency_to_umi(*, context: RuleContext) -> dict[str, object]:
-    """Return Basilisk's default heat-recovery effectiveness, noting it."""
-    return upstream_defaults(ZoneConditioning, "conditioning.heat_recovery_efficiency", context)
+def heat_recovery_efficiency_to_umi(ventilation: VentilationComponent) -> dict[str, float]:
+    """Return SBEM's heat-recovery effectiveness as UMI's (UP-2): the value SBEM uses.
+
+    SBEM's `None` is its assumed constant, which is written.
+    """
+    return {name: getattr(ventilation, used) for name, _, used in _EFFECTIVENESS}
 
 
 _AVAILABILITY = (
@@ -841,15 +873,13 @@ def conditioning_to_sbem(
             **limits_to_sbem(conditioning, context=context),
         }
     )
-    parts = ConditioningParts(
+    return ConditioningParts(
         thermostat_to_sbem(conditioning, context=context),
         ConditioningSystemsComponent.model_validate(systems.model_dump()),
         ventilation_to_sbem(
             conditioning, ventilation, schedule=schedule, context=context, ventilation_context=ventilation_context
         ),
     )
-    heat_recovery_efficiency_to_sbem(conditioning, context=context)
-    return parts
 
 
 def conditioning_to_umi(
@@ -875,7 +905,7 @@ def conditioning_to_umi(
         **fresh_air_to_umi(hvac.Ventilation, context=ventilation),
         "economizer_type": economizer_to_umi(hvac.Ventilation.Economizer),
         "heat_recovery_type": heat_recovery_to_umi(hvac.Ventilation.HRV),
-        **heat_recovery_efficiency_to_umi(context=ventilation),
+        **heat_recovery_efficiency_to_umi(hvac.Ventilation),
         **availability_to_umi(hvac.ConditioningSystems, schedule=schedule, context=here.child("ConditioningSystems")),
         **mech_vent_schedule_to_umi(hvac.Ventilation, schedule=schedule, context=ventilation),
         **limits_to_umi(hvac.ConditioningSystems, context=here.child("ConditioningSystems")),

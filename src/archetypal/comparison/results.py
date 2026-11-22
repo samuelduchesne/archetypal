@@ -8,10 +8,13 @@ For each run this module reads:
 - **peak heating and cooling demand**: the maximum, over the run period, of the summed
   `Heating:<fuel>` (and `Cooling:<fuel>`) end-use meters at the run's meter reporting
   frequency, divided by the length of a reporting interval (W);
-- **the split of pumps and heat rejection** between heating and cooling: each interval's
-  energy is shared in proportion to the energy delivered to the zones in each mode
-  (`Zone Air System Sensible Heating/Cooling Energy`, times the zone multipliers), as
-  research R12 does for reduction. Intervals with no delivery are not attributed;
+- **the split of pumps and heat rejection** between heating and cooling, as research R12
+  does for reduction (`archetypal.reduction.efficiency`): each interval's energy is shared in
+  proportion to the energy the HVAC equipment delivered in each mode, over the whole building
+  (the outputs of `requirements.delivery_outputs`: ideal loads, coils, baseboards and
+  low-temperature radiant systems, which EnergyPlus reports for every copy of a multiplied
+  zone). Energy in intervals with no delivery is shared by the run's total delivery in each
+  mode, and all of it to heating when nothing was delivered;
 - **the conditions comparability depends on** (FR-028): the weather file named in the
   *Input Verification and Results Summary*, with its location; the run period, from the
   meters' first and last intervals; the tabular energy unit; the timesteps per hour (the
@@ -58,7 +61,6 @@ DISTRIBUTION_END_USES = ("Pumps", "Heat Rejection")
 
 _MODE_METERS = {"Heating": "Heating", "Cooling": "Cooling", "Pumps": "Pumps", "Heat Rejection": "HeatRejection"}
 _NOT_FUELS = frozenset({"EnergyTransfer", "Water"})
-_DELIVERED = {mode: f"Zone Air System Sensible {mode} Energy" for mode in ("Heating", "Cooling")}
 
 # Meter reporting frequencies as the SQLite file names them, finest first.
 _FREQUENCIES = ("HVAC System Timestep", "Zone Timestep", "Hourly", "Daily", "Monthly", "Run Period", "Annual")
@@ -342,54 +344,62 @@ class _Reader:
         return to_heating, to_cooling
 
     def _split(self, meters: list[VariableInfo], use: str) -> tuple[float, float] | None:
+        delivered_names = _delivery_variables()
         variables = self.sql.list_variables()
         for frequency in sorted({v.frequency for v in meters}, key=_FREQUENCIES.index):
             delivered = {
-                mode: [v for v in variables if v.name == name and v.frequency == frequency]
-                for mode, name in _DELIVERED.items()
+                mode: [v for v in variables if v.name in names and v.frequency == frequency and not v.is_meter]
+                for mode, names in delivered_names.items()
             }
             if not delivered["Heating"] and not delivered["Cooling"]:
                 continue
             return self._shares([v for v in meters if v.frequency == frequency], delivered)
         self.problems.append(
-            f"missing: {self.label} report {use} energy but not, at a common frequency, the "
-            f"{use} meters and {_DELIVERED['Heating']} and {_DELIVERED['Cooling']} for every zone; "
+            f"missing: {self.label} report {use} energy but not, at a common frequency, the {use} meters "
+            "and the energy delivered by the HVAC equipment "
+            f"({', '.join(sorted({n for names in delivered_names.values() for n in names}))}); "
             "they split it between heating and cooling"
         )
         return None
 
     def _shares(self, meters: list[VariableInfo], delivered: dict[str, list[VariableInfo]]) -> tuple[float, float]:
-        from archetypal.reduction._sql_tables import SQLTableError, read_zones  # noqa: PLC0415
-
-        try:
-            zones = read_zones(self.sql)
-        except SQLTableError as error:
-            self.problems.append(f"missing: {self.label}: {error}")
-            return 0.0, 0.0
-        multipliers = {zone.name.upper(): float(zone.multiplier * zone.list_multiplier) for zone in zones}
         heating_vars, cooling_vars = delivered["Heating"], delivered["Cooling"]
         series = self.sql.get_timeseries_many([*meters, *heating_vars, *cooling_vars])
         energy = _summed(series[: len(meters)])
-        mode_series = {
-            "Heating": series[len(meters) : len(meters) + len(heating_vars)],
-            "Cooling": series[len(meters) + len(heating_vars) :],
-        }
-        mode_delivered = {
-            mode: [
-                sum(multipliers.get(s.key_value.upper(), 1.0) * s.values[i] for s in found) for i in range(len(energy))
-            ]
-            for mode, found in mode_series.items()
-        }
+        # Equipment outputs already cover every copy of a multiplied zone: no multiplier here.
+        heat = _summed(series[len(meters) : len(meters) + len(heating_vars)]) or [0.0] * len(energy)
+        cool = _summed(series[len(meters) + len(heating_vars) :]) or [0.0] * len(energy)
         total = sum(energy)
         if total == 0:
             return 0.0, 0.0
-        heating = cooling = 0.0
-        for i, value in enumerate(energy):
-            both = mode_delivered["Heating"][i] + mode_delivered["Cooling"][i]
+        heating = cooling = idle = 0.0
+        for value, h, c in zip(energy, heat, cool, strict=True):
+            both = h + c
             if both > 0:
-                heating += value * mode_delivered["Heating"][i] / both
-                cooling += value * mode_delivered["Cooling"][i] / both
+                heating += value * h / both
+                cooling += value * c / both
+            else:
+                idle += value
+        annual_heat, annual_cool = sum(heat), sum(cool)
+        heating_part = annual_heat / (annual_heat + annual_cool) if annual_heat + annual_cool > 0 else 1.0
+        heating += idle * heating_part
+        cooling += idle * (1.0 - heating_part)
         return heating / total, cooling / total
+
+
+def _delivery_variables() -> dict[str, tuple[str, ...]]:
+    """The outputs of energy delivered by HVAC equipment, by mode (research R12)."""
+    from archetypal.reduction import requirements as r  # noqa: PLC0415 - see the module docstring
+
+    return {
+        "Heating": (
+            r.IDEAL_HEATING_VARIABLE,
+            r.HEATING_COIL_VARIABLE,
+            r.BASEBOARD_VARIABLE,
+            r.RADIANT_HEATING_VARIABLE,
+        ),
+        "Cooling": (r.IDEAL_COOLING_VARIABLE, r.COOLING_COIL_VARIABLE, r.RADIANT_COOLING_VARIABLE),
+    }
 
 
 def read_run(sql: SQLResult, label: str) -> RunResults:

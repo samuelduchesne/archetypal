@@ -30,6 +30,9 @@ from archetypal.reduction.schedules import ScheduleEvaluator
 from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from archetypal.reduction.classify import ClassifiedZone
     from archetypal.reduction.inventory import ZoneRecord
     from archetypal.reduction.sources import SourceData
 
@@ -38,23 +41,33 @@ MODELS = ROOT / "tests" / "fixtures" / "models"
 
 
 @pytest.fixture(scope="module")
-def three_sources() -> SourceData:
-    return load_sources(MODELS / "three_zone.idf", MODELS / "three_zone.sql")
+def three_sources(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> SourceData:
+    return detailed("three_zone")[0]
 
 
 @pytest.fixture(scope="module")
-def three(three_sources: SourceData) -> dict[str, ZoneRecord]:
-    return {zone.name: zone for zone in build_inventory(three_sources)}
+def three(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> dict[str, ZoneRecord]:
+    """The inventory of the session's cached classification (the same records `build_inventory` built)."""
+    return {zone.zone.name: zone.zone for zone in detailed("three_zone")[1]}
 
 
 @pytest.fixture(scope="module")
-def ten_sources() -> SourceData:
-    return load_sources(MODELS / "ten_zone_multipliers.idf", MODELS / "ten_zone_multipliers.sql")
+def ten_sources(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> SourceData:
+    return detailed("ten_zone_multipliers")[0]
 
 
 @pytest.fixture(scope="module")
-def ten(ten_sources: SourceData) -> dict[str, ZoneRecord]:
-    return {zone.name: zone for zone in build_inventory(ten_sources)}
+def ten(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> dict[str, ZoneRecord]:
+    """The inventory of the session's cached classification (the same records `build_inventory` built)."""
+    return {zone.zone.name: zone.zone for zone in detailed("ten_zone_multipliers")[1]}
 
 
 def _raw_series(sources: SourceData, variable: str, key: str) -> np.ndarray:

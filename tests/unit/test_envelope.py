@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import pytest
 
-from archetypal.reduction.classify import ClassifiedZone, classify
+from archetypal.reduction.classify import ClassifiedZone
 from archetypal.reduction.envelope import (
     ASSEMBLY_TYPES,
     FILMS,
@@ -24,15 +24,17 @@ from archetypal.reduction.envelope import (
     orientation,
     window_construction,
 )
-from archetypal.reduction.inventory import LayerRecord, SurfaceRecord, ZoneRecord, build_inventory, surface_class
+from archetypal.reduction.inventory import LayerRecord, SurfaceRecord, ZoneRecord, surface_class
 from archetypal.reduction.ledger import EnvelopeTotals, GroupLedger
-from archetypal.reduction.schedules import ScheduleEvaluator
-from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from archetypal.reduction.classify import Role
     from archetypal.reduction.inventory import Boundary
     from archetypal.reduction.ledger import EnvelopeClass
+    from archetypal.reduction.schedules import ScheduleEvaluator
+    from archetypal.reduction.sources import SourceData
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "tests" / "fixtures" / "models"
@@ -470,10 +472,10 @@ def test_module_hook_matches_envelope_hook_without_excluded_zones() -> None:
 
 
 @pytest.fixture(scope="module")
-def ten_classified() -> list[ClassifiedZone]:
-    sources = load_sources(MODELS / "ten_zone_multipliers.idf", MODELS / "ten_zone_multipliers.sql")
-    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar, base_path=MODELS)
-    return list(classify(build_inventory(sources, evaluate), evaluate))
+def ten_classified(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> list[ClassifiedZone]:
+    return list(detailed("ten_zone_multipliers")[1])
 
 
 def test_fixture_conserves_exterior_envelope_of_conditioned_plenums_and_attic(

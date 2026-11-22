@@ -250,8 +250,8 @@ def _meter(item: str, expected: Callable[[ModelFacts], tuple[str, ...]]) -> Resu
     return ResultRequirement(item, "meter", "—", "Hourly", "consumed energy (FR-022), peaks (FR-027)", expected)
 
 
-_DELIVERED = "energy delivered by HVAC equipment (FR-022)"
-_SUPPLY = "supply-air temperature limits (FR-022a), hourly mode of pumps in the comparison (R13)"
+_DELIVERED = "energy delivered by HVAC equipment (FR-022), hourly mode of pumps in the comparison (R13)"
+_SUPPLY = "supply-air temperature limits (FR-022a)"
 
 RESULTS_REQUIREMENTS: tuple[ResultRequirement, ...] = (
     _variable("Zone Air System Sensible Heating Energy", "every zone", _SUPPLY, _zones),

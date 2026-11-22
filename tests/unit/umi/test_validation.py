@@ -337,3 +337,12 @@ def test_a_component_shared_by_two_templates_names_both() -> None:
         "Office",
         "Office 2",
     }
+
+
+def test_a_gas_energyplus_lacks_is_a_window_layers_problem() -> None:
+    document = cast("Json", json.loads((UMI / "BostonTemplateLibrary_2.json").read_text(encoding="utf-8")))
+    gas = items(document, "GasMaterials")[0]
+    gas["Type"] = gas["Name"] = "SMOKE"
+    problems = [problem for problem in problems_of(document) if problem.pointer == "/GasMaterials/0/Type"]
+    assert problems
+    assert {problem.rule for problem in problems} == {"window.layers"}

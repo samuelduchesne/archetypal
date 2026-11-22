@@ -85,23 +85,20 @@ boundary splits is evaluated hour by hour and projected to one representative we
 the mean of that weekday's days in the month. The projection conserves the month's sum over the
 reference year, which is what drives annual energy use, but not the hour-by-hour profile, so the
 month is reported as approximate. Writing turns equal consecutive months into one part. SBEM's
-holiday and design-day slots have no UMI counterpart; those that differ from the day they replace
-are reported.
+holiday and design-day slots have no UMI counterpart: UMI uses Sunday's day on holidays and
+Monday's on design days, so writing reports only the slots that differ from those days.
 
 ## What still waits for an upstream release
 
-The SBEM fork that archetypal uses (UP-9) added the fields that once had no place in SBEM:
-layered glazing, window settings, partitions, natural and scheduled ventilation, the mechanical
+The SBEM fork that archetypal uses added the fields that once had no place in SBEM: layered
+glazing, window settings, partitions, natural and scheduled ventilation, the mechanical
 ventilation schedule, ideal-loads limits, availability schedules, daylighting, adiabatic
-surfaces, and the life-cycle and descriptive fields. A library read from UMI therefore writes
-back with almost no losses. Two groups remain:
-
-- the airflow-network, zone-mixing and interior-window settings of UMI's window settings
-  (`Afn*`, `ZoneMixing*`, `IsVirtualPartition`, `Type`) and the ventilation's `Afn` switch,
-  which UP-9 does not add. Reading reports each one that differs from Basilisk's default, with
-  `"upstream": "UP-9"`;
-- the numeric heat-recovery effectiveness (`HeatRecoveryEfficiencySensible` and `…Latent`),
-  which waits for UP-2.
+surfaces, and the life-cycle and descriptive fields (UP-9), and the numeric heat-recovery
+effectiveness (UP-2). A library read from UMI therefore writes back with almost no losses. One
+group remains: the airflow-network, zone-mixing and interior-window settings of UMI's window
+settings (`Afn*`, `ZoneMixing*`, `IsVirtualPartition`, `Type`) and the ventilation's `Afn`
+switch, which UP-9 does not add. Reading reports each one that differs from Basilisk's default,
+with `"upstream": "UP-9"`.
 
 SBEM in turn holds fields that UMI has no place for, such as building geometry, attic and
 basement assumptions, a temperature-dependent COP, supply-air temperature limits and fan power.

@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from archetypal.reduction.classify import classify
 from archetypal.reduction.efficiency import (
     BuildingEnergy,
+    EnergyAttribution,
     attribute_energy,
     building_energy,
     efficiency_hook,
@@ -18,14 +18,14 @@ from archetypal.reduction.efficiency import (
     ledger_fields,
     rated_efficiencies,
 )
-from archetypal.reduction.inventory import build_inventory
 from archetypal.reduction.ledger import EirSums, GroupLedger
-from archetypal.reduction.schedules import ScheduleEvaluator
-from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from archetypal.reduction.classify import ClassifiedZone
     from archetypal.reduction.ledger import Mode
+    from archetypal.reduction.schedules import ScheduleEvaluator
     from archetypal.reduction.sources import SourceData
 
 MODELS = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "models"
@@ -214,11 +214,17 @@ def test_fit_without_delivery_is_refused() -> None:
 
 
 @pytest.fixture(scope="module")
-def ten() -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
-    sources = load_sources(MODELS / "ten_zone_multipliers.idf", MODELS / "ten_zone_multipliers.sql")
-    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    zones = classify(build_inventory(sources, evaluate), evaluate)
-    return sources, zones, evaluate
+def ten(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
+    return detailed("ten_zone_multipliers")
+
+
+@pytest.fixture(scope="module")
+def ten_hook(ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]) -> EnergyAttribution:
+    """The attribution of `ten`, computed once for the tests that only read it."""
+    sources, zones, evaluate = ten
+    return efficiency_hook(sources, zones, evaluate)
 
 
 def _meter(sources: SourceData, name: str) -> float:
@@ -227,10 +233,10 @@ def _meter(sources: SourceData, name: str) -> float:
 
 
 def test_fixture_meters_are_conserved_over_conditioned_zones(
-    ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator],
+    ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator], ten_hook: EnergyAttribution
 ) -> None:
     sources, zones, evaluate = ten
-    hook = efficiency_hook(sources, zones, evaluate)
+    hook = ten_hook
     ledgers = [GroupLedger.from_zone(z, evaluate, hooks=[hook]) for z in zones if z.conditioned]
     total = sum(ledgers, GroupLedger())
     checks: tuple[tuple[Mode, str, str], ...] = (
@@ -278,12 +284,8 @@ def test_fixture_rated_efficiencies_from_equipment_summary(
     assert rated["G_Perimeter"]["hot_water"] == pytest.approx(0.8)
 
 
-def test_fixture_boiler_heating_has_a_small_slope_and_delivered_over_consumed(
-    ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator],
-) -> None:
-    sources, zones, evaluate = ten
-    hook = efficiency_hook(sources, zones, evaluate)
-    energy = hook.zones["Typical_Perimeter"]["heating"]
+def test_fixture_boiler_heating_has_a_small_slope_and_delivered_over_consumed(ten_hook: EnergyAttribution) -> None:
+    energy = ten_hook.zones["Typical_Perimeter"]["heating"]
     a, _, _ = fit_eir(energy.eir_sums)
     assert a == pytest.approx(sum(energy.consumed_by_fuel.values()) / energy.delivered, rel=1e-9)
 
@@ -300,11 +302,12 @@ def test_fixture_boiler_heating_has_a_small_slope_and_delivered_over_consumed(
     ],
 )
 def test_fixture_delivered_over_consumed_is_physically_plausible(
-    name: str, heating: tuple[float, float], cooling: tuple[float, float]
+    name: str,
+    heating: tuple[float, float],
+    cooling: tuple[float, float],
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
 ) -> None:
-    sources = load_sources(MODELS / f"{name}.idf", MODELS / f"{name}.sql")
-    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    zones = classify(build_inventory(sources, evaluate), evaluate)
+    sources, zones, evaluate = detailed(name)
     hook = efficiency_hook(sources, zones, evaluate)
     total = sum((GroupLedger.from_zone(z, evaluate, hooks=[hook]) for z in zones if z.conditioned), GroupLedger())
     bounds: tuple[tuple[Mode, tuple[float, float]], ...] = (("heating", heating), ("cooling", cooling))

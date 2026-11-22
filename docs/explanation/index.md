@@ -12,3 +12,5 @@ Discussion of why archetypal is built the way it is.
   are grouped, and what SBEM cannot hold.
 - [About UMI translation](umi-translation.md): what reading and writing UMI template libraries
   lose, and why: two zones, one window, constant setpoints, schedules by month.
+- [About the reference evidence](reference-evidence.md): how reduction is checked against 49 public
+  buildings, success criterion by success criterion, and where the results stand.

@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from archetypal.reduction.classify import classify
 from archetypal.reduction.fans import (
     AIR_SPECIFIC_HEAT,
     BuildingFans,
@@ -21,13 +20,13 @@ from archetypal.reduction.fans import (
     specific_fan_power,
     standard_air_density,
 )
-from archetypal.reduction.inventory import build_inventory
 from archetypal.reduction.ledger import FanTotals, GroupLedger
-from archetypal.reduction.schedules import ScheduleEvaluator
-from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from archetypal.reduction.classify import ClassifiedZone
+    from archetypal.reduction.schedules import ScheduleEvaluator
     from archetypal.reduction.sources import SourceData
 
 MODELS = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "models"
@@ -134,20 +133,18 @@ def test_the_module_hook_needs_building_data() -> None:
 # --- fixtures -------------------------------------------------------------------------------------
 
 
-def _load(model: str) -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
-    sources = load_sources(MODELS / f"{model}.idf", MODELS / f"{model}.sql")
-    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    return sources, classify(build_inventory(sources, evaluate), evaluate), evaluate
+@pytest.fixture(scope="module")
+def ten(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
+    return detailed("ten_zone_multipliers")
 
 
 @pytest.fixture(scope="module")
-def ten() -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
-    return _load("ten_zone_multipliers")
-
-
-@pytest.fixture(scope="module")
-def three() -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
-    return _load("three_zone")
+def three(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
+    return detailed("three_zone")
 
 
 def _series(sources: SourceData, name: str, key: str) -> np.ndarray:
@@ -203,8 +200,10 @@ def test_fixture_zone_equipment_fans_three_zone(
     assert hook.unattributed_fans == ()
 
 
-def test_fixture_without_fans_bar_building() -> None:
-    sources, zones, _ = _load("bar_building")
+def test_fixture_without_fans_bar_building(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> None:
+    sources, zones, _ = detailed("bar_building")
     hook = fans_hook(sources, zones)
     assert all(totals == FanTotals() for totals in hook.zones.values())
     assert hook.unattributed_fans == ()

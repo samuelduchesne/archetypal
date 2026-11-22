@@ -22,14 +22,14 @@ from archetypal.reduction.airflow import (
     outdoor_air_controls,
     outdoor_air_totals,
 )
-from archetypal.reduction.classify import ClassifiedZone, classify
-from archetypal.reduction.inventory import AirflowRecord, GainRecord, ZoneRecord, build_inventory
+from archetypal.reduction.classify import ClassifiedZone
+from archetypal.reduction.inventory import AirflowRecord, GainRecord, ZoneRecord
 from archetypal.reduction.ledger import GroupLedger
-from archetypal.reduction.schedules import ScheduleEvaluator
-from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
-    from archetypal.reduction.schedules import Profile
+    from collections.abc import Callable
+
+    from archetypal.reduction.schedules import Profile, ScheduleEvaluator
     from archetypal.reduction.sources import SourceData
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -221,8 +221,15 @@ def test_default_hook_without_a_model_attributes_no_heat_recovery() -> None:
 
 
 @pytest.fixture(scope="module")
-def ten_sources() -> SourceData:
-    return load_sources(MODELS / "ten_zone_multipliers.idf", MODELS / "ten_zone_multipliers.sql")
+def ten_detailed(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]:
+    return detailed("ten_zone_multipliers")
+
+
+@pytest.fixture(scope="module")
+def ten_sources(ten_detailed: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]) -> SourceData:
+    return ten_detailed[0]
 
 
 def test_air_loop_heat_recovery_and_economiser_reach_the_zones_it_serves(ten_sources: SourceData) -> None:
@@ -239,10 +246,11 @@ def test_air_loop_heat_recovery_and_economiser_reach_the_zones_it_serves(ten_sou
         assert controls.get(zone, NO_CONTROL) == NO_CONTROL
 
 
-def test_fixture_outdoor_air_is_conserved(ten_sources: SourceData) -> None:
-    evaluator = ScheduleEvaluator(ten_sources.model, ten_sources.run_period.calendar)
+def test_fixture_outdoor_air_is_conserved(
+    ten_detailed: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator],
+) -> None:
+    ten_sources, zones, evaluator = ten_detailed
     hook = AirflowHook.from_model(ten_sources.model)
-    zones = classify(build_inventory(ten_sources, evaluator), evaluator)
     ledgers = [GroupLedger.from_zone(zone, evaluator, hooks=[hook]) for zone in zones]
     total = sum(ledgers)
     assert isinstance(total, GroupLedger)

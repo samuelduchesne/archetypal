@@ -109,8 +109,8 @@ Read the model itself (through idfkit's typed accessors, R18) only for what the 
 | Output | Frequency | Used by |
 |---|---|---|
 | Tabular `AllSummary` (Envelope Summary, Annual Building Utility Performance, Input Verification) | — | R1, FR-027 |
-| `Zone Air System Sensible Heating Energy`, `Zone Air System Sensible Cooling Energy` (per zone) | Hourly | FR-022a zone-air sensible load for the supply temperature limits (R19); R13's hourly mode split |
-| Energy delivered by HVAC equipment: `Zone Ideal Loads Supply Air Total Heating/Cooling Energy`, `Heating Coil Heating Energy`, `Cooling Coil Total Cooling Energy`, `Baseboard Total Heating Energy`, `Zone Radiant HVAC Heating/Cooling Energy` (per object present) | Hourly | FR-022 delivered energy, hour by hour for R12's attribution and temperature dependence |
+| `Zone Air System Sensible Heating Energy`, `Zone Air System Sensible Cooling Energy` (per zone) | Hourly | FR-022a zone-air sensible load for the supply temperature limits (R19) |
+| Energy delivered by HVAC equipment: `Zone Ideal Loads Supply Air Total Heating/Cooling Energy`, `Heating Coil Heating Energy`, `Cooling Coil Total Cooling Energy`, `Baseboard Total Heating Energy`, `Zone Radiant HVAC Heating/Cooling Energy` (per object present) | Hourly | FR-022 delivered energy, hour by hour for R12's attribution and temperature dependence; R13's hourly mode split |
 | `Fan Electricity Energy` and `Fan Air Mass Flow Rate` (per fan) | Hourly | FR-022a fan energy and air volume (R19) |
 | `System Node Mass Flow Rate` (each zone's air inlet nodes) | Hourly | FR-022a: attributing an air loop's fans to the zones it serves (R19) |
 | `Site Outdoor Air Drybulb Temperature` | Hourly | FR-022 temperature dependence (R12) |
@@ -520,7 +520,11 @@ itself.
 - **End uses.** Compare from each run's SQLite file: the tabular *Annual Building Utility
   Performance Summary* End Uses table, by fuel. For the archetype, fans come from epinterface's
   fan end use (R19). On the detailed side, pumps and heat rejection are added to heating and
-  cooling, split by each hour's delivered modes as in R12, before comparing (SC-002).
+  cooling before comparing (SC-002), split exactly as R12 splits them: each hour by the
+  building-wide energy the HVAC equipment delivered in each mode (the equipment outputs above,
+  which cover every copy of a multiplied zone), and hours with no delivery by the run's total
+  delivery in each mode. Only the results file is read, so the split sums every equipment
+  output it holds.
 - **Peak demand.** Peak heating and cooling demand is the maximum, over the run period, of the
   summed heating (and cooling) end-use meters at the common reporting frequency.
 - **Refusal.** Refuse when any of these differ:

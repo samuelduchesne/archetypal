@@ -513,7 +513,7 @@ I). T068 and T069 are independent; T070 follows T068 field by field.
   the matching `src/archetypal/umi/rules/` module (for layered glazing, both directions
   exact), remove its losses, update its rule test, and remove its `xfail` in
   `tests/unit/umi/test_round_trip.py`.
-- [ ] T071 After 002's T086 releases UP-2's numeric heat-recovery effectiveness and holiday
+- [X] T071 After 002's T086 releases UP-2's numeric heat-recovery effectiveness and holiday
   and design-day slots: map `HeatRecoveryEfficiencySensible` and `…Latent` in
   `src/archetypal/umi/rules/conditioning.py`, write holiday and design-day slots' losses only
   when they differ, and update the rows and tests.

@@ -721,7 +721,9 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         _DAYS,
         "schedule.week",
         E,
-        "The seven days, Monday first.",
+        "The seven days, Monday first. UMI weeks have no holiday or design-day slots: reading leaves "
+        "SBEM's (UP-2) unset; writing loses a slot only when it differs from the day UMI uses instead, Sunday "
+        "on holidays and Monday on design days.",
     ),
     _row(
         "YearSchedule",
@@ -982,14 +984,18 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         E,
         "Maps by name.",
     ),
-    *_rows(
-        "ZoneConditioning",
-        ("HeatRecoveryEfficiencyLatent", "HeatRecoveryEfficiencySensible"),
-        S,
-        "conditioning.heat_recovery_efficiency",
-        U,
-        "Heat-recovery effectiveness; SBEM fixes it by HRV type. UP-2 adds it.",
-        upstream="UP-2",
+    *(
+        _row(
+            "ZoneConditioning",
+            f"HeatRecoveryEfficiency{kind}",
+            S,
+            (f"{_VENTILATION}.{kind}HeatRecoveryEffectiveness",),
+            "conditioning.heat_recovery_efficiency",
+            E,
+            f"{kind} effectiveness at 100% airflow (UP-2). A value outside [0, 1] is lost and SBEM's assumed "
+            "constant kept; SBEM's None (the assumed constant) is written as that constant.",
+        )
+        for kind in ("Latent", "Sensible")
     ),
     *(
         _row(

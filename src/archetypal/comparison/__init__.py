@@ -283,8 +283,8 @@ def compare(
     Both results must be EnergyPlus SQLite files written with `Output:SQLite`
     (`SimpleAndTabular`), with the *AllSummary* tabular reports and the `Heating:<fuel>` and
     `Cooling:<fuel>` meters; a result with pumps or heat rejection also needs their meters
-    and `Zone Air System Sensible Heating/Cooling Energy`, at the same frequency, to share
-    them between heating and cooling. Results written for reduction (`RESULTS_REQUIREMENTS`)
+    and the energy its HVAC equipment delivered (ideal loads, coils, baseboards, radiant
+    systems), at the same frequency, to share them between heating and cooling. Results written for reduction (`RESULTS_REQUIREMENTS`)
     have all of these.
 
     Args:

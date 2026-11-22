@@ -12,7 +12,8 @@
    - a bare archetype with other groups is merged approximately (`approximate_merge`): ledgers
      rebuilt from the groups' parameters (`GroupLedger.approximate_from_group`) are grouped
      with 002's `grouping.group`, and each merged group's parameters are derived from the
-     summed ledger.
+     summed ledger with 002's `to_sbem` functions where the rebuilt ledger holds what they need
+     (gains, setpoint schedules, outdoor air, hot water) and 002's envelope functions.
 2. **Translation.** Each archetype becomes one building template through the registered
    SBEM → UMI rules: `building.groups` (shares dropped, a single group copied),
    `wwr.uniform`, `window.placement`, `window.layers` and `window.settings`, the template's
@@ -36,7 +37,6 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, cast
 
-import numpy as np
 from epinterface.sbem.archetype import Archetype, ZoneGroup
 from epinterface.sbem.components.envelope import GlazingConstructionSimpleComponent
 
@@ -50,7 +50,8 @@ from archetypal.reduction.envelope import (
 from archetypal.reduction.grouping import Group, group
 from archetypal.reduction.ledger import APPROXIMATE_PATHS, GainKind, GroupLedger, Mode
 from archetypal.reduction.options import Layout
-from archetypal.reduction.schedules import RunPeriodCalendar, calendar_year, project, to_year_component
+from archetypal.reduction.schedules import RunPeriodCalendar, calendar_year
+from archetypal.reduction.to_sbem import equipment, lighting, occupancy, thermostat, ventilation, water_use
 from archetypal.umi._format import (
     BuildingTemplate,
     FormatModel,
@@ -88,9 +89,8 @@ if TYPE_CHECKING:
     from collections.abc import Hashable, Sequence
 
     from epinterface.sbem.archetype import ExposureType
-    from epinterface.sbem.components.schedules import YearComponent, YearScheduleCategory
+    from epinterface.sbem.components.schedules import YearComponent
     from epinterface.sbem.components.zones import ZoneComponent
-    from numpy.typing import NDArray
     from pydantic import JsonValue
 
     from archetypal.umi._format import YearSchedule
@@ -100,7 +100,6 @@ __all__ = ["ArchetypeLike", "CorePerimeter", "ReductionLike", "UmiExport", "appr
 _DIRECTION: Final = "sbem_to_umi"
 _CALENDAR: Final = RunPeriodCalendar(calendar_year(1, 1, 0))
 _SECONDS_PER_HOUR: Final = 3600.0
-_DAYS_PER_YEAR: Final = 365.0
 _MERGED: Final = "merged"
 _DEFAULT_WINDOW: Final = GlazingConstructionSimpleComponent(
     Name="Default single glazing", UValue=5.8, SHGF=0.81, TVis=0.88, Type="Single"
@@ -166,12 +165,25 @@ def _differ(members: Sequence[ZoneGroup], path: str) -> bool:
     return len({_dump(_get(member.Zone, path)) for member in members}) > 1
 
 
-def _schedule(profile: NDArray[np.float64], *, name: str, category: YearScheduleCategory) -> YearComponent:
-    limits = "Temperature" if category == "Setpoint" else "Fraction"
-    days = project(profile, _CALENDAR)
-    if limits == "Fraction":
-        days = np.minimum(np.maximum(days, 0.0), 1.0)
-    return to_year_component(days, name=name, category=category, limits=limits)
+def _renamed(schedule: YearComponent, name: str) -> YearComponent:
+    """`schedule` named `name`, its weeks and days renamed alike (`"<name> week 1"`, `"<name> day 1"`).
+
+    002's functions name a schedule after its group; the merge names it after the member's.
+    """
+    old = schedule.Name
+
+    def rename(node: object) -> object:
+        if isinstance(node, dict):
+            items = cast("dict[str, object]", node).items()
+            return {
+                key: name + value[len(old) :]
+                if key == "Name" and isinstance(value, str) and value.startswith(old)
+                else rename(value)
+                for key, value in items
+            }
+        return node
+
+    return type(schedule).model_validate(rename(schedule.model_dump()))
 
 
 def _merged_name(name: str) -> str:
@@ -218,12 +230,13 @@ class _ZoneMerger:
         return merged
 
     def gains(self) -> None:
-        gains: tuple[tuple[str, GainKind, str, YearScheduleCategory], ...] = (
-            ("Operations.SpaceUse.Occupancy", "people", "PeopleDensity", "Occupancy"),
-            ("Operations.SpaceUse.Lighting", "lights", "PowerDensity", "Lighting"),
-            ("Operations.SpaceUse.Equipment", "electric", "PowerDensity", "Equipment"),
+        """Density and normalised schedule from 002's `occupancy`, `lighting` and `equipment`."""
+        gains: tuple[tuple[str, GainKind, str, Any], ...] = (
+            ("Operations.SpaceUse.Occupancy", "people", "PeopleDensity", occupancy),
+            ("Operations.SpaceUse.Lighting", "lights", "PowerDensity", lighting),
+            ("Operations.SpaceUse.Equipment", "electric", "PowerDensity", equipment),
         )
-        for path, kind, density, category in gains:
+        for path, kind, density, derive in gains:
             if not _differ(self.members, path):
                 continue
             totals = self.ledger.gains.get(kind)
@@ -231,17 +244,22 @@ class _ZoneMerger:
             if totals is None or totals.installed <= 0:
                 self.set(path, component.model_copy(update={"IsOn": False}))
                 continue
-            schedule = _schedule(
-                totals.hourly / totals.installed, name=_merged_name(component.Schedule.Name), category=category
-            )
-            update = {density: totals.installed / self.area, "Schedule": schedule, "IsOn": True}
+            derived = derive(self.ledger, _CALENDAR, name=_MERGED).value
+            schedule = _renamed(derived.Schedule, _merged_name(component.Schedule.Name))
+            update = {density: getattr(derived, density), "Schedule": schedule, "IsOn": True}
             self.set(path, component.model_copy(update=update))
 
     def thermostat(self) -> None:
+        """Area-mean setpoint schedules from 002's `thermostat`; a mode no member serves is kept.
+
+        The scalar setpoints are the occupied ones (the heating maximum, the cooling minimum),
+        which UMI's constant setpoints hold (`thermostat.constant`), not 002's annual means.
+        """
         path = "Operations.SpaceUse.Thermostat"
         if not _differ(self.members, path):
             return
-        thermostat = _get(self.zone, path)
+        current = _get(self.zone, path)
+        derived = thermostat(self.ledger, _CALENDAR, name=_MERGED).value
         update: dict[str, object] = {}
         for key, totals, pick in (
             ("Heating", self.ledger.heating_setpoint, True),
@@ -250,10 +268,10 @@ class _ZoneMerger:
             values = totals.value
             if values is None:
                 continue
-            schedule = getattr(thermostat, f"{key}Schedule")
-            update[f"{key}Schedule"] = _schedule(values, name=_merged_name(schedule.Name), category="Setpoint")
+            schedule = getattr(current, f"{key}Schedule")
+            update[f"{key}Schedule"] = _renamed(getattr(derived, f"{key}Schedule"), _merged_name(schedule.Name))
             update[f"{key}Setpoint"] = float(values.max() if pick else values.min())
-        self.set(path, thermostat.model_copy(update=update))
+        self.set(path, current.model_copy(update=update))
 
     def systems(self) -> None:
         path = "Operations.HVAC.ConditioningSystems"
@@ -272,6 +290,13 @@ class _ZoneMerger:
         self.set(path, systems.model_copy(update=update))
 
     def ventilation(self) -> None:
+        """Peak flow per area, its profile and the dominant categories from 002's `ventilation`.
+
+        The provider stays `Both` when a member has natural ventilation, the outdoor-air
+        schedule is set only when a member has one, and the rest (natural-ventilation limits,
+        heat-recovery effectiveness, which the rebuilt ledgers do not weight) is the largest
+        member's.
+        """
         path = "Operations.HVAC.Ventilation"
         if not _differ(self.members, path):
             return
@@ -279,29 +304,29 @@ class _ZoneMerger:
         peak = float(air.hourly.max()) if air.hourly.size else 0.0
         if peak <= 0:
             return
-        ventilation = _get(self.zone, path)
+        current = _get(self.zone, path)
+        derived = ventilation(self.ledger, _CALENDAR, name=_MERGED).value
         natural = any(_get(m.Zone, path).Provider in {"Natural", "Both"} for m in self.members)
         mechanical = next((m.Zone for m in self.members if _get(m.Zone, f"{path}.MechVentSchedule") is not None), None)
+        schedule = _renamed(derived.Schedule, _merged_name(current.Schedule.Name))
         update = {
-            "FreshAirPerFloorArea": peak / self.area,
-            "FreshAirPerPerson": 0.0,
-            "Schedule": _schedule(
-                air.hourly / peak, name=_merged_name(ventilation.Schedule.Name), category=ventilation.Schedule.Type
-            ),
+            "FreshAirPerFloorArea": derived.FreshAirPerFloorArea,
+            "FreshAirPerPerson": derived.FreshAirPerPerson,
+            "Schedule": schedule.model_copy(update={"Type": current.Schedule.Type}),
             "MechVentSchedule": None
             if mechanical is None
-            else _schedule(
-                air.hourly / peak,
-                name=_merged_name(_get(mechanical, f"{path}.MechVentSchedule").Name),
-                category="Window",
+            else _renamed(
+                cast("YearComponent", derived.MechVentSchedule),
+                _merged_name(_get(mechanical, f"{path}.MechVentSchedule").Name),
             ),
             "Provider": "Both" if natural else "Mechanical",
-            "HRV": max(sorted(air.hrv_weighted), key=lambda key: air.hrv_weighted[key]),
-            "Economizer": max(sorted(air.economiser_weighted), key=lambda key: air.economiser_weighted[key]),
+            "HRV": derived.HRV,
+            "Economizer": derived.Economizer,
         }
-        self.set(path, ventilation.model_copy(update=update))
+        self.set(path, current.model_copy(update=update))
 
     def hot_water(self) -> None:
+        """Volume per person-day and its profile from 002's `water_use`; supply at inlet plus the mean rise."""
         use_path, dhw_path = "Operations.SpaceUse.WaterUse", "Operations.DHW"
         if not (_differ(self.members, use_path) or _differ(self.members, dhw_path)):
             return
@@ -311,12 +336,12 @@ class _ZoneMerger:
         rise = water.mean_rise
         if volume <= 0 or people is None or people.installed <= 0 or rise is None:
             return
-        water_use = _get(self.zone, use_path)
-        schedule = _schedule(
-            water.volume / float(water.volume.max()), name=_merged_name(water_use.Schedule.Name), category="WaterUse"
+        current = _get(self.zone, use_path)
+        derived = water_use(self.ledger, _CALENDAR, name=_MERGED).value
+        schedule = _renamed(derived.Schedule, _merged_name(current.Schedule.Name))
+        self.set(
+            use_path, current.model_copy(update={"FlowRatePerPerson": derived.FlowRatePerPerson, "Schedule": schedule})
         )
-        flow = volume / (_DAYS_PER_YEAR * people.installed)
-        self.set(use_path, water_use.model_copy(update={"FlowRatePerPerson": flow, "Schedule": schedule}))
         dhw = _get(self.zone, dhw_path)
         update: dict[str, object] = {"IsOn": True, "WaterSupplyTemperature": dhw.WaterTemperatureInlet + rise}
         totals = self.ledger.energy.get("hot_water")
@@ -381,10 +406,10 @@ def approximate_merge(archetype: Archetype) -> CorePerimeter:
     as it is. Otherwise each group's ledger is rebuilt from its parameters
     (`GroupLedger.approximate_from_group`, floor area = share times 1 m²), the ledgers are grouped
     by exposure with 002's `grouping.group` (by nothing when a group has no exposure, giving
-    one group), and each merged group's parameters are derived from its summed ledger:
-    densities and setpoints area-weighted with their profiles projected onto SBEM's
-    representative days, outdoor air as peak flow per area with its profile, hot water as
-    volume per person-day. Parameters every member agrees on are kept exactly. The others in
+    one group), and each merged group's parameters are derived from its summed ledger by
+    002's `to_sbem` functions: densities and setpoints area-weighted with their profiles
+    projected onto SBEM's representative days, outdoor air as peak flow per area with its
+    profile, hot water as volume per person-day. Parameters every member agrees on are kept exactly. The others in
     `APPROXIMATE_PATHS` are floor-area weighted and reported as `approximate`; each merged
     group is reported as `merged` with the names of the groups it holds.
 

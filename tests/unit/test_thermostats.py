@@ -12,15 +12,16 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from archetypal.reduction.classify import ClassifiedZone, classify
-from archetypal.reduction.inventory import ThermostatControl, ThermostatRecord, ZoneRecord, build_inventory
+from archetypal.reduction.classify import ClassifiedZone
+from archetypal.reduction.inventory import ThermostatControl, ThermostatRecord, ZoneRecord
 from archetypal.reduction.ledger import GroupLedger
-from archetypal.reduction.schedules import ScheduleEvaluator
-from archetypal.reduction.sources import load_sources
 from archetypal.reduction.thermostats import BAND, ledger_fields, setpoint_fields
 
 if TYPE_CHECKING:
-    from archetypal.reduction.schedules import Profile
+    from collections.abc import Callable
+
+    from archetypal.reduction.schedules import Profile, ScheduleEvaluator
+    from archetypal.reduction.sources import SourceData
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "tests" / "fixtures" / "models"
@@ -150,10 +151,10 @@ def test_group_mean_is_area_weighted_over_heated_members_only(members: list[tupl
     assert (group.heating_setpoint.weight + group.unheated_area) == pytest.approx(group.floor_area)
 
 
-def test_three_zone_fixture() -> None:
-    sources = load_sources(MODELS / "three_zone.idf", MODELS / "three_zone.sql")
-    evaluator = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    zones = classify(build_inventory(sources, evaluator), evaluator)
+def test_three_zone_fixture(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> None:
+    sources, zones, evaluator = detailed("three_zone")
     for zone in zones:
         fields = ledger_fields(zone, evaluator)
         thermostat = zone.zone.thermostat

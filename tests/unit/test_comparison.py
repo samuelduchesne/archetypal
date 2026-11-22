@@ -14,14 +14,22 @@ import hashlib
 import math
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+import numpy as np
 import pytest
 from idfkit.simulation import SQLResult
 
 from archetypal import compare as compare_from_package
 from archetypal.comparison import AcceptanceTargets, ComparisonResult, ComparisonRow, compare
 from archetypal.errors import NotComparableError
-from archetypal.reduction._sql_tables import read_zones
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from archetypal.reduction.classify import ClassifiedZone
+    from archetypal.reduction.schedules import ScheduleEvaluator
+    from archetypal.reduction.sources import SourceData
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 MODELS = FIXTURES / "models"
@@ -138,26 +146,42 @@ def test_heating_and_cooling_as_reported_are_judged_with_distribution_added(ten_
     assert with_heating.within_target is (abs(with_heating.relative or 0) <= 0.10)
 
 
+_DELIVERY_VARIABLES = {
+    "Heating": (
+        "Zone Ideal Loads Supply Air Total Heating Energy",
+        "Heating Coil Heating Energy",
+        "Baseboard Total Heating Energy",
+        "Zone Radiant HVAC Heating Energy",
+    ),
+    "Cooling": (
+        "Zone Ideal Loads Supply Air Total Cooling Energy",
+        "Cooling Coil Total Cooling Energy",
+        "Zone Radiant HVAC Cooling Energy",
+    ),
+}
+
+
 def _expected_heating_share_of_pumps(path: Path) -> float:
-    """Pumps energy split by each hour's delivered modes (R13), computed independently."""
+    """Pumps energy split by each hour's equipment-delivered modes (R12, R13), computed independently."""
     sql = SQLResult(path)
     try:
         pumps = _hourly_sum(sql, r"Pumps:\w+")
-        multipliers = {zone.name: float(zone.multiplier * zone.list_multiplier) for zone in read_zones(sql)}
         delivered: dict[str, list[float]] = {}
-        for mode in ("Heating", "Cooling"):
-            variables = [v for v in sql.list_variables() if v.name == f"Zone Air System Sensible {mode} Energy"]
+        for mode, names in _DELIVERY_VARIABLES.items():
+            variables = [v for v in sql.list_variables() if v.name in names and not v.is_meter]
             series = sql.get_timeseries_many(variables)
-            delivered[mode] = [
-                sum(multipliers[s.key_value.upper()] * s.values[h] for s in series) for h in range(len(pumps))
-            ]
+            delivered[mode] = [sum(s.values[h] for s in series) for h in range(len(pumps))]
     finally:
         sql.close()
-    to_heating = 0.0
+    to_heating = idle = 0.0
     for h, energy in enumerate(pumps):
         both = delivered["Heating"][h] + delivered["Cooling"][h]
         if both > 0:
             to_heating += energy * delivered["Heating"][h] / both
+        else:
+            idle += energy
+    annual_heat, annual_cool = sum(delivered["Heating"]), sum(delivered["Cooling"])
+    to_heating += idle * annual_heat / (annual_heat + annual_cool)
     return to_heating / sum(pumps)
 
 
@@ -173,8 +197,32 @@ def test_pumps_are_added_to_heating_and_cooling_by_hourly_delivered_mode(ten_zon
     assert with_heating == pytest.approx(heating + share * pumps, rel=1e-9)
     assert with_heating > heating
     assert with_cooling > cooling
-    # Hours with pump energy but no delivery are not attributed (R12), so nothing is created.
-    assert with_heating + with_cooling <= heating + cooling + pumps + 1e-9
+    # Every joule of pump energy goes to heating or cooling, none is created or lost (R12).
+    assert with_heating + with_cooling == pytest.approx(heating + cooling + pumps, rel=1e-9)
+
+
+def test_pump_split_agrees_with_the_reduction_attribution(
+    ten_zone: ComparisonResult,
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> None:
+    """R13 splits pumps on the same equipment-delivered energy as R12's efficiency attribution."""
+    from archetypal.reduction.efficiency import building_energy  # noqa: PLC0415 - loads epinterface
+
+    sources, zones, evaluate = detailed("ten_zone_multipliers")
+    data = building_energy(sources, zones, evaluate)
+    building = {
+        mode: sum(data.multipliers[name] * np.asarray(profile) for name, profile in data.delivered[mode].items())
+        for mode in ("heating", "cooling")
+    }
+    pumps = sum(np.asarray(profile) for profile in data.distribution.values())
+    both = building["heating"] + building["cooling"]
+    hourly = np.divide(building["heating"], both, out=np.zeros_like(both), where=both > 0)
+    idle = float(pumps[both <= 0].sum())
+    annual_heat, annual_cool = float(building["heating"].sum()), float(building["cooling"].sum())
+    reduction_share = (float((pumps * hourly).sum()) + idle * annual_heat / (annual_heat + annual_cool)) / float(
+        pumps.sum()
+    )
+    assert reduction_share == pytest.approx(_expected_heating_share_of_pumps(DETAILED), rel=1e-6)
 
 
 def test_without_distribution_the_combined_rows_sum_every_fuel(bar_lights: ComparisonResult) -> None:

@@ -493,7 +493,7 @@ def _gas(item: GasMaterial, pointer: str, template: str) -> list[Problem]:
     if item.type.strip().upper() in _GASES or (item.name or "").strip().upper() in _GASES:
         return []
     message = f"gas {item.type!r} is not one EnergyPlus models ({', '.join(sorted(_GASES))})"
-    return [Problem(f"{pointer}/Type", template, "window.simple_from_layers", message)]
+    return [Problem(f"{pointer}/Type", template, "window.layers", message)]
 
 
 def _template(item: BuildingTemplate, pointer: str, template: str) -> list[Problem]:

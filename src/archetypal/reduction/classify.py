@@ -3,10 +3,11 @@
 Rules, from research:
 
 - **Conditioned** (R8): a zone is conditioned when its thermostat sets a heating or cooling
-  setpoint within 5-35 °C at some hour (`ThermostatRecord.enabled`), or when equipment delivers
-  heating or cooling to it (non-zero `Zone Air System Sensible Heating/Cooling Energy`). An
-  air-loop plenum is the exception to the second test: return air passing through it shows as
-  delivered energy, but nothing conditions it, so a plenum counts only through a thermostat.
+  setpoint within 5-35 °C at some hour (`ThermostatRecord.enabled`), or when its HVAC equipment
+  delivers heating or cooling to it (non-zero `ZoneRecord.delivered`: the energy of its own zone
+  equipment and its share of its air loop's coils, from `delivery.delivered_energy`, research
+  R12). An air-loop plenum is the exception to the second test: air passing through it is not
+  conditioning it, so a plenum counts only through a thermostat.
 - **Role** (R8, FR-013): an unconditioned zone is an *attic* when it has a roof, a floor
   adjacent to a conditioned zone, and exterior walls (windows included) over no more than 50 %
   of its envelope area; a *basement* when it has ground-contact walls or floor and a ceiling

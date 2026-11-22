@@ -8,8 +8,9 @@
   with 002's projection (`archetypal.reduction.schedules.project`), which conserves the month's
   sum; the month is listed as approximate.
 - **SBEM to UMI.** Consecutive equal months become one part ending on a month's last day,
-  February on the 29th; equal weeks and days are one object. Holiday and design-day slots (when
-  the SBEM week has them, UP-2) that differ from the day they replace are lost.
+  February on the 29th; equal weeks and days are one object. UMI weeks have no holiday or
+  design-day slots: reading leaves SBEM's (UP-2) unset, and writing loses a set slot only when it
+  differs from the day UMI uses instead (Sunday on holidays, Monday on design days).
 - **Metadata** (`schedule.metadata`, UP-9). `Comments` and `DataSource` map to the SBEM
   schedule's `Comment` and `DataSource`. Basilisk fixes each schedule's `Category` (`Day`,
   `Week`, `Year`): it reads as an unset SBEM category, and another SBEM category is lost on
@@ -71,10 +72,8 @@ SPECIAL_DAYS: tuple[tuple[str, int], ...] = (
     ("Holiday", 6),
     ("SummerDesignDay", 0),
     ("WinterDesignDay", 0),
-    ("CustomDay1", 0),
-    ("CustomDay2", 0),
 )
-"""SBEM's special-day slots (UP-2), each with the weekday (0 Monday) whose day it replaces."""
+"""SBEM's holiday and design-day slots (UP-2), each with the weekday (0 Monday) whose day UMI uses."""
 
 _TYPES: tuple[ScheduleTypeLimitType, ...] = get_args(ScheduleTypeLimitType)
 _TYPE_BY_LOWER: dict[str, ScheduleTypeLimitType] = {kind.lower(): kind for kind in _TYPES}
@@ -291,7 +290,7 @@ class _Writer:
         if key in self.weeks:
             return self.weeks[key]
         for slot, weekday in SPECIAL_DAYS:
-            special = cast("DayComponent | None", getattr(week, slot, None))
+            special = cast("DayComponent | None", getattr(week, slot))
             replaced = week.Days[weekday]
             if special is not None and special.model_dump() != replaced.model_dump():
                 self.findings.lose(

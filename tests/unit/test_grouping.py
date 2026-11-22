@@ -16,7 +16,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from archetypal.reduction.classify import ClassifiedZone, classify
+from archetypal.reduction.classify import ClassifiedZone
 from archetypal.reduction.grouping import (
     Group,
     Grouping,
@@ -29,7 +29,7 @@ from archetypal.reduction.grouping import (
     group_zones,
     intensities,
 )
-from archetypal.reduction.inventory import ZoneRecord, build_inventory
+from archetypal.reduction.inventory import ZoneRecord
 from archetypal.reduction.ledger import (
     GainTotals,
     GroupLedger,
@@ -38,11 +38,13 @@ from archetypal.reduction.ledger import (
     WeightedProfile,
 )
 from archetypal.reduction.options import Layout
-from archetypal.reduction.schedules import ScheduleEvaluator
-from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
     import random
+    from collections.abc import Callable
+
+    from archetypal.reduction.schedules import ScheduleEvaluator
+    from archetypal.reduction.sources import SourceData
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "tests" / "fixtures" / "models"
@@ -523,10 +525,10 @@ def test_layout_with_exposure_notes_a_missing_exposure() -> None:
 
 
 @pytest.fixture(scope="module")
-def bar_zones() -> list[ClassifiedZone]:
-    sources = load_sources(MODELS / "bar_building.idf", MODELS / "bar_building.sql")
-    evaluator = ScheduleEvaluator(sources.model, sources.run_period.calendar)
-    return [z for z in classify(build_inventory(sources, evaluator), evaluator) if z.conditioned]
+def bar_zones(
+    detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
+) -> list[ClassifiedZone]:
+    return [z for z in detailed("bar_building")[1] if z.conditioned]
 
 
 def test_bar_building_at_core_perimeter_has_a_perimeter_group_only(bar_zones: list[ClassifiedZone]) -> None:

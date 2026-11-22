@@ -73,7 +73,6 @@ from archetypal.umi.rules.ventilation import (
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from pydantic import BaseModel
 
     from epinterface.sbem.components.schedules import YearComponent
     from epinterface.sbem.components.systems import (
@@ -82,6 +81,7 @@ if TYPE_CHECKING:
         ZoneHVACComponent,
     )
     from epinterface.sbem.components.systems import FuelType as SbemFuel
+    from pydantic import BaseModel
 
     from archetypal.umi._format import ZoneVentilation
     from archetypal.umi.rules._common import (

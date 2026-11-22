@@ -343,6 +343,13 @@ def test_internal_mass_ratio_zero_means_none() -> None:
     assert (loss.location, loss.value, loss.rule) == ("/Zones/0/InternalMassConstruction", "wall", "mass.internal")
 
 
+def test_a_zero_area_construction_writing_gives_back_is_not_lost() -> None:
+    """The partition construction is what writing puts there for no internal mass."""
+    context = reading("/Zones/0")
+    assert internal_mass_to_sbem("partition", 0.0, context=context, written_back=True) == (None, None)
+    assert losses(context) == []
+
+
 def test_internal_mass_none_is_written_as_ratio_zero_with_the_fallback() -> None:
     context = writing()
     assert internal_mass_to_umi(None, None, fallback="partition", context=context) == ("partition", 0.0)

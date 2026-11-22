@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 from archetypal.umi import dialects, read_umi, to_umi
 from archetypal.umi.diff import Difference, diff_archetypes, diff_umi
 from archetypal.umi.report import LossKind, Note
-from archetypal.umi.write import _core_perimeter
+from archetypal.umi.write import _core_perimeter  # pyright: ignore[reportPrivateUsage]  # the layout write uses
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -66,7 +66,7 @@ _NO_COUNTERPART_KINDS = frozenset({LossKind.UNUSED, LossKind.SHARE_DROPPED, Loss
 
 def _within(location: str, parent: str, separator: str) -> bool:
     """Whether `location` is `parent` or below it."""
-    return location == parent or location.startswith(parent + separator) or location.startswith(parent + "[")
+    return location == parent or location.startswith((parent + separator, parent + "["))
 
 
 def _same_subject(entry: Loss | Note, difference: Difference) -> bool:
@@ -80,32 +80,42 @@ def _at(entry: Loss | Note, difference: Difference) -> bool:
     return any(_within(place, entry.location, separator) for place in (difference.location, *difference.via))
 
 
+def _explains_unset(note: Note, difference: Difference) -> bool:
+    """A value SBEM leaves unset (`None`) that writing fills is an assumption, not a loss.
+
+    A note listing field names (`Findings.unset`) covers those fields only.
+    """
+    if difference.original is not None or not _at(note, difference):
+        return False
+    if isinstance(note.value, list) and difference.location != note.location:
+        rest = difference.location[len(note.location) + 1 :]
+        return any(rest == key or rest.startswith((key + ".", key + "[")) for key in map(str, note.value))
+    return True
+
+
+def _explains_rename(loss: Loss, difference: Difference) -> bool:
+    """A renamed component, or a name read back from it (`"<name> occupancy"`)."""
+    if not isinstance(loss.value, str):
+        return False
+    original, result = difference.original, difference.result
+    return (
+        isinstance(original, str)
+        and isinstance(result, str)
+        and original.startswith(loss.value)
+        and result == f"{loss.replacement}{original[len(loss.value) :]}"
+    )
+
+
 def explains(entry: Loss | Note, difference: Difference) -> bool:
     """Whether a loss, or a note for a value the source did not set, accounts for a difference."""
     if isinstance(entry, Note):
-        # A value SBEM leaves unset (`None`) that writing fills is an assumption, not a loss. A
-        # note listing field names (`Findings.unset`) covers those fields only.
-        if difference.original is not None or not _at(entry, difference):
-            return False
-        if isinstance(entry.value, list) and difference.location != entry.location:
-            rest = difference.location[len(entry.location) + 1 :]
-            return any(rest == key or rest.startswith((key + ".", key + "[")) for key in map(str, entry.value))
-        return True
+        return _explains_unset(entry, difference)
     if _at(entry, difference):
         return True
     if entry.kind is LossKind.COPIED and difference.original is None:
         # A single group is written as both zones: the zone it was copied to reads back as a group.
         return _same_subject(entry, difference) and difference.location == str(entry.replacement).lower()
-    if entry.kind is not LossKind.RENAMED or not isinstance(entry.value, str):
-        return False
-    # A renamed component, or a name read back from it (`"<name> occupancy"`).
-    original, result = difference.original, difference.result
-    return (
-        isinstance(original, str)
-        and isinstance(result, str)
-        and original.startswith(entry.value)
-        and result == f"{entry.replacement}{original[len(entry.value) :]}"
-    )
+    return entry.kind is LossKind.RENAMED and _explains_rename(entry, difference)
 
 
 def _matches(loss: Loss, difference: Difference) -> bool:
@@ -125,6 +135,8 @@ class Audit:
     problems: list[str] = field(default_factory=list[str])
     differences: int = 0
     losses: int = 0
+    libraries: list[Path] = field(default_factory=list[Path])
+    """The libraries the audit wrote, for `--write-libraries` (`save_library`)."""
 
     def unexplained(self, differences: Iterable[Difference], losses: Sequence[Loss | Note], what: str) -> None:
         for difference in differences:
@@ -159,6 +171,7 @@ def audit_library(path: Path, directory: Path) -> Audit:
     exported = to_umi(imported.archetypes)
     written = directory / f"{path.stem}.round-trip.json"
     written.write_text(exported.text, encoding="utf-8")
+    audit.libraries.append(written)
     losses = [*imported.report.losses, *exported.report.losses, *exported.report.notes]
 
     library_diff = diff_umi(path, written, rel_tol=REL_TOL)
@@ -171,7 +184,9 @@ def audit_library(path: Path, directory: Path) -> Audit:
     back = read_umi(written)
     for original, again in zip(imported.archetypes, back.archetypes, strict=True):
         archetype_diff = diff_archetypes(original, again, rel_tol=REL_TOL).beyond()
-        audit.unexplained(archetype_diff, [*exported.report.losses, *exported.report.notes], f"{path.name} ({original.Name})")
+        audit.unexplained(
+            archetype_diff, [*exported.report.losses, *exported.report.notes], f"{path.name} ({original.Name})"
+        )
     return audit
 
 
@@ -181,6 +196,7 @@ def audit_archetypes(items: Sequence[ArchetypeLike], directory: Path, name: str 
     exported = to_umi(items)
     written = directory / f"{name}.json"
     written.write_text(exported.text, encoding="utf-8")
+    audit.libraries.append(written)
     back = read_umi(written)
     losses = [*exported.report.losses, *exported.report.notes]
     for item, again in zip(items, back.archetypes, strict=True):

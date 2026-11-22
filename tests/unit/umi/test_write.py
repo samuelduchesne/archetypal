@@ -331,3 +331,30 @@ def test_export_write(office: Archetype, tmp_path: Path) -> None:
     written = export.write(tmp_path / "lib.json")
     assert written == (tmp_path / "lib.json", tmp_path / "lib.loss.json")
     assert written[0].read_bytes() == export.text.encode("utf-8")
+
+
+def test_values_writing_fills_are_noted(office: Archetype) -> None:
+    """Unset SBEM fields that UMI needs read back as Basilisk's defaults: each is noted (SC-006)."""
+    core, perimeter = office.Groups
+    bare_core = replace(core.Zone, "Envelope.Window", None)
+    archetype = office.model_copy(
+        update={
+            "Version": None,
+            "Lifespan": None,
+            "Groups": [core.model_copy(update={"Zone": bare_core}), perimeter],
+        }
+    )
+    notes = {(note.location, note.rule) for note in to_umi([archetype]).report.notes}
+    assert ("core.Envelope.Window", "window.placement") in notes
+    assert ("archetype", "building.metadata") in notes
+    [metadata] = [
+        n for n in to_umi([archetype]).report.notes if n.rule == "building.metadata" and n.location == "archetype"
+    ]
+    assert set(metadata.value) >= {"Version", "Lifespan"}  # pyright: ignore[reportArgumentType]
+
+
+def test_a_group_name_umi_cannot_keep_is_reported(office: Archetype) -> None:
+    core, perimeter = office.Groups
+    archetype = office.model_copy(update={"Groups": [core, perimeter.model_copy(update={"Name": "outer ring"})]})
+    [renamed] = [loss for loss in to_umi([archetype]).report.losses if loss.location == "outer ring.Name"]
+    assert (renamed.kind, renamed.replacement) == (LossKind.RENAMED, "perimeter")

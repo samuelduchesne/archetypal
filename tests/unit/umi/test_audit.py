@@ -3,7 +3,8 @@
 For each library of the UMI test set: read it, write it back, and translate each archetype the
 other way too (write it, read it back); diff the results with `diff_umi` and `diff_archetypes`.
 Every difference must appear in a loss of the matching report, by subject and location, and
-every loss must match a difference or a value with no counterpart. The audit is
+every loss must match a difference or a value with no counterpart. Spec 002's fixture
+reductions are audited the same way (SC-004, scenario 2 of `test_round_trip.py`). The audit is
 `tests/umi/audit.py`, shared with the reference tier.
 """
 
@@ -34,23 +35,26 @@ else:
 
 
 @pytest.mark.parametrize("library", audit.TEST_SET, ids=lambda path: path.stem)
-def test_every_difference_of_a_round_trip_is_reported(library: Path, tmp_path: Path) -> None:
+def test_every_difference_of_a_round_trip_is_reported(
+    library: Path, tmp_path: Path, save_library: Callable[[Path], Path | None]
+) -> None:
     result = audit.audit_library(library, tmp_path)
+    for written in result.libraries:
+        save_library(written)
     assert result.problems == []
-
-
-def test_the_audit_compares_something(tmp_path: Path) -> None:
-    """The samples' round trips have differences and losses, so the audit is not vacuous."""
-    result = audit.audit_library(audit.TEST_SET[0], tmp_path)
-    assert result.differences > 0
-    assert result.losses > 0
+    if library.name in audit.SAMPLES:  # the samples lose something, so the audit is not vacuous
+        assert result.differences > 0
+        assert result.losses > 0
 
 
 @pytest.mark.parametrize("fixture", ["three_zone", "bar_building"])
-def test_every_difference_of_a_written_reduction_is_reported(
-    fixture: str, reduced: Callable[..., Reduction], tmp_path: Path
+def test_a_written_reduction_comes_back_apart_from_reported_losses(
+    fixture: str, reduced: Callable[..., Reduction], tmp_path: Path, save_library: Callable[[Path], Path | None]
 ) -> None:
-    assert audit.audit_archetypes([reduced(fixture)], tmp_path, fixture).problems == []
+    result = audit.audit_archetypes([reduced(fixture)], tmp_path, fixture)
+    for written in result.libraries:
+        save_library(written)
+    assert result.problems == []
 
 
 def test_an_unreported_difference_fails_with_its_location(tmp_path: Path) -> None:

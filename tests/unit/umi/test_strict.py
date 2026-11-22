@@ -30,10 +30,12 @@ else:
     sys.modules["audit"] = audit
     _spec.loader.exec_module(audit)
 
-IDS = {"ids": lambda path: path.stem}
+
+def _stem(path: Path) -> str:
+    return path.stem
 
 
-@pytest.mark.parametrize("library", audit.TEST_SET, **IDS)
+@pytest.mark.parametrize("library", audit.TEST_SET, ids=_stem)
 def test_strict_reading_fails_if_and_only_if_something_is_lost(library: Path, tmp_path: Path) -> None:
     lenient = read_umi(library)
     if lenient.report.losses:
@@ -45,7 +47,7 @@ def test_strict_reading_fails_if_and_only_if_something_is_lost(library: Path, tm
     assert list(tmp_path.iterdir()) == []  # reading never writes
 
 
-@pytest.mark.parametrize("library", audit.TEST_SET, **IDS)
+@pytest.mark.parametrize("library", audit.TEST_SET, ids=_stem)
 def test_strict_writing_fails_if_and_only_if_something_is_lost(library: Path, tmp_path: Path) -> None:
     archetypes = read_umi(library).archetypes
     if not archetypes:

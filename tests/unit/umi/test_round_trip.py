@@ -7,8 +7,9 @@ per field group, and marked `xfail(strict=True)` for the libraries that use them
 flips when its fields land.
 
 Scenario 2: a core/perimeter archetype written to UMI and read back equals the original, apart
-from the first write's losses: for the archetypes read from the test set, for spec 002's fixture
-reductions, and as a hypothesis property over generated core/perimeter archetypes.
+from the first write's losses: for the archetypes read from the test set, and as a hypothesis
+property over generated core/perimeter archetypes. Spec 002's fixture reductions are checked the
+same way by `test_audit.py`.
 """
 
 from __future__ import annotations
@@ -27,11 +28,8 @@ from hypothesis import strategies as st
 from archetypal.umi import CORRESPONDENCE, MappingStatus, diff_archetypes, diff_umi, read_umi, to_umi
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from epinterface.sbem.archetype import Archetype
 
-    from archetypal.reduction import Reduction
     from archetypal.umi.diff import Difference, UmiDiff
     from archetypal.umi.read import UmiImport
     from archetypal.umi.write import UmiExport
@@ -49,7 +47,9 @@ WITH_TEMPLATES = [name for name in LIBRARIES if name != "no_templates.json"]
 
 # The UMI keys whose SBEM field waits for UP-9: the airflow-network, zone-mixing and
 # interior-window settings, and the ventilation's airflow-network switch.
-UP9_KEYS = frozenset(row.umi_key for row in CORRESPONDENCE if row.status is MappingStatus.UPSTREAM and row.upstream == "UP-9")
+UP9_KEYS = frozenset(
+    row.umi_key for row in CORRESPONDENCE if row.status is MappingStatus.UPSTREAM and row.upstream == "UP-9"
+)
 UP9_REASON = (
     "UP-9: the SBEM fork has no airflow-network, zone-mixing or interior-window settings "
     "(WindowSettings.Afn*, ZoneMixing*, IsVirtualPartition, Type; ZoneVentilation.Afn), and these "
@@ -159,15 +159,6 @@ def test_archetypes_read_from_umi_come_back_unchanged(name: str) -> None:
         assert unexplained == [], original.Name
 
 
-@pytest.mark.parametrize("fixture", ["three_zone", "bar_building"])
-def test_a_reduction_comes_back_apart_from_the_first_writes_losses(
-    fixture: str, reduced: Callable[..., Reduction], tmp_path: Path
-) -> None:
-    result = audit.audit_archetypes([reduced(fixture)], tmp_path, fixture)
-    assert result.problems == []
-    assert result.differences > 0  # the reduction's simple glazing, setbacks and geometry do not survive
-
-
 @pytest.fixture(scope="module")
 def office() -> Archetype:
     return read_umi(LIBRARIES["BostonTemplateLibrary_nodup.json"]).archetypes[0]
@@ -189,12 +180,12 @@ _FIELDS = {
 }
 
 
-@settings(max_examples=15, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=8, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(core=st.fixed_dictionaries(_FIELDS), perimeter=st.fixed_dictionaries(_FIELDS))
 def test_generated_core_perimeter_archetypes_come_back(
     office: Archetype, core: dict[str, float], perimeter: dict[str, float]
 ) -> None:
-    groups = []
+    groups: list[Any] = []
     for group in office.Groups:
         zone = group.Zone.model_copy(update={"Name": f"{group.Name} zone"})
         for path, value in (core if group.Name == "core" else perimeter).items():

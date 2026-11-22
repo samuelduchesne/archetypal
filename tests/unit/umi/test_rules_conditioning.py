@@ -444,9 +444,7 @@ def test_heat_recovery_effectiveness_is_lost_with_up2() -> None:
 
 def test_the_written_always_on_schedule_reads_as_none() -> None:
     written = constant_year_schedule(ALWAYS_ON, 1.0)
-    parts, context = read(
-        conditioning(HeatingSchedule=written, CoolingSchedule=written, MechVentSchedule=written)
-    )
+    parts, context = read(conditioning(HeatingSchedule=written, CoolingSchedule=written, MechVentSchedule=written))
     assert context.losses == []
     assert parts.systems.HeatingAvailabilitySchedule is None
     assert parts.systems.CoolingAvailabilitySchedule is None

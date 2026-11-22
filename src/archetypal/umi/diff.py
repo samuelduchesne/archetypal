@@ -91,6 +91,8 @@ class Difference:
 
 @dataclass(frozen=True)
 class _Diff:
+    """The differences found by a comparison, and the tolerance of `within_tolerance`."""
+
     differences: tuple[Difference, ...]
     rel_tol: float
 
@@ -113,7 +115,7 @@ class _Diff:
         return tuple(d for d in self.differences if d.exceeds(tolerance))
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class UmiDiff(_Diff):
     """The differences between two UMI libraries.
 
@@ -123,13 +125,8 @@ class UmiDiff(_Diff):
         rel_tol: The relative tolerance of `within_tolerance` (default 1e-4, SC-003).
     """
 
-    @property
-    def within_tolerance(self) -> bool:
-        """Whether no simulation-relevant difference exceeds `rel_tol`."""
-        return super().within_tolerance
 
-
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class ArchetypeDiff(_Diff):
     """The differences between two SBEM archetypes.
 
@@ -137,11 +134,6 @@ class ArchetypeDiff(_Diff):
         differences: Every difference, in field order.
         rel_tol: The relative tolerance of `within_tolerance` (default 0).
     """
-
-    @property
-    def within_tolerance(self) -> bool:
-        """Whether no simulation-relevant difference exceeds `rel_tol`."""
-        return super().within_tolerance
 
 
 # --- Values ----------------------------------------------------------------------------------------
@@ -261,7 +253,9 @@ class _UmiComparer:
         self._keys: set[tuple[str, str, str, str, tuple[str, ...]]] = set()
         self._hourly: dict[int, tuple[float, ...] | str] = {}
 
-    def add(self, location: str, relevance: Relevance, original: object, result: object, relative: float | None) -> None:
+    def add(
+        self, location: str, relevance: Relevance, original: object, result: object, relative: float | None
+    ) -> None:
         a, b = _json(original), _json(result)
         via = tuple(self._via)
         key = (self.subject, location, repr(a), repr(b), via)
@@ -324,9 +318,10 @@ class _UmiComparer:
                 for position, (x, y) in enumerate(zip(first, second, strict=True)):
                     self.value(model, key, x, y, f"{where}/{position}")
                 return
-        self.scalar(where, relevance, a, b)
+        self.scalar(where, relevance, cast("object", a), cast("object", b))
 
     def scalar(self, where: str, relevance: Relevance, a: object, b: object) -> None:
+        values: tuple[object, object] = (a, b)
         if _is_number(a) and _is_number(b):
             relative = _relative(float(cast("float", a)), float(cast("float", b)))
             if relative != 0.0:
@@ -334,16 +329,18 @@ class _UmiComparer:
             return
         if isinstance(a, tuple | list) and isinstance(b, tuple | list):
             first, second = cast("Sequence[object]", a), cast("Sequence[object]", b)
-            if len(first) == len(second) and all(_is_number(x) and _is_number(y) for x, y in zip(first, second)):
+            if len(first) == len(second) and all(
+                _is_number(x) and _is_number(y) for x, y in zip(first, second, strict=True)
+            ):
                 pairs = zip(first, second, strict=True)
                 relatives = [_relative(float(cast("float", x)), float(cast("float", y))) for x, y in pairs]
                 if all(r == 0.0 for r in relatives):
                     return
                 worst = None if None in relatives else max(cast("list[float]", relatives))
-                self.add(where, relevance, a, b, worst)
+                self.add(where, relevance, first, second, worst)
                 return
-        if _json(a) != _json(b):
-            self.add(where, relevance, a, b, None)
+        if _json(values[0]) != _json(values[1]):
+            self.add(where, relevance, values[0], values[1], None)
 
     def schedule(self, a: YearSchedule, b: YearSchedule, where: str) -> None:
         """Compare two year schedules by their hourly values over the reference year."""
@@ -482,7 +479,17 @@ def _sbem_relevance_table() -> dict[str, Relevance]:
     return table
 
 
-_DESCRIPTIVE_FIELDS: Final = frozenset({"Name", "Category", "Comment", "Comments", "DataSource", "Version", "Authors", "AuthorEmails", "SchemaVersion"})
+_DESCRIPTIVE_FIELDS: Final = frozenset({
+    "Name",
+    "Category",
+    "Comment",
+    "Comments",
+    "DataSource",
+    "Version",
+    "Authors",
+    "AuthorEmails",
+    "SchemaVersion",
+})
 
 
 def _sbem_relevance(path: str) -> Relevance:
@@ -504,38 +511,62 @@ class _SbemComparer:
     def add(self, path: str, a: object, b: object, relative: float | None) -> None:
         self.found.append(Difference(path, _sbem_relevance(path), _json(a), _json(b), relative, self.subject))
 
-    def walk(self, a: object, b: object, path: str) -> None:
+    def walk(self, first: object, second: object, path: str) -> None:
+        a, b = first, second
         if isinstance(a, BaseModel) and isinstance(b, BaseModel):
-            if type(a) is not type(b):
-                self.add(path, type(a).__name__, type(b).__name__, None)
-                return
-            for name in type(a).model_fields:
-                self.walk(getattr(a, name), getattr(b, name), f"{path}.{name}" if path else name)
-            return
-        if isinstance(a, Mapping) and isinstance(b, Mapping):
-            first, second = cast("Mapping[object, object]", a), cast("Mapping[object, object]", b)
-            for key in dict.fromkeys([*first, *second]):
-                where = f"{path}.{key}"
-                if key not in first or key not in second:
-                    self.add(where, first.get(key), second.get(key), None)
-                else:
-                    self.walk(first[key], second[key], where)
-            return
-        if isinstance(a, list | tuple) and isinstance(b, list | tuple):
-            first, second = cast("Sequence[object]", a), cast("Sequence[object]", b)
-            if len(first) != len(second):
-                self.add(path, first, second, None)
-                return
-            for index, (x, y) in enumerate(zip(first, second, strict=True)):
-                self.walk(x, y, f"{path}.{index}")
-            return
-        if _is_number(a) and _is_number(b):
-            relative = _relative(float(cast("float", a)), float(cast("float", b)))
+            self.models(a, b, path)
+        elif isinstance(a, Mapping) and isinstance(b, Mapping):
+            self.mappings(cast("Mapping[object, object]", a), cast("Mapping[object, object]", b), path)
+        elif isinstance(a, list | tuple) and isinstance(b, list | tuple):
+            self.sequences(cast("Sequence[object]", a), cast("Sequence[object]", b), path)
+        elif _is_number(first) and _is_number(second):
+            relative = _relative(float(cast("float", first)), float(cast("float", second)))
             if relative != 0.0:
-                self.add(path, a, b, relative)
+                self.add(path, first, second, relative)
+        elif _json(first) != _json(second):
+            self.add(path, first, second, None)
+
+    def models(self, a: BaseModel, b: BaseModel, path: str) -> None:
+        if type(a) is not type(b):
+            self.add(path, type(a).__name__, type(b).__name__, None)
             return
-        if _json(a) != _json(b):
-            self.add(path, a, b, None)
+        for name in type(a).model_fields:
+            self.walk(getattr(a, name), getattr(b, name), f"{path}.{name}" if path else name)
+
+    def mappings(self, first: Mapping[object, object], second: Mapping[object, object], path: str) -> None:
+        for key in dict.fromkeys([*first, *second]):
+            where = f"{path}.{key}"
+            if key not in first or key not in second:
+                self.add(where, first.get(key), second.get(key), None)
+            else:
+                self.walk(first[key], second[key], where)
+
+    def sequences(self, first: Sequence[object], second: Sequence[object], path: str) -> None:
+        if len(first) != len(second):
+            self.add(path, first, second, None)
+            return
+        for index, (x, y) in enumerate(zip(first, second, strict=True)):
+            self.walk(x, y, f"{path}.{index}")
+
+
+def _match_groups(
+    originals: Sequence[ZoneGroup], results: Sequence[ZoneGroup]
+) -> tuple[list[ZoneGroup | None], list[ZoneGroup]]:
+    """Match each original group with a result group, by name, then by exposure; return the rest too."""
+    free = list(results)
+    matched: list[ZoneGroup | None] = []
+    for group in originals:
+        found = next((g for g in free if g.Name == group.Name), None)
+        matched.append(found)
+        if found is not None:
+            free.remove(found)
+    for index, group in enumerate(originals):
+        if matched[index] is None and group.Exposure is not None:
+            found = next((g for g in free if g.Exposure == group.Exposure), None)
+            if found is not None:
+                free.remove(found)
+                matched[index] = found
+    return matched, free
 
 
 def diff_archetypes(a: Archetype, b: Archetype, *, rel_tol: float = 0.0) -> ArchetypeDiff:
@@ -561,26 +592,14 @@ def diff_archetypes(a: Archetype, b: Archetype, *, rel_tol: float = 0.0) -> Arch
         if name == "Groups":
             continue
         comparer.walk(getattr(a, name), getattr(b, name), f"archetype.{name}")
-    free = list(b.Groups)
-    pairs: list[tuple[ZoneGroup, ZoneGroup | None]] = []
-    for group in a.Groups:
-        other = next((g for g in free if g.Name == group.Name), None)
-        pairs.append((group, other))
-        if other is not None:
-            free.remove(other)
-    for index, (group, other) in enumerate(pairs):
-        if other is None and group.Exposure is not None:
-            other = next((g for g in free if g.Exposure == group.Exposure), None)
-            if other is not None:
-                free.remove(other)
-                pairs[index] = (group, other)
-    for group, other in pairs:
+    matched, extra = _match_groups(a.Groups, b.Groups)
+    for group, other in zip(a.Groups, matched, strict=True):
         if other is None:
             comparer.add(group.Name, group.Name, None, None)
             continue
         for name in ("Name", "FloorAreaShare", "Exposure"):
             comparer.walk(getattr(group, name), getattr(other, name), f"{group.Name}.{name}")
         comparer.walk(group.Zone, other.Zone, group.Name)
-    for group in free:
+    for group in extra:
         comparer.add(group.Name, None, group.Name, None)
     return ArchetypeDiff(differences=tuple(comparer.found), rel_tol=rel_tol)

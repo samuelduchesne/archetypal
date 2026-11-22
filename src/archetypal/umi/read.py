@@ -348,7 +348,10 @@ class _Reader:
         findings = Findings()
         mass_assembly = construction_to_sbem(mass, "InternalMass", subject, self.index.pointer(mass), findings)
         assembly, ratio = internal_mass_to_sbem(
-            mass_assembly, zone.internal_mass_exposed_per_floor_area, context=zone_at
+            mass_assembly,
+            zone.internal_mass_exposed_per_floor_area,
+            context=zone_at,
+            written_back=mass == constructions.partition,
         )
         assemblies = assemblies_to_sbem(
             constructions,

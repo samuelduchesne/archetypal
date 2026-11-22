@@ -25,7 +25,7 @@ def library_of(count: int) -> dict[str, Any]:
     """B2 with `count` templates: copies of its four, renamed, sharing their components."""
     document = json.loads(B2.read_text(encoding="utf-8"))
     originals = document["BuildingTemplates"]
-    templates = []
+    templates: list[dict[str, Any]] = []
     for index in range(count):
         template = copy.deepcopy(originals[index % len(originals)])
         windows = template["Windows"]

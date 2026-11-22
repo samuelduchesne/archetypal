@@ -107,7 +107,7 @@ def test_descriptive_and_life_cycle_differences_keep_the_library_within_toleranc
 
 def test_schedules_compare_by_hourly_values_not_by_parts(document: Json, tmp_path: Path) -> None:
     occupancy = document["ZoneLoads"][0]["OccupancySchedule"]["$ref"]
-    index, year = by_id(document, "YearSchedules", occupancy)
+    _, year = by_id(document, "YearSchedules", occupancy)
     [part] = year["Parts"]
     # The same week in two parts: the hourly values do not change.
     year["Parts"] = [

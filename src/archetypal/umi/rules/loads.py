@@ -378,7 +378,7 @@ def range_problems(loads: ZoneLoads, *, pointer: str, template: str | None) -> l
 
 @rule("mass.internal", to="sbem")
 def internal_mass_to_sbem(
-    construction: _T | None, ratio: float, *, context: RuleContext
+    construction: _T | None, ratio: float, *, context: RuleContext, written_back: bool = False
 ) -> tuple[_T | None, float | None]:
     """Read UMI's internal mass: an exposed area of 0 means none (both or neither).
 
@@ -386,13 +386,15 @@ def internal_mass_to_sbem(
         construction: The internal-mass construction, already translated.
         ratio: `InternalMassExposedPerFloorArea`, m² per m² of floor.
         context: The zone definition's reading context (`/Zones/<i>`).
+        written_back: The construction is the one writing puts there for no internal mass (the
+            zone's partition construction), so dropping it loses nothing.
 
     Returns:
         SBEM's `(InternalMassAssembly, InternalMassExposedAreaPerArea)`: `(None, None)` when
-        the ratio is 0, the construction then being lost.
+        the ratio is 0, the construction then being lost unless `written_back`.
     """
     if ratio == 0:
-        if construction is not None:
+        if construction is not None and not written_back:
             context.lose(
                 "InternalMassConstruction",
                 json_value(getattr(construction, "Name", construction)),

@@ -436,38 +436,38 @@ with `diff_umi`; every difference is in a report.
 
 ### Tests for User Story 3 (write first, see them fail)
 
-- [ ] T057 [P] [US3] Test the diffs in `tests/unit/umi/test_diff.py` (R16): `diff_umi`
+- [X] T057 [P] [US3] Test the diffs in `tests/unit/umi/test_diff.py` (R16): `diff_umi`
   matches components by name and type and schedules by hourly values over the reference year;
   each difference carries `location`, `relevance`, `original`, `result` and `relative`
   (`None` for non-numeric); `within_tolerance` is false only for an `S` difference above
   `rel_tol` (default 1e-4); absolute differences below 1e-12 are equal; an unreadable library
   raises `UmiFormatError`; `diff_archetypes` compares SBEM field paths.
-- [ ] T058 [P] [US3] Test round trips in `tests/unit/umi/test_round_trip.py`: scenario 1 on
+- [X] T058 [P] [US3] Test round trips in `tests/unit/umi/test_round_trip.py`: scenario 1 on
   every fixture library (every `S` value within 0.01 % or reported); the `S` fields waiting
   for UP-9 are marked `xfail(strict=True, reason="UP-9")` per field group, so each flips when
   its field lands; scenario 2 (a core/perimeter archetype written and read back equals the
   original apart from the first write's losses), also as a hypothesis property over generated
   core/perimeter archetypes.
-- [ ] T059 [P] [US3] Write the audit in `tests/unit/umi/test_audit.py` (SC-006, R16): for each
+- [X] T059 [P] [US3] Write the audit in `tests/unit/umi/test_audit.py` (SC-006, R16): for each
   fixture library, read it, write it back, translate each archetype the other way too, diff
   the results, and assert that every difference appears in a loss of the matching report by
   subject and location, and that every loss matches a difference or a value with no
   counterpart; an unreported difference fails with its location.
-- [ ] T060 [P] [US3] Test strict mode in `tests/unit/umi/test_strict.py` (SC-006a): over the
+- [X] T060 [P] [US3] Test strict mode in `tests/unit/umi/test_strict.py` (SC-006a): over the
   test set, every read and write whose `losses` is not empty fails and writes nothing, and
   every one whose `losses` is empty succeeds, in both directions.
 
 ### Implementation for User Story 3
 
-- [ ] T061 [US3] Implement `src/archetypal/umi/diff.py` (R16): `UmiDiff`, `ArchetypeDiff`,
+- [X] T061 [US3] Implement `src/archetypal/umi/diff.py` (R16): `UmiDiff`, `ArchetypeDiff`,
   `diff_umi(original, result, *, rel_tol=1e-4)` and `diff_archetypes(a, b, *, rel_tol=0.0)`.
-- [ ] T062 [US3] Re-export the diffs from `src/archetypal/umi/__init__.py` and make its
+- [X] T062 [US3] Re-export the diffs from `src/archetypal/umi/__init__.py` and make its
   `__all__` exactly the names of contracts/python-api.md's import block.
-- [ ] T063 [P] [US3] Write `docs/explanation/umi-translation.md` with `/project-kit:diataxis`
+- [X] T063 [P] [US3] Write `docs/explanation/umi-translation.md` with `/project-kit:diataxis`
   (explanation): what each direction loses and why: two zones, shares set by geometry,
   windows, thermostats, hot water per person, schedules by month and the Monday-aligned week,
   and what waits for UP-9.
-- [ ] T064 [P] [US3] Add "Check a round trip with `diff_umi`" to
+- [X] T064 [P] [US3] Add "Check a round trip with `diff_umi`" to
   `docs/how-to/write-archetypes-to-umi.md`.
 
 **Checkpoint**: quickstart scenario 4 passes, with SC-003's UP-9 fields expected to fail, and
@@ -477,15 +477,15 @@ with `diff_umi`; every difference is in a report.
 
 ## Phase 6: Checks across stories (SC-002, SC-004, SC-006, SC-007)
 
-- [ ] T065 [P] Write `tests/unit/umi/test_performance.py`: a library of 100 templates built
+- [X] T065 [P] Write `tests/unit/umi/test_performance.py`: a library of 100 templates built
   from B2 by renaming is read in under 3 s and written in under 3 s (SC-007's 5 s, with a
   margin for slow CI).
-- [ ] T066 [P] Write `tests/reference/test_umi_round_trip.py` (`@pytest.mark.reference`): for
+- [X] T066 [P] Write `tests/reference/test_umi_round_trip.py` (`@pytest.mark.reference`): for
   each of 002's 49 reference buildings, the core/perimeter archetype is written with
   `write_umi`, read back, and `diff_archetypes` is empty apart from reported losses (SC-004);
   the audit of T059 runs on the 49 libraries (SC-006); the libraries are saved under
   `--write-libraries`.
-- [ ] T067 Extend `.github/workflows/reference.yml` to run `tools/basilisk-check` on the 49
+- [X] T067 Extend `.github/workflows/reference.yml` to run `tools/basilisk-check` on the 49
   libraries written by T066 (SC-002).
 
 **Checkpoint**: quickstart scenario 7 passes; the reference workflow is green.

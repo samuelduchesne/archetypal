@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
@@ -14,6 +15,7 @@ from archetypal.umi.correspondence import LIBRARY_RULES, UPSTREAM_ITEMS, rule_id
 from archetypal.umi.report import (
     NOTHING_LOST,
     SCHEMA_PATH,
+    Findings,
     Loss,
     LossKind,
     Note,
@@ -237,3 +239,13 @@ def test_source_info_current_names_installed_versions() -> None:
     assert SourceInfo.current().path is None
     with pytest.raises(ValidationError):
         SourceInfo(sha256="xyz", archetypal="1", epinterface="1")
+
+
+def test_unset_fields_are_noted_once_per_component() -> None:
+    findings = Findings()
+    component = SimpleNamespace(Category=None, Cost=None, Density=2000.0)
+    findings.unset(component, ("Category", "Cost", "Density"), "office", "perimeter.Envelope", "construction.sets")
+    [note] = findings.notes
+    assert (note.kind, note.location, note.value) == (NoteKind.DEFAULTED, "perimeter.Envelope", ["Category", "Cost"])
+    findings.unset(component, ("Density",), "office", "perimeter.Envelope", "construction.sets")
+    assert len(findings.notes) == 1

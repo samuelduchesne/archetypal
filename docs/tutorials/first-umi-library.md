@@ -108,11 +108,10 @@ That is also why the command ends with status 4 ("success with losses") rather t
 Let us check the library by opening it again: `archetypal translate` reads a UMI library and
 writes each of its building templates as an SBEM archetype, in the folder we give it with `-o`:
 
-<!-- console: exit-status 4 -->
 ```console
 $ archetypal translate office.json -o opened
 1 template translated, 0 failed.
-1 loss, 0 approximations reported; see the reports.
+0 losses, 0 approximations reported.
 Written:
   opened/three_zone.sbem.json
 Reports:
@@ -120,8 +119,8 @@ Reports:
 ```
 
 archetypal read the library and found its one building template, `three_zone`. It is now in
-`opened/three_zone.sbem.json`, the archetype format that epinterface reads, and
-`opened/office.loss.json` names the one value lost on the way back.
+`opened/three_zone.sbem.json`, the archetype format that epinterface reads. Nothing was lost on
+the way back, so the command ends with status 0, and `opened/office.loss.json` says so.
 
 `office.json` is the file to give UMI: it opens it as a template library and offers
 `three_zone` as a building template.

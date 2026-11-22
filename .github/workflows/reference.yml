@@ -42,14 +42,42 @@ jobs:
           echo "${ENERGYPLUS_DIR}" >> "${GITHUB_PATH}"
           "${ENERGYPLUS_DIR}/energyplus" --version
 
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Fetch Basilisk at the pinned commit and build the harness
+        run: |
+          tools/basilisk-check/fetch-basilisk.sh
+          dotnet build tools/basilisk-check --nologo -v q
+
       - name: Run the reference tier
-        # Exit status 5 means no reference test is written yet.
-        run: uv run pytest -m reference || test $? -eq 5
+        # Exit status 5 means no reference test is written yet. The UMI round trips (spec 003,
+        # tests/reference/test_umi_round_trip.py) save each library they write.
+        run: |
+          mkdir -p out/reference-libraries
+          uv run pytest -m reference --write-libraries out/reference-libraries || test $? -eq 5
+
+      - name: Check the written reference libraries with Basilisk
+        # SC-002: Basilisk, UMI's own code, loads the library of each of the 49 reference
+        # buildings (spec 003 T067). A building without migrated results is skipped above.
+        run: |
+          shopt -s nullglob
+          libraries=(out/reference-libraries/*.json)
+          if [ ${#libraries[@]} -eq 0 ]; then
+            echo "No reference library written: nothing to check"
+          else
+            echo "Checking ${#libraries[@]} libraries"
+            dotnet run --no-build --project tools/basilisk-check -- "${libraries[@]}"
+          fi
 
       - name: Upload the verification output
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: verification
-          path: verification/
+          path: |
+            verification/
+            out/reference-libraries/
           if-no-files-found: warn

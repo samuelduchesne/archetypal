@@ -188,8 +188,9 @@ def report_upstream(component: FormatModel, rule_id: str, context: RuleContext, 
     """Report, on reading, the fields of `component` that wait for an upstream item, as lost.
 
     Until a field lands in a fork release, reading reports it (research R6, FR-010) when it
-    differs from Basilisk's default, which is what writing gives back (`upstream_defaults`); an
-    always-on schedule loses nothing either, since writing gives one.
+    differs from Basilisk's default, which is what writing gives back (`upstream_defaults`); the
+    always-on schedule writing gives (`ALWAYS_ON`, no metadata) loses nothing either. Any other
+    schedule, even one always on, would lose its name or metadata, so it is reported.
 
     Args:
         component: The UMI component read.
@@ -202,8 +203,8 @@ def report_upstream(component: FormatModel, rule_id: str, context: RuleContext, 
         value: object = getattr(component, name)
         if key in skip or value == model.model_fields[name].default:
             continue
-        if isinstance(value, YearSchedule) and all_values_equal(value, 1.0):
-            continue  # writing gives an always-on schedule
+        if isinstance(value, YearSchedule) and _is_written_always_on(value):
+            continue  # writing gives this always-on schedule back
         context.lose(
             key,
             json_value(getattr(component, name)),
@@ -299,6 +300,12 @@ def all_values_equal(year: YearSchedule, value: float) -> bool:
     return bool(year.parts)
 
 
+def _is_written_always_on(year: YearSchedule) -> bool:
+    """Whether a UMI schedule is exactly the always-on schedule written for SBEM's `None`."""
+    written = constant_year_schedule(ALWAYS_ON, 1.0, year.type)
+    return year.model_dump() == written.model_dump()
+
+
 def optional_schedule_to_sbem(
     year: YearSchedule | None,
     key: str,
@@ -311,8 +318,11 @@ def optional_schedule_to_sbem(
 ) -> YearComponent | None:
     """Read a UMI schedule into an optional SBEM schedule whose `None` means always on (UP-9).
 
-    An always-on schedule (every value 1), or none, gives `None`. A schedule whose type limits
-    SBEM refuses for the field is lost, `None` kept.
+    No schedule, or the always-on schedule that `optional_schedule_to_umi` writes for `None`
+    (named `ALWAYS_ON`, without metadata), gives `None`. Any other schedule, including an
+    always-on one with another name or with metadata, is kept, so that writing it back
+    changes nothing. A schedule whose type limits SBEM refuses for the field is lost, `None`
+    kept.
 
     Args:
         year: The UMI schedule, or `None`.
@@ -323,7 +333,7 @@ def optional_schedule_to_sbem(
         rule_id: The rule reporting a loss.
         limits: The type limits SBEM accepts for the field.
     """
-    if year is None or all_values_equal(year, 1.0):
+    if year is None or _is_written_always_on(year):
         return None
     component = schedule(year, role, context.location(key))
     if component.schedule_type_limits not in limits:

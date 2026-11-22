@@ -27,6 +27,7 @@ from archetypal.umi._format import (
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind, NoteKind
 from archetypal.umi.rules import conditioning as module
+from archetypal.umi.rules._common import constant_year_schedule
 from archetypal.umi.rules.conditioning import (
     ALWAYS_ON,
     FRESH_AIR_CAP,
@@ -441,17 +442,34 @@ def test_heat_recovery_effectiveness_is_lost_with_up2() -> None:
     assert (loss.location, loss.value, loss.upstream) == (f"{POINTER}/HeatRecoveryEfficiencySensible", 0.8, "UP-2")
 
 
-def test_always_on_schedules_read_as_none() -> None:
-    parts, context = read(conditioning())
+def test_the_written_always_on_schedule_reads_as_none() -> None:
+    written = constant_year_schedule(ALWAYS_ON, 1.0)
+    parts, context = read(
+        conditioning(HeatingSchedule=written, CoolingSchedule=written, MechVentSchedule=written)
+    )
     assert context.losses == []
     assert parts.systems.HeatingAvailabilitySchedule is None
     assert parts.systems.CoolingAvailabilitySchedule is None
     assert parts.ventilation.MechVentSchedule is None
 
 
+def test_a_named_always_on_schedule_is_kept() -> None:
+    """Reading it as None would lose its name and metadata on the way back (SC-006)."""
+    parts, context = read(conditioning())
+    assert context.losses == []
+    heating = parts.systems.HeatingAvailabilitySchedule
+    assert heating is not None
+    assert heating.Name == "on"
+    assert parts.ventilation.MechVentSchedule is not None
+
+
 def test_availability_and_outdoor_air_schedules_map_to_up9_fields() -> None:
     parts, context = read(
-        conditioning(HeatingSchedule=umi_schedule("season", 0.0), MechVentSchedule=umi_schedule("occ", 0.5))
+        conditioning(
+            HeatingSchedule=umi_schedule("season", 0.0),
+            CoolingSchedule=constant_year_schedule(ALWAYS_ON, 1.0),
+            MechVentSchedule=umi_schedule("occ", 0.5),
+        )
     )
     assert context.losses == []
     heating = parts.systems.HeatingAvailabilitySchedule

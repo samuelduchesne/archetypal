@@ -252,7 +252,7 @@ class _UmiComparer:
         self.result = result
         self.subject = subject
         self.found: list[Difference] = []
-        self._seen: set[tuple[str, int, int]] = set()
+        self._seen: set[tuple[str, str, int, int]] = set()
         self._keys: set[tuple[str, str, str, str]] = set()
         self._hourly: dict[int, tuple[float, ...] | str] = {}
 
@@ -283,7 +283,7 @@ class _UmiComparer:
 
     def compare(self, a: FormatModel, b: FormatModel, pointer: str, who: str) -> None:
         """Compare two components of the same place in a template, field by field."""
-        key = (who, id(a), id(b))
+        key = (who, pointer, id(a), id(b))
         if key in self._seen:
             return
         self._seen.add(key)
@@ -301,6 +301,10 @@ class _UmiComparer:
 
     def value(self, model: type[FormatModel], key: str, a: object, b: object, where: str, who: str) -> None:
         relevance = _umi_relevance(model, key)
+        if isinstance(a, YearSchedule) and isinstance(b, YearSchedule):
+            # A schedule is located at the field that uses it, so a difference names its use.
+            self.compare(a, b, where, who)
+            return
         if isinstance(a, FormatModel) and isinstance(b, FormatModel):
             self.compare(a, b, self.pointer(a, where), who)
             return

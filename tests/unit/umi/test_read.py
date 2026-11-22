@@ -163,7 +163,10 @@ def test_window_settings_map_to_each_group() -> None:
     # The template's window settings differ from Basilisk's defaults on IsShadingSystemOn.
     assert only.IsShadingSystemOn is False
     assert only.OperableArea == 0.8
-    assert "window.settings" not in {loss.rule for loss in result.report.losses}
+    # Only the airflow-network and zone-mixing schedules, which SBEM lacks (UP-9), are lost: they
+    # are always on, but named and documented, which the always-on schedule written back is not.
+    lost = {loss.location.rsplit("/", 1)[-1] for loss in result.report.losses if loss.rule == "window.settings"}
+    assert lost == {"AfnWindowAvailability", "ZoneMixingAvailabilitySchedule"}
 
 
 # --- Scenario 2: name collisions -------------------------------------------------------------------

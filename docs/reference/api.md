@@ -31,8 +31,22 @@ are loaded on first use.
 ## Errors
 
 Every error derives from `ArchetypalError`, and its message starts with the input at fault.
+The reduction errors (`ReductionError` and its subclasses) are described in the
+[Reduction and comparison API](api/reduction.md).
 
 ::: archetypal.errors
     options:
       show_root_heading: false
       members_order: source
+      members:
+        - ArchetypalError
+        - InputError
+        - UnsupportedFeatureError
+        - LossyTranslationError
+        - LossReport
+        - NotComparableError
+        - OptionalDependencyError
+        - RemovedInArchetypal3Error
+        - UmiFormatError
+        - UmiValidationError
+        - Problem

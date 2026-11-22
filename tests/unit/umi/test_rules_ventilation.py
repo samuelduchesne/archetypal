@@ -10,7 +10,7 @@ from archetypal.umi._format import ZoneVentilation
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind, NoteKind
 from archetypal.umi.rules import ventilation as module
-from archetypal.umi.rules._common import ALWAYS_ON, RuleContext
+from archetypal.umi.rules._common import ALWAYS_ON, RuleContext, constant_year_schedule
 from archetypal.umi.rules.ventilation import (
     AIR_CHANGES,
     PROVIDERS,
@@ -262,10 +262,19 @@ def test_airflow_network_stays_lost_with_up9() -> None:
     )
 
 
-def test_an_always_on_scheduled_ventilation_schedule_is_none() -> None:
+def test_the_written_always_on_scheduled_ventilation_schedule_is_none() -> None:
+    context = reading(POINTER)
+    written = constant_year_schedule(ALWAYS_ON, 1.0)
+    ventilation = read_ventilation(settings(ScheduledVentilationSchedule=written), context)
+    assert ventilation.ScheduledVentilationSchedule is None
+    assert context.losses == []
+
+
+def test_a_named_always_on_scheduled_ventilation_schedule_is_kept() -> None:
     context = reading(POINTER)
     ventilation = read_ventilation(settings(ScheduledVentilationSchedule=umi_schedule("on")), context)
-    assert ventilation.ScheduledVentilationSchedule is None
+    assert ventilation.ScheduledVentilationSchedule is not None
+    assert ventilation.ScheduledVentilationSchedule.Name == "on"
     assert context.losses == []
 
 

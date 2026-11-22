@@ -69,6 +69,6 @@ def test_all_is_the_public_interface(module: str) -> None:
 
 
 def test_the_command_line_module_exports_only_its_entry_point() -> None:
-    import archetypal.cli as cli  # noqa: PLC0415
+    from archetypal import cli  # noqa: PLC0415
 
     assert cli.__all__ == ["main"]

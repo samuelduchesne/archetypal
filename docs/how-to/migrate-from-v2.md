@@ -53,16 +53,17 @@ building template per model, merged to the core and perimeter groups UMI expects
 ```text
 from archetypal import UmiTemplateLibrary
 
-library = UmiTemplateLibrary.from_idf_files(["office.idf", "school.idf"], weather="weather.epw", name="campus")
+library = UmiTemplateLibrary.from_idf_files(["three_zone.idf", "bar_building.idf"], weather="chicago.epw", name="campus")
 library.save("campus.json")
 ```
 
-<!-- example: skip TODO(001-US1): archetypal.reduce (spec 002) and archetypal.write_umi (spec 003) are not written yet -->
+<!-- example: needs-energyplus -->
 
 ```python
 from archetypal import reduce, write_umi
 
-reductions = [reduce(model, weather="weather.epw", simulate=True) for model in ("office.idf", "school.idf")]
+models = ("three_zone.idf", "bar_building.idf")
+reductions = [reduce(model, weather="chicago.epw", simulate=True) for model in models]
 report = write_umi(reductions, "campus.json")
 print(len(report.losses), "losses; see campus.loss.json")
 ```
@@ -70,7 +71,7 @@ print(len(report.losses), "losses; see campus.loss.json")
 `reduce` simulates each model once, with the outputs reduction needs; pass `results=` with the
 SQLite output of an annual run you already have to skip that run. `write_umi` writes
 `campus.loss.json` beside the library, listing what the UMI format cannot hold. From the command
-line, `archetypal reduce office.idf school.idf -w weather.epw -o campus.json` does the same.
+line, `archetypal reduce three_zone.idf bar_building.idf -w chicago.epw -o campus.json` does the same.
 
 ### Open and edit a UMI library {#edit-umi-library}
 
@@ -80,20 +81,19 @@ back.
 ```text
 from archetypal import UmiTemplateLibrary
 
-library = UmiTemplateLibrary.open("campus.json")
+library = UmiTemplateLibrary.open("BostonTemplateLibrary.json")
 library.BuildingTemplates[0].Name = "Office 2020"
-library.save("campus-edited.json")
+library.save("boston-edited.json")
 ```
 
-<!-- example: skip TODO(001-US1): archetypal.read_umi and archetypal.write_umi (spec 003) are not written yet -->
 
 ```python
 from archetypal import read_umi, write_umi
 
-imported = read_umi("campus.json")
+imported = read_umi("BostonTemplateLibrary.json")
 office, *others = imported.archetypes
 renamed = office.model_copy(update={"Name": "Office 2020"})
-write_umi([renamed, *others], "campus-edited.json")
+write_umi([renamed, *others], "boston-edited.json")
 ```
 
 `read_umi` returns one archetype per building template, in the library's order, and

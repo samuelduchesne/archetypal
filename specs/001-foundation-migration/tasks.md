@@ -185,7 +185,7 @@ with a weather file and open the library; the Python route gives the same librar
 
 ### Tests for User Story 1
 
-- [ ] T025 [P] [US1] Write `tests/unit/test_cli.py` with click's `CliRunner` and the 002
+- [X] T025 [P] [US1] Write `tests/unit/test_cli.py` with click's `CliRunner` and the 002
   fixtures (committed results, no EnergyPlus): `archetypal` alone lists `reduce`, `merge`,
   `compare`, `translate` with one line each (scenario 1.1); `reduce` expands directories and
   globs, sorted, and refuses an empty directory naming it; `--to sbem` writes one
@@ -194,50 +194,50 @@ with a weather file and open the library; the Python route gives the same librar
   building template per model, the reports `<stem>.<model>.report.json` and
   `<stem>.loss.json` (scenarios 1.2, 1.3); `--layout` with `--to umi` is refused; an existing
   output is not overwritten without `--force` (FR-015).
-- [ ] T026 [P] [US1] Write `tests/unit/test_exit_status.py`: exit 0 with no loss; 4 with a
+- [X] T026 [P] [US1] Write `tests/unit/test_exit_status.py`: exit 0 with no loss; 4 with a
   loss reported; 3 when one of two models fails, with the failure named in the summary and the
   report and the library holding the other model; 1 when every model fails, with nothing
   written; 2 for a usage error; 3 wins over 4 (data-model.md, ExitStatus; FR-014).
-- [ ] T027 [P] [US1] Write `tests/unit/test_removed_options.py`: each command and option
+- [X] T027 [P] [US1] Write `tests/unit/test_removed_options.py`: each command and option
   in contracts/cli.md's "Rejected v2 options and commands" exits 2 before any work, and its
   message names it and its replacement or reason (scenario 1.5, FR-013, SC-007).
-- [ ] T028 [P] [US1] Write `tests/integration/test_v2_invocation.py`
+- [X] T028 [P] [US1] Write `tests/integration/test_v2_invocation.py`
   (`@pytest.mark.energyplus`): `archetypal reduce model.idf -w weather.epw -o lib.json`
   simulates once, reduces to core/perimeter and writes a UMI library equal to the one written
   through the Python functions (scenario 1.4, US1 independent test).
-- [ ] T029 [P] [US1] Extend `tests/unit/test_no_side_effects.py`: running every command
+- [X] T029 [P] [US1] Extend `tests/unit/test_no_side_effects.py`: running every command
   on the fixtures leaves only the requested outputs and reports (FR-006, SC-006).
 
 ### Implementation for User Story 1
 
-- [ ] T030 [P] [US1] Implement `src/archetypal/cli/_summary.py`: `ExitStatus` (`SUCCESS =
+- [X] T030 [P] [US1] Implement `src/archetypal/cli/_summary.py`: `ExitStatus` (`SUCCESS =
   0`, `FAILURE = 1`, `USAGE = 2`, `PARTIAL_FAILURE = 3`, `SUCCESS_WITH_LOSSES = 4`; "When both 3
   and 4 apply, 3 wins") and `RunSummary` (data-model.md), built from the reports and printed to
   stderr.
-- [ ] T031 [US1] Implement the group in `src/archetypal/cli/__init__.py`: `main` with
+- [X] T031 [US1] Implement the group in `src/archetypal/cli/__init__.py`: `main` with
   `--version` (archetypal, idfkit and epinterface versions), `--log-level` (configures a stderr
   handler for the command only) and `-d/--debug`; register the entry point `archetypal =
   "archetypal.cli:main"` in `pyproject.toml` (contracts/cli.md, Group).
-- [ ] T032 [US1] Add the `command` and `option` rows of contracts/cli.md's rejected list to
+- [X] T032 [US1] Add the `command` and `option` rows of contracts/cli.md's rejected list to
   `REMOVED` in `src/archetypal/_removed.py`, and implement
   `src/archetypal/cli/_removed_options.py`: hidden click options and a hidden `transition`
   command built from those rows, each raising a usage error with the row's message before any
   work (FR-013, R6).
-- [ ] T033 [US1] Implement `src/archetypal/cli/reduce.py` per contracts/cli.md: model
+- [X] T033 [US1] Implement `src/archetypal/cli/reduce.py` per contracts/cli.md: model
   expansion, `--weather`, `--output` defaults (`myumitemplate.json` for UMI), `--to`,
   `--results`, `--layout`, `--threshold`, `-p/--parallel` (separate processes, `-1` = every
   core), `--force`; `--to umi` reduces each model at core/perimeter and writes one library with
   003's writer; reports beside the output; summary and exit status from `_summary` (FR-012,
   FR-014, FR-015).
-- [ ] T034 [P] [US1] Implement `src/archetypal/cli/merge.py`, `compare.py` and
+- [X] T034 [P] [US1] Implement `src/archetypal/cli/merge.py`, `compare.py` and
   `translate.py` per contracts/cli.md, as thin wrappers over 002's `merge` and `compare` and
   003's read and write functions (`--strict` raises `LossyTranslationError`) (FR-011).
-- [ ] T035 [US1] Re-export the top-level names of data-model.md (Public interface) from
+- [X] T035 [US1] Re-export the top-level names of data-model.md (Public interface) from
   `src/archetypal/__init__.py`; keep `archetypal.reduction`, `archetypal.comparison`,
   `archetypal.umi` and `archetypal.errors` public with the names listed there; mark every other
   module private (FR-007, FR-008). A test compares each public module's `__all__` with that
   list.
-- [ ] T036 [P] [US1] With `/project-kit:diataxis`, write `docs/reference/cli.md`
+- [X] T036 [P] [US1] With `/project-kit:diataxis`, write `docs/reference/cli.md`
   (reference, generated by `mkdocs-click`, plus the exit-status table) and
   `docs/reference/api.md` (reference, mkdocstrings over the public interface), and add the
   Reference section to `mkdocs.yml` with its `index.md` (FR-023, US3 scenario 2).

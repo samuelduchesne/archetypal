@@ -26,6 +26,7 @@ from archetypal.umi._format import (
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind
 from archetypal.umi.rules import windows
+from archetypal.umi.rules._common import ALWAYS_ON, constant_year_schedule
 
 from .test_rules_loads import read_schedule, reading, umi_schedule, write_schedule, writing
 
@@ -377,8 +378,8 @@ def umi_settings(**fields: object) -> WindowSettings:
         "ShadingSystemSetpoint": 250.0,
         "ShadingSystemTransmittance": 0.3,
         "ShadingSystemAvailabilitySchedule": umi_schedule("summer", 0.0),
-        "AfnWindowAvailability": umi_schedule("on"),
-        "ZoneMixingAvailabilitySchedule": umi_schedule("on"),
+        "AfnWindowAvailability": constant_year_schedule(ALWAYS_ON, 1.0),
+        "ZoneMixingAvailabilitySchedule": constant_year_schedule(ALWAYS_ON, 1.0),
     }
     values.update(fields)
     return WindowSettings.model_validate(values)

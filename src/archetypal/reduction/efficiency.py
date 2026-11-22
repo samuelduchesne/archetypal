@@ -8,7 +8,7 @@ consumption of a mode is attributed to the conditioned zones in proportion to th
 delivered energy in the same mode, counting every copy of a multiplied zone
 (`multiplier · d_z,h`). Delivery is `Zone Air System Sensible Heating/Cooling Energy` (reported
 for one copy, research R2) and, for hot water, the heat its volume needs above mains
-temperature (`HotWaterRecord.volume · (target − mains) · ρ·c`, unless the caller passes the hot
+temperature (`HotWaterRecord.volume · (target - mains) · rho·c`, unless the caller passes the hot
 water module's own heat profile).
 
 - **Standby.** Consumption in hours without delivery in that mode (standby, pilot lights) is
@@ -34,11 +34,11 @@ water module's own heat profile).
 
 The energy-input-ratio fit
 --------------------------
-`fit_eir(sums)` fits `c_h = (a + b·(T_h − T_ref))·d_h` over (zone, hour) pairs by least squares,
+`fit_eir(sums)` fits `c_h = (a + b·(T_h - T_ref))·d_h` over (zone, hour) pairs by least squares,
 under the constraint that the annual consumption is reproduced exactly, with `T_ref` the
 delivered-weighted mean outdoor temperature. With that `T_ref` the constraint reduces to
 `a = Σc / Σd`, the seasonal energy input ratio, and `b` is the least-squares slope of the
-residual `c − a·d` on `d·(T − T_ref)`. Both only need the additive `EirSums`, so a merged group
+residual `c - a·d` on `d·(T - T_ref)`. Both only need the additive `EirSums`, so a merged group
 refits exactly. `SystemCOP = 1 / a`; `b` is UP-8's slope.
 
 Building-wide data
@@ -57,7 +57,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 from idfkit.exceptions import ResultLookupError
@@ -67,6 +67,7 @@ from archetypal.reduction.ledger import EirSums, EnergyTotals, Fuel, Mode
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import numpy.typing as npt
     from idfkit.simulation import SQLResult
     from idfkit.versioned import IDFDocumentSince22_1
 
@@ -91,7 +92,7 @@ __all__ = [
 ]
 
 WATER_VOLUMETRIC_HEAT = 1000.0 * 4180.0
-"""ρ·c of water, J/(m³·K): EnergyPlus's `CPHW` (4180 J/(kg·K)) at 1000 kg/m³."""
+"""rho·c of water, J/(m³·K): EnergyPlus's `CPHW` (4180 J/(kg·K)) at 1000 kg/m³."""
 
 HEATING_VARIABLE = "Zone Air System Sensible Heating Energy"
 COOLING_VARIABLE = "Zone Air System Sensible Cooling Energy"
@@ -103,7 +104,7 @@ _EQUIPMENT_SUMMARY = "EquipmentSummary"
 _PRIMARY: Mapping[str, Mode] = {"Heating": "heating", "Cooling": "cooling", "WaterSystems": "hot_water"}
 _DISTRIBUTION = ("Pumps", "HeatRejection")
 _NOT_FUELS = frozenset({"energytransfer", "water", "mainswater", "rainwater", "wellwater", "onsitewater", "condensate"})
-_AIR_MODES: tuple[Literal["heating", "cooling"], ...] = ("heating", "cooling")
+_AIR_MODES: tuple[Mode, ...] = ("heating", "cooling")
 
 
 # --- hourly results ------------------------------------------------------------------------------
@@ -203,9 +204,106 @@ class EnergyAttribution:
 
 # --- attribution ---------------------------------------------------------------------------------
 
+_Array: TypeAlias = "npt.NDArray[np.float64]"
+
 
 def _nonzero(values: Mapping[str, float]) -> dict[str, float]:
     return {key: value for key, value in sorted(values.items()) if value != 0.0}
+
+
+def _divide(numerator: _Array, denominator: _Array, fallback: _Array | None = None) -> _Array:
+    """`numerator / denominator` where the denominator is positive, else `fallback` (0)."""
+    shape = np.broadcast_shapes(numerator.shape, denominator.shape)
+    out = np.zeros(shape) if fallback is None else np.array(np.broadcast_to(fallback, shape), dtype=np.float64)
+    return np.divide(numerator, denominator, out=out, where=np.broadcast_to(denominator > 0.0, shape))
+
+
+class _Ledgers:
+    """Accumulates one copy's sums per zone, mode and fuel."""
+
+    def __init__(self, data: BuildingEnergy) -> None:
+        self.names = sorted(data.multipliers)
+        self.hours = len(data.outdoor_temperature)
+        self.mult = np.array([data.multipliers[n] for n in self.names], dtype=np.float64)
+        self.area = np.array([data.floor_area.get(n, 0.0) for n in self.names], dtype=np.float64)
+        self.modes: tuple[Mode, ...] = tuple(dict.fromkeys([*_AIR_MODES, *data.delivered, *data.consumed]))
+        self.delivered: dict[Mode, _Array] = {}
+        self.building: dict[Mode, _Array] = {}
+        self.hourly_share: dict[Mode, _Array] = {}
+        self.annual_share: dict[Mode, _Array] = {}
+        for mode in self.modes:
+            self._add_mode(mode, data.delivered.get(mode, {}))
+        empty = len(self.names), self.hours
+        self.primary: dict[Mode, _Array] = {mode: np.zeros(empty) for mode in self.modes}
+        self.consumed = self._sums()
+        self.distribution = self._sums()
+        self.standby = self._sums()
+
+    def _sums(self) -> dict[Mode, list[dict[Fuel, float]]]:
+        return {mode: [{} for _ in self.names] for mode in self.modes}
+
+    def _add_mode(self, mode: Mode, by_zone: Mapping[str, Profile]) -> None:
+        zeros = np.zeros(self.hours)
+        matrix = np.array([by_zone.get(n, zeros) for n in self.names], dtype=np.float64).reshape(len(self.names), self.hours)
+        total = (self.mult[:, None] * matrix).sum(axis=0)
+        self.delivered[mode] = matrix
+        self.building[mode] = total
+        self.hourly_share[mode] = _divide(matrix, total)
+        annual = matrix.sum(axis=1)
+        weight = annual if float((self.mult * annual).sum()) > 0.0 else self.area
+        self.annual_share[mode] = _divide(weight, np.array(float((self.mult * weight).sum())))
+
+    @staticmethod
+    def _add(target: dict[Fuel, float], fuel: Fuel, amount: float) -> None:
+        if amount != 0.0:
+            target[fuel] = target.get(fuel, 0.0) + amount
+
+    def spread(self, mode: Mode, fuel: Fuel, amount: float) -> None:
+        """Give each zone its annual delivered share of consumption not attributed hour by hour."""
+        for i in range(len(self.names)):
+            self._add(self.standby[mode][i], fuel, amount * float(self.annual_share[mode][i]))
+
+    def primary_meter(self, mode: Mode, fuel: Fuel, meter: _Array) -> float:
+        """Attribute a primary meter; return its consumption in hours without delivery."""
+        per_zone = self.hourly_share[mode] * meter
+        self.primary[mode] += per_zone
+        for i in range(len(self.names)):
+            self._add(self.consumed[mode][i], fuel, float(per_zone[i].sum()))
+        idle = float(meter[self.building[mode] <= 0.0].sum())
+        self.spread(mode, fuel, idle)
+        return idle
+
+    def distribution_meter(self, fuel: Fuel, energy: _Array) -> float:
+        """Split a pump or heat-rejection meter by the hour's delivered modes; return the idle part."""
+        heat, cool = self.building["heating"], self.building["cooling"]
+        both = heat + cool
+        heat_fraction = _divide(heat, both)
+        cool_fraction = _divide(cool, both)
+        for mode, fraction in (("heating", heat_fraction), ("cooling", cool_fraction)):
+            per_zone = self.hourly_share[mode] * (energy * fraction)
+            for i in range(len(self.names)):
+                self._add(self.distribution[mode][i], fuel, float(per_zone[i].sum()))
+        idle = float(energy[both <= 0.0].sum())
+        annual_heat, annual_cool = float(heat.sum()), float(cool.sum())
+        heating_part = annual_heat / (annual_heat + annual_cool) if annual_heat + annual_cool > 0.0 else 1.0
+        self.spread("heating", fuel, idle * heating_part)
+        self.spread("cooling", fuel, idle * (1.0 - heating_part))
+        return idle
+
+    def totals(self, i: int, mode: Mode, rated: float | None, temperature: _Array) -> EnergyTotals:
+        """One copy's totals of zone `i` in `mode`."""
+        weight = float(self.area[i]) if rated is not None else 0.0
+        return EnergyTotals(
+            delivered=float(self.delivered[mode][i].sum()),
+            consumed_by_fuel=_nonzero(self.consumed[mode][i]),
+            distribution_by_fuel=_nonzero(self.distribution[mode][i]),
+            unattributed=_nonzero(self.standby[mode][i]),
+            rated_weight=weight,
+            rated_weighted=weight * rated if rated is not None else 0.0,
+            eir_sums=EirSums.from_hourly(
+                consumed=self.primary[mode][i], delivered=self.delivered[mode][i], outdoor_temperature=temperature
+            ),
+        )
 
 
 def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
@@ -217,101 +315,25 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
     Returns:
         One copy's totals per zone and mode, and the unattributed consumption.
     """
-    names = sorted(data.multipliers)
-    hours = len(data.outdoor_temperature)
-    mult = np.asarray([data.multipliers[n] for n in names], dtype=np.float64)
-    area = np.asarray([data.floor_area.get(n, 0.0) for n in names], dtype=np.float64)
-    zeros = np.zeros(hours)
-    modes: list[Mode] = list(dict.fromkeys([*_AIR_MODES, *data.delivered, *data.consumed]))
-
-    delivered: dict[Mode, np.ndarray] = {}
-    building: dict[Mode, np.ndarray] = {}
-    hourly_share: dict[Mode, np.ndarray] = {}
-    annual_share: dict[Mode, np.ndarray] = {}
-    for mode in modes:
-        by_zone = data.delivered.get(mode, {})
-        matrix = (
-            np.vstack([np.asarray(by_zone.get(n, zeros), dtype=np.float64) for n in names])
-            if names
-            else np.zeros((0, hours))
-        )
-        total = (mult[:, None] * matrix).sum(axis=0)
-        delivered[mode] = matrix
-        building[mode] = total
-        with np.errstate(invalid="ignore", divide="ignore"):
-            hourly_share[mode] = np.where(total > 0.0, matrix / np.where(total > 0.0, total, 1.0), 0.0)
-        annual = matrix.sum(axis=1)
-        weight = annual if float((mult * annual).sum()) > 0.0 else area
-        denominator = float((mult * weight).sum())
-        annual_share[mode] = weight / denominator if denominator > 0.0 else np.zeros(len(names))
-
-    consumed: dict[Mode, dict[str, dict[Fuel, float]]] = {m: {n: {} for n in names} for m in modes}
-    primary_hourly: dict[Mode, np.ndarray] = {m: np.zeros((len(names), hours)) for m in modes}
-    distribution: dict[Mode, dict[str, dict[Fuel, float]]] = {m: {n: {} for n in names} for m in modes}
-    standby: dict[Mode, dict[str, dict[Fuel, float]]] = {m: {n: {} for n in names} for m in modes}
-    unattributed: dict[Mode, dict[Fuel, float]] = {}
-
-    def spread(mode: Mode, fuel: Fuel, amount: float) -> None:
-        for i, name in enumerate(names):
-            part = amount * float(annual_share[mode][i])
-            if part != 0.0:
-                standby[mode][name][fuel] = standby[mode][name].get(fuel, 0.0) + part
-
-    for mode in modes:
+    ledgers = _Ledgers(data)
+    unattributed: dict[Mode, dict[Fuel, float]] = {mode: {} for mode in ledgers.modes}
+    for mode in ledgers.modes:
         for fuel, series in data.consumed.get(mode, {}).items():
-            meter = np.asarray(series, dtype=np.float64)
-            per_zone = hourly_share[mode] * meter
-            primary_hourly[mode] += per_zone
-            for i, name in enumerate(names):
-                consumed[mode][name][fuel] = float(per_zone[i].sum())
-            idle = float(meter[building[mode] <= 0.0].sum())
-            if idle != 0.0:
-                unattributed.setdefault(mode, {})[fuel] = idle
-                spread(mode, fuel, idle)
-
-    unattributed_distribution: dict[Fuel, float] = {}
-    heat, cool = building["heating"], building["cooling"]
-    both = heat + cool
-    with np.errstate(invalid="ignore", divide="ignore"):
-        heat_fraction = np.where(both > 0.0, heat / np.where(both > 0.0, both, 1.0), 0.0)
-    annual_heat, annual_cool = float(heat.sum()), float(cool.sum())
-    idle_heat_fraction = annual_heat / (annual_heat + annual_cool) if annual_heat + annual_cool > 0.0 else 1.0
-    for fuel, series in data.distribution.items():
-        energy = np.asarray(series, dtype=np.float64)
-        for mode, fraction in (("heating", heat_fraction), ("cooling", 1.0 - heat_fraction)):
-            per_zone = hourly_share[mode] * (energy * np.where(both > 0.0, fraction, 0.0))
-            for i, name in enumerate(names):
-                value = float(per_zone[i].sum())
-                if value != 0.0:
-                    distribution[mode][name][fuel] = distribution[mode][name].get(fuel, 0.0) + value
-        idle = float(energy[both <= 0.0].sum())
-        if idle != 0.0:
-            unattributed_distribution[fuel] = idle
-            spread("heating", fuel, idle * idle_heat_fraction)
-            spread("cooling", fuel, idle * (1.0 - idle_heat_fraction))
-
+            unattributed[mode][fuel] = ledgers.primary_meter(mode, fuel, np.asarray(series, dtype=np.float64))
+    unattributed_distribution = {
+        fuel: ledgers.distribution_meter(fuel, np.asarray(series, dtype=np.float64))
+        for fuel, series in data.distribution.items()
+    }
     temperature = np.asarray(data.outdoor_temperature, dtype=np.float64)
-    zones: dict[str, dict[Mode, EnergyTotals]] = {}
-    for i, name in enumerate(names):
-        per_mode: dict[Mode, EnergyTotals] = {}
-        for mode in modes:
-            rated = data.rated.get(name, {}).get(mode)
-            weight = float(area[i]) if rated is not None else 0.0
-            per_mode[mode] = EnergyTotals(
-                delivered=float(delivered[mode][i].sum()),
-                consumed_by_fuel=_nonzero(consumed[mode][name]),
-                distribution_by_fuel=_nonzero(distribution[mode][name]),
-                unattributed=_nonzero(standby[mode][name]),
-                rated_weight=weight,
-                rated_weighted=weight * rated if rated is not None else 0.0,
-                eir_sums=EirSums.from_hourly(
-                    consumed=primary_hourly[mode][i], delivered=delivered[mode][i], outdoor_temperature=temperature
-                ),
-            )
-        zones[name] = per_mode
+    zones = {
+        name: {
+            mode: ledgers.totals(i, mode, data.rated.get(name, {}).get(mode), temperature) for mode in ledgers.modes
+        }
+        for i, name in enumerate(ledgers.names)
+    }
     return EnergyAttribution(
         zones=zones,
-        unattributed={mode: _nonzero(unattributed.get(mode, {})) for mode in modes},
+        unattributed={mode: _nonzero(values) for mode, values in unattributed.items()},
         unattributed_distribution=_nonzero(unattributed_distribution),
     )
 
@@ -320,7 +342,7 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
 
 
 def fit_eir(sums: EirSums) -> tuple[float, float, float]:
-    """Fit `c = (a + b·(T − T_ref))·d` with the annual consumption exact (R12).
+    """Fit `c = (a + b·(T - T_ref))·d` with the annual consumption exact (R12).
 
     Args:
         sums: The additive sums over (zone, hour) pairs.
@@ -587,7 +609,7 @@ def building_energy(
         zones: The classified zones; only conditioned ones are attributed to.
         evaluate: The schedule evaluator (hot-water target temperatures).
         hot_water_heat: Hot water heat delivered each hour to one copy, J, by zone name, to use
-            instead of `volume · (target − mains) · ρ·c` (pass the hot-water module's heat so
+            instead of `volume · (target - mains) · rho·c` (pass the hot-water module's heat so
             both agree).
 
     Returns:

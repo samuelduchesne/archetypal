@@ -251,7 +251,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   their zone; air-loop fans are split by hourly inlet-node mass flow; specific fan power ×
   detailed volume = detailed fan energy; the effective supply ΔT per mode follows R19; the
   share of volume without demand is reported (FR-022a).
-- [ ] T038 [P] [US1] Test grouping in `tests/unit/test_grouping.py` at the default layout: one
+- [X] T038 [P] [US1] Test grouping in `tests/unit/test_grouping.py` at the default layout: one
   group per (space use, exposure); groups below the threshold merge into the most similar
   group of the same exposure, smallest first, ties broken by key; a small group with nothing
   to merge into is kept; pre-threshold groups are kept at the finest key (FR-008, FR-011).
@@ -332,7 +332,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   effect is folded into or none), read with literal keys only (R18), and
   `find_unsupported(source) -> tuple[NotRepresented, ...]` with affected zones and, where the
   results give it, annual energy.
-- [ ] T056 [US1] Implement `src/archetypal/reduction/grouping.py` for the default layout:
+- [X] T056 [US1] Implement `src/archetypal/reduction/grouping.py` for the default layout:
   ledgers summed by group key in sorted key order; pre-threshold groups kept at the finest key
   (space use, exposure) whatever the layout; the threshold
   loop with the similarity distance of data-model.md (gain densities, annual gain hours,
@@ -396,7 +396,7 @@ the default layout and merge; the archetypes match (spec US2, SC-007).
 
 ### Tests for User Story 2
 
-- [ ] T067 [P] [US2] Extend `tests/unit/test_grouping.py`: each layout's group keys; threshold
+- [X] T067 [P] [US2] Extend `tests/unit/test_grouping.py`: each layout's group keys; threshold
   applied once to the requested layout's groups, never to an intermediate layout's;
   pre-threshold groups stay at the finest key under every layout;
   `merged_distinctions` has one entry per resulting group with `into_key`, sorted `from_keys`
@@ -411,7 +411,7 @@ the default layout and merge; the archetypes match (spec US2, SC-007).
 
 ### Implementation for User Story 2
 
-- [ ] T069 [US2] Extend `src/archetypal/reduction/grouping.py` with the `SPACE_USE`,
+- [X] T069 [US2] Extend `src/archetypal/reduction/grouping.py` with the `SPACE_USE`,
   `CORE_PERIMETER` and `SINGLE_ZONE` keys, the eligibility rule without exposure ("the most
   similar group"), and the list of merged distinctions (FR-009, FR-011).
 - [ ] T070 [US2] Implement `merge(reduction, layout, *, small_group_threshold=None)` in

@@ -135,10 +135,7 @@ This is an API gap, not a failure. Reading zone floor areas and multipliers toda
 from idfkit.simulation import SQLResult
 
 with SQLResult("eplusout.sql") as sql:
-    rows = sql.query(
-        "SELECT ZoneName, FloorArea, Volume, Multiplier, ListMultiplier, IsPartOfTotalArea "
-        "FROM Zones"
-    )
+    rows = sql.query("SELECT ZoneName, FloorArea, Volume, Multiplier, ListMultiplier, IsPartOfTotalArea FROM Zones")
     for name, area, volume, mult, list_mult, in_total in rows:
         # every cell is `object`: a type checker accepts any use, and nothing checks it
         print(name, area * mult * list_mult)  # pyright strict: operator on "object"
@@ -170,6 +167,7 @@ class ZoneInfo:
     is_part_of_total_area: bool
     # ... remaining Zones columns
 
+
 @dataclass(frozen=True, slots=True)
 class SurfaceInfo:
     index: int
@@ -185,6 +183,7 @@ class SurfaceInfo:
     heat_transfer_surf: bool
     # ...
 
+
 class SQLResult:
     def zones(self) -> list[ZoneInfo]: ...
     def surfaces(self) -> list[SurfaceInfo]: ...
@@ -194,6 +193,7 @@ class SQLResult:
     def nominal_people(self) -> list[NominalPeopleInfo]: ...
     def nominal_lighting(self) -> list[NominalLoadInfo]: ...
     def nominal_electric_equipment(self) -> list[NominalLoadInfo]: ...
+
     # gas, hot water, steam, other equipment, baseboard heaters,
     # infiltration and ventilation alike
 ```

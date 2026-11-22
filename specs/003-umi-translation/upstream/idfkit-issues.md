@@ -34,13 +34,19 @@ from idfkit import new_document
 from idfkit import thermal
 
 doc = new_document()
-doc.add("WindowMaterial:SimpleGlazingSystem", "Simple", u_factor=1.8,
-        solar_heat_gain_coefficient=0.4, visible_transmittance=0.6)
+doc.add(
+    "WindowMaterial:SimpleGlazingSystem",
+    "Simple",
+    u_factor=1.8,
+    solar_heat_gain_coefficient=0.4,
+    visible_transmittance=0.6,
+)
 doc.add("Construction", "Window", outside_layer="Simple")
 c = doc["Construction"]["Window"]
 print("idfkit", idfkit.__version__)
-print("U, SHGC, VT =", thermal.calculate_u_value(c), thermal.calculate_shgc(c),
-      thermal.calculate_visible_transmittance(c))
+print(
+    "U, SHGC, VT =", thermal.calculate_u_value(c), thermal.calculate_shgc(c), thermal.calculate_visible_transmittance(c)
+)
 print("equivalent_glazing_layer in idfkit.thermal:", hasattr(thermal, "equivalent_glazing_layer"))
 ```
 
@@ -76,6 +82,7 @@ class EquivalentGlazingLayer:
     infrared_transmittance: float
     front_infrared_emissivity: float
     back_infrared_emissivity: float
+
 
 def equivalent_glazing_layer(
     u_factor: float,  # W/m2-K, with films, as in WindowMaterial:SimpleGlazingSystem

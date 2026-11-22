@@ -61,19 +61,29 @@ One frozen pydantic v2 model per Basilisk Core class, named after it: `GasMateri
 ## FieldMapping and CORRESPONDENCE (FR-009, SC-005)
 
 ```python
-class Relevance(StrEnum): SIMULATION = "S"; LIFE_CYCLE = "L"; DESCRIPTIVE = "D"
-class MappingStatus(StrEnum): EXACT = "exact"; CONVERTED = "converted"; UPSTREAM = "upstream"; NONE = "none"
+class Relevance(StrEnum):
+    SIMULATION = "S"
+    LIFE_CYCLE = "L"
+    DESCRIPTIVE = "D"
+
+
+class MappingStatus(StrEnum):
+    EXACT = "exact"
+    CONVERTED = "converted"
+    UPSTREAM = "upstream"
+    NONE = "none"
+
 
 @dataclass(frozen=True)
 class FieldMapping:
-    umi_class: str             # "ZoneLoads"
-    umi_key: str               # "LightingPowerDensity"
+    umi_class: str  # "ZoneLoads"
+    umi_key: str  # "LightingPowerDensity"
     relevance: Relevance
     sbem_paths: tuple[str, ...]  # empty when status is UPSTREAM or NONE
-    rule: str                  # rule id, registered in archetypal.umi.rules
+    rule: str  # rule id, registered in archetypal.umi.rules
     status: MappingStatus
-    upstream: str | None       # "UP-9", "UP-2" when status is UPSTREAM
-    note: str                  # conserved quantity, or why there is no counterpart
+    upstream: str | None  # "UP-9", "UP-2" when status is UPSTREAM
+    note: str  # conserved quantity, or why there is no counterpart
 ```
 
 `CORRESPONDENCE: tuple[FieldMapping, ...]` covers every field of
@@ -188,23 +198,40 @@ A pydantic model whose JSON Schema is published
 
 ```python
 class LossKind(StrEnum):
-    LOST = "lost"; APPROXIMATE = "approximate"; MERGED = "merged"; COPIED = "copied"
-    SHARE_DROPPED = "share_dropped"; RENAMED = "renamed"; UNUSED = "unused"
+    LOST = "lost"
+    APPROXIMATE = "approximate"
+    MERGED = "merged"
+    COPIED = "copied"
+    SHARE_DROPPED = "share_dropped"
+    RENAMED = "renamed"
+    UNUSED = "unused"
     SKIPPED_TEMPLATE = "skipped_template"
+
 
 class Loss(BaseModel, frozen=True):
     kind: LossKind
-    subject: str                 # template or archetype name ("" for library-level, e.g. unused)
-    location: str                # JSON pointer (UMI side) or field path (SBEM side)
-    value: JsonValue             # the value not represented
+    subject: str  # template or archetype name ("" for library-level, e.g. unused)
+    location: str  # JSON pointer (UMI side) or field path (SBEM side)
+    value: JsonValue  # the value not represented
     replacement: JsonValue | None
-    rule: str                    # rule id, or "library.unused", "names.collision", …
+    rule: str  # rule id, or "library.unused", "names.collision", …
     reason: str
-    upstream: str | None         # UP item when the gap is upstream
+    upstream: str | None  # UP item when the gap is upstream
 
-class NoteKind(StrEnum): DEFAULTED = "defaulted"; ASSUMED = "assumed"; UNKNOWN_KEY = "unknown_key"
+
+class NoteKind(StrEnum):
+    DEFAULTED = "defaulted"
+    ASSUMED = "assumed"
+    UNKNOWN_KEY = "unknown_key"
+
+
 class Note(BaseModel, frozen=True):
-    kind: NoteKind; subject: str; location: str; value: JsonValue; rule: str; reason: str
+    kind: NoteKind
+    subject: str
+    location: str
+    value: JsonValue
+    rule: str
+    reason: str
 ```
 
 **Invariants.**
@@ -219,15 +246,19 @@ class Note(BaseModel, frozen=True):
 ```python
 @dataclass(frozen=True)
 class UmiImport:
-    archetypes: tuple[Archetype, ...]        # template order
+    archetypes: tuple[Archetype, ...]  # template order
     report: TranslationReport
-    def write(self, directory: str | os.PathLike[str], *, overwrite: bool = False) -> tuple[Path, ...]: ...
+
+    def write(self, directory: str | os.PathLike[str], *, overwrite: bool = False) -> tuple[Path, ...]:
+        ...
         # <archetype>.sbem.json per archetype + <library stem>.loss.json
+
 
 @dataclass(frozen=True)
 class UmiExport:
-    text: str                                # the library JSON
+    text: str  # the library JSON
     report: TranslationReport
+
     def write(self, path: str | os.PathLike[str], *, overwrite: bool = False) -> tuple[Path, Path]: ...
 ```
 

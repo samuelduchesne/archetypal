@@ -7,10 +7,22 @@ docstrings. Spec 001's `translate` command and `reduce --to umi` are thin wrappe
 ```python
 from archetypal import read_umi, write_umi
 from archetypal.umi import (
-    to_umi, UmiImport, UmiExport,
-    TranslationReport, Loss, LossKind, Note, NoteKind,
-    diff_umi, diff_archetypes, UmiDiff, ArchetypeDiff,
-    CORRESPONDENCE, FieldMapping, Relevance, MappingStatus,
+    to_umi,
+    UmiImport,
+    UmiExport,
+    TranslationReport,
+    Loss,
+    LossKind,
+    Note,
+    NoteKind,
+    diff_umi,
+    diff_archetypes,
+    UmiDiff,
+    ArchetypeDiff,
+    CORRESPONDENCE,
+    FieldMapping,
+    Relevance,
+    MappingStatus,
 )
 from archetypal.errors import UmiFormatError, UmiValidationError, LossyTranslationError
 ```
@@ -40,9 +52,11 @@ def read_umi(
 ## `write_umi` and `to_umi`
 
 ```python
-ArchetypeLike = Reduction | Archetype     # Reduction from spec 002; Archetype = UP-2 model
+ArchetypeLike = Reduction | Archetype  # Reduction from spec 002; Archetype = UP-2 model
+
 
 def to_umi(archetypes: Sequence[ArchetypeLike], *, strict: bool = False) -> UmiExport: ...
+
 
 def write_umi(
     archetypes: Sequence[ArchetypeLike],

@@ -6,15 +6,20 @@
 import archetypal
 
 archetypal.__version__
-from archetypal import reduce, merge, compare, Layout, ReductionOptions   # spec 002
+from archetypal import reduce, merge, compare, Layout, ReductionOptions  # spec 002
 from archetypal.errors import (
-    ArchetypalError, InputError, UnsupportedFeatureError, LossyTranslationError,
-    NotComparableError, OptionalDependencyError, RemovedInArchetypal3Error,
+    ArchetypalError,
+    InputError,
+    UnsupportedFeatureError,
+    LossyTranslationError,
+    NotComparableError,
+    OptionalDependencyError,
+    RemovedInArchetypal3Error,
 )
-from archetypal import read_umi, write_umi                                 # spec 003 (R14)
+from archetypal import read_umi, write_umi  # spec 003 (R14)
 from archetypal.reduction import Reduction, RESULTS_REQUIREMENTS, schedule_compact  # spec 002
-from archetypal.comparison import ComparisonResult, AcceptanceTargets      # spec 002
-from archetypal.umi import to_umi, UmiImport, UmiExport, TranslationReport # spec 003, and the rest of its contract
+from archetypal.comparison import ComparisonResult, AcceptanceTargets  # spec 002
+from archetypal.umi import to_umi, UmiImport, UmiExport, TranslationReport  # spec 003, and the rest of its contract
 ```
 
 The full list is in [../data-model.md](../data-model.md), Public interface. Everything is

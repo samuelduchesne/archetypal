@@ -650,8 +650,16 @@ keyed by name, so unique template names are this project's rule, not Basilisk's.
 ```python
 from archetypal import read_umi, write_umi
 from archetypal.umi import (
-    to_umi, UmiImport, UmiExport, TranslationReport, Loss, LossKind, Note,
-    diff_umi, diff_archetypes, CORRESPONDENCE,
+    to_umi,
+    UmiImport,
+    UmiExport,
+    TranslationReport,
+    Loss,
+    LossKind,
+    Note,
+    diff_umi,
+    diff_archetypes,
+    CORRESPONDENCE,
 )
 from archetypal.errors import UmiFormatError, UmiValidationError, LossyTranslationError
 ```

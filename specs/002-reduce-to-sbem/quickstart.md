@@ -30,8 +30,7 @@ uv run pytest              # default selection: unit tier only
 ```python
 from archetypal import reduce
 
-r = reduce("tests/fixtures/models/ten_zone_multipliers.idf",
-           "tests/fixtures/models/ten_zone_multipliers.sql")
+r = reduce("tests/fixtures/models/ten_zone_multipliers.idf", "tests/fixtures/models/ten_zone_multipliers.sql")
 paths = r.write("out", "ten_zone")
 ```
 

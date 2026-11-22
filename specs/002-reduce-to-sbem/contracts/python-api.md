@@ -9,8 +9,13 @@ from archetypal import reduce, merge, compare, Layout, ReductionOptions
 from archetypal.reduction import RESULTS_REQUIREMENTS, Reduction, schedule_compact
 from archetypal.comparison import ComparisonResult, AcceptanceTargets
 from archetypal.errors import (
-    ArchetypalError, ReductionError, NoConditionedZones, MissingResults,
-    ModelResultsMismatch, UnsupportedEnergyPlusVersion, NotComparableError,
+    ArchetypalError,
+    ReductionError,
+    NoConditionedZones,
+    MissingResults,
+    ModelResultsMismatch,
+    UnsupportedEnergyPlusVersion,
+    NotComparableError,
 )
 ```
 
@@ -18,7 +23,7 @@ from archetypal.errors import (
 
 ```python
 def reduce(
-    model: str | os.PathLike[str] | AnyIDFDocument,   # narrowed internally with as_version(since="22.1")
+    model: str | os.PathLike[str] | AnyIDFDocument,  # narrowed internally with as_version(since="22.1")
     results: str | os.PathLike[str] | SQLResult | None = None,
     *,
     options: ReductionOptions = ReductionOptions(),

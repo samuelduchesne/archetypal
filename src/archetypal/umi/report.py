@@ -27,7 +27,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    JsonValue,  # noqa: TC002 - pydantic resolves annotations at run time
+    JsonValue,
     computed_field,
     field_validator,
     model_validator,

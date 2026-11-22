@@ -18,6 +18,10 @@ For each run this module reads:
   `Simulations` table); and the meters' reporting frequency.
 
 Lookups that fail are collected as *problems*, so `compare` can name all of them at once.
+
+The static tables (`Simulations`, `Zones`) are read through `archetypal.reduction._sql_tables`,
+imported where it is used: importing `archetypal.reduction` loads epinterface, which reads its
+settings from the environment, and `import archetypal` must not (FR-006).
 """
 
 from __future__ import annotations
@@ -30,8 +34,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from idfkit.exceptions import ResultLookupError
-
-from archetypal.reduction._sql_tables import SQLTableError, database_path, read_simulations, read_zones
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -128,6 +130,8 @@ def label_of(results: str | Path | SQLResult) -> str:
     """Return how a set of results is named in messages: its path."""
     if isinstance(results, (str, Path)):
         return str(results)
+    from archetypal.reduction._sql_tables import database_path  # noqa: PLC0415 - see the module docstring
+
     path = database_path(results)
     return "<SQLResult>" if path is None else str(path)
 
@@ -298,6 +302,8 @@ class _Reader:
             return "", ""
 
     def _timesteps(self) -> int:
+        from archetypal.reduction._sql_tables import SQLTableError, read_simulations  # noqa: PLC0415
+
         try:
             simulations = read_simulations(self.sql)
         except SQLTableError as error:
@@ -353,6 +359,8 @@ class _Reader:
         return None
 
     def _shares(self, meters: list[VariableInfo], delivered: dict[str, list[VariableInfo]]) -> tuple[float, float]:
+        from archetypal.reduction._sql_tables import SQLTableError, read_zones  # noqa: PLC0415
+
         try:
             zones = read_zones(self.sql)
         except SQLTableError as error:

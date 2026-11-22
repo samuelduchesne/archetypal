@@ -119,5 +119,6 @@ except LossyTranslationError as error:
     print(error.report.summary)
 ```
 
-Notes never fail strict mode. Because every SBEM window is written as an equivalent glazing
-layer, an archetype with a window always fails it until SBEM holds layered windows (UP-9).
+Notes never fail strict mode. An archetype read from a UMI library passes it, since its layered
+windows are written back layer by layer. An archetype with simple glazing, which is what a
+reduction gives, always fails it: the window is written as one equivalent glazing layer.

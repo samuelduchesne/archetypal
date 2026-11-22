@@ -76,10 +76,10 @@ for loss in result.report.losses:
 
 Look at the kinds first:
 
-- `lost` and `approximate`: a value SBEM cannot hold yet (descriptive fields, window settings,
-  life-cycle fields of materials) or holds only approximately (a window's layers reduced to
-  simple glazing, a month whose schedule changes part-way). Those with `upstream: "UP-9"`
-  disappear from the report once the SBEM fork adds the field.
+- `lost` and `approximate`: a value SBEM cannot hold (a window's zone-mixing or
+  airflow-network settings, a value outside SBEM's range) or holds only approximately (a month
+  whose schedule changes part-way, a window of more than four panes reduced to simple glazing).
+  Those with `upstream: "UP-9"` are the window settings the fork's UP-9 left out.
 - `renamed`: two components of one kind shared a name with different content, or two
   templates shared a name. The later one keeps both, renamed with ` #2`, ` #3`, … in file order.
 - `unused`: a component no template uses. It is not translated.
@@ -136,5 +136,5 @@ except LossyTranslationError as error:
     print(error.report.summary)
 ```
 
-Notes never fail strict mode. Until the SBEM fork adds the fields of UP-9, a library whose
-templates carry descriptive fields (authors, country, construction years) always fails it.
+Notes never fail strict mode. A library whose templates use zone mixing or an airflow network
+always fails it: SBEM has no field for either.

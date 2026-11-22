@@ -151,10 +151,7 @@ def equivalent_glazing_layer(
     conductivity = thickness / r_layer
 
     # Step 3: solar transmittance.
-    if shgc < _SHGC_BREAK_HIGH_U:
-        t_high_u = 0.939998 * shgc**2 + 0.20332 * shgc
-    else:
-        t_high_u = 1.30415 * shgc - 0.30515
+    t_high_u = 0.939998 * shgc**2 + 0.20332 * shgc if shgc < _SHGC_BREAK_HIGH_U else 1.30415 * shgc - 0.30515
     t_low_u = 0.41040 * shgc if shgc <= _SHGC_BREAK_LOW_U else 0.085775 * shgc**2 + 0.963954 * shgc - 0.084958
     solar_transmittance = max(_interpolate(u_factor, t_low_u, t_high_u), 0.0)
 

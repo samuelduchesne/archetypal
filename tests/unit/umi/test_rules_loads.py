@@ -206,11 +206,14 @@ def test_zone_definition_daylighting_fields_are_lost_with_up9() -> None:
     context = reading("/Zones/0")
     zone = ZoneDefinition.model_validate({"Name": "z", "DaylightMeshResolution": 2.0})
     get_rule("loads.daylighting").to_sbem(zone, context=context)  # type: ignore[misc]
-    assert {(loss.location, loss.value) for loss in losses(context)} == {
-        ("/Zones/0/DaylightMeshResolution", 2.0),
-        ("/Zones/0/DaylightWorkplaneHeight", 0.8),
-    }
-    assert {loss.upstream for loss in losses(context)} == {"UP-9"}
+    [loss] = losses(context)  # the workplane height is Basilisk's default, which writing gives back
+    assert (loss.location, loss.value, loss.upstream) == ("/Zones/0/DaylightMeshResolution", 2.0, "UP-9")
+
+
+def test_an_upstream_field_at_basilisk_default_is_not_lost() -> None:
+    context = reading()
+    loads_to_sbem(zone_loads(IlluminanceTarget=500.0), schedule=read_schedule, context=context)
+    assert losses(context) == []
 
 
 def test_negative_density_is_a_range_problem() -> None:
@@ -263,12 +266,19 @@ def test_writing_a_non_default_metabolic_rate_is_lost() -> None:
     )
 
 
-def test_writing_a_sub_component_name_the_reader_would_not_derive_is_lost() -> None:
+def test_sub_component_names_are_left_to_the_building_rules() -> None:
+    """`building.umi_names` reports sub-component names; the load rules do not repeat it."""
     context = writing()
     loads_to_umi(space_use(occupancy_name="people"), schedule=write_schedule, context=context)
+    assert losses(context) == []
+
+
+def test_writing_reports_the_space_use_version_as_lost() -> None:
+    context = writing()
+    use = space_use().model_copy(update={"Version": "2"})
+    loads_to_umi(use, schedule=write_schedule, context=context)
     [loss] = losses(context)
-    assert (loss.rule, loss.value, loss.replacement) == ("names.component", "people", "L occupancy")
-    assert loss.location == "perimeter.Operations.SpaceUse.Occupancy.Name"
+    assert (loss.location, loss.rule) == ("perimeter.Operations.SpaceUse.Version", "names.metadata")
 
 
 def test_loads_round_trip() -> None:

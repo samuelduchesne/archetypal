@@ -7,7 +7,8 @@ constant and the contract's table agree.
 
 Whether an item applies, and which keys it needs, depends on the model: a model without
 `WaterUse:Equipment` needs no hot-water outputs. The model side is summarised in
-`ModelFacts`, which the source loader builds from the document.
+`ModelFacts`, which the source loader (`sources.py`) builds from the document, with the
+metered fuels read from the results' End Uses table.
 """
 
 from __future__ import annotations
@@ -37,6 +38,9 @@ class ModelFacts:
         fans: Every fan's name.
         pumps: Every pump's name.
         zone_air_inlet_nodes: Every zone air inlet node's name (nodes of node lists included).
+        served_zones: The zones with HVAC equipment connections (`ZoneHVAC:EquipmentConnections`),
+            or `None` for every zone. EnergyPlus reports mechanical ventilation only for these:
+            a zone without equipment connections (an attic, a basement, a return plenum) has none.
         water_use_equipment: Every `WaterUse:Equipment`'s name.
         end_use_fuels: The (end use, fuel) pairs the model meters, with EnergyPlus's meter
             spelling: `("Heating", "NaturalGas")` stands for the meter `Heating:NaturalGas`.
@@ -47,6 +51,7 @@ class ModelFacts:
     fans: tuple[str, ...] = ()
     pumps: tuple[str, ...] = ()
     zone_air_inlet_nodes: tuple[str, ...] = ()
+    served_zones: tuple[str, ...] | None = None
     water_use_equipment: tuple[str, ...] = ()
     end_use_fuels: tuple[tuple[str, str], ...] = ()
 
@@ -128,6 +133,10 @@ def _zones(facts: ModelFacts) -> tuple[str, ...]:
     return facts.zones
 
 
+def _served_zones(facts: ModelFacts) -> tuple[str, ...]:
+    return facts.zones if facts.served_zones is None else facts.served_zones
+
+
 def _fans(facts: ModelFacts) -> tuple[str, ...]:
     return facts.fans
 
@@ -193,7 +202,7 @@ RESULTS_REQUIREMENTS: tuple[ResultRequirement, ...] = (
         "Zone Mechanical Ventilation Standard Density Volume Flow Rate",
         "every zone",
         "outdoor air (FR-019)",
-        _zones,
+        _served_zones,
     ),
     _variable("Site Mains Water Temperature", "Environment", "hot water (FR-021)", _environment_if_water_use),
     _variable("Water Use Equipment Hot Water Volume", "every WaterUse:Equipment", "hot water (FR-021)", _water_use),

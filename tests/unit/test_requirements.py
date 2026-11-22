@@ -7,7 +7,6 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-import pytest
 from idfkit.simulation import SQLResult
 
 from archetypal.errors import MissingResults
@@ -169,6 +168,14 @@ def test_items_that_do_not_apply_are_not_required(tmp_path: Path) -> None:
     assert _check(tmp_path, _complete_entries(facts), facts) == ()
 
 
+def test_mechanical_ventilation_is_needed_only_for_served_zones(tmp_path: Path) -> None:
+    facts = ModelFacts(zones=("Core", "Attic"), served_zones=("Core",))
+    by_item = {r.item: r for r in RESULTS_REQUIREMENTS}
+    assert by_item["Zone Mechanical Ventilation Standard Density Volume Flow Rate"].expected(facts) == ("Core",)
+    assert by_item["Zone Air System Sensible Heating Energy"].expected(facts) == ("Core", "Attic")
+    assert _check(tmp_path, _complete_entries(facts), facts) == ()
+
+
 def test_empty_results_name_every_applicable_item(tmp_path: Path) -> None:
     facts = ModelFacts(zones=("Core",))
     assert _check(tmp_path, [], facts) == (
@@ -195,8 +202,7 @@ def test_missing_results_error_carries_the_idf_text(tmp_path: Path) -> None:
 
 def _fixture_sql(name: str) -> Path:
     path = FIXTURES / name
-    if not path.is_file():
-        pytest.skip(f"{path.relative_to(ROOT)} not committed yet (T028 builds it)")
+    assert path.is_file(), f"{path.relative_to(ROOT)} is a committed fixture (T028, tests/fixtures/regenerate.py)"
     return path
 
 

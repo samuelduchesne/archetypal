@@ -28,7 +28,7 @@ import json
 import sys
 from importlib.metadata import version
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from idfkit import new_document
 from idfkit.simulation import find_energyplus, simulate
@@ -87,20 +87,24 @@ def _box(doc: IDFDocumentV24_2) -> None:
         "North": [(w, d, h), (w, d, 0.0), (0.0, d, 0.0), (0.0, d, h)],
         "West": [(0.0, d, h), (0.0, d, 0.0), (0.0, 0.0, 0.0), (0.0, 0.0, h)],
     }
-    surfaces = [(name, "Wall", "Outdoors", points) for name, points in walls.items()]
-    surfaces.append(("Floor", "Floor", "Ground", [(0.0, d, 0.0), (w, d, 0.0), (w, 0.0, 0.0), (0.0, 0.0, 0.0)]))
-    surfaces.append(("Roof", "Roof", "Outdoors", [(0.0, 0.0, h), (w, 0.0, h), (w, d, h), (0.0, d, h)]))
-    for name, surface_type, boundary, points in surfaces:
-        exposed = "NoSun" if boundary == "Ground" else "SunExposed"
+    surfaces: list[tuple[str, Literal["Wall", "Floor", "Roof"], list[tuple[float, float, float]]]] = [
+        (name, "Wall", points) for name, points in walls.items()
+    ]
+    surfaces.append(("Floor", "Floor", [(0.0, d, 0.0), (w, d, 0.0), (w, 0.0, 0.0), (0.0, 0.0, 0.0)]))
+    surfaces.append(("Roof", "Roof", [(0.0, 0.0, h), (w, 0.0, h), (w, d, h), (0.0, d, h)]))
+    for name, surface_type, points in surfaces:
+        ground = surface_type == "Floor"
         doc.building_surfaces.add(
             name,
             surface_type=surface_type,
             construction_name="Opaque",
             zone_name="Box",
-            outside_boundary_condition=boundary,
-            sun_exposure=exposed,
-            wind_exposure="NoWind" if boundary == "Ground" else "WindExposed",
-            vertices=[{"vertex_x_coordinate": x, "vertex_y_coordinate": y, "vertex_z_coordinate": z} for x, y, z in points],
+            outside_boundary_condition="Ground" if ground else "Outdoors",
+            sun_exposure="NoSun" if ground else "SunExposed",
+            wind_exposure="NoWind" if ground else "WindExposed",
+            vertices=[
+                {"vertex_x_coordinate": x, "vertex_y_coordinate": y, "vertex_z_coordinate": z} for x, y, z in points
+            ],
         )
 
 
@@ -207,18 +211,13 @@ _COLUMNS = {
 }
 
 
-def run_case(
-    u_factor: float, shgc: float, vt: float, energyplus: EnergyPlusConfig
-) -> dict[str, dict[str, float]]:
+def run_case(u_factor: float, shgc: float, vt: float, energyplus: EnergyPlusConfig) -> dict[str, dict[str, float]]:
     """Simulate one case and return its inputs, layer and the two windows' reported values."""
     layer = equivalent_glazing_layer(u_factor, shgc, vt)
     doc = build_model(u_factor, shgc, vt, layer)
     with simulate(doc, WEATHER, energyplus=energyplus) as result:
         result.raise_for_status()
         sql = result.sql
-        if sql is None:  # pragma: no cover - Output:SQLite is in the model
-            msg = "EnergyPlus wrote no SQLite output"
-            raise RuntimeError(msg)
         reported = {
             window: {
                 key: sql.get_tabular_float(
@@ -243,7 +242,7 @@ def run_case(
 
 def main(argv: list[str] | None = None) -> int:
     """Run every case and write the JSON file."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description="Check the UP-10 bridge against EnergyPlus 24.2.")
     parser.add_argument("output", nargs="?", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args(argv)
     energyplus = find_energyplus(version=(24, 2, 0))
@@ -262,9 +261,7 @@ def main(argv: list[str] | None = None) -> int:
     output: Path = args.output
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    worst = {
-        key: max(abs(case["equivalent_layer"][key] - case["inputs"][key]) for case in cases) for key in _COLUMNS
-    }
+    worst = {key: max(abs(case["equivalent_layer"][key] - case["inputs"][key]) for case in cases) for key in _COLUMNS}
     sys.stdout.write(f"wrote {output}; largest |layer - target|: {worst}\n")
     return 0
 

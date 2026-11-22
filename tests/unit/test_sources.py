@@ -115,9 +115,10 @@ def test_model_facts_three_zone(three_zone: SourceData) -> None:
 
 
 def test_model_facts_ten_zone() -> None:
-    doc = load_idf(MODELS / "ten_zone_multipliers.idf")
+    doc = load_idf(MODELS / "ten_zone_multipliers.idf", since="22.1")
     with SQLResult(MODELS / "ten_zone_multipliers.sql") as sql:
         fuels = end_use_fuels(sql)
+        assert fuels is not None
         facts = model_facts(doc, fuels)
         assert check_results(sql, facts) == ()
     assert fuels == (
@@ -130,6 +131,15 @@ def test_model_facts_ten_zone() -> None:
     assert set(facts.pumps) == {"SHW Pump", "CHW Pump", "HW Pump"}
     assert set(facts.water_use_equipment) == {"Typical_Core Restroom Hot Water", "Building Hot Water"}
     assert len(facts.zones) == 10
+    # Basement, plenums and attic have no equipment connections, so no mechanical ventilation.
+    assert facts.served_zones == (
+        "G_Perimeter",
+        "G_Core",
+        "Typical_Perimeter",
+        "Typical_Core",
+        "Top_Perimeter",
+        "Top_Core",
+    )
 
 
 def test_model_facts_bar_building_has_district_fuels() -> None:
@@ -138,12 +148,22 @@ def test_model_facts_bar_building_has_district_fuels() -> None:
     assert sources.facts.end_use_fuels == (("Cooling", "DistrictCooling"), ("Heating", "DistrictHeatingWater"))
 
 
+@pytest.mark.parametrize("name", ["three_zone", "ten_zone_multipliers", "ten_zone_explicit", "bar_building"])
+def test_committed_fixtures_load_and_meet_the_requirements(name: str) -> None:
+    sources = load_sources(MODELS / f"{name}.idf", MODELS / f"{name}.sql", weather=WEATHER)
+    try:
+        assert check_results(sources.results, sources.facts) == ()
+        assert sources.facts.served_zones is not None
+    finally:
+        sources.results.close()
+
+
 def test_node_lists_are_expanded() -> None:
     doc = new_document()
     doc.zones.add("A")
     doc["NodeList"].add("A Inlets", nodes=[{"node_name": "A Inlet 1"}, {"node_name": "A Inlet 2"}])
     doc["ZoneHVAC:EquipmentConnections"].add(
-        "A",
+        zone_name="A",
         zone_conditioning_equipment_list_name="A Equipment",
         zone_air_inlet_node_or_nodelist_name="a inlets",
         zone_air_node_name="A Air",
@@ -170,7 +190,9 @@ def test_older_document_is_refused_before_looking_at_results(tmp_path: Path) -> 
 
 
 def test_older_results_are_refused(tmp_path: Path) -> None:
-    results = _results_copy(tmp_path, "UPDATE Simulations SET EnergyPlusVersion = 'EnergyPlus, Version 9.6.0-f420c06a69'")
+    results = _results_copy(
+        tmp_path, "UPDATE Simulations SET EnergyPlusVersion = 'EnergyPlus, Version 9.6.0-f420c06a69'"
+    )
     with pytest.raises(UnsupportedEnergyPlusVersion) as caught:
         load_sources(THREE_IDF, results)
     assert caught.value.version == "9.6"

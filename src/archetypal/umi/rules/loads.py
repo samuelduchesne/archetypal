@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from typing import TYPE_CHECKING, NamedTuple, TypeAlias, TypeVar, cast
 
 import numpy as np
@@ -43,10 +43,12 @@ from archetypal.umi._format import (
 )
 from archetypal.umi.correspondence import MappingStatus, mappings_for, rule
 from archetypal.umi.report import Loss, LossKind, Note, NoteKind
+from archetypal.umi.rules.building import metadata_to_sbem, metadata_to_umi
 
 if TYPE_CHECKING:
     import numpy.typing as npt
     from epinterface.sbem.components.space_use import DimmingTypeType, ZoneSpaceUseComponent
+    from epinterface.sbem.common import MetadataMixin, NamedObject
     from pydantic import JsonValue
 
     from archetypal.umi.report import Direction
@@ -67,6 +69,8 @@ __all__ = [
     "equipment_to_umi",
     "internal_mass_to_sbem",
     "internal_mass_to_umi",
+    "identity_to_sbem",
+    "identity_to_umi",
     "json_value",
     "lighting_to_sbem",
     "lighting_to_umi",
@@ -75,7 +79,6 @@ __all__ = [
     "occupancy_to_sbem",
     "occupancy_to_umi",
     "range_problems",
-    "report_name",
     "report_upstream",
     "upstream_defaults",
 ]
@@ -205,17 +208,25 @@ def _upstream_rows(model: type[FormatModel], rule_id: str) -> list[tuple[str, st
     ]
 
 
-def report_upstream(component: FormatModel, rule_id: str, context: RuleContext) -> None:
-    """Report, on reading, every field of `component` that waits for an upstream item as lost.
+def report_upstream(
+    component: FormatModel, rule_id: str, context: RuleContext, *, skip: Collection[str] = ()
+) -> None:
+    """Report, on reading, the fields of `component` that wait for an upstream item, as lost.
 
-    Until a field lands in a fork release, every read reports it (research R6, FR-010).
+    Until a field lands in a fork release, reading reports it (research R6, FR-010) when it
+    differs from Basilisk's default, which is what writing gives back (`upstream_defaults`), as
+    the building rules do for template-level fields.
 
     Args:
         component: The UMI component read.
         rule_id: The rule whose upstream rows to report.
         context: The component's reading context.
+        skip: Keys the caller reports itself (fields whose written-back value is not a default).
     """
-    for key, name, upstream in _upstream_rows(type(component), rule_id):
+    model = type(component)
+    for key, name, upstream in _upstream_rows(model, rule_id):
+        if key in skip or getattr(component, name) == model.model_fields[name].default:
+            continue
         context.lose(
             key,
             json_value(getattr(component, name)),
@@ -256,16 +267,21 @@ def upstream_defaults(model: type[FormatModel], rule_id: str, context: RuleConte
     return defaults
 
 
-def report_name(actual: str, expected: str, key: str, context: RuleContext) -> None:
-    """Report, on writing, a sub-component name that reading would not derive back (data-model.md)."""
-    if actual != expected:
-        context.lose(
-            key,
-            actual,
-            replacement=expected,
-            rule="names.component",
-            reason="UMI has no component of its own here; reading names it after its parent",
-        )
+def identity_to_sbem(component: LibraryComponent) -> dict[str, str | None]:
+    """Return the SBEM `Name` and metadata of a UMI component (`names.metadata`, in `building`)."""
+    return {"Name": component.name, **metadata_to_sbem(component)}
+
+
+def identity_to_umi(component: MetadataMixin, context: RuleContext) -> dict[str, object]:
+    """Return the UMI `Name` and metadata of an SBEM component, reporting what UMI cannot carry.
+
+    Args:
+        component: The SBEM component whose name the UMI component takes (data-model.md).
+        context: The writing context at that component; SBEM's `Version` is lost there.
+    """
+    metadata = metadata_to_umi(component, subject=context.subject, location=context.location())
+    context.findings.extend(metadata.losses)
+    return {"Name": cast("NamedObject", component).Name, **metadata.fields}
 
 
 def annual_values(year: YearComponent) -> npt.NDArray[np.float64]:
@@ -347,20 +363,18 @@ def occupancy_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: Ru
 
 @rule("loads.people", to="umi")
 def occupancy_to_umi(
-    occupancy: OccupancyComponent, *, schedule: ScheduleToUmi, name: str, context: RuleContext
+    occupancy: OccupancyComponent, *, schedule: ScheduleToUmi, context: RuleContext
 ) -> dict[str, object]:
     """Write SBEM's occupancy; a metabolic rate other than 1.2 met is lost.
 
     Args:
         occupancy: The SBEM occupancy.
         schedule: The schedule converter.
-        name: The UMI loads' name, from which reading derives the occupancy's.
         context: The writing context at the occupancy (`<group>.Operations.SpaceUse.Occupancy`).
 
     Returns:
         The UMI fields by name.
     """
-    report_name(occupancy.Name, f"{name} occupancy", "Name", context)
     if occupancy.MetabolicRate != METABOLIC_RATE:
         context.lose(
             "MetabolicRate",
@@ -402,20 +416,18 @@ def lighting_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: Rul
 
 @rule("loads.lighting", to="umi")
 def lighting_to_umi(
-    lighting: LightingComponent, *, schedule: ScheduleToUmi, name: str, context: RuleContext
+    lighting: LightingComponent, *, schedule: ScheduleToUmi, context: RuleContext
 ) -> dict[str, object]:
     """Write SBEM's lighting.
 
     Args:
         lighting: The SBEM lighting.
         schedule: The schedule converter.
-        name: The UMI loads' name.
         context: The writing context at the lighting.
 
     Returns:
         The UMI fields by name.
     """
-    report_name(lighting.Name, f"{name} lighting", "Name", context)
     return {
         "lighting_power_density": lighting.PowerDensity,
         "lights_availability_schedule": schedule(lighting.Schedule, context.location("Schedule")),
@@ -450,20 +462,18 @@ def equipment_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: Ru
 
 @rule("loads.equipment", to="umi")
 def equipment_to_umi(
-    equipment: EquipmentComponent, *, schedule: ScheduleToUmi, name: str, context: RuleContext
+    equipment: EquipmentComponent, *, schedule: ScheduleToUmi, context: RuleContext
 ) -> dict[str, object]:
     """Write SBEM's equipment.
 
     Args:
         equipment: The SBEM equipment.
         schedule: The schedule converter.
-        name: The UMI loads' name.
         context: The writing context at the equipment.
 
     Returns:
         The UMI fields by name.
     """
-    report_name(equipment.Name, f"{name} equipment", "Name", context)
     return {
         "equipment_power_density": equipment.PowerDensity,
         "equipment_availability_schedule": schedule(equipment.Schedule, context.location("Schedule")),
@@ -541,15 +551,11 @@ def loads_to_umi(space_use: ZoneSpaceUseComponent, *, schedule: ScheduleToUmi, c
         context: The writing context at the group (`perimeter`).
     """
     here = context.child("Operations.SpaceUse")
-    name = space_use.Name
     fields: dict[str, object] = {
-        "name": name,
-        "category": space_use.Category or "Uncategorized",
-        "comments": space_use.Comment,
-        "data_source": space_use.DataSource,
-        **occupancy_to_umi(space_use.Occupancy, schedule=schedule, name=name, context=here.child("Occupancy")),
-        **lighting_to_umi(space_use.Lighting, schedule=schedule, name=name, context=here.child("Lighting")),
-        **equipment_to_umi(space_use.Equipment, schedule=schedule, name=name, context=here.child("Equipment")),
+        **identity_to_umi(space_use, here),
+        **occupancy_to_umi(space_use.Occupancy, schedule=schedule, context=here.child("Occupancy")),
+        **lighting_to_umi(space_use.Lighting, schedule=schedule, context=here.child("Lighting")),
+        **equipment_to_umi(space_use.Equipment, schedule=schedule, context=here.child("Equipment")),
         **daylighting_to_umi(ZoneLoads, context=here),
     }
     return ZoneLoads.model_validate(fields)

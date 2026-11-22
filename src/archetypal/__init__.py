@@ -10,6 +10,8 @@ import logging
 from importlib.metadata import PackageNotFoundError, version
 from typing import NoReturn
 
+from archetypal.comparison import compare as compare
+
 try:
     __version__: str = version("archetypal")
 except PackageNotFoundError:  # pragma: no cover - only when run from an uninstalled source tree

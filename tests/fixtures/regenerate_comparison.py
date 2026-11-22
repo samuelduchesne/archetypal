@@ -33,11 +33,10 @@ from typing import TYPE_CHECKING
 
 from idfkit import load_idf
 from idfkit.simulation import find_energyplus, simulate
+from idfkit.versioned import IDFDocumentV24_2
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
-
-    from idfkit import AnyIDFDocument
 
 HERE = Path(__file__).resolve().parent
 MODEL = HERE / "models" / "bar_building.idf"
@@ -60,35 +59,39 @@ KEEP_REPORTS = ("AnnualBuildingUtilityPerformanceSummary", "InputVerificationand
 KEEP_VARIABLES = ("Zone Air System Sensible Heating Energy", "Zone Air System Sensible Cooling Energy")
 
 
-def _run_period(doc: AnyIDFDocument, begin: tuple[int, int], end: tuple[int, int]) -> None:
+def _run_period(doc: IDFDocumentV24_2, begin: tuple[int, int], end: tuple[int, int]) -> None:
     period = next(iter(doc["RunPeriod"]))
     period.begin_month, period.begin_day_of_month = begin
     period.end_month, period.end_day_of_month = end
 
 
-def _lights(doc: AnyIDFDocument) -> None:
+def _lights(doc: IDFDocumentV24_2) -> None:
     next(iter(doc["Lights"])).watts_per_floor_area = 14.0
 
 
-def _ip_units(doc: AnyIDFDocument) -> None:
+def _ip_units(doc: IDFDocumentV24_2) -> None:
     next(iter(doc["Output:SQLite"])).unit_conversion_for_tabular_data = "InchPound"
     next(iter(doc["OutputControl:Table:Style"])).unit_conversion = "InchPound"
 
 
-def _timestep(doc: AnyIDFDocument) -> None:
+def _timestep(doc: IDFDocumentV24_2) -> None:
     next(iter(doc["Timestep"])).number_of_timesteps_per_hour = 6
 
 
-def _frequency(doc: AnyIDFDocument) -> None:
+def _frequency(doc: IDFDocumentV24_2) -> None:
     for meter in doc["Output:Meter"]:
         meter.reporting_frequency = "Timestep"
 
 
-def _later(doc: AnyIDFDocument) -> None:
+def _unchanged(doc: IDFDocumentV24_2) -> None:
+    del doc
+
+
+def _later(doc: IDFDocumentV24_2) -> None:
     _run_period(doc, (3, 29), (4, 11))
 
 
-def _everything(doc: AnyIDFDocument) -> None:
+def _everything(doc: IDFDocumentV24_2) -> None:
     _later(doc)
     _ip_units(doc)
     _timestep(doc)
@@ -96,10 +99,10 @@ def _everything(doc: AnyIDFDocument) -> None:
 
 
 # name -> (change to the model, uses Duluth weather)
-VARIANTS: dict[str, tuple[Callable[[AnyIDFDocument], None], bool]] = {
-    "base": (lambda _doc: None, False),
+VARIANTS: dict[str, tuple[Callable[[IDFDocumentV24_2], None], bool]] = {
+    "base": (_unchanged, False),
     "lights": (_lights, False),
-    "weather": (lambda _doc: None, True),
+    "weather": (_unchanged, True),
     "run_period": (_later, False),
     "ip_units": (_ip_units, False),
     "timestep": (_timestep, False),
@@ -150,7 +153,7 @@ def trim_sql(src: Path, dst: Path) -> None:
 def run(name: str) -> None:
     """Simulate one variant and write its cut-down results."""
     change, duluth = VARIANTS[name]
-    doc = load_idf(MODEL)
+    doc = load_idf(MODEL, as_type=IDFDocumentV24_2)
     _run_period(doc, (3, 15), (3, 28))
     change(doc)
     weather = CHICAGO

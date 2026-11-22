@@ -110,14 +110,14 @@ models and results, schedules, deterministic files and test fixtures.
   `CORE_PERIMETER` not comparable; `Layout.is_strictly_finer(a, b)`, which `merge` uses);
   `small_group_threshold` "a share of conditioned floor area in [0, 1)" is enforced;
   `ReductionOptions` is frozen.
-- [ ] T014 [P] Test the static-table rows in `tests/unit/test_sql_tables.py` against the
+- [X] T014 [P] Test the static-table rows in `tests/unit/test_sql_tables.py` against the
   committed fixture SQLite files: one typed row per record, types converted and checked at the
   boundary, a clear error on an unexpected column type.
 - [X] T015 [P] Test `RESULTS_REQUIREMENTS` in `tests/unit/test_requirements.py`: it lists
   exactly the rows of `contracts/results-requirements.md` (parse the Markdown table); the
   check on a fixture with outputs removed names each one, with its `Output:Variable` or
   `Output:Meter` IDF text; items that do not apply (no `WaterUse:Equipment`) are not required.
-- [ ] T016 [P] Test sources in `tests/unit/test_sources.py`: a 9.6 document raises
+- [X] T016 [P] Test sources in `tests/unit/test_sources.py`: a 9.6 document raises
   `UnsupportedEnergyPlusVersion`; model and results with different zone names raise
   `ModelResultsMismatch` naming the difference; model and results versions must agree;
   SHA-256 of model, results and weather are recorded.
@@ -154,7 +154,7 @@ models and results, schedules, deterministic files and test fixtures.
   `normalise_schedule_year(obj) -> ScheduleYear` returning a copy whose start and end month and
   day fields are `int`, with its removal condition (UP-6) in the docstring (plan.md,
   Complexity Tracking).
-- [ ] T023 [P] Implement `src/archetypal/reduction/_sql_tables.py`: frozen dataclasses
+- [X] T023 [P] Implement `src/archetypal/reduction/_sql_tables.py`: frozen dataclasses
   `ZoneRow`, `SurfaceRow`, `ConstructionRow`, `ConstructionLayerRow`, `MaterialRow`,
   `NominalLoadRow` (one shape for every `Nominal*` gain table, with its kind),
   `NominalInfiltrationRow`, `NominalVentilationRow`, `SimulationRow`, `EnvironmentPeriodRow`,
@@ -165,7 +165,7 @@ models and results, schedules, deterministic files and test fixtures.
   `RESULTS_REQUIREMENTS` with every row of `contracts/results-requirements.md`, and
   `check_results(source) -> tuple[ResultRequirement, ...]` returning the missing items
   (research R2).
-- [ ] T025 Implement `src/archetypal/reduction/sources.py`: `RunPeriodInfo` and `SourceData`
+- [X] T025 Implement `src/archetypal/reduction/sources.py`: `RunPeriodInfo` and `SourceData`
   (fields of data-model.md, SourceData); loading from a path or document with
   `idfkit.load_idf`/`load_epjson`, narrowing with `as_version(doc, since="22.1")`, reading
   results with `SQLResult`; validation in the order of data-model.md (version, results

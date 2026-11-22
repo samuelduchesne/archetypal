@@ -1,7 +1,7 @@
 """The public interface: each public module's `__all__` (spec 001, US1: T035; FR-007, FR-008).
 
 The lists are data-model.md's "Public interface", as specs 002 and 003 implement it. The diff
-functions of `archetypal.umi` (003 US3, T061) join its list when they are written.
+functions of `archetypal.umi` (003 US3, T061) are in its list.
 """
 
 from __future__ import annotations
@@ -34,6 +34,10 @@ PUBLIC: dict[str, set[str]] = {
         "LossKind",
         "Note",
         "NoteKind",
+        "diff_umi",
+        "diff_archetypes",
+        "UmiDiff",
+        "ArchetypeDiff",
         "CORRESPONDENCE",
         "FieldMapping",
         "Relevance",

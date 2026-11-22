@@ -56,7 +56,7 @@ from archetypal.umi.rules.materials import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Hashable, Mapping
+    from collections.abc import Callable, Hashable, Mapping, Sequence
 
     from epinterface.sbem.archetype import Orientation
     from epinterface.sbem.common import MetadataMixin
@@ -271,8 +271,29 @@ def template_zones(archetype: Archetype) -> TemplateZones:
             for group in groups
             if group.FloorAreaShare is not None
         )
+    losses.extend(_group_name_losses(groups, subject))
     losses.extend(_building_level_losses(archetype))
     return TemplateZones(core, perimeter, tuple(sorted(losses, key=lambda loss: loss.location)))
+
+
+def _group_name_losses(groups: Sequence[ZoneGroup], subject: str) -> list[Loss]:
+    """Report each group whose name is not the UMI zone it becomes: UMI has no group names."""
+    losses: list[Loss] = []
+    for group in groups:
+        umi_name = CORE_GROUP if group.Exposure == CORE_GROUP else PERIMETER_GROUP
+        if group.Name != umi_name:
+            losses.append(
+                Loss(
+                    kind=LossKind.RENAMED,
+                    subject=subject,
+                    location=f"{group.Name}.Name",
+                    value=group.Name,
+                    replacement=umi_name,
+                    rule="building.groups",
+                    reason=f"UMI zones have no group names; the group reads back as {umi_name!r}.",
+                )
+            )
+    return losses
 
 
 def _building_level_losses(archetype: Archetype) -> list[Loss]:
@@ -384,6 +405,7 @@ _TEMPLATE_METADATA: tuple[tuple[str, str], ...] = (
     ("author_emails", "AuthorEmails"),
     ("version", "Version"),
 )
+_FIELD_OF: dict[str, str] = {key: name for name, key in _TEMPLATE_METADATA}
 PARTITION_FACES = 2.0
 """Faces of a partition wall exposed to the zone: SBEM's partition area counts both."""
 
@@ -667,6 +689,14 @@ def template_metadata_to_sbem(
         )
         del fields["YearTo"]
     return fields, losses
+
+
+def template_metadata_notes(archetype: Archetype) -> list[Note]:
+    """Note the archetype's unset template-level fields that writing fills with Basilisk's defaults."""
+    findings = Findings()
+    keys = [key for _, key in _TEMPLATE_METADATA if BuildingTemplate.model_fields[_FIELD_OF[key]].default is not None]
+    findings.unset(archetype, keys, archetype.Name, "archetype", "building.metadata")
+    return findings.notes
 
 
 @rule("building.metadata", to="umi")

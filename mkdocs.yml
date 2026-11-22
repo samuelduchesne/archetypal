@@ -11,6 +11,9 @@ copyright: Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>
 # their first page, never empty. Each section starts with its index.md (navigation.indexes).
 nav:
   - Home: index.md
+  - Tutorials:
+      - tutorials/index.md
+      - tutorials/first-umi-library.md
   - How-to guides:
       - how-to/index.md
       - how-to/install.md
@@ -44,9 +47,11 @@ hooks:
   # Generates the reduction-report and results-requirements reference pages (spec 002, T066).
   - docs/hooks/reduction_reference.py
 # The hook and the examples' pytest configuration live beside the pages but are not pages.
+# examples/ holds the tutorial's files, which readers download from the repository (SOURCES.md).
 exclude_docs: |
   /hooks/
   /conftest.py
+  /examples/
 watch:
   - CHANGELOG.md
   - src/archetypal

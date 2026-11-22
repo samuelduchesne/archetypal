@@ -1,0 +1,3 @@
+# The example results (SQLite) and weather file are binary or verbatim copies (SOURCES.md).
+*.sql binary
+*.epw binary

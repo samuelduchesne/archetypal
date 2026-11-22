@@ -318,7 +318,7 @@ public names and commands at random and find each in the reference; check every 
 
 ### Tests for User Story 3
 
-- [ ] T047 [P] [US3] Write `tests/unit/test_reference_complete.py`: every public name
+- [X] T047 [P] [US3] Write `tests/unit/test_reference_complete.py`: every public name
   of the interface and every command and option of the `archetypal` group appears in the
   built site's reference pages (`mkdocs build` into a temporary folder) (US3 scenario 2).
 - [X] T048 [P] [US3] Add `.github/workflows/tutorial.yml`: on `v3.*` tags and weekly,
@@ -328,13 +328,13 @@ public names and commands at random and find each in the reference; check every 
 
 ### Implementation for User Story 3
 
-- [ ] T049 [US3] With `/project-kit:diataxis`, write `docs/tutorials/first-umi-library.md`
+- [X] T049 [US3] With `/project-kit:diataxis`, write `docs/tutorials/first-umi-library.md`
   (tutorial, "Your first UMI library"): install from git at the milestone tag (PyPI from
   v3.0.0), download the example DOE prototype model, its results and a weather file from the
   repository at that tag (source and licence stated, FR-004, C-15), reduce to a UMI library,
   open it. Execute it start to finish in a clean environment before merging. Add the Tutorials
   section to `mkdocs.yml` with its `index.md` (FR-023).
-- [ ] T050 [P] [US3] Add the tutorial's example files under `docs/examples/` (model,
+- [X] T050 [P] [US3] Add the tutorial's example files under `docs/examples/` (model,
   results cut to 002's outputs, weather), each with its source and licence in
   `docs/examples/SOURCES.md` (FR-004, R12).
 - [X] T051 [P] [US3] With `/project-kit:diataxis`, write `docs/how-to/install.md` ("How to

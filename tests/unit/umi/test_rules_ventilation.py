@@ -141,9 +141,15 @@ def test_another_method_is_lost_with_its_value() -> None:
     context = writing()
     main = infiltration(CalculationMethod="Flow/ExteriorArea", FlowPerExteriorSurfaceArea=0.0003)
     zone_ventilation_to_umi(envelope(main), hvac_ventilation(), schedule=write_schedule, context=context)
-    [loss] = context.losses
+    by_location = {loss.location: loss for loss in context.losses}
+    # The attic and basement share the zone's method, which reads back as air changes too.
+    assert set(by_location) == {
+        "perimeter.Envelope.Infiltration.CalculationMethod",
+        "perimeter.Envelope.AtticInfiltration",
+        "perimeter.Envelope.BasementInfiltration",
+    }
+    loss = by_location["perimeter.Envelope.Infiltration.CalculationMethod"]
     assert loss.kind is LossKind.LOST
-    assert loss.location == "perimeter.Envelope.Infiltration.CalculationMethod"
     assert loss.value == {
         "CalculationMethod": "Flow/ExteriorArea",
         "AirChangesPerHour": 0.35,

@@ -1,7 +1,8 @@
 # cruft and spec-kit write these files themselves, so the hooks leave their formatting alone.
 # The UMI sample libraries are verbatim copies whose SHA-256 is recorded in their README.
-# The fixture results (SQLite) and weather file are binary or verbatim copies (tests/fixtures/SOURCES.md).
-exclude: ^(\.cruft\.json|\.specify/.*|tests/fixtures/umi/(BostonTemplateLibrary_2|BostonTemplateLibrary_nodup|umi_samples_BostonTemplateLibrary)\.json|tests/fixtures/.*\.(sql|epw)|tests/fixtures/weather/.*)$
+# The fixture results (SQLite) and weather file are binary or verbatim copies (tests/fixtures/SOURCES.md),
+# and so are their copies in docs/examples/ (docs/examples/SOURCES.md).
+exclude: ^(\.cruft\.json|\.specify/.*|tests/fixtures/umi/(BostonTemplateLibrary_2|BostonTemplateLibrary_nodup|umi_samples_BostonTemplateLibrary)\.json|tests/fixtures/.*\.(sql|epw)|tests/fixtures/weather/.*|docs/examples/.*\.(sql|epw))$
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

@@ -1,8 +1,15 @@
 """Every `console` block in the docs runs, and shows the output its commands give (FR-024, R5).
 
-Each `$ archetypal ...` line of a block runs in a fresh temporary folder that holds a copy of
-`tests/docs/examples/` (when it exists). Lines after a command, up to the next `$` line, are the
-output the page shows; when there are any, they must match what the command prints.
+The `$ archetypal ...` lines of a page run in order, in one fresh temporary folder per page that
+holds a copy of `docs/examples/` (the tutorial's files) and of `tests/docs/examples/` (when it
+exists), so a later command sees the files an earlier one wrote, as it does for a reader. Other
+`$` lines (`pip`, `curl`, ...) are not run. Lines after a command, up to the next `$` line, are
+the output the page shows; when there are any, they must match what the command prints (on
+Windows, with its paths written with `/`).
+
+A command must end with status 0, unless the line before the block's fence is
+`<!-- console: exit-status N -->`: then every command of that block must end with status N
+(4, for example, for a reduction that reports losses).
 """
 
 from __future__ import annotations
@@ -19,8 +26,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS = ROOT / "docs"
-EXAMPLES = Path(__file__).resolve().parent / "examples"
+EXAMPLES = (DOCS / "examples", Path(__file__).resolve().parent / "examples")
 PROMPT = "$ "
+_STATUS = re.compile(r"^<!--\s*console:\s*exit-status\s+(?P<status>\d+)\s*-->\s*$")
 _CONSOLE_BLOCK = re.compile(
     r"^(?P<fence>`{3,}|~{3,})[ \t]*console\b[^\n]*\n(?P<body>.*?)^(?P=fence)[ \t]*$", re.MULTILINE | re.DOTALL
 )
@@ -34,6 +42,7 @@ class ConsoleCommand:
     line: int
     command: str
     output: tuple[str, ...]
+    status: int = 0
 
     @property
     def id(self) -> str:
@@ -46,27 +55,35 @@ def parse_console_blocks(text: str, page: str) -> list[ConsoleCommand]:
     commands: list[ConsoleCommand] = []
     for block in _CONSOLE_BLOCK.finditer(text):
         first_line = text.count("\n", 0, block.start("body")) + 1
+        status = _block_status(text[: block.start()])
         current: tuple[int, str] | None = None
         output: list[str] = []
         for offset, raw in enumerate(block.group("body").splitlines()):
             if raw.startswith(PROMPT):
                 if current is not None:
-                    commands.append(_command(page, current, output))
+                    commands.append(_command(page, current, output, status))
                 command = raw[len(PROMPT) :].strip()
                 current = (first_line + offset, command) if command.split(" ", 1)[0] == "archetypal" else None
                 output = []
             elif current is not None:
                 output.append(raw)
         if current is not None:
-            commands.append(_command(page, current, output))
+            commands.append(_command(page, current, output, status))
     return commands
 
 
-def _command(page: str, current: tuple[int, str], output: list[str]) -> ConsoleCommand:
+def _block_status(before: str) -> int:
+    """Return the exit status the `console: exit-status` comment before a block names, or 0."""
+    lines = [line.strip() for line in before.splitlines() if line.strip()]
+    match = _STATUS.match(lines[-1]) if lines else None
+    return 0 if match is None else int(match.group("status"))
+
+
+def _command(page: str, current: tuple[int, str], output: list[str], status: int) -> ConsoleCommand:
     lines = [line.rstrip() for line in output]
     while lines and not lines[-1]:
         lines.pop()
-    return ConsoleCommand(page=page, line=current[0], command=current[1], output=tuple(lines))
+    return ConsoleCommand(page=page, line=current[0], command=current[1], output=tuple(lines), status=status)
 
 
 def collect_commands() -> list[ConsoleCommand]:
@@ -85,20 +102,34 @@ def _archetypal_executable() -> str:
     return found
 
 
+def _posix(line: str) -> str:
+    """Write Windows paths with `/`, as the pages show them."""
+    return line.replace("\\", "/") if sys.platform == "win32" else line
+
+
 COMMANDS = collect_commands()
+PAGES: dict[str, list[ConsoleCommand]] = {}
+for _command_of_page in COMMANDS:
+    PAGES.setdefault(_command_of_page.page, []).append(_command_of_page)
 
 
 @pytest.mark.timeout(120)
-@pytest.mark.parametrize("example", COMMANDS, ids=[c.id for c in COMMANDS])
-def test_console_example(example: ConsoleCommand, tmp_path: Path) -> None:
-    if EXAMPLES.is_dir():
-        shutil.copytree(EXAMPLES, tmp_path, dirs_exist_ok=True)
-    argv = [_archetypal_executable(), *shlex.split(example.command)[1:]]
-    result = subprocess.run(argv, cwd=tmp_path, capture_output=True, text=True, check=False)  # noqa: S603
-    assert result.returncode == 0, f"{example.id}: `{example.command}` failed:\n{result.stdout}{result.stderr}"
-    if example.output:
-        shown = [line.rstrip() for line in (result.stdout + result.stderr).rstrip().splitlines()]
-        assert tuple(shown) == example.output, f"{example.id}: the page shows other output than the command gives"
+@pytest.mark.parametrize("page", list(PAGES), ids=list(PAGES))
+def test_console_example(page: str, tmp_path: Path) -> None:
+    for examples in EXAMPLES:
+        if examples.is_dir():
+            shutil.copytree(examples, tmp_path, dirs_exist_ok=True)
+    executable = _archetypal_executable()
+    for example in PAGES[page]:
+        argv = [executable, *shlex.split(example.command)[1:]]
+        result = subprocess.run(argv, cwd=tmp_path, capture_output=True, text=True, check=False)  # noqa: S603
+        printed = f"{result.stdout}{result.stderr}"
+        assert result.returncode == example.status, (
+            f"{example.id}: `{example.command}` ended with status {result.returncode}, not {example.status}:\n{printed}"
+        )
+        if example.output:
+            shown = [_posix(line.rstrip()) for line in printed.rstrip().splitlines()]
+            assert tuple(shown) == example.output, f"{example.id}: the page shows other output than the command gives"
 
 
 def test_collection_works_without_console_blocks() -> None:
@@ -120,16 +151,17 @@ def test_parse_console_blocks() -> None:
         "```python",
         "print('$ archetypal not console')",
         "```",
+        "<!-- console: exit-status 4 -->",
         "~~~console",
         "$ archetypal compare a b",
         "  same",
         "~~~",
     ])
     commands = parse_console_blocks(page, "how-to/x.md")
-    assert [(c.line, c.command, c.output) for c in commands] == [
-        (3, "archetypal reduce model.idf weather.epw out", ("Wrote out/model.json",)),
-        (8, "archetypal --help", ()),
-        (15, "archetypal compare a b", ("  same",)),
+    assert [(c.line, c.command, c.output, c.status) for c in commands] == [
+        (3, "archetypal reduce model.idf weather.epw out", ("Wrote out/model.json",), 0),
+        (8, "archetypal --help", (), 0),
+        (16, "archetypal compare a b", ("  same",), 4),
     ]
     assert commands[0].id == "how-to/x.md:3"
 

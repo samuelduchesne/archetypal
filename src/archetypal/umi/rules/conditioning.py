@@ -73,6 +73,7 @@ from archetypal.umi.rules.ventilation import (
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from pydantic import BaseModel
 
     from epinterface.sbem.components.schedules import YearComponent
     from epinterface.sbem.components.systems import (
@@ -431,7 +432,43 @@ def systems_to_umi(systems: ConditioningSystemsComponent, *, context: RuleContex
         fields[switch] = True
         fields[cop_field] = cop_to_umi(system.SystemCOP, system.DistributionCOP, context=here)
         fields[fuel_field] = fuel_to_umi(system.Fuel, context=here)
+        _lose_unless_default(system, _SYSTEM_ONLY, rule_id="cop.system", context=here)
+    _lose_unless_default(systems, _SYSTEMS_ONLY, rule_id="conditioning.switches", context=context)
     return fields
+
+
+# SBEM fields of the systems that UMI has no place for; reading gives each its SBEM default.
+_SYSTEM_ONLY: tuple[str, ...] = ("EIRTemperatureSlope", "EIRReferenceTemperature")
+_SYSTEMS_ONLY: tuple[str, ...] = (
+    "MaximumHeatingSupplyAirTemperature",
+    "MinimumCoolingSupplyAirTemperature",
+    "SpecificFanPower",
+)
+
+
+def _same(value: object, default: object) -> bool:
+    """Equal, or two numbers closer than 1e-12 (what `diff_archetypes` counts as equal)."""
+    if isinstance(value, float) and isinstance(default, float):
+        return abs(value - default) < 1e-12  # noqa: PLR2004 - the diff's absolute tolerance
+    return value == default
+
+
+def _lose_unless_default(component: BaseModel, keys: tuple[str, ...], *, rule_id: str, context: RuleContext) -> None:
+    """Report each SBEM-only field of `component` whose value is not SBEM's default as lost."""
+    model_fields = type(component).model_fields
+    for key in keys:
+        if key not in model_fields:  # pragma: no cover - an older fork without the field
+            continue
+        value: object = getattr(component, key)
+        default: object = model_fields[key].get_default(call_default_factory=True)
+        if not _same(value, default):
+            context.lose(
+                key,
+                json_value(value),
+                replacement=json_value(default),
+                rule=rule_id,
+                reason=f"UMI has no place for {key}; reading the library back gives SBEM's default",
+            )
 
 
 # --- Mechanical ventilation ---------------------------------------------------------------------
@@ -752,7 +789,16 @@ def limits_to_umi(systems: ConditioningSystemsComponent, *, context: RuleContext
                     rule="conditioning.limits",
                     reason=f"UMI has no autosized limit; {target} is dropped from {type_target}",
                 )
-        fields[type_field] = _limit_type(*uses.values())
+        written = _limit_type(*uses.values())
+        if written is not limit:
+            context.lose(
+                type_target,
+                limit.name,
+                replacement=written.name,
+                rule="conditioning.limits",
+                reason=f"an autosized limit is dropped from {type_target}, so UMI's limit type changes",
+            )
+        fields[type_field] = written
     return fields
 
 

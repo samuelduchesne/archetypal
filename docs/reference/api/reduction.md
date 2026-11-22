@@ -12,7 +12,7 @@ generated from the docstrings.
 
 `archetypal.reduce`, `archetypal.Layout` and `archetypal.ReductionOptions` are the same objects
 as `archetypal.reduction.reduce` and `archetypal.reduction.options.Layout` and
-`ReductionOptions`. The public names of `archetypal.reduction` are `reduce`, `Reduction`,
+`ReductionOptions`. The public names of `archetypal.reduction` are `reduce`, `merge`, `Reduction`,
 `RESULTS_REQUIREMENTS` and `schedule_compact`; [Results requirements](../results-requirements.md)
 lists what `RESULTS_REQUIREMENTS` holds. Its modules (`sources`, `inventory`,
 `classify`, `ledger`, `grouping`, `to_sbem`, `report` and the domain modules) are internal:
@@ -23,6 +23,7 @@ their names may change between milestone tags without notice.
       show_root_heading: false
       members:
         - reduce
+        - merge
         - Reduction
         - RESULTS_REQUIREMENTS
         - schedule_compact

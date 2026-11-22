@@ -32,6 +32,7 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, cast
 
@@ -68,6 +69,7 @@ from archetypal.umi.rules.building import (
     collision_loss,
     partition_ratio_to_umi,
     structure_to_umi,
+    template_metadata_notes,
     template_metadata_to_umi,
     template_zones,
     umi_names,
@@ -83,7 +85,7 @@ from archetypal.umi.rules.windows import layers_to_umi, settings_to_umi, templat
 from archetypal.umi.serialise import NAME_GROUPS, serialise
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Hashable, Sequence
 
     from epinterface.sbem.archetype import ExposureType
     from epinterface.sbem.components.schedules import YearComponent, YearScheduleCategory
@@ -575,12 +577,24 @@ class _TemplateWriter:
             {g.Name: g.Zone.Envelope.WindowSettings for g in archetype.Groups}, subject=self.subject
         )
         self.context.findings.extend(settings_losses)
+        for other in archetype.Groups:
+            # Reading back gives every group the template's window and settings: a group without
+            # them (a core with no facade) gains them, which changes nothing it simulates.
+            for key in ("Window", "WindowSettings"):
+                if other.Name != group and getattr(other.Zone.Envelope, key) is None:
+                    self.context.note(
+                        f"{other.Name}.Envelope.{key}",
+                        None,
+                        rule="window.placement" if key == "Window" else "window.settings",
+                        reason=f"The group has no {key}; UMI has one per template, which reads back into every group.",
+                    )
         context = self.context.child(f"{group}.Envelope.WindowSettings")
         return settings_to_umi(settings, construction, schedule=self.schedule, context=context)
 
     def template(self, archetype: Archetype) -> BuildingTemplate:
         zones = template_zones(archetype)
         self.context.findings.extend(zones.losses)
+        self.context.findings.extend(template_metadata_notes(archetype))
         names = {id(g.Zone): g.Name for g in archetype.Groups}
         core = self.zone(zones.core, names.get(id(zones.core), CORE_GROUP))
         perimeter = core if zones.perimeter is zones.core else self.zone(zones.perimeter, names[id(zones.perimeter)])
@@ -617,35 +631,44 @@ class _TemplateWriter:
 
 
 class _Assembler:
-    """Shares equal components and renames clashing names, in order of first appearance."""
+    """Shares equal components and renames clashing names, in order of first appearance.
+
+    Components are canonicalised bottom-up: each one is keyed by its class, name and fields,
+    with every child component replaced by the identity of its canonical object, so equal
+    subtrees become one object and each node is keyed in time proportional to its own fields.
+    """
 
     def __init__(self) -> None:
         self.namers: dict[str, UniqueNames] = {}
-        self.memo: dict[tuple[type[FormatModel], str | None, str], FormatModel] = {}
+        self.memo: dict[Hashable, FormatModel] = {}
         self.losses: list[Loss] = []
 
     def component(self, model: FormatModel, pointer: str, subject: str) -> FormatModel:
         updates: dict[str, object] = {}
+        content: list[tuple[str, Hashable]] = []
         for name, info in type(model).model_fields.items():
             value: object = getattr(model, name)
             new = self.value(value, f"{pointer}/{info.alias or name}", subject)
             if new is not value:
                 updates[name] = new
+            if name != "name":
+                content.append((name, _identity(new)))
         if updates:
             model = model.model_copy(update=updates)
-        if not isinstance(model, LibraryComponent) or isinstance(model, BuildingTemplate):
+        if isinstance(model, BuildingTemplate):
             return model
-        content = json.dumps(model.model_dump(mode="json", exclude={"name"}), sort_keys=True)
-        key = (type(model), model.name, content)
+        named = isinstance(model, LibraryComponent)
+        key = (type(model), model.name if named else None, tuple(content))
         hit = self.memo.get(key)
         if hit is not None:
             return hit
-        original = model.name or ""
-        namer = self.namers.setdefault(NAME_GROUPS[type(model)], UniqueNames())
-        unique = namer.assign(original, (type(model).__name__, content))
-        if unique != original:
-            model = model.model_copy(update={"name": unique})
-            self.losses.append(collision_loss(subject=subject, location=pointer, original=original, renamed=unique))
+        if named:
+            original = model.name or ""
+            namer = self.namers.setdefault(NAME_GROUPS[type(model)], UniqueNames())
+            unique = namer.assign(original, (type(model).__name__, tuple(content)))
+            if unique != original:
+                model = model.model_copy(update={"name": unique})
+                self.losses.append(collision_loss(subject=subject, location=pointer, original=original, renamed=unique))
         self.memo[key] = model
         return model
 
@@ -659,6 +682,17 @@ class _Assembler:
             )
             return items if all(a is b for a, b in zip(new, items, strict=True)) else new
         return value
+
+
+def _identity(value: object) -> Hashable:
+    """A hashable stand-in for a field value whose components are already canonical."""
+    if isinstance(value, FormatModel):
+        return ("component", id(value))
+    if isinstance(value, tuple):
+        return tuple(_identity(item) for item in cast("tuple[object, ...]", value))
+    if isinstance(value, Enum):
+        return (type(value).__name__, value.value)
+    return cast("Hashable", value)
 
 
 # --- Public interface ------------------------------------------------------------------------------

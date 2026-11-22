@@ -42,3 +42,18 @@ report's fields and [UMI correspondence](../umi-correspondence.md) what each UMI
         - LossKind
         - Note
         - NoteKind
+
+## Correspondence
+
+[UMI correspondence](../umi-correspondence.md) renders `CORRESPONDENCE` as one table per UMI
+class.
+
+::: archetypal.umi.correspondence
+    options:
+      show_root_heading: false
+      show_attribute_values: false
+      members:
+        - CORRESPONDENCE
+        - FieldMapping
+        - Relevance
+        - MappingStatus

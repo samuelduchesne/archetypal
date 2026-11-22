@@ -7,7 +7,7 @@
   reference year (research R7), not by their parts, weeks and days, which a writer may arrange
   differently. A component no template of the original uses is matched by type and name.
 - `diff_archetypes(a, b)` compares two SBEM archetypes field by field. Zone groups are matched
-  by name; locations are dotted field paths prefixed by the group (`perimeter.Operations…`) or
+  by name, then by exposure; locations are dotted field paths prefixed by the group (`perimeter.Operations…`) or
   by `archetype.`, as in the translation report.
 
 Each difference names its location (a JSON pointer into the original library, or an SBEM field
@@ -45,7 +45,7 @@ from archetypal.umi.validate import LibraryIndex
 if TYPE_CHECKING:
     import os
 
-    from epinterface.sbem.archetype import Archetype
+    from epinterface.sbem.archetype import Archetype, ZoneGroup
     from pydantic import JsonValue
 
 __all__ = ["ABS_TOL", "ArchetypeDiff", "Difference", "UmiDiff", "diff_archetypes", "diff_umi"]
@@ -527,7 +527,7 @@ class _SbemComparer:
                 self.add(path, first, second, None)
                 return
             for index, (x, y) in enumerate(zip(first, second, strict=True)):
-                self.walk(x, y, f"{path}[{index}]")
+                self.walk(x, y, f"{path}.{index}")
             return
         if _is_number(a) and _is_number(b):
             relative = _relative(float(cast("float", a)), float(cast("float", b)))
@@ -541,7 +541,8 @@ class _SbemComparer:
 def diff_archetypes(a: Archetype, b: Archetype, *, rel_tol: float = 0.0) -> ArchetypeDiff:
     """Compare two SBEM archetypes field by field (SC-004).
 
-    Zone groups are matched by name; a group's fields are located as
+    Zone groups are matched by name, then by exposure (UMI names its zones `core` and
+    `perimeter`); a group's fields are located as
     `<group name>.<field path below its ZoneComponent>` and building-level fields as
     `archetype.<field>`, as in the translation report. A group with no counterpart is one
     difference whose other value is `None`.
@@ -560,15 +561,26 @@ def diff_archetypes(a: Archetype, b: Archetype, *, rel_tol: float = 0.0) -> Arch
         if name == "Groups":
             continue
         comparer.walk(getattr(a, name), getattr(b, name), f"archetype.{name}")
-    groups = {group.Name: group for group in b.Groups}
+    free = list(b.Groups)
+    pairs: list[tuple[ZoneGroup, ZoneGroup | None]] = []
     for group in a.Groups:
-        other = groups.pop(group.Name, None)
+        other = next((g for g in free if g.Name == group.Name), None)
+        pairs.append((group, other))
+        if other is not None:
+            free.remove(other)
+    for index, (group, other) in enumerate(pairs):
+        if other is None and group.Exposure is not None:
+            other = next((g for g in free if g.Exposure == group.Exposure), None)
+            if other is not None:
+                free.remove(other)
+                pairs[index] = (group, other)
+    for group, other in pairs:
         if other is None:
             comparer.add(group.Name, group.Name, None, None)
             continue
-        for name in ("FloorAreaShare", "Exposure"):
+        for name in ("Name", "FloorAreaShare", "Exposure"):
             comparer.walk(getattr(group, name), getattr(other, name), f"{group.Name}.{name}")
         comparer.walk(group.Zone, other.Zone, group.Name)
-    for name in groups:
-        comparer.add(name, None, name, None)
+    for group in free:
+        comparer.add(group.Name, None, group.Name, None)
     return ArchetypeDiff(differences=tuple(comparer.found), rel_tol=rel_tol)

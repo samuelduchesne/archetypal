@@ -373,8 +373,10 @@ def test_single_group_is_copied_to_both(exposure: str | None) -> None:
     archetype = _archetype([ZoneGroup(Name="all", Zone=zone, Exposure=exposure)])  # pyright: ignore[reportArgumentType]
     zones = template_zones(archetype)
     assert zones.core == zones.perimeter == zone
-    [loss] = zones.losses
-    assert loss.kind is LossKind.COPIED
+    [loss] = [loss for loss in zones.losses if loss.kind is LossKind.COPIED]
+    [renamed] = [loss for loss in zones.losses if loss.kind is LossKind.RENAMED]
+    assert (renamed.location, renamed.value) == ("all.Name", "all")
+    assert renamed.replacement == ("core" if exposure == "core" else "perimeter")
     assert loss.rule == "layout.core_copied"
     assert loss.location == "all"
     assert loss.value == "all"

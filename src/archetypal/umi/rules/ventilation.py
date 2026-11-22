@@ -211,7 +211,9 @@ def infiltration_to_umi(
         )
     main = _behaviour(infiltration)
     for key, other in (("AtticInfiltration", attic), ("BasementInfiltration", basement)):
-        if _behaviour(other) != main:
+        # Reading back gives the zone's air changes with `AirChanges/Hour`, so an attic or basement
+        # infiltration by another method changes even when it behaves as the zone's.
+        if _behaviour(other) != main or other.CalculationMethod != AIR_CHANGES:
             context.lose(
                 key,
                 _behaviour(other),

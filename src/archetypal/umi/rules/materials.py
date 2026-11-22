@@ -564,6 +564,30 @@ def _environmental_to_umi(
     return cost, per_kg
 
 
+# SBEM fields that may be unset and that UMI always holds: writing fills them (noted).
+_MATERIAL_FILLED: tuple[str, ...] = (
+    "Category",
+    "Cost",
+    "RateUnit",
+    "EmbodiedCarbon",
+    "EmbodiedEnergy",
+    "TransportCarbon",
+    "TransportDistance",
+    "TransportEnergy",
+    "SubstitutionRatePattern",
+    "SubstitutionTimestep",
+    "MoistureDiffusionResistance",
+)
+_ASSEMBLY_FILLED: tuple[str, ...] = (
+    "Category",
+    "AssemblyCarbon",
+    "AssemblyCost",
+    "AssemblyEnergy",
+    "DisassemblyCarbon",
+    "DisassemblyEnergy",
+)
+
+
 @rule("material.properties", to="umi")
 def material_to_umi(
     component: ConstructionMaterialComponent, subject: str, location: str, findings: Findings
@@ -616,6 +640,7 @@ def material_to_umi(
             "material.environmental",
             "UMI materials have no life; their substitution timestep and pattern describe replacement.",
         )
+    findings.unset(component, _MATERIAL_FILLED, subject, location, "material.environmental")
     cost, carbon = _environmental_to_umi(component, subject, location, findings)
     life_cycle = life_cycle_to_umi(component, component.RateUnit, component.Density, subject, location, findings)
     return OpaqueMaterial.model_validate({
@@ -717,6 +742,7 @@ def construction_to_umi(
         )
         for index, layer in enumerate(sorted(assembly.Layers, key=lambda layer: layer.LayerOrder))
     ]
+    findings.unset(assembly, _ASSEMBLY_FILLED, subject, location, "construction.layers")
     return OpaqueConstruction.model_validate({
         "Name": assembly.Name,
         "Category": assembly.Category if assembly.Category is not None else "Uncategorized",
@@ -843,6 +869,7 @@ def assemblies_to_umi(
         )
         for umi_slot, sbem_slot in SET_SLOTS.items()
     }
+    findings.unset(envelope, ("Category",), subject, location, "construction.sets")
     return ZoneConstructions.model_validate({
         "Name": envelope.Name,
         "Category": envelope.Category if envelope.Category is not None else "Uncategorized",

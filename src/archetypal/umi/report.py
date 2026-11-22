@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from importlib import metadata
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 from pydantic import (
     BaseModel,
@@ -38,6 +38,7 @@ from archetypal.umi.correspondence import LIBRARY_RULES, UPSTREAM_ITEMS, rule_id
 
 if TYPE_CHECKING:
     import os
+    from collections.abc import Iterable
 
     from pydantic import ModelWrapValidatorHandler
 
@@ -384,6 +385,26 @@ class Findings:
                 upstream=upstream,
             )
         )
+
+    def unset(self, component: object, keys: Iterable[str], subject: str, location: str, rule_id: str) -> None:
+        """Note the fields of an SBEM component that are unset (`None`) and that writing fills.
+
+        UMI needs a value where SBEM leaves a field unset, so writing puts Basilisk's default
+        there, and reading the library back gives that value instead of `None`. One note at the
+        component lists the fields.
+        """
+        unset = [key for key in keys if getattr(component, key, 0) is None]
+        if unset:
+            self.notes.append(
+                Note(
+                    kind=NoteKind.DEFAULTED,
+                    subject=subject,
+                    location=location,
+                    value=cast("JsonValue", unset),
+                    rule=rule_id,
+                    reason="SBEM leaves these fields unset; UMI needs a value, so Basilisk's default is written",
+                )
+            )
 
     def assume(self, subject: str, location: str, value: JsonValue, rule_id: str, reason: str) -> None:
         """Record that a value the source lacks was filled by a stated rule."""

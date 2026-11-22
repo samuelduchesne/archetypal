@@ -42,7 +42,8 @@ def check_page(relative: Path, text: str) -> str | None:
     return None
 
 
-PAGES = sorted(DOCS.rglob("*.md"))
+# docs/examples/ holds the tutorial's files and their SOURCES.md, which the site excludes.
+PAGES = sorted(page for page in DOCS.rglob("*.md") if page.relative_to(DOCS).parts[0] != "examples")
 
 
 def test_docs_have_pages() -> None:

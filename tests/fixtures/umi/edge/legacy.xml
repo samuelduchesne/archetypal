@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LibSerializable xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <TimeStamp>2016-05-01T00:00:00</TimeStamp>
+  <BuildingTemplates>
+    <BuildingTemplate>
+      <Name>Office</Name>
+      <Type>Office</Type>
+      <LifeSpan>60</LifeSpan>
+      <DataSource>archetypal test fixture</DataSource>
+      <Comments>Legacy UMI XML library (Basilisk Legacy/Library.cs)</Comments>
+      <FacadeWl>Concrete wall</FacadeWl>
+      <OccupDnst>0.05</OccupDnst>
+      <EquipDnst>8</EquipDnst>
+      <LightDnst>10</LightDnst>
+      <HeatingSet>20</HeatingSet>
+      <CoolingSet>24</CoolingSet>
+    </BuildingTemplate>
+  </BuildingTemplates>
+  <DaySchedules />
+  <GasMaterials />
+  <GlazingMaterials />
+  <OpaqueConstructions />
+  <OpaqueMaterials>
+    <OpaqueMaterial>
+      <Name>Concrete</Name>
+      <Conductivity>1.95</Conductivity>
+      <Density>2240</Density>
+      <Roughness>Rough</Roughness>
+      <SpecificHeat>900</SpecificHeat>
+      <ThermalEmittance>0.9</ThermalEmittance>
+      <SolarAbsorptance>0.7</SolarAbsorptance>
+      <VisibleAbsorptance>0.7</VisibleAbsorptance>
+    </OpaqueMaterial>
+  </OpaqueMaterials>
+  <WeekSchedules />
+  <YearSchedules />
+</LibSerializable>

@@ -24,7 +24,10 @@ rejected. Sources:
    number of hourly values or week days. A `$ref` that points nowhere, or to an object defined
    later in the file, silently becomes `null`. Its only library rule, `OrphanedComponents()`
    (`Core/Library.cs:121-146`), runs when *saving*, and finds components that are referenced
-   but missing from their collection. It does **not** flag components no template uses: B2 and
+   but missing from their collection, with two gaps found by the harness (R15): it misses a
+   zone or structure definition missing from `Zones` or `StructureDefinitions`, and it lists a
+   week's `null` day (a dangling day reference), its one reaction to a dangling reference. It
+   does **not** flag components no template uses: B2 and
    UZ, both written by Basilisk, contain 29 of them. Basilisk's editor layer adds one more
    rule: names are unique and not null within each collection, glazing and gas materials
    together (`Controls/InterfaceModels/Library.cs:315-474`).
@@ -582,9 +585,39 @@ C-11). Rebuilding approximately states exactly which parameters lack data.
 **Rationale.** Clarification 5 requires automatic checking on every change with Basilisk.
 Basilisk alone passes files with dangling references, hence the extra checks.
 
-**Not verified yet.** The .NET SDK could not be installed in the research environment. The
-first task builds the harness and confirms the Linux build and every claim about Basilisk's
-behaviour quoted here.
+**Verified on 2026-11-22** (task T003) with the harness built on Linux against commit
+`5cce24e8`, on B2, ND, UZ, the edge fixtures of `tests/fixtures/umi/edge/` and five probe
+libraries:
+
+- **(a) `FromJson` turns dangling and forward references into `null`: confirmed.** It raises
+  no error. In `dangling_ref.json` the loads' `OccupancySchedule` (`$ref` "99") loads as `null`;
+  in `forward_ref.json` (`Zones` written after `BuildingTemplates`) the template's `Core` and
+  `Perimeter` load as `null`. Only check 1 (the reference scan) and check 4 (required
+  references) catch them.
+- **(b) `OrphanedComponents()` flags referenced-but-missing components only: confirmed, with
+  two exceptions.** It never lists unused components (`no_templates.json`: 22 unused, none
+  listed). It lists a non-null component absent from its collection, such as a year schedule
+  or material defined inline and nowhere else, and `ToJson()` then throws. But:
+  - a zone definition (or structure definition) that a template references and that is
+    missing from `Zones` (`StructureDefinitions`) is **not** listed:
+    `BuildingTemplate.ReferencedComponents` yields what the zones reference, not the zones
+    (`Core/BuildingTemplate.cs:57-67`). The harness's check 3 therefore also walks every
+    template and requires each component it reaches to be in its collection;
+  - a dangling reference in a week's `Days` **is** listed, as a `null` orphan, because
+    `WeekSchedule.ReferencedComponents` returns `Days` unfiltered; every other class drops
+    `null` references with `OfType`.
+- **(c) B2 and UZ load with 29 unused components each: confirmed.** ND has none. All three
+  pass the four checks: no null required reference, every day with 24 values, every week with 7
+  days, every year covering 1/1 to 12/31, unique names. UZ's Archsim-era keys are ignored by
+  Newtonsoft's default settings.
+- **(d) The build works on Linux without `net7`: confirmed.** With only the .NET 8.0.428 SDK
+  and the 8.0.34 runtime installed, Core's 51 source files compile unchanged into a `net8.0`
+  program, with nullable checks and warnings as errors, against Newtonsoft.Json 13.0.1, Core's
+  own pinned version.
+
+Also confirmed: the editor's name rule builds one name dictionary per collection, glazing and
+gas materials together, so a null or duplicate name throws there; building templates are not
+keyed by name, so unique template names are this project's rule, not Basilisk's.
 
 ## R16 — Round trips and the audit (US3, SC-003, SC-004, SC-006)
 

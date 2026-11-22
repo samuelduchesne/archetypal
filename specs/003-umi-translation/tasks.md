@@ -59,7 +59,7 @@ R15: its claims are not yet verified), and collect the UMI test set.
   T059). Create `src/archetypal/umi/__init__.py` and `src/archetypal/umi/rules/__init__.py`
   with module docstrings only, and the folders `tests/unit/umi/`, `tests/umi/`,
   `tests/fixtures/umi/edge/`, `tests/data/umi/`, `verification/umi/`.
-- [ ] T002 Write the .NET 8 harness in `tools/basilisk-check/` (research R15):
+- [X] T002 Write the .NET 8 harness in `tools/basilisk-check/` (research R15):
   - `fetch-basilisk.sh` clones `github.com/MITSustainableDesignLab/basilisk` into
     `tools/basilisk-check/.basilisk/` and checks out commit `5cce24e8`;
   - `basilisk-check.csproj` targets `net8.0` and compiles Basilisk's `Core/**/*.cs` from that
@@ -73,7 +73,7 @@ R15: its claims are not yet verified), and collect the UMI test set.
   - prints `ok <file>` per passing file; exits 0 when all pass, else with status 10 + the
     number of the first failed check, naming the file and the problem;
   - `README.md` says how to run it locally.
-- [ ] T003 Verify research R15's claims with the harness and record the results: run it on
+- [X] T003 Verify research R15's claims with the harness and record the results: run it on
   `BostonTemplateLibrary_2.json`, `BostonTemplateLibrary_nodup.json` and the library inside
   `umi_samples.umi` (all in `tests/input_data/umi_samples/` on `v2.x`), and on a hand-made
   library with a dangling and a forward `$ref`. Confirm that (a) `FromJson` alone turns both
@@ -82,16 +82,16 @@ R15: its claims are not yet verified), and collect the UMI test set.
   without `net7`. Replace "Not verified yet" in `specs/003-umi-translation/research.md` R15
   with what was found. If a claim is wrong, amend research.md, data-model.md and
   contracts/umi-file.md before starting Phase 2.
-- [ ] T004 Add a `--list-fields` mode to `tools/basilisk-check/Program.cs` that lists, by
+- [X] T004 Add a `--list-fields` mode to `tools/basilisk-check/Program.cs` that lists, by
   reflection, every serialised member of every Basilisk Core class as JSON
   `{"<Class>": ["<Key>", …]}` (classes sorted, keys in serialisation order), and commit its
   output as `tests/data/basilisk_fields.json` (research R5).
-- [ ] T005 [P] Copy the UMI sample libraries into `tests/fixtures/umi/`:
+- [X] T005 [P] Copy the UMI sample libraries into `tests/fixtures/umi/`:
   `BostonTemplateLibrary_2.json` (B2), `BostonTemplateLibrary_nodup.json` (ND), and
   `BostonTemplateLibrary.json` extracted from `umi_samples.umi` as
   `umi_samples_BostonTemplateLibrary.json` (UZ). Add `tests/fixtures/umi/README.md` giving
   each file's origin, dialect (research R2) and SHA-256.
-- [ ] T006 [P] Write the edge-case fixtures by hand in `tests/fixtures/umi/edge/` (research
+- [X] T006 [P] Write the edge-case fixtures by hand in `tests/fixtures/umi/edge/` (research
   R18), each with one or two templates and a top-of-README line stating the expected outcome:
   `dangling_ref.json`; `forward_ref.json`; `missing_reference.json` (a `ZoneLoads` whose
   `LightingSchedule` is `null`); `duplicate_names.json` (two `OpaqueMaterials` named alike

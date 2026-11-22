@@ -441,29 +441,29 @@ and peak is reported and flagged against SC-001–SC-003; mismatched runs are re
 
 ### Tests for User Story 3
 
-- [ ] T074 [P] [US3] Write `tests/unit/test_comparison.py` on committed result fixtures: rows
+- [X] T074 [P] [US3] Write `tests/unit/test_comparison.py` on committed result fixtures: rows
   for total site energy, every end use by fuel of FR-027 and both peaks; `within_target` is
   `None` where SC-002's 5 % share or SC-003's 10 % peak rule excludes the metric; pumps and
   heat rejection are added to heating and cooling by hourly delivered mode before comparing
   (SC-002); fans are compared on their own; pumps and heat rejection still appear as
   reported, with `within_target = None`, and heating and cooling appear both as reported and
   with them added (data-model.md, ComparisonResult; FR-027).
-- [ ] T075 [P] [US3] Extend `tests/unit/test_comparison.py` with refusals: different weather,
+- [X] T075 [P] [US3] Extend `tests/unit/test_comparison.py` with refusals: different weather,
   run period, unit system, timestep or reporting frequency each raise `NotComparableError`
   naming every difference (FR-028, US3 scenario 2).
 
 ### Implementation for User Story 3
 
-- [ ] T076 [US3] Implement `src/archetypal/comparison/results.py`: end uses by fuel from the
+- [X] T076 [US3] Implement `src/archetypal/comparison/results.py`: end uses by fuel from the
   *Annual Building Utility Performance Summary*; peaks as the maximum of summed heating and
   cooling meters at the common frequency; the pump and heat-rejection allocation of R13;
   comparability checks from the `Simulations` and `EnvironmentPeriods` tables and the optional
   EPW SHA-256 (R13).
-- [ ] T077 [US3] Implement `compare()`, `ComparisonResult` and `AcceptanceTargets` (defaults:
+- [X] T077 [US3] Implement `compare()`, `ComparisonResult` and `AcceptanceTargets` (defaults:
   SC-001 5 %, SC-002 10 % above a 5 % share, SC-003 15 % above a 10 % share) in
   `src/archetypal/comparison/__init__.py` with the signature of `contracts/python-api.md`, and
   re-export `compare` from `src/archetypal/__init__.py`.
-- [ ] T078 [P] [US3] Write `docs/how-to/compare-results.md` and add `archetypal.comparison` to
+- [X] T078 [P] [US3] Write `docs/how-to/compare-results.md` and add `archetypal.comparison` to
   `docs/reference/api/reduction.md` (created by T066; create it if US3 lands first); code
   examples run against the unit fixtures.
 

@@ -10,3 +10,5 @@ Guides for a task you already know you need to do.
   on Python 3.10 to 3.12.
 - [How to migrate from archetypal 2](migrate-from-v2.md): find the replacement of each v2
   name and rewrite the frequent v2 tasks.
+- [How to check that an archetype reproduces its building](compare-results.md): compare
+  the detailed model's and the archetype's results against the acceptance targets.

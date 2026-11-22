@@ -15,9 +15,11 @@ nav:
       - how-to/index.md
       - how-to/install.md
       - how-to/migrate-from-v2.md
+      - how-to/compare-results.md
   - Reference:
       - reference/index.md
       - reference/removed.md
+      - reference/api/reduction.md
       - Changelog: reference/changelog.md
   - Explanation:
       - explanation/index.md

@@ -3,7 +3,10 @@
 Every `python` block runs in a fresh temporary folder that holds the example files the pages
 name: `model.idf` (a one-zone office at EnergyPlus 24.2 with an `Office Occupancy` schedule),
 `legacy.idf` (the same kind of model at EnergyPlus 22.1) and, when EnergyPlus is installed,
-`weather.epw` and `eplusout.sql` (the results of a design-day run of `model.idf`).
+`weather.epw` and `eplusout.sql` (the results of a design-day run of `model.idf`). It also
+holds the comparison fixtures of the unit tests (spec 002, T078): `detailed.sql` and
+`archetype.sql` (two comparable runs of the bar building, the second with more lighting power)
+and `other-period.sql` (a run of the same building over another fortnight).
 
 An HTML comment on the line before a block changes how it runs:
 
@@ -31,7 +34,9 @@ if TYPE_CHECKING:
 _DIRECTIVE = re.compile(r"^<!--\s*example:\s*(?P<body>.*?)\s*-->\s*$")
 _ENERGYPLUS_VERSION = (24, 2, 0)
 _WEATHER = "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3"
-EXAMPLE_FILES = ("model.idf", "legacy.idf", "weather.epw", "eplusout.sql")
+_COMPARISON = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "comparison"
+_COMPARISON_FILES = {"detailed.sql": "base.sql", "archetype.sql": "lights.sql", "other-period.sql": "run_period.sql"}
+EXAMPLE_FILES = ("model.idf", "legacy.idf", "weather.epw", "eplusout.sql", *_COMPARISON_FILES)
 
 
 def _directive(item: pytest.Item) -> str | None:
@@ -146,6 +151,8 @@ def example_files(tmp_path_factory: pytest.TempPathFactory) -> Path:
     folder = tmp_path_factory.mktemp("examples")
     _write_model(folder / "model.idf", _ENERGYPLUS_VERSION)
     _write_model(folder / "legacy.idf", (22, 1, 0))
+    for name, fixture in _COMPARISON_FILES.items():
+        shutil.copyfile(_COMPARISON / fixture, folder / name)
     home = _energyplus_dir()
     if home is not None:
         _simulate(folder, home)

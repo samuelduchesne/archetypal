@@ -223,7 +223,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   space use follows the three tiers of FR-007 and records its source; a hypothesis property
   shuffles zone order and checks the classification is unchanged; rounding noise below 6
   significant figures does not split a space use.
-- [ ] T031 [P] [US1] Test the ledger in `tests/unit/test_ledger.py` with hypothesis on
+- [X] T031 [P] [US1] Test the ledger in `tests/unit/test_ledger.py` with hypothesis on
   synthetic ledgers: `+` is associative and commutative, members are a sorted union, every
   total is a sum, and `from_zone` applies the multiplier exactly once.
 - [ ] T032 [P] [US1] Test the envelope in `tests/unit/test_envelope.py`: surface classes by

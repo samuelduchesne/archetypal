@@ -102,7 +102,7 @@ R15: its claims are not yet verified), and collect the UMI test set.
   conductivity used only by the first of two templates); `no_templates.json`;
   `unused_components.json`; `archsim_dialect.json` (materials carrying `GasType`, `Life` and
   `Comment`); `legacy.xml` (a `<LibSerializable>` root).
-- [ ] T007 [P] Tooling (research R15, R19):
+- [X] T007 [P] Tooling (research R15, R19):
   - add a `basilisk` job to `.github/workflows/main.yml` on every pull request: Ubuntu,
     `actions/setup-dotnet` 8.0, `tools/basilisk-check/fetch-basilisk.sh`, then
     `uv run pytest tests/unit/umi --write-libraries out/libraries`, then

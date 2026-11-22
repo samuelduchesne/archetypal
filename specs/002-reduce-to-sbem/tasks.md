@@ -47,28 +47,28 @@ Single library in src layout (plan.md, Project Structure): `src/archetypal/`, `t
 `/project-kit:new-project`, shared tooling, test tiers, errors, docs site; 001 research R13).
 002 adds only its own gates.
 
-- [ ] T001 Confirm spec 001's foundation tasks are done on the `v3` branch: project generated
+- [X] T001 Confirm spec 001's foundation tasks are done on the `v3` branch: project generated
   and linked with cruft, `v2.x` cut, shared tooling and test tiers (001 R1–R3, R9),
   `CLAUDE.md` skill rules (001 R4), docs checks (001 R5), `src/archetypal/errors.py` (001 R8).
   Do not repeat any of it here.
-- [ ] T002 [P] Add `[tool.idfkit.check]` to `pyproject.toml` (`paths = ["src"]`, `since =
+- [X] T002 [P] Add `[tool.idfkit.check]` to `pyproject.toml` (`paths = ["src"]`, `since =
   "22.1"`, `extend-select = ["C004"]`, `fail-on = "warning"`) and run `idfkit check` from
   the `check` target of `Makefile` and as a local hook in `.pre-commit-config.yaml` (research
   R18).
-- [ ] T003 [P] Add a `pygrep` hook to `.pre-commit-config.yaml` that fails on
+- [X] T003 [P] Add a `pygrep` hook to `.pre-commit-config.yaml` that fails on
   `get_collection`, `.collections`, `objects_by_type`, `get_referenced_object`,
   `schedules_dict` and `get_zone_surfaces` in `src/` (research R18, item 3).
-- [ ] T004 [P] Edit `.github/workflows/main.yml`: an `integration` job on pull requests
+- [X] T004 [P] Edit `.github/workflows/main.yml`: an `integration` job on pull requests
   (EnergyPlus 24.2, Python 3.12, `-m energyplus`); a required job that runs the unit tier
   against the SBEM fork's development branch; a weekly job against upstream epinterface's
   `main`, allowed to fail and reported (roadmap C-14).
-- [ ] T005 [P] Add `.github/workflows/reference.yml`: weekly, `workflow_dispatch` and on tags
+- [X] T005 [P] Add `.github/workflows/reference.yml`: weekly, `workflow_dispatch` and on tags
   `v3.*`, running `uv run pytest -m reference` with EnergyPlus 24.2 and uploading
   `verification/` output (plan.md, Tooling configuration).
-- [ ] T006 [P] Create `src/archetypal/reduction/__init__.py` and
+- [X] T006 [P] Create `src/archetypal/reduction/__init__.py` and
   `src/archetypal/comparison/__init__.py` with module docstrings only, and the test folders
   `tests/integration/`, `tests/reference/`, `tests/fixtures/models/`.
-- [ ] T007 [P] Add reduction to SBEM to the `Unreleased` section of `CHANGELOG.md`. Docs nav
+- [X] T007 [P] Add reduction to SBEM to the `Unreleased` section of `CHANGELOG.md`. Docs nav
   entries are added with each page, never ahead of it (001 research R5).
 
 **Checkpoint**: `make check` and `uv run pytest` pass on the empty package.

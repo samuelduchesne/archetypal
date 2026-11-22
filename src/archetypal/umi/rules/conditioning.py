@@ -49,8 +49,6 @@ from archetypal.umi._format import EconomizerType, FuelType, HeatRecoveryType, Z
 from archetypal.umi.correspondence import rule
 from archetypal.umi.report import NoteKind
 from archetypal.umi.rules._common import (
-    RuleContext,
-    ScheduleToSbem,
     all_values_equal,
     annual_values,
     constant_year_schedule,
@@ -73,6 +71,10 @@ if TYPE_CHECKING:
     from epinterface.sbem.components.systems import FuelType as SbemFuel
 
     from archetypal.umi._format import YearSchedule, ZoneVentilation
+    from archetypal.umi.rules._common import (
+        RuleContext,
+        ScheduleToSbem,
+    )
 
 __all__ = [
     "ALWAYS_ON",

@@ -22,15 +22,10 @@ from epinterface.sbem.components.space_use import EquipmentComponent, LightingCo
 from archetypal.errors import Problem
 from archetypal.umi._format import (
     DimmingType,
-    YearSchedule,
-    ZoneDefinition,
     ZoneLoads,
 )
 from archetypal.umi.correspondence import rule
 from archetypal.umi.rules._common import (
-    RuleContext,
-    ScheduleToSbem,
-    ScheduleToUmi,
     identity_to_umi,
     json_value,
     report_upstream,
@@ -39,6 +34,16 @@ from archetypal.umi.rules._common import (
 
 if TYPE_CHECKING:
     from epinterface.sbem.components.space_use import ZoneSpaceUseComponent
+
+    from archetypal.umi._format import (
+        YearSchedule,
+        ZoneDefinition,
+    )
+    from archetypal.umi.rules._common import (
+        RuleContext,
+        ScheduleToSbem,
+        ScheduleToUmi,
+    )
 
 
 __all__ = [

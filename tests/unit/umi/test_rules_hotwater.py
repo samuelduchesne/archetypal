@@ -8,12 +8,11 @@ import numpy as np
 import pytest
 from epinterface.sbem.components.space_use import OccupancyComponent, WaterUseComponent
 from epinterface.sbem.components.systems import DHWComponent
-from epinterface.sbem.components.systems import DHWFuelType as SbemDhwFuel
 from hypothesis import given
 from hypothesis import strategies as st
 
 from archetypal.reduction.schedules import to_year_component
-from archetypal.umi._format import DomesticHotWaterFuelType, DomesticHotWaterSettings, YearSchedule, ZoneLoads
+from archetypal.umi._format import DomesticHotWaterFuelType, DomesticHotWaterSettings, ZoneLoads
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind
 from archetypal.umi.rules import hotwater as module
@@ -33,6 +32,9 @@ from .test_rules_loads import reading, sbem_schedule, writing
 
 if TYPE_CHECKING:
     from epinterface.sbem.components.schedules import YearComponent, YearScheduleCategory
+    from epinterface.sbem.components.systems import DHWFuelType as SbemDhwFuel
+
+    from archetypal.umi._format import YearSchedule
 
 POINTER = "/DomesticHotWaterSettings/0"
 

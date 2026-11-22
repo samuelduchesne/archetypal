@@ -32,9 +32,6 @@ from archetypal.errors import Problem
 from archetypal.umi._format import DomesticHotWaterFuelType, DomesticHotWaterSettings
 from archetypal.umi.correspondence import rule
 from archetypal.umi.rules._common import (
-    RuleContext,
-    ScheduleToSbem,
-    ScheduleToUmi,
     annual_values,
     identity_to_sbem,
     identity_to_umi,
@@ -49,6 +46,11 @@ if TYPE_CHECKING:
     from epinterface.sbem.components.systems import DHWFuelType
 
     from archetypal.umi._format import ZoneLoads
+    from archetypal.umi.rules._common import (
+        RuleContext,
+        ScheduleToSbem,
+        ScheduleToUmi,
+    )
 
 __all__ = [
     "DAYS_PER_YEAR",

@@ -16,9 +16,9 @@ from epinterface.sbem.components.space_use import (
 )
 
 from archetypal.reduction.schedules import to_year_component
-from archetypal.umi._format import DimmingType, YearSchedule, ZoneDefinition, ZoneLoads
+from archetypal.umi._format import DimmingType, ZoneDefinition, ZoneLoads
 from archetypal.umi.correspondence import get_rule
-from archetypal.umi.report import Loss, LossKind, Note, NoteKind
+from archetypal.umi.report import LossKind, NoteKind
 from archetypal.umi.rules import loads
 from archetypal.umi.rules._common import (
     REFERENCE_CALENDAR,
@@ -38,6 +38,9 @@ from archetypal.umi.rules.loads import (
 
 if TYPE_CHECKING:
     from epinterface.sbem.components.schedules import YearComponent
+
+    from archetypal.umi._format import YearSchedule
+    from archetypal.umi.report import Loss, Note
 
 # --- helpers shared by the rule tests --------------------------------------------------------------
 

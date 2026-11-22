@@ -31,9 +31,6 @@ from archetypal.errors import Problem
 from archetypal.umi._format import ZoneVentilation
 from archetypal.umi.correspondence import rule
 from archetypal.umi.rules._common import (
-    RuleContext,
-    ScheduleToSbem,
-    ScheduleToUmi,
     identity_to_sbem,
     identity_to_umi,
     json_value,
@@ -50,6 +47,11 @@ if TYPE_CHECKING:
     from pydantic import JsonValue
 
     from archetypal.umi._format import YearSchedule
+    from archetypal.umi.rules._common import (
+        RuleContext,
+        ScheduleToSbem,
+        ScheduleToUmi,
+    )
 
 __all__ = [
     "AIR_CHANGES",

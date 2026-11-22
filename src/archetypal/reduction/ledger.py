@@ -234,7 +234,10 @@ def _scale(value: Any, factor: float) -> Any:
 
 def _equal(a: Any, b: Any) -> bool:
     if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
-        return isinstance(a, np.ndarray) and isinstance(b, np.ndarray) and bool(np.array_equal(a, b))
+        if not (isinstance(a, np.ndarray) and isinstance(b, np.ndarray)):
+            return False
+        left_array, right_array = cast("NDArray[np.float64]", a), cast("NDArray[np.float64]", b)
+        return left_array.shape == right_array.shape and bool((left_array == right_array).all())
     if isinstance(a, dict):
         left = cast("dict[Any, Any]", a)
         right = cast("dict[Any, Any]", b) if isinstance(b, dict) else None
@@ -334,7 +337,7 @@ class EnvelopeTotals(_Totals):
     ua: float = 0.0
     capacity_inner: float = 0.0
     capacity_outer: float = 0.0
-    area_by_orientation: dict[Orientation, float] = Field(default_factory=dict)
+    area_by_orientation: dict[Orientation, float] = Field(default_factory=dict[Orientation, float])
 
 
 class WindowTotals(_Totals):
@@ -547,8 +550,8 @@ class FanTotals(_Totals):
 
     energy: float = 0.0
     volume: float = 0.0
-    volume_in_mode: dict[Mode, float] = Field(default_factory=dict)
-    delivered_in_mode: dict[Mode, float] = Field(default_factory=dict)
+    volume_in_mode: dict[Mode, float] = Field(default_factory=dict[Mode, float])
+    delivered_in_mode: dict[Mode, float] = Field(default_factory=dict[Mode, float])
     volume_without_demand: float = 0.0
 
 
@@ -610,11 +613,11 @@ class GroupLedger(_Totals):
 
     members: tuple[str, ...] = ()
     floor_area: float = 0.0
-    envelope: dict[EnvelopeClass, EnvelopeTotals] = Field(default_factory=dict)
-    window_by_orientation: dict[Orientation, WindowTotals] = Field(default_factory=dict)
+    envelope: dict[EnvelopeClass, EnvelopeTotals] = Field(default_factory=dict[EnvelopeClass, EnvelopeTotals])
+    window_by_orientation: dict[Orientation, WindowTotals] = Field(default_factory=dict[Orientation, WindowTotals])
     internal_mass_capacity: float = 0.0
     internal_mass_area: float = 0.0
-    gains: dict[GainKind, GainTotals] = Field(default_factory=dict)
+    gains: dict[GainKind, GainTotals] = Field(default_factory=dict[GainKind, GainTotals])
     infiltration: AirflowTotals = Field(default_factory=AirflowTotals)
     outdoor_air: OutdoorAirTotals = Field(default_factory=OutdoorAirTotals)
     heating_setpoint: WeightedProfile = Field(default_factory=WeightedProfile)
@@ -622,7 +625,7 @@ class GroupLedger(_Totals):
     unheated_area: float = 0.0
     uncooled_area: float = 0.0
     hot_water: HotWaterTotals = Field(default_factory=HotWaterTotals)
-    energy: dict[Mode, EnergyTotals] = Field(default_factory=dict)
+    energy: dict[Mode, EnergyTotals] = Field(default_factory=dict[Mode, EnergyTotals])
     fans: FanTotals = Field(default_factory=FanTotals)
     excluded_envelope: tuple[EnvelopeAssignment, ...] = ()
 
@@ -758,23 +761,6 @@ def default_hooks() -> tuple[ZoneHook, ...]:
     return tuple(hooks)
 
 
-class _GainLike(Protocol):
-    """The attributes of a `GainRecord` that `gain_fields` reads (names as `NominalLoadRow`'s)."""
-
-    @property
-    def kind(self) -> GainKind: ...
-    @property
-    def design_level(self) -> float: ...
-    @property
-    def schedule_name(self) -> str | None: ...
-    @property
-    def fraction_radiant(self) -> float: ...
-    @property
-    def fraction_latent(self) -> float | None: ...
-    @property
-    def fraction_lost(self) -> float: ...
-
-
 def gain_fields(
     zone: ClassifiedZone, schedules: Callable[[str], NDArray[np.float64]] | ScheduleEvaluator, hours: int | None = None
 ) -> dict[str, object]:
@@ -800,15 +786,15 @@ def gain_fields(
     """
     totals: dict[GainKind, GainTotals] = {}
     record = zone.zone
-    for gain in cast("Sequence[_GainLike]", record.gains):
-        if gain.schedule_name is None:
+    for gain in record.gains:
+        if gain.schedule is None:
             length = hours if hours is not None else getattr(getattr(schedules, "calendar", None), "hours", None)
             if length is None:
                 msg = f"gain of kind {gain.kind!r} in zone {record.name!r} has no schedule and the run period's length is unknown"
                 raise ValueError(msg)
             fraction = np.ones(int(length))
         else:
-            fraction = np.asarray(schedules(gain.schedule_name), dtype=np.float64)
+            fraction = np.asarray(schedules(gain.schedule), dtype=np.float64)
         hourly = gain.design_level * fraction
         if gain.kind == "people":
             radiant = latent = lost = 0.0
@@ -816,7 +802,7 @@ def gain_fields(
             energy = float(hourly.sum()) * _SECONDS_PER_HOUR
             radiant = energy * gain.fraction_radiant
             latent = energy * (gain.fraction_latent or 0.0)
-            lost = energy * (gain.fraction_lost + float(getattr(gain, "fraction_return_air", 0.0)))
+            lost = energy * (gain.fraction_lost + gain.fraction_return_air)
         part = GainTotals(installed=gain.design_level, hourly=hourly, radiant=radiant, latent=latent, lost=lost)
         totals[gain.kind] = totals[gain.kind] + part if gain.kind in totals else part
     return {"gains": totals}

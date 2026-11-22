@@ -17,7 +17,7 @@ underscore) and `RULE_MODULES` names no prefix for it.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Collection
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, TypeAlias, cast
@@ -27,7 +27,6 @@ from epinterface.sbem.components.schedules import YearComponent, YearScheduleCat
 from archetypal.reduction.schedules import RunPeriodCalendar, calendar_year, year_values
 from archetypal.umi._format import (
     DaySchedule,
-    FormatModel,
     LibraryComponent,
     WeekSchedule,
     YearSchedule,
@@ -38,11 +37,16 @@ from archetypal.umi.report import Loss, LossKind, Note, NoteKind
 from archetypal.umi.rules.building import metadata_to_sbem, metadata_to_umi
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     import numpy as np
     import numpy.typing as npt
     from epinterface.sbem.common import MetadataMixin, NamedObject
     from pydantic import JsonValue
 
+    from archetypal.umi._format import (
+        FormatModel,
+    )
     from archetypal.umi.report import Direction
 
 __all__ = [

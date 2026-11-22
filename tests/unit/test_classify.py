@@ -12,7 +12,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from archetypal.errors import NoConditionedZones
-from archetypal.reduction.classify import ClassifiedZone, classify, exposure, space_use_signature
+from archetypal.reduction.classify import classify, exposure, space_use_signature
 from archetypal.reduction.inventory import (
     GainRecord,
     SurfaceRecord,
@@ -26,6 +26,7 @@ from archetypal.reduction.schedules import ScheduleEvaluator
 from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
+    from archetypal.reduction.classify import ClassifiedZone
     from archetypal.reduction.inventory import Boundary
     from archetypal.reduction.schedules import Profile
 
@@ -176,7 +177,9 @@ def test_attic_and_basement_roles() -> None:
         _surface("W1", "Wall", 90.0, "ground"),
         _surface("C1", "Ceiling", 0.0, "interzone", adjacent="Office"),
     )
-    crawl = _zone("Crawl", _surface("F1", "Floor", 180.0, "ground"), _surface("C1", "Ceiling", 0.0, "interzone", adjacent="Store"))
+    crawl = _zone(
+        "Crawl", _surface("F1", "Floor", 180.0, "ground"), _surface("C1", "Ceiling", 0.0, "interzone", adjacent="Store")
+    )
     office = _zone("Office", OUTDOOR_WALL, thermostat=_thermostat())
     store = _zone("Store", OUTDOOR_WALL)
     plenum_attic = replace(attic, name="PlenumAttic", plenum=True)

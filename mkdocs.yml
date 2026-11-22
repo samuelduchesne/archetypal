@@ -19,6 +19,8 @@ nav:
   - Reference:
       - reference/index.md
       - reference/removed.md
+      - reference/umi-correspondence.md
+      - reference/translation-report.md
       - reference/api/reduction.md
       - Changelog: reference/changelog.md
   - Explanation:
@@ -27,6 +29,8 @@ nav:
 # Generates the removed-capability tables of the migration guide and reference (spec 001, R7).
 hooks:
   - docs/hooks/removed.py
+  # Generates the UMI correspondence and translation-report reference pages (spec 003, T039).
+  - docs/hooks/umi_reference.py
 # The hook and the examples' pytest configuration live beside the pages but are not pages.
 exclude_docs: |
   /hooks/

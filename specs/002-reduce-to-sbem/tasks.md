@@ -505,7 +505,7 @@ IV). Depends on US1–US3.
 **Purpose**: replace each "not represented" entry and each bridge as its upstream item is
 released (constitution I). Each task is independent of the others.
 
-- [ ] T084 In the SBEM fork, on topic branch `up-8`, implement UP-8: `SpecificFanPower` and
+- [X] T084 In the SBEM fork, on topic branch `up-8`, implement UP-8: `SpecificFanPower` and
   ideal-loads maximum heating and minimum cooling supply-air temperatures on
   `ThermalSystemComponent` or the zone's conditioning, a fan end use equal to specific fan
   power × hourly supply air volume, and an energy input ratio linear in outdoor temperature;
@@ -515,7 +515,7 @@ released (constitution I). Each task is independent of the others.
   `fans.effective_supply_delta`, `efficiency.eir_linear`), stop folding fans into
   `DistributionCOP`, remove those `not_represented` entries, and update
   `tests/unit/test_to_sbem.py` and `tests/unit/test_conservation.py`.
-- [ ] T086 In the SBEM fork, implement UP-2's extra fields (per-orientation envelope and window
+- [X] T086 In the SBEM fork, implement UP-2's extra fields (per-orientation envelope and window
   ratios, infiltration schedule, numeric heat-recovery effectiveness (sensible and latent),
   holiday and design-day slots in `WeekComponent`, save and load helpers with a schema
   version), one topic branch each; tag the fork and open each upstream.

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 from idfkit import load_idf
+from idfkit.versioned import as_version
 
 from archetypal.reduction._sql_tables import (
     read_construction_layers,
@@ -21,11 +23,15 @@ from archetypal.reduction.inventory import (
     HotWaterRecord,
     SurfaceRecord,
     ThermostatRecord,
-    ZoneRecord,
     build_inventory,
     surface_class,
 )
-from archetypal.reduction.sources import SourceData, load_sources
+from archetypal.reduction.schedules import ScheduleEvaluator
+from archetypal.reduction.sources import load_sources
+
+if TYPE_CHECKING:
+    from archetypal.reduction.inventory import ZoneRecord
+    from archetypal.reduction.sources import SourceData
 
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "tests" / "fixtures" / "models"
@@ -200,8 +206,6 @@ def test_thermostat_dispatch(three: dict[str, ZoneRecord], ten: dict[str, ZoneRe
 
 
 def test_thermostat_setpoints_follow_control_type(three: dict[str, ZoneRecord], three_sources: SourceData) -> None:
-    from archetypal.reduction.schedules import ScheduleEvaluator
-
     evaluate = ScheduleEvaluator(three_sources.model, three_sources.run_period.calendar)
     thermostat = three["Core"].thermostat
     assert thermostat is not None
@@ -270,13 +274,13 @@ def test_space_type_when_all_spaces_agree(three: dict[str, ZoneRecord], ten: dic
 
 
 def test_space_type_unset_when_spaces_disagree() -> None:
-    doc = load_idf(MODELS / "three_zone.idf")
+    doc = as_version(load_idf(MODELS / "three_zone.idf"), since="22.1")
     for space in doc.spaces:
         if space.name == "Core_East_Space":
             space.space_type = "Storage"
     zones = {z.name: z for z in build_inventory(load_sources(doc, MODELS / "three_zone.sql"))}
     assert zones["Core"].space_type is None
-    assert zones["Core"].space_types == ("Office", "Storage")
+    assert zones["Core"].space_types == ("Storage", "Office")  # Core_East_Space, Core_West_Space
     assert zones["North_Perimeter"].space_type == "Office"
 
 

@@ -32,7 +32,6 @@ from epinterface.sbem.components.envelope import (
     EnvelopeAssemblyComponent,
 )
 from epinterface.sbem.components.materials import (
-    ConstructionComponentSurfaceType,
     ConstructionMaterialComponent,
     ConstructionMaterialType,
     MaterialRoughness,
@@ -41,10 +40,16 @@ from epinterface.sbem.components.materials import (
 from archetypal.errors import Problem
 from archetypal.umi._format import MaterialLayer, OpaqueConstruction, OpaqueMaterial, ZoneConstructions
 from archetypal.umi.correspondence import declare_rule, rule
-from archetypal.umi.report import Findings, LossKind
+from archetypal.umi.report import LossKind
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    from epinterface.sbem.components.materials import (
+        ConstructionComponentSurfaceType,
+    )
+
+    from archetypal.umi.report import Findings
 
 
 __all__ = [

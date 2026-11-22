@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import math
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pytest
@@ -19,6 +19,8 @@ from pydantic import BaseModel, ValidationError
 
 from archetypal import io
 from archetypal.reduction import ledger as ledger_module
+from archetypal.reduction.classify import ClassifiedZone
+from archetypal.reduction.inventory import GainRecord, ZoneRecord
 from archetypal.reduction.ledger import (
     DOMAIN_MODULES,
     AirflowTotals,
@@ -66,7 +68,7 @@ def profiles(values: st.SearchStrategy[float]) -> st.SearchStrategy[np.ndarray[A
     return st.lists(values, min_size=HOURS, max_size=HOURS).map(lambda v: np.asarray(v, dtype=np.float64))
 
 
-def keyed(keys: tuple[str, ...], values: st.SearchStrategy[Any]) -> st.SearchStrategy[dict[str, Any]]:
+def keyed(keys: tuple[str, ...], values: st.SearchStrategy[Any]) -> st.SearchStrategy[dict[Any, Any]]:
     return st.dictionaries(st.sampled_from(keys), values, max_size=len(keys))
 
 
@@ -166,7 +168,7 @@ def leaves(obj: object, path: str = "") -> Iterator[tuple[str, Any]]:
                 continue
             yield from leaves(getattr(obj, name), f"{path}.{name}")
     elif isinstance(obj, dict):
-        for key, value in obj.items():  # pyright: ignore[reportUnknownVariableType]
+        for key, value in cast("dict[str, Any]", obj).items():
             yield from leaves(value, f"{path}[{key}]")
     else:
         yield path, obj
@@ -311,22 +313,11 @@ class FakeZone:
 
 
 @dataclass
-class FakeGain:
-    kind: str
-    design_level: float
-    schedule_name: str | None
-    fraction_radiant: float = 0.0
-    fraction_latent: float | None = 0.0
-    fraction_lost: float = 0.0
-    fraction_return_air: float = 0.0
-
-
-@dataclass
 class RecordingHook:
     """A synthetic domain hook: returns one copy's totals and counts its calls."""
 
     fields: Mapping[str, object]
-    calls: list[str] = field(default_factory=list)
+    calls: list[str] = field(default_factory=list[str])
 
     def __call__(self, zone: Any, schedules: Any) -> Mapping[str, object]:
         self.calls.append(zone.zone.name)
@@ -470,29 +461,28 @@ def test_gain_fields_sum_installed_and_hourly_by_kind() -> None:
     occupancy = np.array([0.0, 0.5, 1.0, 1.0])
     always = np.ones(4)
     gains = (
-        FakeGain("lights", 1000.0, "occ", fraction_radiant=0.4, fraction_return_air=0.2),
-        FakeGain("lights", 500.0, "on"),
-        FakeGain("electric", 200.0, "on", fraction_radiant=0.3, fraction_latent=0.1, fraction_lost=0.05),
-        FakeGain("people", 10.0, "occ", fraction_radiant=0.3, fraction_latent=None),
+        GainRecord("lights", "L1", 1000.0, "occ", 0.4, 0.0, 0.0, 0.2),
+        GainRecord("lights", "L2", 500.0, "on", 0.0, 0.0, 0.0),
+        GainRecord("electric", "E", 200.0, "on", 0.3, 0.1, 0.05),
+        GainRecord("people", "P", 10.0, "occ", 0.3, None, 0.0),
     )
     zone = FakeZone(FakeRecord("Office", 3, 50.0, gains))
     fields = gain_fields(zone, schedule_lookup({"occ": occupancy, "on": always}))  # pyright: ignore[reportArgumentType]
-    totals = fields["gains"]
-    assert isinstance(totals, dict)
-    lights: GainTotals = totals["lights"]  # pyright: ignore[reportUnknownVariableType]
+    totals = cast("dict[str, GainTotals]", fields["gains"])
+    lights: GainTotals = totals["lights"]
     assert lights.installed == 1500.0
     np.testing.assert_array_equal(lights.hourly, [500.0, 1000.0, 1500.0, 1500.0])
     lights_energy_first = 1000.0 * occupancy.sum() * 3600.0
     assert lights.radiant == pytest.approx(0.4 * lights_energy_first)
     assert lights.lost == pytest.approx(0.2 * lights_energy_first)
-    electric: GainTotals = totals["electric"]  # pyright: ignore[reportUnknownVariableType]
+    electric: GainTotals = totals["electric"]
     energy = 200.0 * 4 * 3600.0
     assert (electric.radiant, electric.latent, electric.lost) == pytest.approx((
         0.3 * energy,
         0.1 * energy,
         0.05 * energy,
     ))
-    people: GainTotals = totals["people"]  # pyright: ignore[reportUnknownVariableType]
+    people: GainTotals = totals["people"]
     assert people.installed == 10.0
     np.testing.assert_array_equal(people.hourly, 10.0 * occupancy)
     assert (people.radiant, people.latent, people.lost) == (0.0, 0.0, 0.0)
@@ -502,9 +492,10 @@ def test_gain_fields_sum_installed_and_hourly_by_kind() -> None:
 
 
 def test_gain_without_schedule_is_always_on() -> None:
-    zone = FakeZone(FakeRecord("Z", 1, 1.0, (FakeGain("other", 7.0, None),)))
+    zone = FakeZone(FakeRecord("Z", 1, 1.0, (GainRecord("other", "O", 7.0, None, 0.0, 0.0, 0.0),)))
     fields = gain_fields(zone, schedule_lookup({"x": np.zeros(3)}), hours=3)  # pyright: ignore[reportArgumentType]
-    np.testing.assert_array_equal(fields["gains"]["other"].hourly, [7.0, 7.0, 7.0])  # pyright: ignore[reportIndexIssue, reportUnknownMemberType]
+    totals = cast("dict[str, GainTotals]", fields["gains"])
+    np.testing.assert_array_equal(totals["other"].hourly, [7.0, 7.0, 7.0])
 
 
 # --- the report's JSON form ---------------------------------------------------------------
@@ -545,3 +536,20 @@ def test_ledger_reports_its_hours() -> None:
     assert GroupLedger().hours is None
     ledger = GroupLedger(members=("A",), hot_water=HotWaterTotals(volume=np.zeros(5), heat=np.zeros(5)))
     assert ledger.hours == 5
+
+
+def test_from_zone_with_inventory_records_applies_the_multiplier_once() -> None:
+    record = ZoneRecord(
+        name="Typical_Perimeter",
+        multiplier=10,
+        floor_area=200.0,
+        min_z=3.0,
+        volume=600.0,
+        gains=(GainRecord("lights", "L", 1000.0, "on", 0.4, 0.0, 0.0),),
+    )
+    zone = ClassifiedZone(record, True, "conditioned", "perimeter", "office", "signature", "thermostat")
+    ledger = GroupLedger.from_zone(zone, schedule_lookup({"on": np.ones(4)}), hooks=[gain_fields])  # pyright: ignore[reportArgumentType]
+    assert ledger.members == ("Typical_Perimeter",)
+    assert ledger.floor_area == 2000.0
+    assert ledger.gains["lights"].installed == 10_000.0
+    np.testing.assert_array_equal(ledger.gains["lights"].hourly, np.full(4, 10_000.0))

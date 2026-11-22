@@ -1,1 +1,1 @@
-::: archetypal.foo
+::: archetypal

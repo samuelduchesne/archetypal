@@ -139,20 +139,24 @@ ignore = [
     "E731",
 ]
 
+# Let TC fixes add `from __future__ import annotations` instead of quoting types
+future-annotations = true
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.pylint]
 max-args = 8
 
-# Let TC fixes add `from __future__ import annotations` instead of quoting types
-future-annotations = true
-
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "D", "PLR2004"]
 
 [tool.ruff.format]
 preview = true
+
+[tool.deptry.per_rule_ignores]
+# Declared for specs 001-003; remove each name once the package imports it.
+DEP002 = ["idfkit", "click", "pydantic", "numpy"]
 
 [tool.coverage.report]
 skip_empty = true

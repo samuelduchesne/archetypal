@@ -51,14 +51,14 @@ The template's src layout (plan.md, Project Structure): `src/archetypal/`, `test
 
 - [ ] T001 Cut the `v2.x` branch from the `v2.18.11` release commit and push it. It keeps v2's
   poetry, Sphinx and Read the Docs setup and receives security fixes only (FR-020, R2, R11).
-- [ ] T002 Run `/project-kit:new-project` (Python) with a scratch folder outside the
+- [X] T002 Run `/project-kit:new-project` (Python) with a scratch folder outside the
   repository as the parent, and the answers of research R1, step 1: `project_name` archetypal,
   description "Create, translate and codify building energy archetypes on SBEM.", GitHub
   handle samuelduchesne, `layout` src, `minimum_python_version` 3.10,
   `development_python_version` 3.12, `type_checker` pyright, `publish_to_pypi` true,
   `dockerfile` false, `devcontainer` false, `agent_instructions` claude, `agent_profile` full,
   MIT. Ask the maintainer for the author name and email; confirm the preview before creating.
-- [ ] T003 After T002, cut `v3` from `main` and carry the generated tree onto it
+- [X] T003 After T002, cut `v3` from `main` and carry the generated tree onto it
   (research R1, step 3): remove `archetypal/`, `geomeppy/`, `docker/`, `Dockerfile`, `paper/`,
   `install_energyplus.sh`, `poetry.lock`, `tox.ini`, `.readthedocs.yml`, the Sphinx `docs/`
   and the v2 workflows; copy every generated file except `.git/`, `.specify/` and `.claude/`;
@@ -66,36 +66,36 @@ The template's src layout (plan.md, Project Structure): `src/archetypal/`, `test
   below the template's header; keep the copyright holder and years of `LICENSE.md`; delete
   `src/archetypal/foo.py` and `tests/test_foo.py`. Commit as one change and check that
   `uvx cruft check` recognises the template link in `.cruft.json`.
-- [ ] T004 After T003, edit `pyproject.toml`: `requires-python = ">=3.10,<3.13"`;
+- [X] T004 After T003, edit `pyproject.toml`: `requires-python = ">=3.10,<3.13"`;
   classifiers for 3.10–3.12 only; runtime dependencies `idfkit>=1.3,<2`, `click>=8.1,<9`,
   `pydantic>=2.9,<3`, `numpy>=1.26` (epinterface is added when the fork has its first tag,
   spec 002's fork tasks); development group additions `pytest-timeout`, `hypothesis`,
   `pytest-markdown-docs`, `mkdocs-click`; `uv lock` (research R3).
-- [ ] T005 After T004, configure ruff in `pyproject.toml`: keep the template's rule
+- [X] T005 After T004, configure ruff in `pyproject.toml`: keep the template's rule
   set, `line-length = 120`, preview format, `future-annotations`; add `D`
   (`pydocstyle.convention = "google"`), `NPY` and `PL` (`pylint.max-args = 8`); per-file ignores
   `tests/*` → `S101`, `D`, `PLR2004` (research R3).
-- [ ] T006 After T004, set `reportUnknownMemberType`, `reportUnknownVariableType` and
+- [X] T006 After T004, set `reportUnknownMemberType`, `reportUnknownVariableType` and
   `reportUnknownArgumentType` to `"error"` in `[tool.pyright]` of `pyproject.toml`, keeping
   `typeCheckingMode = "strict"` and `pythonVersion = "3.10"` (research R3, SC-005).
-- [ ] T007 After T004, configure pytest in `pyproject.toml`: `strict = true`,
+- [X] T007 After T004, configure pytest in `pyproject.toml`: `strict = true`,
   `testpaths = ["tests"]`, markers `energyplus: needs EnergyPlus 24.2` and `reference:
   reference-set evidence (slow)`, `addopts = "-m 'not energyplus and not reference'
   --durations=15"`, `timeout = 5` (research R3).
-- [ ] T008 Write `tests/conftest.py`: a `pytest_sessionfinish` hook that fails the default
+- [X] T008 Write `tests/conftest.py`: a `pytest_sessionfinish` hook that fails the default
   selection when it takes more than 120 s; hypothesis profiles `ci` (50 examples, 500 ms
   deadline) and `dev`; per-marker timeouts for `energyplus` (600 s) and `reference` (none)
   (research R3).
-- [ ] T009 [P] Edit `.github/workflows/main.yml` (research R9): run on pushes to `main` and
+- [X] T009 [P] Edit `.github/workflows/main.yml` (research R9): run on pushes to `main` and
   `v3`; unit tests on Python 3.10, 3.11 and 3.12 on Ubuntu and 3.12 on macOS and Windows;
   coverage upload from Ubuntu 3.12; keep `quality` and `check-docs`; add a `docs-examples` job
   running `uv run pytest --markdown-docs docs/ tests/docs/`.
-- [ ] T010 [P] Edit `.github/workflows/on-release-main.yml` (research R2): the `publish` job
+- [X] T010 [P] Edit `.github/workflows/on-release-main.yml` (research R2): the `publish` job
   runs only `if: ${{ !github.event.release.prerelease }}`; `deploy-docs` needs `set-version`
   only, so it runs for every published release and pre-release.
-- [ ] T011 [P] Add a "Skills to load" section to `CLAUDE.md` with the three rules of
+- [X] T011 [P] Add a "Skills to load" section to `CLAUDE.md` with the three rules of
   research R4 (idfkit code, docs pages, template upkeep), and the branch rules of R2.
-- [ ] T012 [P] Make the `check` target of `Makefile` also run the docs checks (`mkdocs
+- [X] T012 [P] Make the `check` target of `Makefile` also run the docs checks (`mkdocs
   build -s` and `tests/unit/test_docs_tags.py`) (research R5).
 
 **Checkpoint**: `uvx cruft check`, `make check` and `uv run pytest` pass on the empty package

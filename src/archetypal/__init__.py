@@ -11,6 +11,7 @@ from importlib.metadata import PackageNotFoundError, version
 from typing import NoReturn
 
 from archetypal.comparison import compare as compare
+from archetypal.umi.read import read_umi as read_umi
 
 try:
     __version__: str = version("archetypal")
@@ -20,7 +21,7 @@ except PackageNotFoundError:  # pragma: no cover - only when run from an uninsta
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 # Public re-exports of specs 002 and 003 are added here.
-__all__ = ["__version__"]
+__all__ = ["__version__", "read_umi"]
 
 
 def __getattr__(name: str) -> NoReturn:

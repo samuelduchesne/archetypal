@@ -100,8 +100,10 @@ def test_archsim_keys_without_a_core_counterpart_are_lost() -> None:
     keys = {pointer.rsplit("/", 1)[1] for pointer, _ in raw.lost}
     assert {"Life", "EmbodiedEnergyStdDev", "EmbodiedCarbonStdDev", "PhaseChange", "Optical"} <= keys
     assert "/GasMaterials/0/Life" in {pointer for pointer, _ in raw.lost}
-    # Mapped keys are not lost.
-    assert not keys & {"Comment", "GasType", "Type"}
+    # Mapped keys are not lost; a construction's Archsim `Type` has no Core counterpart.
+    material_keys = {pointer.rsplit("/", 1)[1] for pointer, _ in raw.lost if "Materials/" in pointer}
+    assert not material_keys & {"Comment", "GasType", "Type"}
+    assert "/OpaqueConstructions/0/Type" in {pointer for pointer, _ in raw.lost}
     for collection in ("GasMaterials", "GlazingMaterials", "OpaqueMaterials"):
         for item in objects(raw, collection):
             assert not set(item) & keys

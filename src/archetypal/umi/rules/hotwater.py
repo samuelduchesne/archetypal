@@ -1,16 +1,16 @@
 """Rules for domestic hot water (spec 003, research R10).
 
 - **Flow** (`dhw.per_person`). UMI gives hot water per floor area and hour, SBEM per person and
-  day. With `s(h)` the water schedule's hourly value over the reference year and `ρ_p` the
+  day. With `s(h)` the water schedule's hourly value over the reference year and `rho_p` the
   people density:
 
   ```text
-  q_p [m³/day/person] = q_a [m³/h/m²] × Σ s(h) / (365 × ρ_p)
-  q_a = q_p × 365 × ρ_p / Σ s(h)
+  q_p [m³/day/person] = q_a [m³/h/m²] * Σ s(h) / (365 * rho_p)
+  q_a = q_p * 365 * rho_p / Σ s(h)
   ```
 
   which conserves the annual hot-water volume per m². Hot water in a zone without people
-  (`ρ_p = 0` or people off) cannot be represented per person: it is a range problem on reading
+  (`rho_p = 0` or people off) cannot be represented per person: it is a range problem on reading
   and a loss on writing.
 - **Schedule** (`dhw.schedule`) and **settings** (`dhw.settings`: `IsOn`, supply and inlet
   temperatures) map exactly.
@@ -78,9 +78,7 @@ DHW_FUELS: Mapping[DomesticHotWaterFuelType, DHWFuelType] = MappingProxyType({
 """SBEM's hot-water fuel by UMI's. `Unset` has none (a range problem)."""
 
 _SUBSTITUTE = DomesticHotWaterFuelType.NaturalGas
-_FROM_SBEM: Mapping[str, DomesticHotWaterFuelType] = MappingProxyType({
-    sbem: umi for umi, sbem in DHW_FUELS.items()
-})
+_FROM_SBEM: Mapping[str, DomesticHotWaterFuelType] = MappingProxyType({sbem: umi for umi, sbem in DHW_FUELS.items()})
 
 
 # --- Flow ---------------------------------------------------------------------------------------
@@ -88,12 +86,12 @@ _FROM_SBEM: Mapping[str, DomesticHotWaterFuelType] = MappingProxyType({
 
 @rule("dhw.per_person", to="sbem")
 def flow_per_person(flow_per_area: float, schedule_sum: float, people_density: float) -> float:
-    """Return SBEM's daily flow per person: `q_a × Σ s(h) / (365 × ρ_p)`.
+    """Return SBEM's daily flow per person: `q_a * Σ s(h) / (365 * rho_p)`.
 
     Args:
         flow_per_area: UMI's `FlowRatePerFloorArea`, m³/h per m².
         schedule_sum: `Σ s(h)`, the water schedule summed over the reference year's hours.
-        people_density: `ρ_p`, people per m²; must be above 0.
+        people_density: `rho_p`, people per m²; must be above 0.
 
     Raises:
         ValueError: `people_density` is not above 0.
@@ -106,12 +104,12 @@ def flow_per_person(flow_per_area: float, schedule_sum: float, people_density: f
 
 @rule("dhw.per_person", to="umi")
 def flow_per_area(flow_per_person: float, schedule_sum: float, people_density: float) -> float:
-    """Return UMI's hourly flow per floor area: `q_p × 365 × ρ_p / Σ s(h)`.
+    """Return UMI's hourly flow per floor area: `q_p * 365 * rho_p / Σ s(h)`.
 
     Args:
         flow_per_person: SBEM's `FlowRatePerPerson`, m³/day per person.
         schedule_sum: `Σ s(h)` over the reference year; must be above 0.
-        people_density: `ρ_p`, people per m².
+        people_density: `rho_p`, people per m².
 
     Raises:
         ValueError: `schedule_sum` is not above 0.
@@ -170,9 +168,7 @@ def _flow_to_umi(
 
 
 @rule("dhw.schedule", to="sbem")
-def schedule_to_sbem(
-    dhw: DomesticHotWaterSettings, *, schedule: ScheduleToSbem, context: RuleContext
-) -> YearComponent:
+def schedule_to_sbem(dhw: DomesticHotWaterSettings, *, schedule: ScheduleToSbem, context: RuleContext) -> YearComponent:
     """Read UMI's water schedule as SBEM's water-use schedule (category `WaterUse`)."""
     year = dhw.water_schedule
     if year is None:
@@ -182,7 +178,9 @@ def schedule_to_sbem(
 
 
 @rule("dhw.schedule", to="umi")
-def schedule_to_umi(water_use: WaterUseComponent, *, schedule: ScheduleToUmi, context: RuleContext) -> dict[str, object]:
+def schedule_to_umi(
+    water_use: WaterUseComponent, *, schedule: ScheduleToUmi, context: RuleContext
+) -> dict[str, object]:
     """Write SBEM's water-use schedule as UMI's water schedule.
 
     Args:
@@ -276,13 +274,13 @@ def dhw_to_sbem(
     system, distribution = system_cop(dhw.coefficient_of_performance)
     identity = identity_to_sbem(dhw)
     return HotWaterParts(
-        DHWComponent(
+        DHWComponent.model_validate({
             **identity,
             **settings_to_sbem(dhw),
-            SystemCOP=system,
-            DistributionCOP=distribution,
-            FuelType=fuel_to_sbem(dhw.fuel_type, context=context),
-        ),
+            "SystemCOP": system,
+            "DistributionCOP": distribution,
+            "FuelType": fuel_to_sbem(dhw.fuel_type, context=context),
+        }),
         WaterUseComponent(
             Name=identity["Name"] or "",
             FlowRatePerPerson=_flow_to_sbem(dhw, loads, schedule_sum, context),
@@ -329,7 +327,7 @@ def range_problems(
 
     `Unset` fuel; for hot water that is on, a COP of 0 or less, a supply temperature not above
     the inlet temperature, temperatures outside SBEM's [0, 100] °C, a negative flow, and a
-    flow in a zone without people (`ρ_p = 0` or people off).
+    flow in a zone without people (`rho_p = 0` or people off).
 
     Args:
         dhw: The UMI hot-water settings.

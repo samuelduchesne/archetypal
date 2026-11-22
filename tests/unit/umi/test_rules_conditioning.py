@@ -60,7 +60,7 @@ def conditioning(**fields: object) -> ZoneConditioning:
     return ZoneConditioning.model_validate(values)
 
 
-def settings(natural: bool = False) -> ZoneVentilation:  # noqa: FBT001, FBT002
+def settings(natural: bool = False) -> ZoneVentilation:
     return ZoneVentilation.model_validate({
         "Name": "V",
         "IsNatVentOn": natural,
@@ -69,7 +69,7 @@ def settings(natural: bool = False) -> ZoneVentilation:  # noqa: FBT001, FBT002
     })
 
 
-def read(original: ZoneConditioning, natural: bool = False):  # noqa: ANN201, FBT001, FBT002
+def read(original: ZoneConditioning, natural: bool = False):
     context = reading(POINTER)
     parts = conditioning_to_sbem(
         original,
@@ -81,7 +81,9 @@ def read(original: ZoneConditioning, natural: bool = False):  # noqa: ANN201, FB
     return parts, context
 
 
-def system(slot: str, *, cop: float = 3.0, distribution: float = 1.0, fuel: str = "Electricity") -> ThermalSystemComponent:
+def system(
+    slot: str, *, cop: float = 3.0, distribution: float = 1.0, fuel: str = "Electricity"
+) -> ThermalSystemComponent:
     return ThermalSystemComponent.model_validate({
         "Name": f"C {slot.lower()}",
         "ConditioningType": slot,
@@ -119,7 +121,7 @@ def hvac(
 
 def thermostat(heating: object = 20.0, cooling: object = 24.0) -> ThermostatComponent:
     def year(name: str, value: object) -> object:
-        days = np.broadcast_to(np.asarray(value, dtype=float), (12, 7, 24))
+        days = np.zeros((12, 7, 24)) + np.asarray(value, dtype=np.float64)
         return to_year_component(days, name=name, category="Setpoint", limits="Temperature")
 
     return ThermostatComponent.model_validate({
@@ -249,7 +251,9 @@ def test_writing_cop_is_the_product(system_value: float, distribution: float) ->
 
 def test_split_is_lost_when_distribution_cop_is_not_one() -> None:
     context = writing()
-    written = conditioning_to_umi(hvac(heating=system("Heating", cop=4.0, distribution=0.8)), thermostat(), context=context)
+    written = conditioning_to_umi(
+        hvac(heating=system("Heating", cop=4.0, distribution=0.8)), thermostat(), context=context
+    )
     assert written.heating_coeff_of_perf == pytest.approx(3.2)
     [loss] = [loss for loss in context.losses if loss.rule == "cop.system"]
     assert loss.location == "perimeter.Operations.HVAC.ConditioningSystems.Heating.DistributionCOP"
@@ -292,8 +296,8 @@ WRITE_CASES = [
 ]
 
 
-@pytest.mark.parametrize(("umi", "sbem", "lossy"), READ_CASES, ids=lambda case: str(case))
-def test_fuel_table_on_reading(umi: FuelType, sbem: str, lossy: bool) -> None:  # noqa: FBT001
+@pytest.mark.parametrize(("umi", "sbem", "lossy"), READ_CASES, ids=str)
+def test_fuel_table_on_reading(umi: FuelType, sbem: str, lossy: bool) -> None:
     context = reading(POINTER)
     assert fuel_to_sbem(umi, key="HeatingFuelType", context=context) == sbem
     if lossy:
@@ -309,8 +313,8 @@ def test_fuel_table_on_reading(umi: FuelType, sbem: str, lossy: bool) -> None:  
         assert context.losses == []
 
 
-@pytest.mark.parametrize(("sbem", "umi", "lossy"), WRITE_CASES, ids=lambda case: str(case))
-def test_fuel_table_on_writing(sbem: SbemFuelType, umi: FuelType, lossy: bool) -> None:  # noqa: FBT001
+@pytest.mark.parametrize(("sbem", "umi", "lossy"), WRITE_CASES, ids=str)
+def test_fuel_table_on_writing(sbem: SbemFuelType, umi: FuelType, lossy: bool) -> None:
     context = writing("perimeter.Operations.HVAC.ConditioningSystems.Heating")
     assert fuel_to_umi(sbem, context=context) is umi
     if lossy:
@@ -333,14 +337,19 @@ def test_fuel_table_covers_both_enums() -> None:
 def test_no_fuel_for_a_system_that_is_on_is_a_range_problem() -> None:
     problems = range_problems(conditioning(HeatingFuelType=FuelType.None_), pointer=POINTER, template="T")
     assert [(problem.pointer, problem.rule) for problem in problems] == [(f"{POINTER}/HeatingFuelType", "fuel.system")]
-    assert range_problems(conditioning(HeatingFuelType=FuelType.None_, IsHeatingOn=False), pointer=POINTER, template="T") == []
+    assert (
+        range_problems(conditioning(HeatingFuelType=FuelType.None_, IsHeatingOn=False), pointer=POINTER, template="T")
+        == []
+    )
     with pytest.raises(ValueError, match="validation"):
         fuel_to_sbem(FuelType.None_, key="HeatingFuelType", context=reading(POINTER))
 
 
 def test_a_cop_of_zero_for_a_system_that_is_on_is_a_range_problem() -> None:
     problems = range_problems(conditioning(CoolingCoeffOfPerf=0.0), pointer=POINTER, template="T")
-    assert [(problem.pointer, problem.rule) for problem in problems] == [(f"{POINTER}/CoolingCoeffOfPerf", "cop.system")]
+    assert [(problem.pointer, problem.rule) for problem in problems] == [
+        (f"{POINTER}/CoolingCoeffOfPerf", "cop.system")
+    ]
 
 
 # --- fresh air, economizer, heat recovery --------------------------------------------------------
@@ -366,7 +375,7 @@ def test_fresh_air_above_the_cap_is_a_range_problem() -> None:
 def test_economizer_and_heat_recovery_map_by_name(economizer: EconomizerType, heat_recovery: HeatRecoveryType) -> None:
     parts, context = read(conditioning(EconomizerType=economizer, HeatRecoveryType=heat_recovery))
     assert parts.ventilation.Economizer == economizer.name
-    assert parts.ventilation.HRV == ("NoHRV" if heat_recovery is HeatRecoveryType.None_ else heat_recovery.name)
+    assert ("NoHRV" if heat_recovery is HeatRecoveryType.None_ else heat_recovery.name) == parts.ventilation.HRV
     assert context.losses == []
     use = hvac(hrv=parts.ventilation.HRV)
     use = use.model_copy(update={"Ventilation": parts.ventilation})
@@ -418,7 +427,9 @@ def test_heat_recovery_effectiveness_is_lost_with_up2() -> None:
 def test_availability_schedules_are_lost_unless_every_value_is_one() -> None:
     _, context = read(conditioning())
     assert context.losses == []
-    _, context = read(conditioning(HeatingSchedule=umi_schedule("season", 0.0), MechVentSchedule=umi_schedule("occ", 0.5)))
+    _, context = read(
+        conditioning(HeatingSchedule=umi_schedule("season", 0.0), MechVentSchedule=umi_schedule("occ", 0.5))
+    )
     assert {(loss.location, loss.value, loss.upstream, loss.rule) for loss in context.losses} == {
         (f"{POINTER}/HeatingSchedule", "season", "UP-9", "conditioning.availability"),
         (f"{POINTER}/MechVentSchedule", "occ", "UP-9", "conditioning.mech_vent_schedule"),
@@ -450,7 +461,9 @@ def test_writing_gives_always_on_schedules_and_defaults() -> None:
 
 
 def test_conditioning_round_trip() -> None:
-    original = conditioning(EconomizerType=EconomizerType.DifferentialEnthalpy, HeatRecoveryType=HeatRecoveryType.Enthalpy)
+    original = conditioning(
+        EconomizerType=EconomizerType.DifferentialEnthalpy, HeatRecoveryType=HeatRecoveryType.Enthalpy
+    )
     parts, _ = read(original)
     use = hvac().model_copy(update={"ConditioningSystems": parts.systems, "Ventilation": parts.ventilation})
     context = writing()

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
-from epinterface.sbem.components.schedules import YearComponent
 from epinterface.sbem.components.space_use import (
     EquipmentComponent,
     LightingComponent,
@@ -32,6 +33,9 @@ from archetypal.umi.rules.loads import (
     loads_to_umi,
     range_problems,
 )
+
+if TYPE_CHECKING:
+    from epinterface.sbem.components.schedules import YearComponent
 
 # --- helpers shared by the rule tests --------------------------------------------------------------
 

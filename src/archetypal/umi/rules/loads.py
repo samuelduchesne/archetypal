@@ -18,12 +18,11 @@ project a UMI schedule themselves.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 from enum import Enum
-from collections.abc import Callable, Collection
 from typing import TYPE_CHECKING, NamedTuple, TypeAlias, TypeVar, cast
 
-import numpy as np
 from epinterface.constants import assumed_constants
 from epinterface.sbem.components.schedules import YearComponent, YearScheduleCategory
 from epinterface.sbem.components.space_use import EquipmentComponent, LightingComponent, OccupancyComponent
@@ -46,9 +45,10 @@ from archetypal.umi.report import Loss, LossKind, Note, NoteKind
 from archetypal.umi.rules.building import metadata_to_sbem, metadata_to_umi
 
 if TYPE_CHECKING:
+    import numpy as np
     import numpy.typing as npt
-    from epinterface.sbem.components.space_use import DimmingTypeType, ZoneSpaceUseComponent
     from epinterface.sbem.common import MetadataMixin, NamedObject
+    from epinterface.sbem.components.space_use import ZoneSpaceUseComponent
     from pydantic import JsonValue
 
     from archetypal.umi.report import Direction
@@ -67,10 +67,10 @@ __all__ = [
     "daylighting_to_umi",
     "equipment_to_sbem",
     "equipment_to_umi",
-    "internal_mass_to_sbem",
-    "internal_mass_to_umi",
     "identity_to_sbem",
     "identity_to_umi",
+    "internal_mass_to_sbem",
+    "internal_mass_to_umi",
     "json_value",
     "lighting_to_sbem",
     "lighting_to_umi",
@@ -134,7 +134,7 @@ class RuleContext:
         """Return a context at `key` below this one, sharing its findings."""
         return RuleContext(self.subject, self.location(key), self.direction, self.findings)
 
-    def lose(  # noqa: PLR0913 - every argument is a field of the loss
+    def lose(
         self,
         key: str,
         value: JsonValue,
@@ -159,9 +159,7 @@ class RuleContext:
             )
         )
 
-    def note(
-        self, key: str, value: JsonValue, *, rule: str, reason: str, kind: NoteKind = NoteKind.ASSUMED
-    ) -> None:
+    def note(self, key: str, value: JsonValue, *, rule: str, reason: str, kind: NoteKind = NoteKind.ASSUMED) -> None:
         """Report an assumption or default at `key` that loses nothing."""
         self.findings.append(
             Note(kind=kind, subject=self.subject, location=self.location(key), value=value, rule=rule, reason=reason)
@@ -181,8 +179,7 @@ class RuleContext:
 def json_value(value: object) -> JsonValue:
     """Return a UMI value as the report holds it: enums as Basilisk's integers, components by name."""
     if isinstance(value, Enum):
-        member = cast("Enum", value)
-        return cast("JsonValue", member.value)
+        return cast("JsonValue", value.value)
     if isinstance(value, LibraryComponent):
         return value.name
     if isinstance(value, tuple):
@@ -208,9 +205,7 @@ def _upstream_rows(model: type[FormatModel], rule_id: str) -> list[tuple[str, st
     ]
 
 
-def report_upstream(
-    component: FormatModel, rule_id: str, context: RuleContext, *, skip: Collection[str] = ()
-) -> None:
+def report_upstream(component: FormatModel, rule_id: str, context: RuleContext, *, skip: Collection[str] = ()) -> None:
     """Report, on reading, the fields of `component` that wait for an upstream item, as lost.
 
     Until a field lands in a fork release, reading reports it (research R6, FR-010) when it
@@ -404,7 +399,7 @@ def lighting_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: Rul
     return LightingComponent(
         Name=f"{loads.name} lighting",
         PowerDensity=loads.lighting_power_density,
-        DimmingType=cast("DimmingTypeType", loads.dimming_type.name),
+        DimmingType=loads.dimming_type.name,
         Schedule=schedule(
             _schedule(loads.lights_availability_schedule, "LightsAvailabilitySchedule", context),
             "Lighting",
@@ -415,9 +410,7 @@ def lighting_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: Rul
 
 
 @rule("loads.lighting", to="umi")
-def lighting_to_umi(
-    lighting: LightingComponent, *, schedule: ScheduleToUmi, context: RuleContext
-) -> dict[str, object]:
+def lighting_to_umi(lighting: LightingComponent, *, schedule: ScheduleToUmi, context: RuleContext) -> dict[str, object]:
     """Write SBEM's lighting.
 
     Args:
@@ -585,7 +578,9 @@ def range_problems(loads: ZoneLoads, *, pointer: str, template: str | None) -> l
 
 
 @rule("mass.internal", to="sbem")
-def internal_mass_to_sbem(construction: _T | None, ratio: float, *, context: RuleContext) -> tuple[_T | None, float | None]:
+def internal_mass_to_sbem(
+    construction: _T | None, ratio: float, *, context: RuleContext
+) -> tuple[_T | None, float | None]:
     """Read UMI's internal mass: an exposed area of 0 means none (both or neither).
 
     Args:

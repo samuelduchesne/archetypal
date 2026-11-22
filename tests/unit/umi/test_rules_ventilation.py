@@ -77,7 +77,13 @@ def hvac_ventilation(provider: str = "Natural") -> VentilationComponent:
 
 
 def test_rules_are_registered_in_this_module() -> None:
-    for rule_id in ("infiltration.ach", "vent.provider", "vent.natural_schedule", "vent.natural_limits", "vent.scheduled"):
+    for rule_id in (
+        "infiltration.ach",
+        "vent.provider",
+        "vent.natural_schedule",
+        "vent.natural_limits",
+        "vent.scheduled",
+    ):
         registered = get_rule(rule_id)
         assert registered.to_sbem is not None
         assert registered.to_umi is not None
@@ -177,7 +183,7 @@ def test_negative_infiltration_is_a_range_problem() -> None:
     ("mechanical", "natural", "provider"),
     [(False, False, "None"), (False, True, "Natural"), (True, False, "Mechanical"), (True, True, "Both")],
 )
-def test_provider_maps_both_switches_and_back(mechanical: bool, natural: bool, provider: str) -> None:  # noqa: FBT001
+def test_provider_maps_both_switches_and_back(mechanical: bool, natural: bool, provider: str) -> None:
     assert provider_to_sbem(mechanical, natural) == provider
     assert provider_to_umi(provider) == (mechanical, natural)  # type: ignore[arg-type]
     assert PROVIDERS[mechanical, natural] == provider

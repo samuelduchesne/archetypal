@@ -9,7 +9,7 @@ Spec 003, research R9 and R10.
 - **Switches** (`conditioning.switches`). `IsHeatingOn = false` gives `Heating = None`
   (epinterface's off), and cooling likewise.
 - **COP** (`cop.system`). `SystemCOP = COP` with `DistributionCOP = 1`; writing gives
-  `COP = SystemCOP × DistributionCOP`, which conserves consumed energy for a given delivered
+  `COP = SystemCOP * DistributionCOP`, which conserves consumed energy for a given delivered
   energy, and the split is lost when `DistributionCOP ≠ 1`. Hot water uses the same rule.
 - **Fuels** (`fuel.system`). Through `FUEL_TABLE`, data-model.md's fuel table: several UMI
   fuels SBEM merges and the fuels one side lacks are lost, with the fuel substituted.
@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import numpy as np
 from epinterface.sbem.components.space_use import ThermostatComponent
@@ -327,8 +327,8 @@ def thermostat_to_umi(thermostat: ThermostatComponent, *, context: RuleContext) 
 
 # --- Heating and cooling systems ----------------------------------------------------------------
 
-# (UMI system, SBEM slot, SBEM conditioning type, UMI keys: switch, COP, fuel)
-_SYSTEMS = (
+# (SBEM slot and conditioning type, name suffix, UMI fields: switch, COP, fuel)
+_SYSTEMS: tuple[tuple[Literal["Heating", "Cooling"], str, tuple[str, str, str]], ...] = (
     ("Heating", "heating", ("is_heating_on", "heating_coeff_of_perf", "heating_fuel_type")),
     ("Cooling", "cooling", ("is_cooling_on", "cooling_coeff_of_perf", "cooling_fuel_type")),
 )
@@ -543,6 +543,7 @@ def ventilation_to_sbem(
 
 
 # --- Upstream: effectiveness (UP-2), availability, outdoor-air schedule and limits (UP-9) --------
+
 
 @rule("conditioning.heat_recovery_efficiency", to="sbem")
 def heat_recovery_efficiency_to_sbem(conditioning: ZoneConditioning, *, context: RuleContext) -> None:

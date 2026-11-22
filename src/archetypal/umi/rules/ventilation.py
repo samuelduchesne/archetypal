@@ -105,7 +105,7 @@ _COMPARED = ("IsOn", "AirChangesPerHour", "FlowPerExteriorSurfaceArea", "Calcula
 
 
 @rule("vent.provider", to="sbem")
-def provider_to_sbem(mechanical: bool, natural: bool) -> VentilationProvider:  # noqa: FBT001 - two switches
+def provider_to_sbem(mechanical: bool, natural: bool) -> VentilationProvider:
     """Return SBEM's ventilation provider for UMI's mechanical and natural switches.
 
     Args:
@@ -143,13 +143,13 @@ def infiltration_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext) 
         ventilation: The UMI ventilation settings.
         context: Their reading context (`/VentilationSettings/<i>`).
     """
-    infiltration = InfiltrationComponent(
+    infiltration = InfiltrationComponent.model_validate({
         **identity_to_sbem(ventilation),
-        IsOn=ventilation.is_infiltration_on,
-        AirChangesPerHour=ventilation.infiltration,
-        CalculationMethod=AIR_CHANGES,
+        "IsOn": ventilation.is_infiltration_on,
+        "AirChangesPerHour": ventilation.infiltration,
+        "CalculationMethod": AIR_CHANGES,
         **UNUSED_COEFFICIENTS,
-    )
+    })
     context.note(
         "Infiltration",
         dict(UNUSED_COEFFICIENTS),

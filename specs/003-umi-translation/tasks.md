@@ -203,11 +203,11 @@ the correspondence table and every conversion rule in both directions, and the l
   targets within the tolerance stated in the test; reading gives both groups the template's
   window; writing uses the perimeter window and lists a different core window as lost; a test
   fails, naming T072, as soon as `idfkit.thermal` offers an equivalent-layer function.
-- [ ] T018 [P] Test the load rules in `tests/unit/umi/test_rules_loads.py` (R10): densities,
+- [X] T018 [P] Test the load rules in `tests/unit/umi/test_rules_loads.py` (R10): densities,
   schedules, `Is*On` and `DimmingType` map exactly; reading sets `MetabolicRate` to 1.2 met
   with a note, writing lists a non-default value as lost; internal-mass ratio 0 means no
   internal mass (both or neither); `IlluminanceTarget` is lost with `upstream: "UP-9"`.
-- [ ] T019 [P] Test the conditioning rules in `tests/unit/umi/test_rules_conditioning.py`
+- [X] T019 [P] Test the conditioning rules in `tests/unit/umi/test_rules_conditioning.py`
   (R9, R10): `thermostat.constant` (constant schedules on reading; heating maximum and cooling
   minimum on writing, with setback hours listed as lost with their count and mean difference);
   `IsHeatingOn = false` gives `Heating = None`, cooling likewise; `cop.system` (`SystemCOP =
@@ -216,13 +216,13 @@ the correspondence table and every conversion rule in both directions, and the l
   fresh air above SBEM's 0.05 cap is a range problem; `EconomizerType` and `HeatRecoveryType`
   map by name; heat-recovery effectiveness is lost with `upstream: "UP-2"`; availability
   schedules are lost unless every value is 1; a `DCV` other than `NoDCV` is lost on writing.
-- [ ] T020 [P] Test the ventilation rules in `tests/unit/umi/test_rules_ventilation.py` (R10):
+- [X] T020 [P] Test the ventilation rules in `tests/unit/umi/test_rules_ventilation.py` (R10):
   `Infiltration` ↔ `AirChangesPerHour` with `CalculationMethod = "AirChanges/Hour"`; unused
   coefficients noted (constant 1, others 0); another method is lost on writing with its value;
   attic and basement infiltration filled from the main value (noted) and lost on writing when
   they differ; `vent.provider` maps (mechanical, natural) to `None`, `Natural`, `Mechanical`,
   `Both` and back; `NatVentSchedule` ↔ `Ventilation.Schedule`.
-- [ ] T021 [P] Test the hot-water rules in `tests/unit/umi/test_rules_hotwater.py` (R10):
+- [X] T021 [P] Test the hot-water rules in `tests/unit/umi/test_rules_hotwater.py` (R10):
   `dhw.per_person` is `q_p = q_a × Σ s(h) / (365 × ρ_p)` with inverse
   `q_a = q_p × 365 × ρ_p / Σ s(h)`, conserving annual volume per m²; `ρ_p = 0` or people off
   is a range problem on reading and a loss on writing; COP as in `cop.system`; UMI
@@ -281,11 +281,11 @@ the correspondence table and every conversion rule in both directions, and the l
   (an in-memory idfkit `Construction` with `WindowMaterial:Glazing` and `WindowMaterial:Gas`
   through typed constructors only, no `get_collection`; then `idfkit.thermal`) and
   `window.equivalent_layer` (through `_bridges`), plus window placement.
-- [ ] T034 [P] Implement `src/archetypal/umi/rules/loads.py` (R10).
-- [ ] T035 [P] Implement `src/archetypal/umi/rules/conditioning.py` (R9, R10), with the fuel
+- [X] T034 [P] Implement `src/archetypal/umi/rules/loads.py` (R10).
+- [X] T035 [P] Implement `src/archetypal/umi/rules/conditioning.py` (R9, R10), with the fuel
   table of data-model.md as one constant.
-- [ ] T036 [P] Implement `src/archetypal/umi/rules/ventilation.py` (R10).
-- [ ] T037 [P] Implement `src/archetypal/umi/rules/hotwater.py` (R10).
+- [X] T036 [P] Implement `src/archetypal/umi/rules/ventilation.py` (R10).
+- [X] T037 [P] Implement `src/archetypal/umi/rules/hotwater.py` (R10).
 - [X] T038 [P] Implement `src/archetypal/umi/rules/building.py` (R4, R11, R13): template ↔
   archetype groups and shares, `wwr.uniform`, metadata, and the naming rules.
 - [ ] T039 Generate the two reference pages with `/project-kit:diataxis` (reference mode):

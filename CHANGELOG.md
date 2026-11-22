@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Initial project scaffold generated from [project-kit-cookiecutter](https://github.com/samuelduchesne/project-kit-cookiecutter).
+
+### Removed
+
+- The archetypal 2 code base (`archetypal/`, the `geomeppy` submodule, Docker files, the paper, the Sphinx docs and the poetry setup). archetypal 2 stays available from the `v2.18.11` release.
+
 ## [2.18.11] - 2026-10-25
 
 ### Changed

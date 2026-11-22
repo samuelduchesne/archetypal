@@ -1,110 +1,95 @@
-[![Build Status](https://github.com/samuelduchesne/archetypal/actions/workflows/python-package.yml/badge.svg?branch=main)](https://github.com/samuelduchesne/archetypal/actions/workflows/python-package.yml)
-[![Coverage Status](https://coveralls.io/repos/github/samuelduchesne/archetypal/badge.svg)](https://coveralls.io/github/samuelduchesne/archetypal)
-[![Documentation Status](https://readthedocs.org/projects/archetypal/badge/?version=latest)](https://archetypal.readthedocs.io/en/latest/?badge=latest)
-[![DOI](https://joss.theoj.org/papers/10.21105/joss.01833/status.svg)](https://doi.org/10.21105/joss.01833)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+# archetypal
 
-# Archetypal
+[![Release](https://img.shields.io/github/v/release/samuelduchesne/archetypal)](https://github.com/samuelduchesne/archetypal/releases)
+[![Build status](https://img.shields.io/github/actions/workflow/status/samuelduchesne/archetypal/main.yml?branch=main)](https://github.com/samuelduchesne/archetypal/actions/workflows/main.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/samuelduchesne/archetypal/branch/main/graph/badge.svg)](https://codecov.io/gh/samuelduchesne/archetypal)
+[![License](https://img.shields.io/github/license/samuelduchesne/archetypal)](https://github.com/samuelduchesne/archetypal/blob/main/LICENSE)
 
-**python for building simulation archetypes**
+Create, translate and codify building energy archetypes on SBEM.
 
-Retrieve, construct, simulate, convert and analyze building simulation
-templates
-
-> [!IMPORTANT]
->
-> ## Meet the next generation: [**idfkit**](https://idfkit.com)
->
-> The story of `archetypal` continues in a brand-new, modern project:
-> [**idfkit**](https://github.com/idfkit/idfkit) — a faster, cleaner, and
-> more powerful toolkit for working with EnergyPlus IDF models in Python.
-> And it doesn't stop there: **idfkit** is growing into a whole family of
-> tools for building simulation workflows, all available at
-> **[idfkit.com](https://idfkit.com)**.
->
-> Everything you loved about `archetypal` is being rebuilt with a sharper
-> focus, a friendlier API, and a roadmap packed with new features.
-> If you build, transform, or analyze IDF models, **idfkit is where the
-> action is.** New features, bug fixes, and active development now live
-> there — come check it out, star the repo, and join us!
->
-> 👉 **Website:** [idfkit.com](https://idfkit.com)
-> 👉 **GitHub:** [github.com/idfkit/idfkit](https://github.com/idfkit/idfkit)
->
-> `archetypal` will continue to exist but will receive only limited
-> maintenance going forward. Over time, its scope will be narrowed to the
-> **IDF complexity reduction** feature used to generate
-> [UMI](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html)
-> template libraries. For everything else, **migrate to idfkit** and
-> enjoy the upgrade. 🚀
-
-## Overview
-
-**Archetypal** is a Python package that helps handle building
-archetypes.
-
-## Changes since v2.0.0
-
-The conversion of [EnergyPlus](https://energyplus.net) IDF models to
-Trnsys
-[TrnBuild](http://www.trnsys.com/features/suite-of-tools.php.html)
-Models (compatible with the multizone building model) is now part of a
-distinct package known as the
-[trnslator](https://github.com/louisleroy5/trnslator).
-
-## Features
-
-Here is a short overview of features that are part of archetypal:
-
-1. Building Complexity Reduction: A utility to transform a multizone
-   EnergyPlus model to a two-zone normalized model. Such models are
-   called `building archetypes` and are the foundation of the
-   [UMI Energy Module](https://umidocs.readthedocs.io/en/latest/docs/model-setup-template.html).
-   This tool will allow any EnergyPlus model to be imported into
-   [UMI](http://web.mit.edu/sustainabledesignlab/projects/umi/index.html)
-   and drastically speedup the UBEM process.
+**[Documentation](https://samuelduchesne.github.io/archetypal/)** | **[GitHub](https://github.com/samuelduchesne/archetypal/)**
 
 ## Installation
 
-Recommended to use a conda environement running python 3.8. Pip install should work on all platforms (linux, macOS and Windows).
-First,
-
-```cmd
-conda create -n venv python=3.8
+```bash
+pip install archetypal
 ```
 
-`-n venv` is the name of your environement; it can be anything.
-Then,
+Or with [uv](https://docs.astral.sh/uv/):
 
-```cmd
-pip install -U archetypal
+```bash
+uv add archetypal
 ```
 
-## Local Development
+## Usage
 
-1. Clone this repo locally
+```python
+import archetypal
 
-```console
+# TODO: Add usage examples
+```
+
+## Development
+
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
+
+### Setup
+
+```bash
+# Clone the repository
 git clone https://github.com/samuelduchesne/archetypal.git
-```
-
-2. Install dependencies:
-
-```console
 cd archetypal
-conda env create
+
+# Install dependencies and pre-commit hooks
+make install
 ```
 
-This will create a new environment named `archetypal`. Don't forget to activate the environment.
+> **Note:** Run `git init -b main` first if you're starting from a cookiecutter template.
 
-3. Run Tests:
+### Commands
 
-```console
-python -m pytest tests/
+```bash
+make install    # Install dependencies and pre-commit hooks
+make check      # Run linting, formatting, and type checks
+make test       # Run tests with coverage
+make docs       # Serve documentation locally
+make docs-test  # Test documentation build
 ```
 
-4. Generate Documentation:
+### First-time setup for new projects
 
-```console
-make html
-```
+If you just created this project from the cookiecutter template:
+
+1. Create a GitHub repository with the same name
+2. Install dependencies, which creates `uv.lock`, then commit and push. CI needs the lock file.
+
+   ```bash
+   git init -b main
+   make install
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin git@github.com:samuelduchesne/archetypal.git
+   git push -u origin main
+   ```
+
+For detailed setup instructions, see the [project-kit-cookiecutter tutorial](https://samuelduchesne.github.io/project-kit-cookiecutter/tutorial/).
+
+
+## Releasing
+
+1. Bump the version: `uv version --bump <major|minor|patch>`
+2. Commit and push
+3. Create a [new release](https://github.com/samuelduchesne/archetypal/releases/new) on GitHub with a tag matching the version (e.g., `1.0.0`)
+
+The GitHub Action will automatically publish to PyPI. See the [publishing guide](https://samuelduchesne.github.io/project-kit-cookiecutter/features/publishing/) for initial setup.
+
+> **First release?** After the workflow completes, enable GitHub Pages: go to `Settings > Pages` and select the `gh-pages` branch.
+
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+*Built with [project-kit-cookiecutter](https://github.com/samuelduchesne/project-kit-cookiecutter)*

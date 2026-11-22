@@ -1,0 +1,38 @@
+{
+  "template": "https://github.com/samuelduchesne/project-kit-cookiecutter",
+  "commit": "73646700cea812e03f756613b35cae7d86b4fdc1",
+  "checkout": "main",
+  "context": {
+    "cookiecutter": {
+      "author": "Samuel Letellier-Duchesne",
+      "email": "samuelduchesne@me.com",
+      "author_github_handle": "samuelduchesne",
+      "project_name": "archetypal",
+      "project_slug": "archetypal",
+      "project_description": "Create, translate and codify building energy archetypes on SBEM.",
+      "layout": "src",
+      "minimum_python_version": "3.10",
+      "development_python_version": "3.12",
+      "type_checker": "pyright",
+      "include_py_typed": true,
+      "include_github_actions": true,
+      "codecov": true,
+      "publish_to_pypi": true,
+      "deptry": true,
+      "dockerfile": false,
+      "devcontainer": false,
+      "mkdocs": true,
+      "dvc": false,
+      "changelog": true,
+      "agent_instructions": "claude",
+      "agent_profile": "full",
+      "open_source_license": "MIT license",
+      "_extensions": [
+        "local_extensions.BooleanOverridesExtension"
+      ],
+      "_template": "https://github.com/samuelduchesne/project-kit-cookiecutter",
+      "_commit": "73646700cea812e03f756613b35cae7d86b4fdc1"
+    }
+  },
+  "directory": null
+}

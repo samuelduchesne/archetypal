@@ -1,57 +1,63 @@
-
 .PHONY: install
-install: ## Install the poetry environment and install the pre-commit hooks
-	@echo "🚀 Creating virtual environment using pyenv and poetry"
-	@poetry install
-	@poetry run pre-commit install
-	@poetry shell
+install: ## Install the virtual environment and install the pre-commit hooks
+	@if [ ! -d .git ]; then \
+		echo "❌ Error: Not a git repository. Run 'git init -b main' first (see README step 1)."; \
+		exit 1; \
+	fi
+	@echo "🚀 Creating virtual environment using uv"
+	@uv sync
+	@uv run pre-commit install
 
 .PHONY: check
 check: ## Run code quality tools.
-	@echo "🚀 Checking Poetry lock file consistency with 'pyproject.toml': Running poetry --check lock"
-	@poetry check --lock
+	@echo "🚀 Checking lock file consistency with 'pyproject.toml'"
+	@uv lock --locked
 	@echo "🚀 Linting code: Running pre-commit"
-	@poetry run pre-commit run -a
-	# @echo "🚀 Static type checking: Running mypy"
-	# @poetry run mypy
-	# @echo "🚀 Checking for obsolete dependencies: Running deptry"
-	# @poetry run deptry .
+	@uv run pre-commit run -a
+	@echo "🚀 Static type checking: Running pyright"
+	@uv run pyright
+	@echo "🚀 Checking for obsolete dependencies: Running deptry"
+	@uv run deptry src
+	@echo "🚀 Checking documentation: building the site in strict mode"
+	@uv run mkdocs build -s
+	@echo "🚀 Checking documentation: Diátaxis tags"
+	@if [ -f tests/unit/test_docs_tags.py ]; then uv run pytest tests/unit/test_docs_tags.py; \
+	else echo "tests/unit/test_docs_tags.py not written yet: skipped"; fi
 
 .PHONY: test
 test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
-	@poetry run pytest -n auto tests --cov --cov-config=pyproject.toml --cov-report=xml
+	@uv run python -m pytest --cov --cov-config=pyproject.toml --cov-report=xml
 
 .PHONY: build
-build: clean-build ## Build wheel file using poetry
+build: clean-build ## Build wheel file
 	@echo "🚀 Creating wheel file"
-	@poetry build
+	@uvx --from build pyproject-build --installer uv
 
 .PHONY: clean-build
-clean-build: ## clean build artifacts
-	@rm -rf dist
+clean-build: ## Clean build artifacts
+	@echo "🚀 Removing build artifacts"
+	@uv run python -c "import shutil; import os; shutil.rmtree('dist') if os.path.exists('dist') else None"
 
 .PHONY: publish
-publish: ## publish a release to pypi.
-	@echo "🚀 Publishing: Dry run."
-	@poetry config pypi-token.pypi $(PYPI_TOKEN)
-	@poetry publish --dry-run
+publish: ## Publish a release to PyPI.
 	@echo "🚀 Publishing."
-	@poetry publish
+	@uvx twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
 
 .PHONY: build-and-publish
 build-and-publish: build publish ## Build and publish.
 
 .PHONY: docs-test
 docs-test: ## Test if documentation can be built without warnings or errors
-	@poetry run sphinx-build ./docs ./docs/_build $(O)
+	@uv run mkdocs build -s
 
 .PHONY: docs
 docs: ## Build and serve the documentation
-	@poetry run sphinx-autobuild ./docs ./docs/_build $(O)
+	@uv run mkdocs serve
 
 .PHONY: help
 help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@uv run python -c "import re; \
+	[[print(f'\033[36m{m[0]:<20}\033[0m {m[1]}') for m in re.findall(r'^([a-zA-Z_-]+):.*?## (.*)$$', open(makefile).read(), re.M)] for makefile in ('$(MAKEFILE_LIST)').strip().split()]"
 
 .DEFAULT_GOAL := help

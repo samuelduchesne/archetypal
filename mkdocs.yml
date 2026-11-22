@@ -1,0 +1,57 @@
+site_name: archetypal
+repo_url: https://github.com/samuelduchesne/archetypal
+site_url: https://samuelduchesne.github.io/archetypal
+site_description: Create, translate and codify building energy archetypes on SBEM.
+site_author: Samuel Letellier-Duchesne
+edit_uri: edit/main/docs/
+repo_name: samuelduchesne/archetypal
+copyright: Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>.
+
+nav:
+  - Home: index.md
+  - Modules: modules.md
+  - Changelog: changelog.md
+watch:
+  - CHANGELOG.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["src/archetypal"]
+theme:
+  name: material
+  features:
+    - navigation.tabs
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/samuelduchesne/archetypal
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/archetypal
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.snippets:
+      check_paths: true

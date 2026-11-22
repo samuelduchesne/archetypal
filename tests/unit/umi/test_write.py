@@ -178,6 +178,19 @@ def test_reduction_with_several_groups_is_merged_by_002(reduced: Callable[..., A
     assert_basilisk_accepts(export.text)
 
 
+@pytest.mark.parametrize("fixture", ["three_zone", "bar_building"])
+def test_write_umi_of_a_reduction_gives_a_library_basilisk_accepts(
+    reduced: Callable[..., Any], fixture: str, tmp_path: Path
+) -> None:
+    """SBEM fields a reduction leaves unset (UP-9's optional limits) get Basilisk-valid values, noted."""
+    path = tmp_path / f"{fixture}.json"
+    report = write_umi([reduced(fixture)], path)
+    assert_basilisk_accepts(path.read_text(encoding="utf-8"))
+    noted = {(note.rule, note.location.rsplit(".", 1)[-1]) for note in report.notes}
+    assert ("vent.scheduled", "ScheduledVentilationSetpoint") in noted
+    assert ("vent.natural_limits", "NatVentZoneTempSetpoint") in noted
+
+
 # --- Scenario 3: sharing ----------------------------------------------------------------------------
 
 

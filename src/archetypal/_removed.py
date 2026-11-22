@@ -66,6 +66,8 @@ class RemovedCapability:
         replacement: What to use instead; `None` only when `reason` says why there is none.
         reason: Why it was removed, in one sentence. Always set.
         frequent_task: The before/after example of the migration guide it belongs to, if any.
+        aliases: For an `option` row, v2's other spellings of the flag, such as `("-z",)` for
+            `archetypal reduce --all_zones`; the command line rejects each of them too.
     """
 
     kind: Kind
@@ -73,6 +75,7 @@ class RemovedCapability:
     replacement: Replacement | None
     reason: str
     frequent_task: FrequentTask | None = None
+    aliases: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         """Refuse a row without a reason."""
@@ -126,7 +129,12 @@ def _module(
 def _options(
     command: str, flags: tuple[str, ...], replacement: Replacement | None, reason: str
 ) -> tuple[RemovedCapability, ...]:
-    return tuple(RemovedCapability("option", f"{command} {flag}", replacement, reason) for flag in flags)
+    """Return one option row per flag; a flag written `-s/--silent` gets `-s` as its alias."""
+    rows: list[RemovedCapability] = []
+    for flag in flags:
+        *aliases, long = flag.split("/")
+        rows.append(RemovedCapability("option", f"{command} {long}", replacement, reason, aliases=tuple(aliases)))
+    return tuple(rows)
 
 
 # Shared replacements and reasons.
@@ -756,21 +764,24 @@ REMOVED: tuple[RemovedCapability, ...] = (
         "archetypal --cache-responses",
         None,
         "The data portal is removed, so there is no replacement; TABULA returns as a reader in a later release.",
+        aliases=("-c",),
     ),
-    *_options("archetypal", ("--log-file", "--silent", "--log-name", "--log-filename"), None, _NO_LOG_FILE),
+    *_options("archetypal", ("-l/--log-file", "-s/--silent", "--log-name", "--log-filename"), None, _NO_LOG_FILE),
     RemovedCapability(
         "option",
         "archetypal reduce --version",
         _MIGRATE,
         "reduce no longer upgrades models; upgrade them with idfkit.migration.migrate before reducing.",
+        aliases=("-v",),
     ),
     RemovedCapability(
         "option",
         "archetypal reduce --all_zones",
         _v3("archetypal reduce --layout", _CLI),
         "Replaced by --layout; reduction always counts every conditioned zone.",
+        aliases=("-z",),
     ),
-    *_options("archetypal transition", ("--parallel", "--version", "-y"), _MIGRATE, _TRANSITION_GONE),
+    *_options("archetypal transition", ("-p/--parallel", "-v/--version", "-y"), _MIGRATE, _TRANSITION_GONE),
 )
 """Every removed v2 capability (spec 001, user stories 1 and 2; tests/data/v2_surface.json)."""
 

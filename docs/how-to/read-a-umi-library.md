@@ -30,7 +30,7 @@ B_Off_0 ['core', 'perimeter']
 B_Ret_0 ['core', 'perimeter']
 B_Res_0_Masonry ['core', 'perimeter']
 B_Res_0_WoodFrame ['core', 'perimeter']
-526 values lost (493 lost, 4 approximate, 29 unused) in 4 templates and the library.
+37 values lost (8 lost, 29 unused) in 4 templates and the library.
 ```
 
 Each archetype has a `core` and a `perimeter` zone group, built from the template's `Core`

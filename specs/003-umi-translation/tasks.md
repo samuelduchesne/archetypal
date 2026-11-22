@@ -508,7 +508,7 @@ I). T068 and T069 are independent; T070 follows T068 field by field.
 - [X] T069 [P] In the SBEM fork, implement UP-9's life-cycle and descriptive fields
   (archetype metadata, structure, environmental fields on materials and assemblies, schedule
   metadata), one topic branch each; tag and open upstream. Not blocking.
-- [ ] T070 After each UP-9 field is released (T068, T069): change its rows in
+- [X] T070 After each UP-9 field is released (T068, T069): change its rows in
   `src/archetypal/umi/correspondence.py` from `upstream` to `exact` or `converted`, map it in
   the matching `src/archetypal/umi/rules/` module (for layered glazing, both directions
   exact), remove its losses, update its rule test, and remove its `xfail` in

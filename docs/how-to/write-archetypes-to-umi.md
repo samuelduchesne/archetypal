@@ -24,7 +24,7 @@ print(report.summary)
 ```
 
 ```text
-4 values lost (4 approximate) in 4 archetypes.
+Nothing was lost.
 ```
 
 Beside `library.json`, `write_umi` writes `library.loss.json`, the same report as JSON. It
@@ -90,9 +90,10 @@ for loss in report.losses:
 
 Look at the kinds first:
 
-- `approximate`: the value is written in another form. Every SBEM window is simple glazing,
-  which UMI lacks, so it is written as the single glazing layer EnergyPlus derives from its U,
-  SHGC and visible transmittance; an approximate merge adds the parameters it weighted.
+- `approximate`: the value is written in another form. A simple-glazing window, which UMI
+  lacks, is written as the single glazing layer EnergyPlus derives from its U, SHGC and visible
+  transmittance; a layered window is written as its layers, losing nothing. An approximate
+  merge adds the parameters it weighted.
 - `share_dropped`: a group's floor-area share. UMI templates have none; the building's geometry
   sets the split when the template is used. Unset shares are not a loss.
 - `merged` and `copied`: groups merged to core and perimeter, and a single group written twice.

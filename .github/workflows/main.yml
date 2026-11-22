@@ -7,12 +7,32 @@ on:
       - v3
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    # Weekly drift check against upstream epinterface (roadmap C-14), Mondays 05:17 UTC.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+env:
+  # The SBEM fork of epinterface and its development branch (roadmap C-14, C-17).
+  EPINTERFACE_FORK: https://github.com/samuelduchesne/epinterface
+  EPINTERFACE_FORK_BRANCH: claude/admiring-meitner-1f43qk
+  # Upstream epinterface, tested weekly without blocking (roadmap C-14).
+  EPINTERFACE_UPSTREAM: https://github.com/szvsw/epinterface
+  EPINTERFACE_UPSTREAM_BRANCH: main
+  # EnergyPlus 24.2 for the integration tier (spec 001 research R3).
+  ENERGYPLUS_VERSION: 24.2.0
+  ENERGYPLUS_BUILD: 94a887817b
+  ENERGYPLUS_DIR: /usr/local/EnergyPlus-24-2-0
+  # Basilisk, the UMI library code SC-002 checks written libraries with (spec 003 research R15).
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
 jobs:
   quality:
+    if: ${{ github.event_name != 'schedule' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -29,6 +49,7 @@ jobs:
       - name: Run checks
         run: make check
   tests-and-type-check:
+    if: ${{ github.event_name != 'schedule' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -65,6 +86,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   check-docs:
+    if: ${{ github.event_name != 'schedule' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -77,6 +99,7 @@ jobs:
         run: uv run mkdocs build -s
 
   docs-examples:
+    if: ${{ github.event_name != 'schedule' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -93,3 +116,140 @@ jobs:
           paths="docs/"
           if [ -d tests/docs ]; then paths="$paths tests/docs/"; fi
           uv run pytest --markdown-docs $paths || test $? -eq 5
+
+  integration:
+    # Integration tier: tests that run EnergyPlus 24.2 (spec 002 plan, Tooling configuration).
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.12"
+
+      - name: Install EnergyPlus ${{ env.ENERGYPLUS_VERSION }}
+        run: |
+          archive="EnergyPlus-${ENERGYPLUS_VERSION}-${ENERGYPLUS_BUILD}-Linux-Ubuntu22.04-x86_64.tar.gz"
+          curl -fsSL -o "/tmp/${archive}" \
+            "https://github.com/NREL/EnergyPlus/releases/download/v${ENERGYPLUS_VERSION}/${archive}"
+          sudo mkdir -p "${ENERGYPLUS_DIR}"
+          sudo tar -xzf "/tmp/${archive}" -C "${ENERGYPLUS_DIR}" --strip-components=1
+          echo "${ENERGYPLUS_DIR}" >> "${GITHUB_PATH}"
+          "${ENERGYPLUS_DIR}/energyplus" --version
+
+      - name: Run the integration tier
+        # Exit status 5 means no integration test is written yet.
+        run: uv run pytest -m energyplus || test $? -eq 5
+
+  sbem-fork:
+    # Required: the unit tier against the SBEM fork's development branch, so a breaking change
+    # in the fork is seen before the fork releases it (roadmap C-14).
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.12"
+
+      - name: Install the SBEM fork's development branch over the locked environment
+        run: |
+          uv pip install --reinstall-package epinterface \
+            "epinterface @ git+${EPINTERFACE_FORK}@${EPINTERFACE_FORK_BRANCH}"
+          uv pip show epinterface
+
+      - name: Run the unit tier
+        # --no-sync keeps the fork's branch instead of the locked epinterface.
+        run: uv run --no-sync pytest
+
+  sbem-upstream:
+    # Weekly and not blocking: the unit tier against upstream epinterface's main branch, to
+    # measure how far the fork and upstream have drifted (roadmap C-14).
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.12"
+
+      - name: Install upstream epinterface over the locked environment
+        run: |
+          uv pip install --reinstall-package epinterface \
+            "epinterface @ git+${EPINTERFACE_UPSTREAM}@${EPINTERFACE_UPSTREAM_BRANCH}"
+          uv pip show epinterface
+
+      - name: Run the unit tier
+        id: unit
+        run: uv run --no-sync pytest 2>&1 | tee upstream-drift.log; exit "${PIPESTATUS[0]}"
+
+      - name: Report the result
+        if: ${{ always() }}
+        run: |
+          {
+            echo "## Unit tier against upstream epinterface (${EPINTERFACE_UPSTREAM_BRANCH})"
+            echo
+            echo "Outcome: **${{ steps.unit.outcome }}** (allowed to fail; roadmap C-14)."
+            echo
+            echo '```'
+            tail -n 40 upstream-drift.log || true
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  basilisk:
+    # SC-002: Basilisk, UMI's own code, reads every library the unit tests write
+    # (spec 003 research R15, R19).
+    if: ${{ github.event_name != 'schedule' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.12"
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Fetch Basilisk at the pinned commit
+        run: tools/basilisk-check/fetch-basilisk.sh
+
+      - name: Build the harness
+        run: dotnet build tools/basilisk-check --nologo -v q
+
+      - name: Write libraries from the unit tests
+        # Exit status 5 means no UMI unit test is written yet.
+        run: |
+          mkdir -p out/libraries
+          if [ -d tests/unit/umi ]; then
+            uv run pytest tests/unit/umi --write-libraries out/libraries || test $? -eq 5
+          else
+            echo "tests/unit/umi not written yet"
+          fi
+
+      - name: Check the written libraries with Basilisk
+        run: |
+          shopt -s nullglob
+          libraries=(out/libraries/*.json)
+          if [ ${#libraries[@]} -eq 0 ]; then
+            echo "No library written yet: nothing to check"
+          else
+            dotnet run --no-build --project tools/basilisk-check -- "${libraries[@]}"
+          fi
+
+      - name: Compare Basilisk's fields with tests/data/basilisk_fields.json
+        run: dotnet run --no-build --project tools/basilisk-check -- --list-fields | diff - tests/data/basilisk_fields.json

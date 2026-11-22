@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Checks UMI template libraries with Basilisk, the library UMI reads them with (research R15).
+    Basilisk's Core project targets net7, which is end-of-life, so this project compiles Core's
+    sources directly from the pinned checkout that fetch-basilisk.sh puts in .basilisk/.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>basilisk-check</AssemblyName>
+    <RootNamespace>BasiliskCheck</RootNamespace>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <RollForward>Major</RollForward>
+    <BasiliskCore>$(MSBuildThisFileDirectory).basilisk/Core/</BasiliskCore>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="$(BasiliskCore)**/*.cs" Exclude="$(BasiliskCore)bin/**;$(BasiliskCore)obj/**" LinkBase="Basilisk/Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The version Basilisk Core references at the pinned commit. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+  </ItemGroup>
+
+  <Target Name="RequireBasiliskCheckout" BeforeTargets="BeforeBuild" Condition="!Exists('$(BasiliskCore)Library.cs')">
+    <Error Text="Basilisk sources not found in $(BasiliskCore). Run tools/basilisk-check/fetch-basilisk.sh first." />
+  </Target>
+
+</Project>

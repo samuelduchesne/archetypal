@@ -16,13 +16,28 @@ check: ## Run code quality tools.
 	@uv run pre-commit run -a
 	@echo "🚀 Static type checking: Running pyright"
 	@uv run pyright
+	@echo "🚀 Checking idfkit use across EnergyPlus releases: Running idfkit check"
+	@uv run idfkit check
 	@echo "🚀 Checking for obsolete dependencies: Running deptry"
 	@uv run deptry src
+	@$(MAKE) --no-print-directory basilisk-fields
 	@echo "🚀 Checking documentation: building the site in strict mode"
 	@uv run mkdocs build -s
 	@echo "🚀 Checking documentation: Diátaxis tags"
-	@if [ -f tests/unit/test_docs_tags.py ]; then uv run pytest tests/unit/test_docs_tags.py; \
-	else echo "tests/unit/test_docs_tags.py not written yet: skipped"; fi
+	@uv run pytest tests/unit/test_docs_tags.py
+
+.PHONY: basilisk-fields
+basilisk-fields: ## Compare Basilisk's serialised fields with tests/data/basilisk_fields.json (needs dotnet)
+	@echo "🚀 Checking the UMI field list against the pinned Basilisk"
+	@if ! command -v dotnet >/dev/null 2>&1; then \
+		echo "dotnet not installed: skipped (CI always runs this check)"; \
+	elif [ ! -f tools/basilisk-check/basilisk-check.csproj ] || [ ! -f tests/data/basilisk_fields.json ]; then \
+		echo "tools/basilisk-check or tests/data/basilisk_fields.json not written yet: skipped"; \
+	else \
+		tools/basilisk-check/fetch-basilisk.sh && \
+		dotnet build tools/basilisk-check --nologo -v q && \
+		dotnet run --no-build --project tools/basilisk-check -- --list-fields | diff - tests/data/basilisk_fields.json; \
+	fi
 
 .PHONY: test
 test: ## Test the code with pytest

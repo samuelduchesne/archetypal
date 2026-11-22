@@ -1,0 +1,55 @@
+name: Reference
+
+# The reference tier (spec 001 research R3; spec 002 plan, Tooling configuration): the
+# reference-set evidence, slow, run weekly, on demand and on every milestone tag.
+on:
+  schedule:
+    # Sundays 03:23 UTC.
+    - cron: "23 3 * * 0"
+  workflow_dispatch:
+  push:
+    tags:
+      - "v3.*"
+
+permissions:
+  contents: read
+
+env:
+  ENERGYPLUS_VERSION: 24.2.0
+  ENERGYPLUS_BUILD: 94a887817b
+  ENERGYPLUS_DIR: /usr/local/EnergyPlus-24-2-0
+
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.12"
+
+      - name: Install EnergyPlus ${{ env.ENERGYPLUS_VERSION }}
+        run: |
+          archive="EnergyPlus-${ENERGYPLUS_VERSION}-${ENERGYPLUS_BUILD}-Linux-Ubuntu22.04-x86_64.tar.gz"
+          curl -fsSL -o "/tmp/${archive}" \
+            "https://github.com/NREL/EnergyPlus/releases/download/v${ENERGYPLUS_VERSION}/${archive}"
+          sudo mkdir -p "${ENERGYPLUS_DIR}"
+          sudo tar -xzf "/tmp/${archive}" -C "${ENERGYPLUS_DIR}" --strip-components=1
+          echo "${ENERGYPLUS_DIR}" >> "${GITHUB_PATH}"
+          "${ENERGYPLUS_DIR}/energyplus" --version
+
+      - name: Run the reference tier
+        # Exit status 5 means no reference test is written yet.
+        run: uv run pytest -m reference || test $? -eq 5
+
+      - name: Upload the verification output
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification
+          path: verification/
+          if-no-files-found: warn

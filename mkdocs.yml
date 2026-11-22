@@ -1,28 +1,41 @@
 site_name: archetypal
 repo_url: https://github.com/samuelduchesne/archetypal
-site_url: https://samuelduchesne.github.io/archetypal
+site_url: https://samuelduchesne.github.io/archetypal/
 site_description: Create, translate and codify building energy archetypes on SBEM.
 site_author: Samuel Letellier-Duchesne
 edit_uri: edit/main/docs/
 repo_name: samuelduchesne/archetypal
 copyright: Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>.
 
+# Diátaxis sections (tutorials/, how-to/, reference/, explanation/) are added to the nav with
+# their first page, never empty. Each section starts with its index.md (navigation.indexes).
 nav:
   - Home: index.md
-  - Modules: modules.md
-  - Changelog: changelog.md
+  - Reference:
+      - reference/index.md
+      - Changelog: reference/changelog.md
 watch:
   - CHANGELOG.md
+  - src/archetypal
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
-          paths: ["src/archetypal"]
+          # The package lives in src/archetypal; griffe looks for it under src/.
+          paths: ["src"]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            separate_signature: true
+            show_signature_annotations: true
 theme:
   name: material
   features:
     - navigation.tabs
+    - navigation.indexes
+    - content.code.copy
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -42,11 +55,16 @@ theme:
     repo: fontawesome/brands/github
 
 extra:
+  # archetypal 2 keeps its own documentation on Read the Docs, built from the v2.x line (FR-025).
+  v2_docs: https://archetypal.readthedocs.io/en/v2.x/
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/samuelduchesne/archetypal
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/archetypal
+    - icon: fontawesome/solid/book
+      link: https://archetypal.readthedocs.io/en/v2.x/
+      name: archetypal 2 documentation (Read the Docs)
 
 markdown_extensions:
   - toc:
@@ -55,3 +73,8 @@ markdown_extensions:
       generic: true
   - pymdownx.snippets:
       check_paths: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition
+  - attr_list
+  - mkdocs-click

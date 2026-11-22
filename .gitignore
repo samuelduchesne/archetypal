@@ -209,3 +209,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Basilisk harness (spec 003, research R15): the pinned checkout and .NET build output
+tools/basilisk-check/.basilisk/
+tools/basilisk-check/bin/
+tools/basilisk-check/obj/

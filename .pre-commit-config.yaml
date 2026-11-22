@@ -23,3 +23,21 @@ repos:
       - id: ruff-check
         args: [ --exit-non-zero-on-fix ]
       - id: ruff-format
+
+  # Spec 002 research R18: archetypal reads models only through idfkit's typed interface.
+  - repo: local
+    hooks:
+      - id: idfkit-check
+        name: idfkit check (cross-release compatibility, typed lookups)
+        entry: uv run idfkit check
+        language: system
+        types: [python]
+        files: ^src/
+        pass_filenames: false
+      - id: no-untyped-idfkit-access
+        name: no untyped idfkit access in src/
+        description: get_collection, collections, objects_by_type, get_referenced_object, schedules_dict and get_zone_surfaces return untyped objects.
+        language: pygrep
+        entry: '\b(get_collection|objects_by_type|get_referenced_object|schedules_dict|get_zone_surfaces)\b|\.collections\b'
+        types: [python]
+        files: ^src/

@@ -164,3 +164,10 @@ skip_empty = true
 [tool.coverage.run]
 branch = true
 source = ["src"]
+
+[tool.idfkit.check]
+# Spec 002 research R18: lint idfkit use against every release from 22.1 on.
+paths = ["src"]
+since = "22.1"
+extend-select = ["C004"]
+fail-on = "warning"

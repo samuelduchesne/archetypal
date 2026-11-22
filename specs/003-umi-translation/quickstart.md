@@ -27,7 +27,7 @@ waiting for UP-9 as `lost` with `"upstream": "UP-9"`. Status 4 (success with los
 ## 2. Write archetypes to UMI (US1)
 
 ```bash
-uv run archetypal reduce examples/office.idf -w examples/chicago.epw -o lib.json
+uv run archetypal reduce docs/examples/three_zone.idf -w docs/examples/chicago.epw -o lib.json
 uv run pytest tests/unit/umi/test_write.py
 ```
 
@@ -79,7 +79,7 @@ is refused naming the format.
 ## 7. Correspondence, determinism and speed (FR-009, FR-012, SC-005, SC-007)
 
 ```bash
-uv run pytest tests/unit/umi/test_correspondence.py tests/unit/umi/test_determinism.py tests/unit/umi/test_performance.py
+uv run pytest tests/unit/umi/test_correspondence.py tests/unit/umi/test_serialise.py tests/unit/umi/test_performance.py
 make docs-test
 ```
 

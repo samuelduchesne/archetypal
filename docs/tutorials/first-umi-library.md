@@ -81,7 +81,7 @@ of the library to write with `-o`:
 ```console
 $ archetypal reduce three_zone.idf --results three_zone.sql -o office.json
 1 model reduced, 0 failed.
-86 losses, 2 approximations reported; see the reports.
+85 losses, 2 approximations reported; see the reports.
 Written:
   office.json
 Reports:

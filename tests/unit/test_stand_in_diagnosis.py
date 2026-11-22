@@ -170,8 +170,8 @@ def test_shoebox_draws_a_core_only_for_a_core_group(
     ("fixture", "served"),
     [
         ("ten_zone_multipliers", {"G_Core", "G_Perimeter", "Typical_Core", "Typical_Perimeter"}),
-        ("three_zone", set()),
-        ("bar_building", set()),
+        ("three_zone", set[str]()),
+        ("bar_building", set[str]()),
     ],
 )
 def test_air_side_control_of_central_systems_is_listed(

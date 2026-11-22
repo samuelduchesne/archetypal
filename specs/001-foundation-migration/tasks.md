@@ -359,10 +359,10 @@ R12; roadmap C-18).
 - [X] T053 Write `verification/install_size.py`: resolve archetypal 2.18.10 and the current
   v3 on Python 3.12 and print both package counts; record the result in the milestone
   checklist. If v3's is not smaller, raise it against UP-4 in the fork (SC-002, R12).
-- [ ] T054 [P] Write the `3.0.0a1` section of `CHANGELOG.md`: added functions and
+- [X] T054 [P] Write the `3.0.0a1` section of `CHANGELOG.md`: added functions and
   commands, removed v2 capabilities with a link to the migration guide, installing from git
   (FR-026).
-- [ ] T055 Run every quickstart scenario, `make check` and the unit budget, and fix what
+- [X] T055 Run every quickstart scenario, `make check` and the unit budget, and fix what
   fails.
 - [ ] T056 When 001, 002 and 003 are verified: merge `v3` into `main`, tag `v3.0.0a1` and
   publish it as a GitHub pre-release; check that the publish job is skipped and the docs are

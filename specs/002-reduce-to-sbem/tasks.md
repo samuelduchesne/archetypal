@@ -537,10 +537,10 @@ dependencies).
 
 ## Phase 8: Polish and cross-cutting concerns
 
-- [ ] T090 [P] Complete the `Unreleased` section of `CHANGELOG.md`: added functions, the report
+- [X] T090 [P] Complete the `Unreleased` section of `CHANGELOG.md`: added functions, the report
   file, the results requirements, and each "not represented" item that waits on an upstream
   item.
-- [ ] T091 Run every quickstart scenario, `make check` and the unit tier's time budget, and fix
+- [X] T091 Run every quickstart scenario, `make check` and the unit tier's time budget, and fix
   what fails.
 - [ ] T092 Mark 002 implemented in `.specify/memory/roadmap.md` once SC-001–SC-008 hold and its
   blocking items are released (plan.md, Upstream dependencies; roadmap C-20): UP-1, UP-2's zone

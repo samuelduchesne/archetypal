@@ -76,7 +76,8 @@ markers = [
     "energyplus: needs EnergyPlus 24.2",
     "reference: reference-set evidence (slow)",
 ]
-addopts = "-m 'not energyplus and not reference' --durations=15"
+# importlib: docs/ and tests/ each have a conftest.py, which `--markdown-docs docs/ tests/docs/` collects together
+addopts = "-m 'not energyplus and not reference' --durations=15 --import-mode=importlib"
 timeout = 5
 
 [tool.ruff]

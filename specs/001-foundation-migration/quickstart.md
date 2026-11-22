@@ -34,7 +34,7 @@ uv run pytest
 uv run python -c "from archetypal import IDF"
 uv run archetypal transition model.idf
 uv run archetypal reduce model.idf -w w.epw --all_zones
-uv run pytest tests/unit/test_removed.py
+uv run pytest tests/unit/test_removed_names.py tests/unit/test_removed_options.py tests/unit/test_removed_table.py tests/unit/test_v2_coverage.py
 ```
 
 **Expected:** each command fails with the migration message naming the item and its
@@ -53,13 +53,13 @@ outputs; the root logger is untouched.
 ## 5. v2's core workflow (US1, FR-012, FR-014)
 
 ```bash
-uv run archetypal reduce examples/office.idf -w examples/chicago.epw -o lib.json
+uv run archetypal reduce docs/examples/three_zone.idf -w docs/examples/chicago.epw -o lib.json
 echo $?
 ```
 
-**Expected:** `lib.json` (one building template), `lib.office.report.json` and
+**Expected:** `lib.json` (one building template), `lib.three_zone.report.json` and
 `lib.loss.json` beside it; a summary on stderr; status 0, or 4 when losses are reported.
-`--to sbem` writes `office.sbem.json` and its report instead.
+`--to sbem` writes `three_zone.sbem.json` and its report instead.
 
 ## 6. Documentation (FR-022–FR-024, SC-004, SC-008)
 

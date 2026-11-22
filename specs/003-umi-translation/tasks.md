@@ -529,9 +529,9 @@ gone; 003 can be marked implemented (plan.md, Upstream dependencies; roadmap C-2
 
 ## Phase 8: Polish and cross-cutting concerns
 
-- [ ] T073 [P] Complete the `Unreleased` section of `CHANGELOG.md`: `read_umi`, `write_umi`,
+- [X] T073 [P] Complete the `Unreleased` section of `CHANGELOG.md`: `read_umi`, `write_umi`,
   `to_umi`, the diffs, the loss report file, and each loss that waits on UP-9 or UP-10.
-- [ ] T074 Run every quickstart scenario, `make check`, `make docs-test` and the unit tier's
+- [X] T074 Run every quickstart scenario, `make check`, `make docs-test` and the unit tier's
   time budget, and fix what fails.
 - [ ] T075 Mark 003 implemented in `.specify/memory/roadmap.md` once SC-001–SC-007 hold and its
   blocking items are released (plan.md, Upstream dependencies; roadmap C-20): UP-2's zone

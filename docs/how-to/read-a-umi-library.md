@@ -132,6 +132,5 @@ except LossyTranslationError as error:
     print(error.report.summary)
 ```
 
-Notes never fail strict mode. With today's SBEM fork, a real library always loses its
-descriptive fields (UP-9), so strict mode is mostly useful in tests and for libraries written
-from SBEM archetypes.
+Notes never fail strict mode. Until the SBEM fork adds the fields of UP-9, a library whose
+templates carry descriptive fields (authors, country, construction years) always fails it.

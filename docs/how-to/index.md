@@ -12,3 +12,5 @@ Guides for a task you already know you need to do.
   name and rewrite the frequent v2 tasks.
 - [How to check that an archetype reproduces its building](compare-results.md): compare
   the detailed model's and the archetype's results against the acceptance targets.
+- [How to read a UMI template library into SBEM archetypes](read-a-umi-library.md): read a
+  library, check the loss report, skip invalid templates and require a lossless translation.

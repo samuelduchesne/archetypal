@@ -161,14 +161,14 @@ the correspondence table and every conversion rule in both directions, and the l
   in a template and in the `WindowSettings` collection both resolve; the writer's id
   assignment numbers `"1"`, `"2"`, … in document order, defines each component at first
   occurrence and refers back with `{"$ref": id}` afterwards.
-- [ ] T013 [P] Test the correspondence in `tests/unit/umi/test_correspondence.py` (SC-005):
+- [X] T013 [P] Test the correspondence in `tests/unit/umi/test_correspondence.py` (SC-005):
   every (class, key) of `tests/data/basilisk_fields.json` is in `CORRESPONDENCE`; and its
   invariants, verbatim from data-model.md: "each (class, key) appears exactly once; `status`
   `exact` or `converted` has at least one SBEM path; `upstream` has a UP item; the set of
   `rule` values equals the set of registered rules". Also: each SBEM path resolves on
   epinterface's model by walking `model_fields`; each `upstream` value is a UP item of
   `.specify/memory/roadmap.md`.
-- [ ] T014 [P] Test the report in `tests/unit/umi/test_report.py` (FR-011, R14):
+- [X] T014 [P] Test the report in `tests/unit/umi/test_report.py` (FR-011, R14):
   `schema_version` is `"1.0"`; `direction` is `"umi_to_sbem"` or `"sbem_to_umi"`; `summary`
   is `"Nothing was lost."` if and only if `losses` is empty, else counts by kind; losses and
   notes are sorted by `subject`, then `location`; floats keep `repr` precision; equal reports
@@ -252,12 +252,12 @@ the correspondence table and every conversion rule in both directions, and the l
   Mark the module private (`__all__ = []`, a docstring stating roadmap C-02).
 - [ ] T026 Implement `src/archetypal/umi/_refs.py` (R1, R13): the pre-scan over the raw JSON
   in file order, resolution into the models of T025, and the writer's id assignment.
-- [ ] T027 [P] Implement `src/archetypal/umi/correspondence.py` (R5): `Relevance`,
+- [X] T027 [P] Implement `src/archetypal/umi/correspondence.py` (R5): `Relevance`,
   `MappingStatus`, `FieldMapping` as in data-model.md, the `@rule(id)` registry (each rule
   holds its UMI → SBEM and SBEM → UMI functions, either may be absent), and `CORRESPONDENCE`
   with one row per field of `tests/data/basilisk_fields.json`, following data-model.md's
   correspondence table; `note` states the conserved quantity or why there is no counterpart.
-- [ ] T028 [P] Implement `src/archetypal/umi/report.py` (R14): `TranslationReport`,
+- [X] T028 [P] Implement `src/archetypal/umi/report.py` (R14): `TranslationReport`,
   `SourceInfo`, `Loss`, `LossKind`, `Note`, `NoteKind` exactly as in data-model.md; the
   summary; deterministic JSON (sorted, `repr` floats, two-space indent, final newline); a
   `python -m archetypal.umi.report --schema` entry that writes

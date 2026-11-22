@@ -84,7 +84,7 @@ def test_non_finite_floats_are_refused() -> None:
 def test_no_timestamp_and_byte_identical_on_repeat(tmp_path: Path) -> None:
     first = io.write(Archetype(Name="A", Area=2.0), _report(), tmp_path / "one", "office")
     second = io.write(Archetype(Name="A", Area=2.0), _report(), tmp_path / "two", "office")
-    for a, b in zip(first, second):
+    for a, b in zip(first, second, strict=True):
         assert a.read_bytes() == b.read_bytes()
     report_text = first[1].read_text(encoding="utf-8")
     assert not re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", report_text)

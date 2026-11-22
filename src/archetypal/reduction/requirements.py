@@ -12,11 +12,12 @@ Whether an item applies, and which keys it needs, depends on the model: a model 
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from idfkit.simulation import SQLResult
 
 __all__ = ["RESULTS_REQUIREMENTS", "ModelFacts", "ResultRequirement", "check_results"]
@@ -195,9 +196,7 @@ RESULTS_REQUIREMENTS: tuple[ResultRequirement, ...] = (
         _zones,
     ),
     _variable("Site Mains Water Temperature", "Environment", "hot water (FR-021)", _environment_if_water_use),
-    _variable(
-        "Water Use Equipment Hot Water Volume", "every WaterUse:Equipment", "hot water (FR-021)", _water_use
-    ),
+    _variable("Water Use Equipment Hot Water Volume", "every WaterUse:Equipment", "hot water (FR-021)", _water_use),
     _meter(f"Heating:{FUEL}", _fuel_meters("Heating")),
     _meter(f"Cooling:{FUEL}", _fuel_meters("Cooling")),
     _meter("Fans:Electricity", _meter_if("Fans:Electricity", _fans)),

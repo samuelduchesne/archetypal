@@ -20,7 +20,7 @@ comparable. `merge` refuses only a target strictly finer than the source
 from __future__ import annotations
 
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping  # noqa: TC003 - pydantic resolves annotations at run time
 from enum import Enum
 from typing import Literal
 
@@ -102,7 +102,7 @@ class Layout(StrEnum):
         if len(finest_key) != len(_ORDER):
             msg = f"{finest_key!r}: a finest group key has {len(_ORDER)} items (space use, exposure)"
             raise ValueError(msg)
-        values = dict(zip(_ORDER, finest_key))
+        values = dict(zip(_ORDER, finest_key, strict=False))
         return tuple(values[d] for d in self.distinctions)
 
     def is_finer_or_equal(self, other: Layout) -> bool:

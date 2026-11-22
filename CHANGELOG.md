@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reduction of a detailed EnergyPlus model to an SBEM archetype (`archetypal.reduction`), with a comparison of the archetype's results against the source model (`archetypal.comparison`).
 - Translation between SBEM archetypes and UMI template libraries, every written library checked with UMI's own code (Basilisk) in CI.
 
+### Changed
+
+- archetypal now depends on `epinterface` (`>=1.5.0,<1.6`) from the SBEM fork (https://github.com/samuelduchesne/epinterface), pinned to commit `cc81de2cecd83271daa97cf18a0031f701225243`. The pin will be replaced by a fork tag (`v1.5.0.post1`) once the maintainer tags it.
+
 ### Removed
 
 - The archetypal 2 code base (`archetypal/`, the `geomeppy` submodule, Docker files, the paper, the Sphinx docs and the poetry setup). archetypal 2 stays available from the `v2.18.11` release.

@@ -165,16 +165,11 @@ def write_model(model: BaseModel, path: str | os.PathLike[str], *, overwrite: bo
 
 
 def _check_name(name: str) -> None:
-    bad = (
-        not name
-        or name in {".", ".."}
-        or "/" in name
-        or "\\" in name
-        or os.sep in name
-        or name.endswith(".json")
-    )
+    bad = not name or name in {".", ".."} or "/" in name or "\\" in name or os.sep in name or name.endswith(".json")
     if bad:
-        raise InputError(name or "''", "is not a file name stem; give a name such as 'office' (no directory, no suffix)")
+        raise InputError(
+            name or "''", "is not a file name stem; give a name such as 'office' (no directory, no suffix)"
+        )
 
 
 def write(

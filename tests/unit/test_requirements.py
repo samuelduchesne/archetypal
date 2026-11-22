@@ -123,7 +123,11 @@ def test_complete_results_miss_nothing(tmp_path: Path) -> None:
 
 
 def test_each_removed_output_is_named(tmp_path: Path) -> None:
-    removed = {"Zone Mechanical Ventilation Standard Density Volume Flow Rate", "Fan Air Mass Flow Rate", "Heating:NaturalGas"}
+    removed = {
+        "Zone Mechanical Ventilation Standard Density Volume Flow Rate",
+        "Fan Air Mass Flow Rate",
+        "Heating:NaturalGas",
+    }
     entries = [e for e in _complete_entries(FACTS) if e[2] not in removed]
     assert _check(tmp_path, entries) == (
         "Fan Air Mass Flow Rate",
@@ -134,7 +138,9 @@ def test_each_removed_output_is_named(tmp_path: Path) -> None:
 
 def test_one_missing_key_is_enough(tmp_path: Path) -> None:
     entries = [
-        e for e in _complete_entries(FACTS) if not (e[2] == "Zone Air System Sensible Heating Energy" and e[1] == "CORE")
+        e
+        for e in _complete_entries(FACTS)
+        if not (e[2] == "Zone Air System Sensible Heating Energy" and e[1] == "CORE")
     ]
     assert _check(tmp_path, entries) == ("Zone Air System Sensible Heating Energy",)
 
@@ -161,8 +167,6 @@ def test_items_that_do_not_apply_are_not_required(tmp_path: Path) -> None:
         assert not by_item[item].applies_to(facts)
     assert by_item["Site Outdoor Air Drybulb Temperature"].applies_to(facts)
     assert _check(tmp_path, _complete_entries(facts), facts) == ()
-    # an empty database misses only what applies
-    assert _check(tmp_path.joinpath("x").resolve(), [], facts) if False else True  # placeholder guard
 
 
 def test_empty_results_name_every_applicable_item(tmp_path: Path) -> None:

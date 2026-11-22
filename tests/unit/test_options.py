@@ -118,6 +118,8 @@ def test_space_use_mapping_and_unknown_fields() -> None:
 
 
 def test_options_round_trip_through_json() -> None:
-    options = ReductionOptions(layout=Layout.CORE_PERIMETER, small_group_threshold=0.1, space_use_mapping={"Z": "Office"})
+    options = ReductionOptions(
+        layout=Layout.CORE_PERIMETER, small_group_threshold=0.1, space_use_mapping={"Z": "Office"}
+    )
     assert ReductionOptions.model_validate_json(options.model_dump_json()) == options
     assert options.model_dump(mode="json")["layout"] == "core_perimeter"

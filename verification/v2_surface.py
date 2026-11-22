@@ -73,7 +73,9 @@ def public_names(module: ModuleType) -> list[str]:
     source = Path(module.__file__ or "")
     defined = _defined_names(ast.parse(source.read_text(encoding="utf-8"))) if source.is_file() else set()
     listed = set(getattr(module, "__all__", ()))
-    public = {n for n in defined if not n.startswith("_")} | {n for n in listed if not n.startswith("_") or n.endswith("__")}
+    public = {n for n in defined if not n.startswith("_")} | {
+        n for n in listed if not n.startswith("_") or n.endswith("__")
+    }
     return sorted(public - {"__all__"})
 
 
@@ -140,7 +142,10 @@ def main() -> None:
         data = surface()
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    print(f"archetypal {data['archetypal_version']}: " + ", ".join(f"{len(data[k])} {k}" for k in ("modules", "names", "commands", "options")))
+    print(
+        f"archetypal {data['archetypal_version']}: "
+        + ", ".join(f"{len(data[k])} {k}" for k in ("modules", "names", "commands", "options"))
+    )
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ dependencies = [
     "click>=8.1,<9",
     "pydantic>=2.9,<3",
     "numpy>=1.26",
+    "epinterface>=1.5.0,<1.6",
 ]
 
 [project.urls]
@@ -44,6 +45,10 @@ dev = [
     "pytest-markdown-docs>=0.6.0",
     "mkdocs-click>=0.8.1",
 ]
+
+[tool.uv.sources]
+# SBEM fork of epinterface, pinned to a pushed commit until the fork is tagged.
+epinterface = { git = "https://github.com/samuelduchesne/epinterface", rev = "cc81de2cecd83271daa97cf18a0031f701225243" }
 
 [build-system]
 requires = ["hatchling"]
@@ -156,7 +161,7 @@ preview = true
 
 [tool.deptry.per_rule_ignores]
 # Declared for specs 001-003; remove each name once the package imports it.
-DEP002 = ["idfkit", "click", "pydantic", "numpy"]
+DEP002 = ["idfkit", "click", "pydantic", "numpy", "epinterface"]
 
 [tool.coverage.report]
 skip_empty = true

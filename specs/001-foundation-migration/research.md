@@ -21,7 +21,7 @@ Facts come from:
 1. **`/project-kit:new-project` creates a new folder, not a branch.** It refuses a destination
    that exists and is not empty. It runs `cruft create`, then `specify init --here --force`,
    then `git init` and a first commit. archetypal is an existing repository with a v2 history,
-   its own `.specify/` (constitution 1.5.0, roadmap 1.8.0) and its specs. The generated tree
+   its own `.specify/` (constitution 1.5.0, roadmap 1.11.0) and its specs. The generated tree
    must therefore be carried onto a branch of this repository, and the generated spec-kit and
    git folders must not replace the project's own (R1).
 2. **The template's release workflow publishes to PyPI on every published GitHub release.**
@@ -277,8 +277,9 @@ of v2's RST and keeps every existing v2 link alive.
   4 success with losses reported. A library is never written with a failed model silently
   missing: the summary and the report name it.
 - **Reports and summary (FR-014):** reports are written beside the output
-  (`<output stem>.<model stem>.report.json` for reduction, `<output stem>.loss.json` for
-  translation). The command prints a summary to stderr: models reduced and failed, counts of
+  (with `--to sbem`, `<model stem>.report.json` beside each `<model stem>.sbem.json`, as 002's
+  `Reduction.write` names them; with `--to umi`, `<output stem>.<model stem>.report.json` and
+  `<output stem>.loss.json`; for translation, `<library stem>.loss.json`). The command prints a summary to stderr: models reduced and failed, counts of
   losses and approximations, report paths.
 - **Parallel runs:** `-p N` runs up to N models at once in separate processes; each model is
   one reduction with at most one simulation. It is a convenience of this command, not batch
@@ -336,10 +337,12 @@ disagree. Stub modules are plain, typed and visible; they need no import hook.
 ```text
 ArchetypalError
 ├── InputError                 invalid input (FR-010)
-│   └── ReductionError         spec 002: NoConditionedZones, MissingResults,
-│                              ModelResultsMismatch, UnsupportedEnergyPlusVersion
+│   ├── ReductionError         spec 002: NoConditionedZones, MissingResults,
+│   │                          ModelResultsMismatch, UnsupportedEnergyPlusVersion
+│   ├── UmiFormatError         spec 003: refused dialect, malformed JSON, broken reference
+│   └── UmiValidationError     spec 003: completeness and range problems (.problems)
 ├── UnsupportedFeatureError    a model feature the operation cannot handle
-├── LossyTranslationError      spec 003, strict mode
+├── LossyTranslationError      strict mode; .report holds the report of what would be lost
 ├── NotComparableError         spec 002
 ├── OptionalDependencyError    names the extra to install (FR-005, FR-010)
 └── RemovedInArchetypal3Error  also ImportError and AttributeError (R7)

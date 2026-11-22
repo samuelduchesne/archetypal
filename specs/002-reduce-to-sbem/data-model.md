@@ -24,7 +24,7 @@ SourceData ──inventory──▶ ZoneRecord[] ──classify──▶ Classif
 ReductionError                              GroupLedger[] ──to_sbem──▶ Archetype (epinterface)
                                                  │
                                                  └──────────────────▶ ReductionReport
-merge(Archetype, ReductionReport, layout) ─▶ regroup the report's pre-threshold ledgers ─▶ same path
+merge(reduction, layout) ─▶ regroup the report's pre-threshold ledgers ─▶ same path
 ```
 
 A reduction either finishes all stages or raises a `ReductionError` before writing anything.
@@ -107,8 +107,12 @@ ledger creation (`GroupLedger.from_zone`). Nothing upstream of that applies a mu
   | `CORE_PERIMETER` | exposure |
   | `SINGLE_ZONE` | one key |
 
-  Layouts form a partial order by coarseness. `merge` refuses a target that is not coarser
-  than or equal to the source layout.
+  Layouts form a partial order by coarseness (`SPACE_USE_EXPOSURE` ≤ `SPACE_USE`,
+  `CORE_PERIMETER` ≤ `SINGLE_ZONE`; `SPACE_USE` and `CORE_PERIMETER` are not comparable).
+  Because the report keeps its pre-threshold ledgers at the finest key (below), `merge`
+  reaches any target that is not strictly finer than the source, including from `SPACE_USE`
+  to `CORE_PERIMETER` (spec 003 writes UMI from either). It refuses only a strictly finer
+  target.
 - **`ReductionOptions`** is a frozen pydantic model with these fields:
   - `layout: Layout = Layout.SPACE_USE_EXPOSURE`;
   - `small_group_threshold: float = 0.05`, a share of conditioned floor area in [0, 1);
@@ -171,7 +175,9 @@ The total types:
 
 1. Build one ledger per conditioned zone, then sum ledgers by the layout's group key. Keys are
    sorted, so the order is deterministic.
-2. **Pre-threshold groups** are kept for the report (FR-011).
+2. **Pre-threshold groups** are kept for the report (FR-011), always at the finest key,
+   (space use, exposure), whatever the requested layout, so `merge` can regroup them by any
+   target key.
 3. **Threshold.** While any group's floor-area share is below the threshold and another
    eligible group exists (same exposure where the layout has exposure), merge the smallest
    group into its **most similar** eligible group.
@@ -184,8 +190,9 @@ The total types:
      - hot water per area.
    - Ties are broken by group key.
    - Each merge is recorded.
-4. **Merging an archetype.** `merge` starts from the report's pre-threshold ledgers for the
-   source layout, regroups them by the target key, and applies step 3 once.
+4. **Merging an archetype.** `merge` starts from the report's pre-threshold ledgers (finest
+   key), regroups them by the target key, and applies step 3 once. The result equals reducing
+   directly to the target layout.
 
 ## Derivation rules: ledger → SBEM (FR-025)
 
@@ -229,12 +236,12 @@ A pydantic model whose JSON Schema is published (contract:
 | `schema_version` | `"1.0"` |
 | `reproducibility` | archetypal, epinterface, idfkit and EnergyPlus versions; SHA-256 of model, results and weather; `ReductionOptions` |
 | `groups[]` | key, members (with multipliers), floor area and share, space-use sources, the group's ledger totals |
-| `pre_threshold_groups[]` | ledgers before thresholding (FR-011; input to `merge`) |
+| `pre_threshold_groups[]` | ledgers before thresholding, at the finest key (space use, exposure) whatever the layout (FR-011; input to `merge`) |
 | `parameters[]` | (group, SBEM field path, value, rule id) for every parameter |
 | `excluded_zones[]` | name, floor area, role, reason, envelope assignment |
 | `small_group_merges[]` | merged key, into key, share, distance |
 | `not_represented[]` | feature, affected groups, magnitude, the parameter it was folded into (or none); from the folding modules and from R20's `UNSUPPORTED_FEATURES` |
-| `merged_distinctions[]` | for a coarser layout: the space-use or exposure distinctions lost (US2) |
+| `merged_distinctions[]` | for a coarser layout, one entry per resulting group: `into_key`, `from_keys[]` (the finest keys merged into it, sorted) and `lost` (`"space_use"`, `"exposure"` or both) (US2; read by spec 003) |
 | `unattributed_energy` | standby and pilot consumption by fuel (FR-022) |
 | `building` | conditioned floor area and the unrounded storey ratio (R6), kept so `merge` needs no model |
 

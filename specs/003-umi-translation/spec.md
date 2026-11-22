@@ -6,10 +6,10 @@
 
 **Status**: Draft
 
-**Input**: Roadmap entry 003 (roadmap 1.2.1): "Read a UMI template library (JSON) into SBEM
-archetypes, and write SBEM archetypes out as a UMI template library, so existing UMI libraries
-keep their value." Governed by constitution 1.3.0 (Principles II, IV) and roadmap decisions
-C-02, C-10, C-11, C-13.
+**Input**: Roadmap entry 003 (roadmap 1.2.1; current roadmap 1.11.0): "Read a UMI template
+library (JSON) into SBEM archetypes, and write SBEM archetypes out as a UMI template library,
+so existing UMI libraries keep their value." Governed by constitution 1.5.0 (Principles II,
+IV) and roadmap 1.11.0 decisions C-02, C-10, C-11, C-13, C-20.
 
 ## Why this exists
 
@@ -51,6 +51,16 @@ what "survives the trip" means and how the user is told when something does not.
   Rhino on Windows? → A: Automatically, on every change, by loading each written library with
   Basilisk, the UMI template library code from MIT's Sustainable Design Lab; its core library
   runs on .NET without Rhino.
+
+### Session 2026-11-22 (cross-spec analysis)
+
+- Q: What must an archetype read from UMI carry while SBEM still lacks a field UMI holds
+  (window settings, partition ratio, structure, descriptive fields)? → A: Every field SBEM
+  holds; each field it does not yet hold is reported as lost on every read until the upstream
+  item that adds it (UP-9) is released (FR-002, FR-010).
+- Q: Can an archetype with more than two zone groups and no fixed floor-area shares be
+  written? → A: No: without shares the groups cannot be weighted, so writing refuses it and
+  names the archetype (FR-006).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -104,10 +114,13 @@ field of the library is either represented or listed in the report.
    becomes one SBEM archetype with a core and a perimeter zone group in the "core/perimeter by
    geometry" layout (no fixed floor-area shares), carrying the library's
    descriptive information (name, authors, country, climate zone, construction years, data
-   source, comments, lifespan).
-2. **Given** a library in which two materials share a name but differ in thickness or other
-   properties (issue #459), **When** it is read, **Then** both are kept as distinct components
-   and the report notes the name collision.
+   source, comments, lifespan), or, for each item SBEM cannot yet hold, a loss-report entry
+   naming the upstream item that adds it (FR-002).
+2. **Given** a library in which two different components of one kind share a name (for
+   example two materials named alike with different conductivities, as a hand-edited library
+   can hold; the kind of name clash behind issue #459), **When** it is read, **Then** both are
+   kept as distinct components and the report notes the name collision. A material used at
+   several thicknesses is not a collision: thickness belongs to the layer.
 3. **Given** a library that is invalid (a building template refers to a component that does not
    exist, or a required field is missing), **When** it is read, **Then** reading stops, names
    each problem and where it is, and produces no archetypes.
@@ -149,8 +162,10 @@ original and result field by field.
 - **Unused components** (defined but referenced by no building template): reported as unused;
   not carried into SBEM.
 - **Schedules**: UMI expresses schedules as year, week and day schedules; SBEM archetypes from
-  spec 002 use `Schedule:Compact`. Both directions must reproduce the same hourly values for
-  every day type.
+  spec 002 use `Schedule:Compact`. Writing reproduces the same hourly values for every day type
+  (FR-008). Reading does too when the UMI year parts begin and end on month boundaries;
+  otherwise each affected month keeps its total over the month and is reported as
+  approximate.
 - **A value outside SBEM's allowed range** (for example a negative conductivity in a
   hand-edited library): reading stops for that building template, names the value, and
   continues with the others only if the user asked to skip invalid templates.
@@ -161,7 +176,8 @@ original and result field by field.
 - **Duplicate building template names** in one library: reading keeps both and reports the
   duplication; writing never produces duplicate names.
 - **UMI library versions**: libraries written by older UMI releases are read where their format
-  can be identified; unsupported versions are refused with a message naming the version.
+  can be identified; unsupported formats are refused with a message naming the format (UMI
+  libraries carry no version number).
 
 ## Requirements *(mandatory)*
 
@@ -175,7 +191,8 @@ original and result field by field.
   "core/perimeter by geometry" layout: their floor-area shares are not fixed by the archetype
   but set by the building's geometry when it is applied, as in UMI. It MUST carry the template's
   structure, window settings, partition ratio, default window-to-wall ratio and descriptive
-  fields.
+  fields wherever SBEM can hold them; each one SBEM cannot yet hold MUST be reported as lost,
+  naming the upstream item that adds it (FR-010).
 - **FR-003**: Reading MUST keep components that share a name but differ in any property as
   distinct components, and report the collision.
 - **FR-004**: Reading MUST validate the library (references resolve, required fields present,
@@ -190,16 +207,18 @@ original and result field by field.
   a loss. When the archetype's reduction report is not available, the merge MUST start from the
   archetype's current groups and use floor-area weighting for any parameter whose spec 002 rule
   needs report data (for example efficiencies, which need delivered and consumed energy); each
-  such parameter MUST be listed in the loss report as approximate.
+  such parameter MUST be listed in the loss report as approximate. An archetype with more than
+  two zone groups and no fixed floor-area shares cannot be weighted and MUST be refused with a
+  message naming it.
 - **FR-006a**: Writing MUST drop an archetype's fixed floor-area shares, because UMI derives
   them from each building's geometry, and MUST report them as lost.
 - **FR-006b**: An archetype with only a perimeter group MUST be written with its perimeter
   definition used for the core zone as well, and the loss report MUST state that the core
   definition was copied from the perimeter rather than derived from core zones.
 - **FR-007**: Components shared by several archetypes MUST appear once in the written library;
-  component names in the written library MUST be unique. The written library MUST contain no
-  orphaned components (components no building template uses), which UMI's library code
-  rejects.
+  component names in the written library MUST be unique. The written library MUST contain only
+  components that some building template uses, and no reference to a missing component (which
+  UMI's library code rejects).
 - **FR-008**: Schedules MUST be written in UMI's year, week and day form, reproducing the same
   hourly values for every day type as the archetype's schedules.
 
@@ -209,7 +228,7 @@ original and result field by field.
   covering every UMI field. It MUST be published as reference documentation.
 - **FR-010**: Every UMI field that affects simulation results MUST map to an SBEM field.
   Descriptive fields MUST map to SBEM's metadata and environmental fields. Where a UMI field
-  that affects simulation has no SBEM counterpart, the gap MUST be raised upstream (UP-2) and,
+  or a descriptive field has no SBEM counterpart, the gap MUST be raised upstream (UP-9) and,
   until it is closed, reported as lost on every read.
 - **FR-011**: Every read and write MUST produce a loss report listing each value that could not
   be represented in the target, the building template or archetype it belongs to, and why.
@@ -274,8 +293,10 @@ original and result field by field.
   identifiable (edge cases).
 - UMI requires both a core and a perimeter zone definition in each building template, and
   applies the core definition only to buildings whose geometry has a core (FR-006b).
-- epinterface supports zone groups and the fields required by C-13 (upstream UP-2) before this
-  spec is implemented.
+- epinterface supports zone groups and unset floor-area shares (upstream UP-2) before this spec
+  is implemented, and the UMI fields SBEM lacks (upstream UP-9) before it is marked
+  implemented: until UP-9 is released, SC-003 cannot be met for those fields, which are
+  reported as lost (roadmap C-20).
 - UMI templates are not offered as editable Python objects (roadmap C-02); editing happens on
   the SBEM archetype.
 - "Typical laptop" has the same meaning as in spec 002.

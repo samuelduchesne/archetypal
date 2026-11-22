@@ -99,6 +99,7 @@ Every page is written with `/project-kit:diataxis` (R4, R5).
 |---|---|---|
 | `docs/index.md` | Explanation | What archetypal is for; links to the four sections and to v2's docs (FR-025). |
 | `docs/tutorials/first-umi-library.md` | Tutorial | Install from git (until v3.0, then PyPI), download the example model and results, reduce to a UMI library, open it (FR-023, SC-001). |
+| `docs/how-to/install.md` | How-to | Install archetypal 3: from git with the fork until v3.0.0 and why (C-17, C-18), then from PyPI; supported Python versions and platforms (FR-001). |
 | `docs/how-to/migrate-from-v2.md` | How-to | Every removed capability with its replacement or reason (table generated from `REMOVED`), before/after examples for the six frequent tasks, behaviour changes in results, v2 support policy (FR-017–FR-020). |
 | `docs/reference/api.md` | Reference | mkdocstrings over the public interface (FR-007, FR-023). |
 | `docs/reference/cli.md` | Reference | `mkdocs-click` over the `archetypal` command, exit statuses (FR-011–FR-015). |
@@ -106,15 +107,23 @@ Every page is written with `/project-kit:diataxis` (R4, R5).
 | `docs/reference/changelog.md` | Reference | The changelog (FR-026). |
 | `docs/explanation/stack.md` | Explanation | About archetypal, epinterface and idfkit: who does what, and why v3 is smaller (FR-023). |
 
+Each section also gets an `index.md` landing page of the section's own kind, listing its
+pages: `docs/tutorials/index.md` (Tutorial), `docs/how-to/index.md` (How-to),
+`docs/reference/index.md` (Reference) and `docs/explanation/index.md` (Explanation), added
+with the section's first page (T036, T045, T049, T052).
+
 Spec 002's and 003's pages go into the same sections.
 
 ## Upstream dependencies (constitution: Development Workflow)
 
-| Item | What 001 needs | Blocking? |
+Blocking follows roadmap C-20: 001 is marked implemented only when every blocking item is
+released.
+
+| Item | What 001 needs | Blocks "implemented"? |
 |---|---|---|
 | UP-1 (fork) | epinterface installable next to archetypal 3, without archetypal 2 or eppy (SC-002). | Yes |
-| UP-3 | Upstream releases on PyPI what archetypal uses, so v3.0.0 can be published (FR-001). | Only for the PyPI release; milestones proceed without it (C-18) |
-| UP-4 (fork) | epinterface's heavy dependencies optional and pins loosened (`click==8.1.7`), for SC-002's package count and R6's click range. | For SC-002; not for M1's other criteria |
+| UP-3 | Upstream releases on PyPI what archetypal uses, so v3.0.0 can be published (FR-001). | Yes, through the v3.0.0 release that verifies FR-001; milestones proceed without it (C-18) |
+| UP-4 (fork) | epinterface's heavy dependencies optional and pins loosened (`click==8.1.7`), for SC-002's package count and R6's click range. | Yes (SC-002); not for M1's other criteria |
 
 ## Project Structure
 

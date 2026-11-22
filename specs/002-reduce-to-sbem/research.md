@@ -215,8 +215,9 @@ Classification sorts zones by name first and never depends on model order.
     FR-010 holds through the archetype alone.
 - **Output.**
   - **SBEM:** the archetype carries `YearComponent`s, since SBEM has no `Schedule:Compact`.
-  - **`Schedule:Compact` (FR-023):** archetypal also emits each group schedule as text with
-    `Through: <month end>` and `For: Monday … Sunday` blocks. Spec 003 (UMI) and the report
+  - **`Schedule:Compact` (FR-023):** the public `archetypal.reduction.schedule_compact(year)`
+    turns any SBEM schedule into text with `Through: <month end>` and `For: Monday … Sunday`
+    blocks. Spec 003 (UMI) and the report
     use it, and it is the form idfkit's UP-5 would generate. When SBEM gains holiday and
     design-day slots (UP-2), the projection adds `For: Holiday`, `SummerDesignDay` and
     `WinterDesignDay` without a format change.

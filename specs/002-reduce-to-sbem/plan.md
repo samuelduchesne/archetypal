@@ -90,7 +90,7 @@ spec feedback F-1 and F-2 (both resolved).
 
 | Principle | Check | Status |
 |---|---|---|
-| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls, made through its typed interface (R18). The SBEM model and its JSON are epinterface's, from the maintained fork archetypal depends on (constitution 1.4.0, I; roadmap C-17), which carries only changes also offered upstream. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6, UP-7, UP-8. There are two temporary bridges, both tracked and removed when their upstream item is released: normalising `Schedule:Year` month and day fields to `int` until UP-6, and typed row wrappers over `SQLResult.query` until UP-7. | Pass (bridges recorded below) |
+| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls, made through its typed interface (R18). The SBEM model and its JSON are epinterface's, from the maintained fork archetypal depends on (constitution 1.5.0, I; roadmap C-17), which carries only changes also offered upstream. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6, UP-7, UP-8. There are two temporary bridges, both tracked and removed when their upstream item is released: normalising `Schedule:Year` month and day fields to `int` until UP-6, and typed row wrappers over `SQLResult.query` until UP-7. | Pass (bridges recorded below) |
 | **II. One archetype data model** | The output is SBEM only. The ledger is internal working state, not a second archetype model: it is never written as an archetype, and only its totals appear in the report (needed for FR-010 and FR-022). | Pass |
 | **III. Small and focused** | Four runtime dependencies, each justified (R17). There is at most one simulation run, on request. No geometry generation (FR-024 carries ratios only). No calibration. | Pass |
 | **IV. Physically correct and verifiable** | Each SBEM parameter is tied to a conservation rule (data-model.md, "Derivation rules"). The reference tier measures SC-001–SC-008 against stated targets, including v2's baseline (SC-004). | Pass. Spec feedback F-1 (SC-002 and fan end uses) is resolved by FR-022a and UP-8. |
@@ -124,16 +124,19 @@ dependency. A fork release is a git tag; the fork is not published on PyPI. This
 releases, not what 002 needs, so no blocking status changes, except UP-3, which now gates
 only v3's PyPI release.
 
-| Item | Repository | What | Blocking? |
+"Blocking" follows roadmap C-20: 002 is marked implemented only when every item marked yes
+(bridged or not) is released. Items marked "not a dependency" never hold 002 back.
+
+| Item | Repository | What | Blocks "implemented"? |
 |---|---|---|---|
 | UP-1 | epinterface | Depend on idfkit instead of `archetypal==2.18.10`. `sbem.components` must be importable without archetypal, eppy or a generated Prisma client, and PyYAML must be declared. | Yes |
-| UP-2 | epinterface | Several zone groups per archetype. It also adds these fields, which this plan's research showed are missing: per-orientation envelope and window ratios (FR-024), an infiltration schedule (FR-018), numeric heat-recovery effectiveness (FR-019), holiday and design-day slots in `WeekComponent` (FR-023), and save/load helpers with a schema version (R14). | Zone groups: yes. Each extra field: no (until it lands, its loss is reported under FR-026). |
-| UP-3 | epinterface | Upstream releases on PyPI what archetypal uses (UP-1 and the SBEM fields). The fork is not published (C-17). | Not for implementing or verifying 002; only for v3's PyPI release |
-| UP-4 | epinterface | Heavy dependencies become optional (Prisma, geopandas, ladybug), and exact pins are loosened (`click==8.1.7`, `pandas<2.3`). | No (install size and conflicts) |
-| UP-5 | idfkit | Day-type-aware `Schedule:Compact` creation. Now also a faster day-profile evaluation if the R5 benchmark fails. | No |
-| UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final, so the typed `schedule_weeks[i].start_month: int` really is an `int`. | Yes for release; bridged meanwhile |
-| UP-7 (new) | idfkit | Typed readers for EnergyPlus's static SQLite tables (`Zones`, `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`), in place of raw `SQLResult.query` rows. | No; bridged by `_sql_tables.py` |
-| UP-8 (new) | epinterface | SBEM energy conversion beyond a constant COP, still on ideal loads: a specific fan power and ideal-loads supply-air temperature limits, with fans reported as their own end use; and a COP that depends on outdoor temperature (R12, R19). | For SC-002's fan target and so 002's release. Reduction is built without it: fans are folded into `DistributionCOP` and reported as not represented until it lands. |
+| UP-2 | epinterface | Several zone groups per archetype. It also adds these fields, which this plan's research showed are missing: per-orientation envelope and window ratios (FR-024), an infiltration schedule (FR-018), numeric heat-recovery effectiveness, sensible and latent (FR-019; spec 003 maps both), holiday and design-day slots in `WeekComponent` (FR-023), and save/load helpers with a schema version (R14). | Zone groups: yes. Each extra field: not a dependency (until it lands, its loss is reported under FR-026). Unset floor-area shares (spec 003): not a dependency; 002 always sets shares. |
+| UP-3 | epinterface | Upstream releases on PyPI what archetypal uses (UP-1 and the SBEM fields). The fork is not published (C-17). | Not a dependency; it gates only v3's PyPI release (C-18) |
+| UP-4 | epinterface | Heavy dependencies become optional (Prisma, geopandas, ladybug), and exact pins are loosened (`click==8.1.7`, `pandas<2.3`). | Not a dependency (install size and conflicts) |
+| UP-5 | idfkit | Day-type-aware `Schedule:Compact` creation. Now also a faster day-profile evaluation if the R5 benchmark fails. | Not a dependency |
+| UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final, so the typed `schedule_weeks[i].start_month: int` really is an `int`. | Yes; bridged meanwhile |
+| UP-7 (new) | idfkit | Typed readers for EnergyPlus's static SQLite tables (`Zones`, `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`), in place of raw `SQLResult.query` rows. | Yes; bridged by `_sql_tables.py` meanwhile |
+| UP-8 (new) | epinterface | SBEM energy conversion beyond a constant COP, still on ideal loads: a specific fan power and ideal-loads supply-air temperature limits, with fans reported as their own end use; and a COP that depends on outdoor temperature (R12, R19). | Yes (SC-002's fan target). Reduction is built without it: fans are folded into `DistributionCOP` and reported as not represented until it lands. |
 
 The roadmap is updated with UP-6, UP-7 and UP-8 and the broader UP-2 and UP-5 scope. UP-3 is
 open: it gates only v3's PyPI release (roadmap C-18).

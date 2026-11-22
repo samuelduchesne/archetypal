@@ -6,7 +6,7 @@ strict) and documented with Google-style docstrings. Spec 001 owns the command l
 
 ```python
 from archetypal import reduce, merge, compare, Layout, ReductionOptions
-from archetypal.reduction import RESULTS_REQUIREMENTS, Reduction
+from archetypal.reduction import RESULTS_REQUIREMENTS, Reduction, schedule_compact
 from archetypal.comparison import ComparisonResult, AcceptanceTargets
 from archetypal.errors import (
     ArchetypalError, ReductionError, NoConditionedZones, MissingResults,
@@ -53,7 +53,9 @@ class Reduction:
         """Write <name>.sbem.json and <name>.report.json; refuse to overwrite unless asked."""
 
     @classmethod
-    def read(cls, archetype_path: str | os.PathLike[str], report_path: str | os.PathLike[str] | None = None) -> Reduction: ...
+    def read(cls, archetype_path: str | os.PathLike[str], report_path: str | os.PathLike[str] | None = None) -> Reduction:
+        """Read an archetype and its report. With report_path None, the report is
+        <name>.report.json beside <name>.sbem.json; a missing report raises ReductionError."""
 ```
 
 ## `merge`
@@ -63,8 +65,9 @@ def merge(reduction: Reduction, layout: Layout, *, small_group_threshold: float 
 ```
 
 - It uses the report's pre-threshold ledgers.
-- It raises `ReductionError` when the target layout is not coarser than or equal to the
-  source's, or when the report is missing.
+- It raises `ReductionError` when the target layout is strictly finer than the source's, or
+  when the report is missing. Incomparable targets (`SPACE_USE` → `CORE_PERIMETER` and back)
+  are allowed, because the report keeps ledgers at the finest key.
 - **Guarantee:** `merge(reduce(m, r, options=o), L)` equals
   `reduce(m, r, options=o.model_copy(update={"layout": L}))`, with parameters within 0.1 %
   (SC-007). Ledgers add exactly, so the result is normally identical.
@@ -83,6 +86,21 @@ def compare(
 
 It raises `NotComparableError` naming every difference in weather, run period, units,
 timestep or reporting frequency (FR-028).
+
+## `schedule_compact`
+
+```python
+def schedule_compact(schedule: epinterface.sbem.<YearComponent>, *, name: str | None = None) -> str: ...
+```
+
+- Returns the EnergyPlus `Schedule:Compact` object, as IDF text, for any schedule an archetype
+  holds (FR-023): one `Through: <month end>` block per run of equal months, `For:` blocks
+  Monday to Sunday, and `For: Holiday`, `SummerDesignDay`, `WinterDesignDay` once UP-2's slots
+  exist.
+- `name` defaults to the schedule's `Name`.
+- Lossless: evaluating the text with idfkit gives the same hourly values as the SBEM schedule
+  on the reference year.
+- Works on any archetype, not only one 002 produced (for example one read from UMI by 003).
 
 ## `RESULTS_REQUIREMENTS`
 

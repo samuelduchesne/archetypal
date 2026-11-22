@@ -54,8 +54,9 @@ R15: its claims are not yet verified), and collect the UMI test set.
 - [ ] T001 Confirm on the `v3` branch that spec 001's foundation (Phases 1–2: shared tooling,
   test tiers, docs checks, `src/archetypal/errors.py`) and spec 002's pieces 003 calls are
   done: `reduction/schedules.py` projection (002 T026), `reduction/ledger.py` (002 T048),
-  `merge(reduction, layout)` and `Layout.CORE_PERIMETER` (002 T070), and the `Reduction`
-  type. Create `src/archetypal/umi/__init__.py` and `src/archetypal/umi/rules/__init__.py`
+  `Layout` (002 T021) with the `CORE_PERIMETER` key (002 T069), `merge(reduction, layout)`
+  (002 T070), which reaches core/perimeter from any layout, and the `Reduction` type (002
+  T059). Create `src/archetypal/umi/__init__.py` and `src/archetypal/umi/rules/__init__.py`
   with module docstrings only, and the folders `tests/unit/umi/`, `tests/umi/`,
   `tests/fixtures/umi/edge/`, `tests/data/umi/`, `verification/umi/`.
 - [ ] T002 Write the .NET 8 harness in `tools/basilisk-check/` (research R15):
@@ -361,7 +362,8 @@ merged to core/perimeter and that the report lists the merged groups and dropped
 - [ ] T048 [US1] Add `docs/reference/api/umi.md` (mkdocstrings page for `archetypal.umi`) and
   wire it into the API reference nav.
 
-**Checkpoint**: quickstart scenarios 2 and 3 pass; the `basilisk` CI job is green.
+**Checkpoint**: the pytest and harness steps of quickstart scenarios 2 and 3 pass (their
+`archetypal` command steps wait for 001's Phase 3); the `basilisk` CI job is green.
 
 ---
 
@@ -418,7 +420,8 @@ the report.
 - [ ] T056 [P] [US2] Write `docs/how-to/read-a-umi-library.md` with `/project-kit:diataxis`
   (how-to): read a library, read the loss report, skip invalid templates, use strict mode.
 
-**Checkpoint**: quickstart scenarios 1 and 6 pass; spec 001's `translate` command can be
+**Checkpoint**: quickstart scenario 6 and the pytest step of scenario 1 pass (its `archetypal
+translate` step waits for 001's Phase 3); spec 001's `translate` command can be
 built (001 research R14).
 
 ---
@@ -467,7 +470,8 @@ with `diff_umi`; every difference is in a report.
 - [ ] T064 [P] [US3] Add "Check a round trip with `diff_umi`" to
   `docs/how-to/write-archetypes-to-umi.md`.
 
-**Checkpoint**: quickstart scenarios 4 and 5 pass, with SC-003's UP-9 fields expected to fail.
+**Checkpoint**: quickstart scenario 4 passes, with SC-003's UP-9 fields expected to fail, and
+`tests/unit/umi/test_strict.py` passes (scenario 5's command form waits for 001's Phase 3).
 
 ---
 
@@ -518,8 +522,8 @@ I). T068 and T069 are independent; T070 follows T068 field by field.
   reminder test of T017, raise the idfkit lower bound in `pyproject.toml`, and remove the
   bridge row from plan.md's Complexity Tracking.
 
-**Checkpoint**: SC-003 holds without `xfail`; 003 can be marked implemented (plan.md,
-Upstream dependencies).
+**Checkpoint**: SC-003 holds without `xfail`, every UP-9 field is mapped, and the bridge is
+gone; 003 can be marked implemented (plan.md, Upstream dependencies; roadmap C-20).
 
 ---
 
@@ -529,9 +533,12 @@ Upstream dependencies).
   `to_umi`, the diffs, the loss report file, and each loss that waits on UP-9 or UP-10.
 - [ ] T074 Run every quickstart scenario, `make check`, `make docs-test` and the unit tier's
   time budget, and fix what fails.
-- [ ] T075 Mark 003 implemented in `.specify/memory/roadmap.md` once UP-2's zone groups and
-  unset shares and UP-9's simulation fields are released by the fork and SC-001–SC-007 hold;
-  milestone M1 (`v3.0.0aN`) waits for 001 and 002 (roadmap C-18).
+- [ ] T075 Mark 003 implemented in `.specify/memory/roadmap.md` once SC-001–SC-007 hold and its
+  blocking items are released (plan.md, Upstream dependencies; roadmap C-20): UP-2's zone
+  groups and unset shares and every UP-9 field by the fork (T068–T070 done), and UP-10 by
+  idfkit (T072 done). Milestone M1 (`v3.0.0aN`) needs only 003's success criteria met on the
+  tag, with UP-9's fields reported as lost and SC-003's `xfail`s explained in the changelog
+  (roadmap C-18).
 
 ---
 
@@ -551,7 +558,7 @@ Upstream dependencies).
 - **Checks across stories (6)**: after US3; T066 also needs 002's reference set (002 Phase 6).
 - **Upstream follow-ups (7)**: each task when its upstream item exists; T070 after T068 or
   T069, field by field; T071 after 002's T086.
-- **Polish (8)**: after Phases 3–6; T075 last, after T068 and T070.
+- **Polish (8)**: after Phases 3–6; T075 last, after T068–T070 and T072.
 - **Spec 001**: its `translate` command and `reduce --to umi` (001 Phase 3) can start once
   T046 and T055 are done.
 
@@ -608,8 +615,9 @@ T047, T048                      T056
 1. Spec 001's foundation and 002's merge, then Setup (the harness first) and Foundational,
    including the fork's unset shares.
 2. User Story 1: write archetypes to UMI.
-3. **Stop and validate**: quickstart scenarios 2 and 3. With 002, this delivers v2's core
-   workflow, "reduce a detailed model and get a UMI template library" (roadmap C-10).
+3. **Stop and validate**: the pytest and harness steps of quickstart scenarios 2 and 3. With
+   002, this delivers v2's core workflow, "reduce a detailed model and get a UMI template
+   library" (roadmap C-10).
 
 ### Incremental delivery
 

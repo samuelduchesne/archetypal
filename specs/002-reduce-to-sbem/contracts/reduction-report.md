@@ -17,8 +17,9 @@ section ReductionReport.
    appears in `parameters[]` with a rule id from the derivation table (FR-025).
 4. **Nothing dropped silently.** Every feature in the model that has no SBEM counterpart, and
    every value folded into another parameter, appears in `not_represented[]` (FR-026).
-5. **Mergeable.** `pre_threshold_groups[]` holds full ledgers, enough for `merge` to work
-   without the model (FR-010, FR-011).
+5. **Mergeable.** `pre_threshold_groups[]` holds full ledgers at the finest key (space use,
+   exposure), whatever the layout, enough for `merge` to reach any layout that is not strictly
+   finer, without the model (FR-010, FR-011).
 6. **Reproducible.** The `reproducibility` block holds all versions, hashes and options
    (Key Entities: Reduction report). Two reductions with equal inputs produce byte-identical
    files.

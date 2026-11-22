@@ -239,7 +239,8 @@ UP-2 (002 research). UP-9 also fixes two epinterface defects that would break co
 **Blocking.** Until a field lands in a fork release, every read reports it as lost (FR-010),
 with the UP item. The translator is built and tested without UP-9. 003 cannot be marked
 implemented until UP-9's simulation-relevant (`S`) fields are released, because SC-003
-measures them (spec feedback F-5). The `L` and `D` fields do not block.
+measures them (spec feedback F-5). The `L` and `D` fields block it too, because FR-010
+requires descriptive fields to map to SBEM (roadmap C-20); none of them blocks building 003.
 
 **Rationale.** It follows C-13 and constitution I: the gap is closed in SBEM, not by a side
 model in archetypal.
@@ -679,7 +680,9 @@ dependencies (002 research R17).
 ## Spec feedback
 
 Points for `/speckit-analyze` (constitution V: the plan satisfies the spec and does not rewrite
-it):
+it). **All five resolved on 2026-11-22** after the cross-spec analysis: the spec now uses the
+suggested wording (FR-002, FR-007, FR-010, US2 scenario 2, the "Schedules" and "UMI library
+versions" edge cases, and the assumptions, which list UP-9; roadmap C-20).
 
 - **F-1 — FR-007's reason is wrong about Basilisk.** "Orphaned components (components no
   building template uses), which UMI's library code rejects" is not true: Basilisk rejects

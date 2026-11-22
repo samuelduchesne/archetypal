@@ -91,14 +91,24 @@ Every Markdown file under `docs/` (FR-022, SC-008, R5).
 
 ## Public interface
 
-The names and commands documented in the reference (FR-007). At M1:
+The names and commands documented in the reference (FR-007), module by module, as 002's and
+003's contracts define them. At M1:
 
-- **From 002:** `reduce`, `merge`, `compare`, `Layout`, `ReductionOptions`, `Reduction`,
-  `ComparisonResult`, `AcceptanceTargets`, `RESULTS_REQUIREMENTS`.
-- **From 003:** `read_umi`, `write_umi`, `to_umi` and `TranslationReport` (003
-  contracts/python-api.md; 001 R14).
-- **From 001:** the errors of R8; `__version__`.
+- **`archetypal`** (top level): `__version__`; from 002, `reduce`, `merge`, `compare`, `Layout`,
+  `ReductionOptions`; from 003, `read_umi`, `write_umi`.
+- **`archetypal.reduction`** (002): `Reduction`, `RESULTS_REQUIREMENTS`, `schedule_compact`.
+- **`archetypal.comparison`** (002): `ComparisonResult`, `AcceptanceTargets`.
+- **`archetypal.umi`** (003): `to_umi`, `UmiImport`, `UmiExport`, `TranslationReport`, `Loss`,
+  `LossKind`, `Note`, `NoteKind`, `diff_umi`, `diff_archetypes`, `UmiDiff`, `ArchetypeDiff`,
+  `CORRESPONDENCE`, `FieldMapping`, `Relevance`, `MappingStatus`.
+- **`archetypal.errors`**: the errors of R8, with 002's (`ReductionError`,
+  `NoConditionedZones`, `MissingResults`, `ModelResultsMismatch`,
+  `UnsupportedEnergyPlusVersion`) and 003's (`UmiFormatError`, `UmiValidationError`,
+  `Problem`).
 - **Commands:** `archetypal reduce`, `merge`, `compare`, `translate`.
+
+These five modules are public; every other module is private (underscore-prefixed or
+undocumented), including `archetypal.umi._format`.
 
 Everything else is private: modules prefixed with `_`, or listed as internal in the API
 reference. The interface may change between milestones, with a changelog entry; it is stable

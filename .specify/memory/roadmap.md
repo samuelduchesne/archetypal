@@ -1,6 +1,26 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.10.0 → 1.11.0
+Bump rationale: MINOR — the cross-spec analysis of 001–003 found that the plans listed upstream
+items their "mark implemented" tasks ignored (constitution, Development Workflow). New decision
+C-20 states what blocks "implemented"; C-10 and C-18 no longer need 001 implemented before the
+release that verifies its FR-001.
+
+Changes this revision:
+  - Added C-20: blocking items, bridged items, and items that are not dependencies
+  - C-10: v3.0 needs 002 and 003 implemented and 001's criteria other than FR-001 met
+  - C-18: a milestone tag needs its specs' success criteria met on the tag, not "implemented"
+  - UP-2: heat-recovery effectiveness is sensible and latent; stale "UMI fields" clause removed
+  - UP-9: all its fields block marking 003 implemented (S: SC-003; L and D: FR-010)
+  - UP-10: blocks marking 003 implemented (bridged meanwhile), not building it
+  - 001 depends also on UP-4 (SC-002); 002 depends on UP-7 (bridged); 003 on all of UP-9
+  - 002: spec feedback F-2 marked resolved
+
+Specs affected: 001, 002, 003 (plans and their mark-implemented tasks)
+Open questions added/resolved: none
+
+Previous revision (1.10.0):
 Version change: 1.9.0 → 1.10.0
 Bump rationale: MINOR — spec 003's plan mapped every UMI field to SBEM. The fields SBEM lacks
 become a new upstream item UP-9 (split from UP-2, which blocks 002 and needs none of them);
@@ -198,7 +218,7 @@ Living, non-binding map of the specs planned for archetypal v3. It is **not a co
 order or scope**. It captures the decisions, technology choices, outcomes and constraints from
 the v3 design conversation so they are not lost before the spec that needs them is written.
 Specs are scoped and clarified when they are actually started. Foundation: the project
-[constitution](constitution.md) (1.4.0).
+[constitution](constitution.md) (1.5.0).
 
 Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **specced** ·
 **in-progress** · **implemented** · **verified** · **deferred** · **abandoned**.
@@ -258,8 +278,9 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   same pull request as the behaviour it describes. *Constitution VI.*
 - **C-10 — No release regresses v2's core capability:** v2's core workflow is "reduce a
   detailed EnergyPlus model and get a UMI template library". The first PyPI release (v3.0,
-  C-18) ships only when 001, 002 and 003 are all implemented and verified, so a v3.0 user can
-  still do that (reduce to SBEM, then write UMI JSON). The spec numbers order the writing, not
+  C-18) ships only when 002 and 003 are implemented and verified and 001's success criteria
+  hold except FR-001 (install from PyPI), which that release itself verifies (C-20), so a v3.0
+  user can still do that (reduce to SBEM, then write UMI JSON). The spec numbers order the writing, not
   separate releases.
   ~~Revision 1.7.0: v3.0 was the first milestone and the first release at once.~~
 - **C-11 — Zone groups and layouts** *(resolves Q6)*: reduction groups the detailed model's
@@ -344,7 +365,8 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   *(constitution VI)*: archetypal 3 is taken as far as it can go before its first PyPI
   release, which cannot happen before UP-3.
   - *Milestones:* M1 (001–003), M2 (004–005), M3 (006–007). Each ends with a git tag with the
-    next pre-release version (`v3.0.0a1`, …), its specs verified, its documentation built and
+    next pre-release version (`v3.0.0a1`, …), its specs' success criteria met on the tag (their
+    "implemented" status may come later, C-20), its documentation built and
     its changelog section written, exactly as for a release. Users can install a tag from git.
   - *Publish point:* the first PyPI release, v3.0.0, is cut as soon as UP-3 is met and the
     latest milestone is verified, whatever milestone that is. Specs not yet finished never
@@ -369,6 +391,20 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   - Project-wide tooling (layout, type checking, lint rules, test tiers, CI) is decided once,
     in spec 001's plan; other plans cite it.
 
+- **C-20 — What blocks "implemented"** *(constitution, Development Workflow; Principle I)*:
+  every plan's upstream table marks each item as one of:
+  - *Blocking:* the spec needs it to meet a requirement or success criterion. The spec is
+    marked implemented only when the fork (epinterface) or idfkit has released it.
+  - *Blocking, bridged meanwhile:* the same, but a temporary bridge (Principle I) lets the
+    spec be built, tested and tagged in a milestone first. The bridge's removal is the spec's
+    last task.
+  - *Not a dependency:* listed only because a reported loss, an install-size target outside
+    the spec, or the PyPI release (UP-3, C-18) waits on it. It never holds the spec back.
+
+  Each spec's "mark implemented" task names exactly its blocking items. Milestones (C-18) need
+  success criteria met, not this status. 001's FR-001 can only be verified by the v3.0.0 PyPI
+  release, so 001 is marked implemented after that release.
+
 ## Upstream Prerequisites
 
 Not archetypal specs. Pull requests to other repositories that archetypal specs depend on.
@@ -382,10 +418,9 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   Prisma client, and declare PyYAML (imported by `sbem/builder.py`, undeclared in 1.5.0).
   *Blocking for 002.*
 - **UP-2 — epinterface `Model` holds several zone groups** (zone definition plus floor-area
-  share, C-03), plus whatever simulation-relevant fields the UMI field mapping shows are missing
-  (C-13). Built by us, released in the fork, offered upstream (C-17). The 002 plan's research
+  share, C-03). Built by us, released in the fork, offered upstream (C-17). The 002 plan's research
   adds: envelope and window ratios by orientation, an infiltration schedule, numeric
-  heat-recovery effectiveness, holiday and design-day slots in `WeekComponent`, and save/load
+  heat-recovery effectiveness (sensible and latent, as UMI holds them), holiday and design-day slots in `WeekComponent`, and save/load
   helpers with a schema version. The 003 plan adds: floor-area shares may be unset for every
   group, meaning "set by the building's geometry when applied", as UMI does. Zone groups block
   002; unset shares block 003; each added field does not (its loss is reported until it
@@ -439,12 +474,13 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   version); a structure component; environmental fields on materials and assemblies; metadata
   on schedules. Also fixes `fractional_year_sum`'s weekday count and `Provider="Both"`
   ignoring natural ventilation. Built by us, released in the fork, offered upstream (C-14,
-  C-17). *Not blocking for implementing 003*; its simulation-relevant fields block marking
-  003 implemented (SC-003). Until each lands, every read reports it as lost.
+  C-17). *Not blocking for building 003*; all its fields block marking 003 implemented: the
+  simulation-relevant ones for SC-003, the life-cycle and descriptive ones for FR-010 (C-20). Until each lands, every read reports it as lost.
 - **UP-10 — idfkit: equivalent glazing layer of a simple-glazing window**, from EnergyPlus's
   simple window model (U, SHGC and VT → one glazing layer). UMI has no simple-glazing material,
-  so writing an archetype with simple glazing to UMI needs it. *Not blocking*: 003 bridges it
-  temporarily (003 plan, Complexity Tracking).
+  so writing an archetype with simple glazing to UMI needs it. *Blocking, bridged meanwhile*
+  (C-20): 003 is built and tagged with a temporary bridge (003 plan, Complexity Tracking) and
+  marked implemented once idfkit releases it.
 
 ## Planned Specs
 
@@ -463,8 +499,8 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   readers, schedules, data portal, vendored geomeppy); v2 → v3 migration guide; documentation
   site structure; v2 maintenance branch.
 - **Scope (out):** reduction and translation behaviour themselves (002, 003).
-- **Depends on:** UP-1 (in the fork, C-17); UP-3 for the PyPI release that delivers its
-  outcome
+- **Depends on:** UP-1 (in the fork, C-17); UP-4 (SC-002); UP-3, through the v3.0.0 release
+  that verifies FR-001 (C-20)
 - **Governed by:** C-01, C-07, C-08, C-09, C-19
 - **Notes:** Not a milestone on its own (C-10): it is tagged together with 002 and 003 as M1.
   Until the first PyPI release (C-18), its installation page and migration guide describe
@@ -494,10 +530,10 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   demonstrated on reference buildings; the matching explanation page in the docs.
 - **Scope (out):** algorithms and code structure (the plan's job, C-04); calibration (C-05);
   generating EnergyPlus from the archetype (epinterface).
-- **Depends on:** 001, UP-1, UP-2, UP-6, UP-8 (UP-7 desirable)
+- **Depends on:** 001, UP-1, UP-2 (zone groups), UP-8; UP-6 and UP-7 (bridged meanwhile, C-20)
 - **Governed by:** C-02, C-03, C-04, C-11, C-12
 - **Spec dir:** specs/002-reduce-to-sbem/ (plan written; spec feedback F-1 on SC-002 resolved
-  by FR-022a and UP-8; F-2 on FR-023 open for `/speckit-analyze`)
+  by FR-022a and UP-8; F-2 on FR-023 resolved 2026-11-22)
 - **Notes:** The spec states the *what* and *why* of reduction, not the *how*, so that
   `/speckit-plan` can design the rewrite freely. Evidence gathered from v2 for the spec's
   motivation: perimeter aggregation includes core zones; zone multipliers are applied by
@@ -518,8 +554,8 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   is told; UMI library-level concerns (shared components,
   naming, duplicates such as #459).
 - **Scope (out):** UMI templates as editable Python objects (C-02); other formats (008).
-- **Depends on:** 001, 002 (merging, schedule projection), UP-2, UP-9 (for verification),
-  UP-10 (bridged)
+- **Depends on:** 001, 002 (merging, schedule projection), UP-2 (zone groups, unset shares),
+  UP-9 (all fields, for marking implemented), UP-10 (bridged meanwhile, C-20)
 - **Governed by:** C-02, C-11, C-13
 - **Spec dir:** specs/003-umi-translation/
 - **Notes:** The field mapping done for this spec decided what SBEM must add: UP-9 (C-13).
@@ -624,4 +660,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.10.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
+**Version**: 1.11.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

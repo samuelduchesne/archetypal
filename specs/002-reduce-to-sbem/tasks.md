@@ -107,8 +107,9 @@ models and results, schedules, deterministic files and test fixtures.
   names the supported range and `idfkit.migration.migrate`.
 - [ ] T013 [P] Test options in `tests/unit/test_options.py`: `Layout` coarseness order
   (`SPACE_USE_EXPOSURE` ≤ `SPACE_USE`, `CORE_PERIMETER` ≤ `SINGLE_ZONE`; `SPACE_USE` and
-  `CORE_PERIMETER` not comparable); `small_group_threshold` "a share of conditioned floor area
-  in [0, 1)" is enforced; `ReductionOptions` is frozen.
+  `CORE_PERIMETER` not comparable; `Layout.is_strictly_finer(a, b)`, which `merge` uses);
+  `small_group_threshold` "a share of conditioned floor area in [0, 1)" is enforced;
+  `ReductionOptions` is frozen.
 - [ ] T014 [P] Test the static-table rows in `tests/unit/test_sql_tables.py` against the
   committed fixture SQLite files: one typed row per record, types converted and checked at the
   boundary, a clear error on an unexpected column type.
@@ -124,8 +125,10 @@ models and results, schedules, deterministic files and test fixtures.
   starts on the `RunPeriod` start weekday and marks `RunPeriodControl:SpecialDays`;
   evaluation is memoised by name; projection onto month × weekday conserves each month's
   energy exactly and is linear (projecting a weighted sum equals the weighted sum of
-  projections, a hypothesis property); the `Schedule:Compact` text has one `Through:` per
-  month and `For:` blocks Monday to Sunday.
+  projections, a hypothesis property); the public `schedule_compact(year)` returns a
+  `Schedule:Compact` with one `Through:` per run of equal months and `For:` blocks Monday to
+  Sunday, which idfkit evaluates to the same hourly values as the `YearComponent`, for every
+  schedule of a committed fixture archetype (FR-023, contracts/python-api.md).
 - [ ] T018 [P] Test the UP-6 bridge in `tests/unit/test_bridges.py`: a `Schedule:Year` loaded
   from a file evaluates after normalisation, the original object is not modified, and a
   marked test fails once the installed idfkit no longer needs the bridge (reminder to remove
@@ -175,7 +178,8 @@ models and results, schedules, deterministic files and test fixtures.
   on the run-period calendar, memoised by name, with `Schedule:Year` passed through
   `_bridges.normalise_schedule_year`; `project(profile)` onto SBEM's month × weekday
   representative days; conversion to epinterface `YearComponent`/`WeekComponent`/
-  `DayComponent`; and `to_schedule_compact(name, profile)` text (research R5, FR-023).
+  `DayComponent`; and the public `schedule_compact(year, *, name=None)`, turning any
+  `YearComponent` into `Schedule:Compact` text (research R5, FR-023).
 - [ ] T027 [P] Implement `src/archetypal/io.py`: deterministic JSON writing and reading for
   `<name>.sbem.json` (epinterface's `model_dump_json`, indented, keys in model order) and
   `<name>.report.json`, with the encoding rules of `contracts/reduction-report.md`
@@ -250,7 +254,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
 - [ ] T038 [P] [US1] Test grouping in `tests/unit/test_grouping.py` at the default layout: one
   group per (space use, exposure); groups below the threshold merge into the most similar
   group of the same exposure, smallest first, ties broken by key; a small group with nothing
-  to merge into is kept; pre-threshold groups are kept (FR-008, FR-011).
+  to merge into is kept; pre-threshold groups are kept at the finest key (FR-008, FR-011).
 - [ ] T039 [P] [US1] Test conversion in `tests/unit/test_to_sbem.py`: every derivation rule of
   data-model.md produces its SBEM field from a synthetic ledger; the archetype validates as the
   fork's multi-group model; every set leaf field has a `parameters[]` entry with its rule id;
@@ -329,7 +333,8 @@ accounts for every zone (spec US1, SC-005, SC-006).
   `find_unsupported(source) -> tuple[NotRepresented, ...]` with affected zones and, where the
   results give it, annual energy.
 - [ ] T056 [US1] Implement `src/archetypal/reduction/grouping.py` for the default layout:
-  ledgers summed by group key in sorted key order; pre-threshold groups kept; the threshold
+  ledgers summed by group key in sorted key order; pre-threshold groups kept at the finest key
+  (space use, exposure) whatever the layout; the threshold
   loop with the similarity distance of data-model.md (gain densities, annual gain hours,
   setpoint means, outdoor air per area, hot water per area, each scaled by the building-wide
   value), merges recorded (FR-008, FR-011).
@@ -357,7 +362,9 @@ accounts for every zone (spec US1, SC-005, SC-006).
   `RESULTS_REQUIREMENTS`, run once with `idfkit.simulation.simulate(...,
   cache=SimulationCache())`, require `weather` (FR-002).
 - [ ] T061 [US1] Re-export `reduce`, `Layout`, `ReductionOptions` and the errors from
-  `src/archetypal/__init__.py`, and mark every other module of `archetypal.reduction` private
+  `src/archetypal/__init__.py`, export `Reduction`, `RESULTS_REQUIREMENTS` and
+  `schedule_compact` from `src/archetypal/reduction/__init__.py`, and mark every other module
+  of `archetypal.reduction` private
   (contracts/python-api.md, Stability).
 - [ ] T062 [P] [US1] Write `tests/integration/test_single_run.py` (`@pytest.mark.energyplus`):
   `reduce(model, simulate=True, weather=epw)` on `three_zone.idf` runs EnergyPlus once and
@@ -391,13 +398,16 @@ the default layout and merge; the archetypes match (spec US2, SC-007).
 
 - [ ] T067 [P] [US2] Extend `tests/unit/test_grouping.py`: each layout's group keys; threshold
   applied once to the requested layout's groups, never to an intermediate layout's;
-  `merged_distinctions` lists the space uses or exposures lost; the bar building at
+  pre-threshold groups stay at the finest key under every layout;
+  `merged_distinctions` has one entry per resulting group with `into_key`, sorted `from_keys`
+  and `lost`; the bar building at
   core/perimeter gives a perimeter group only with a report note (US2 scenarios 1 and 3).
 - [ ] T068 [P] [US2] Write `tests/unit/test_merge.py`: a hypothesis property that
   `merge(reduce(m, r, options=o), L)` equals `reduce(m, r,
-  options=o.model_copy(update={"layout": L}))` within 0.1 % for every pair of comparable layouts
-  (FR-010, SC-007); `merge` refuses a finer or incomparable target and a reduction without a
-  report; merging works from files read back with `Reduction.read` (quickstart scenario 4).
+  options=o.model_copy(update={"layout": L}))` within 0.1 % for every pair of layouts where `L`
+  is not strictly finer, including `SPACE_USE` → `CORE_PERIMETER` (FR-010, SC-007, spec 003);
+  `merge` refuses a strictly finer target and a reduction without a report; merging works from
+  files read back with `Reduction.read` (quickstart scenario 4).
 
 ### Implementation for User Story 2
 
@@ -406,10 +416,12 @@ the default layout and merge; the archetypes match (spec US2, SC-007).
   similar group"), and the list of merged distinctions (FR-009, FR-011).
 - [ ] T070 [US2] Implement `merge(reduction, layout, *, small_group_threshold=None)` in
   `src/archetypal/reduction/__init__.py`: rebuild ledgers from the report's
-  `pre_threshold_groups`, regroup by the target key, threshold once, convert and report through
+  `pre_threshold_groups` (always at the finest key), refuse a strictly finer target, regroup by
+  the target key, threshold once, convert and report through
   the same path as `reduce` (data-model.md, Grouping and thresholding, step 4).
 - [ ] T071 [US2] Make `Reduction.read` in `src/archetypal/reduction/__init__.py` restore full
-  ledgers, profiles included, from `<name>.report.json`, so `merge` works without the model
+  ledgers, profiles included, from `<name>.report.json` (by default beside
+  `<name>.sbem.json`, the name stripped of `.sbem.json`), so `merge` works without the model
   (report invariant 5).
 - [ ] T072 [US2] Re-export `merge` from `src/archetypal/__init__.py`.
 - [ ] T073 [P] [US2] Write `docs/how-to/merge-an-archetype.md` and add choosing a layout to
@@ -504,12 +516,12 @@ released (constitution I). Each task is independent of the others.
   `DistributionCOP`, remove those `not_represented` entries, and update
   `tests/unit/test_to_sbem.py` and `tests/unit/test_conservation.py`.
 - [ ] T086 In the SBEM fork, implement UP-2's extra fields (per-orientation envelope and window
-  ratios, infiltration schedule, numeric heat-recovery effectiveness, holiday and design-day
-  slots in `WeekComponent`, save and load helpers with a schema version), one topic branch
-  each; tag the fork and open each upstream.
+  ratios, infiltration schedule, numeric heat-recovery effectiveness (sensible and latent),
+  holiday and design-day slots in `WeekComponent`, save and load helpers with a schema
+  version), one topic branch each; tag the fork and open each upstream.
 - [ ] T087 After T086, for each field released, write it in
   `src/archetypal/reduction/to_sbem.py`, add holiday and design-day blocks to
-  `to_schedule_compact` in `src/archetypal/reduction/schedules.py`, switch `io.py` to the
+  `schedule_compact` in `src/archetypal/reduction/schedules.py`, switch `io.py` to the
   fork's save and load helpers, and remove the matching `not_represented` entries and tests.
 - [ ] T088 [P] When idfkit releases UP-6, delete `src/archetypal/reduction/_bridges.py` and
   `tests/unit/test_bridges.py`, and raise the idfkit lower bound in `pyproject.toml`.
@@ -529,9 +541,10 @@ dependencies).
   item.
 - [ ] T091 Run every quickstart scenario, `make check` and the unit tier's time budget, and fix
   what fails.
-- [ ] T092 Mark 002 implemented in `.specify/memory/roadmap.md` once its blocking upstream items
-  are released by the fork and SC-001–SC-008 hold; milestone M1 (`v3.0.0aN`) waits for 001
-  and 003 (roadmap C-18).
+- [ ] T092 Mark 002 implemented in `.specify/memory/roadmap.md` once SC-001–SC-008 hold and its
+  blocking items are released (plan.md, Upstream dependencies; roadmap C-20): UP-1, UP-2's zone
+  groups and UP-8 by the fork, and UP-6 and UP-7 by idfkit (T088, T089 done); milestone M1
+  (`v3.0.0aN`) waits for 001 and 003 (roadmap C-18).
 
 ---
 

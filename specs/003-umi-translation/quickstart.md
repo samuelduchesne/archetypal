@@ -10,6 +10,8 @@ Runnable scenarios that show spec 003 works. Contracts:
 - The SBEM fork release with UP-2 (zone groups, unset shares). UP-9 is needed only for
   scenario 4's full pass.
 - .NET 8 SDK for scenario 3 (CI always has it).
+- Spec 001's command line (its Phase 3) for the `archetypal …` steps of scenarios 1, 2 and 5;
+  until then, run their pytest steps only.
 
 ## 1. Read the sample libraries (US2, SC-001)
 

@@ -36,8 +36,12 @@ archetypal reduce MODELS... -w/--weather EPW [-o/--output PATH] [--to umi|sbem]
 | `-p/--parallel` | `1` | Models processed at once. `-1` uses every core, as in v2. |
 | `--force` | off | Overwrite existing outputs (FR-015). |
 
-Reports: `<stem>.<model>.report.json` (002) for each model, and `<stem>.loss.json` (003) with
-`--to umi`, written beside the output.
+Reports, written beside the output:
+
+- `--to sbem`: `<model>.report.json` beside each `<model>.sbem.json` (002's `Reduction.write`),
+  the pair `merge` reads back.
+- `--to umi`: `<stem>.<model>.report.json` (002) for each model, where `<stem>` is the
+  library's file name without `.json`, and `<stem>.loss.json` (003).
 
 ## `merge`, `compare`, `translate`
 
@@ -50,7 +54,13 @@ archetypal translate SOURCE -o PATH [--strict] [--force]
 - `merge` reads `<name>.sbem.json` and its `<name>.report.json` (002's `merge`).
 - `compare` prints the comparison table; `--json` also writes it (002's `compare`).
 - `translate` goes UMI → SBEM when `SOURCE` is a UMI library, and SBEM → UMI when it is an
-  SBEM archetype or a folder of them (003). `--strict` turns any loss into an error.
+  SBEM archetype or a folder of them (003).
+  - UMI → SBEM: `PATH` is a folder; it receives `<template>.sbem.json` per building template
+    and `<library stem>.loss.json` (003's `UmiImport.write`).
+  - SBEM → UMI: `PATH` is the library file; `<stem>.loss.json` is written beside it (003's
+    `write_umi`).
+  - `--strict` turns any loss into an error: status 1, nothing written (003's
+    `LossyTranslationError`).
 
 ## Exit statuses and summary
 

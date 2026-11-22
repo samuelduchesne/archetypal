@@ -124,14 +124,16 @@ Every code example in these pages runs in CI against the fixtures (001 contract 
 
 ## Upstream dependencies (constitution: Development Workflow)
 
-"Released" means released by the SBEM fork for epinterface items (roadmap C-17).
+"Released" means released by the SBEM fork for epinterface items (roadmap C-17). Blocking
+follows roadmap C-20: 003 is marked implemented only when every item marked yes (bridged or
+not) is released; building and tagging 003 in M1 needs only UP-2.
 
-| Item | Repository | What | Blocking? |
+| Item | Repository | What | Blocks "implemented"? |
 |---|---|---|---|
-| UP-2 | epinterface | Zone groups, now also **unset floor-area shares** meaning "set by geometry" (research R4); numeric heat-recovery effectiveness; holiday and design-day slots; orientation ratios. | Yes: zone groups and unset shares. The rest: no (losses reported). |
-| UP-9 (new) | epinterface | SBEM fields for UMI (research R6): layered glazing, window settings, partition ratio, natural-ventilation limits, scheduled ventilation, mechanical-ventilation schedule, ideal-loads limits, heating and cooling availability, daylighting, adiabatic flags, archetype metadata, structure, environmental and schedule metadata. Also fixes `fractional_year_sum`'s weekday count and `Provider="Both"`. | Not for implementing. For marking 003 implemented: its `S` fields (SC-003). `L` and `D` fields do not block. |
-| UP-10 (new) | idfkit | The equivalent single glazing layer of a simple-glazing window, from EnergyPlus's simple window model. | No; bridged by `_bridges.equivalent_glazing_layer`. |
-| UP-3 | epinterface | Upstream PyPI release. | Only for v3's PyPI release (C-18). |
+| UP-2 | epinterface | Zone groups, now also **unset floor-area shares** meaning "set by geometry" (research R4); numeric heat-recovery effectiveness (sensible and latent); holiday and design-day slots; orientation ratios. | Yes: zone groups and unset shares, which also block building 003. The rest: not a dependency (losses reported). |
+| UP-9 (new) | epinterface | SBEM fields for UMI (research R6): layered glazing, window settings, partition ratio, natural-ventilation limits, scheduled ventilation, mechanical-ventilation schedule, ideal-loads limits, heating and cooling availability, daylighting, adiabatic flags, archetype metadata, structure, environmental and schedule metadata. Also fixes `fractional_year_sum`'s weekday count and `Provider="Both"`. | Yes, all fields: the `S` fields for SC-003, the `L` and `D` fields for FR-010 (descriptive fields MUST map to SBEM). Not for building or tagging 003: until each lands, its loss is reported. |
+| UP-10 (new) | idfkit | The equivalent single glazing layer of a simple-glazing window, from EnergyPlus's simple window model. | Yes; bridged by `_bridges.equivalent_glazing_layer` meanwhile (Complexity Tracking). |
+| UP-3 | epinterface | Upstream PyPI release. | Not a dependency; it gates only v3's PyPI release (C-18). |
 
 The roadmap is updated with UP-9, UP-10 and UP-2's unset shares, and C-13 now points to UP-9.
 

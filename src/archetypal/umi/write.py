@@ -641,9 +641,19 @@ class _Assembler:
     def __init__(self) -> None:
         self.namers: dict[str, UniqueNames] = {}
         self.memo: dict[Hashable, FormatModel] = {}
+        self.inputs: dict[int, tuple[FormatModel, FormatModel]] = {}
+        """Each input object already assembled (kept alive, so its `id` stays its own)."""
         self.losses: list[Loss] = []
 
     def component(self, model: FormatModel, pointer: str, subject: str) -> FormatModel:
+        seen = self.inputs.get(id(model))
+        if seen is not None and seen[0] is model:
+            return seen[1]
+        result = self._component(model, pointer, subject)
+        self.inputs[id(model)] = (model, result)
+        return result
+
+    def _component(self, model: FormatModel, pointer: str, subject: str) -> FormatModel:
         updates: dict[str, object] = {}
         content: list[tuple[str, Hashable]] = []
         for name, info in type(model).model_fields.items():
@@ -677,6 +687,8 @@ class _Assembler:
             return self.component(value, pointer, subject)
         if isinstance(value, tuple):
             items = cast("tuple[object, ...]", value)
+            if not any(isinstance(item, FormatModel | tuple) for item in items):
+                return items
             new: tuple[object, ...] = tuple(
                 self.value(item, f"{pointer}/{index}", subject) for index, item in enumerate(items)
             )
@@ -689,7 +701,10 @@ def _identity(value: object) -> Hashable:
     if isinstance(value, FormatModel):
         return ("component", id(value))
     if isinstance(value, tuple):
-        return tuple(_identity(item) for item in cast("tuple[object, ...]", value))
+        items = cast("tuple[object, ...]", value)
+        if not any(isinstance(item, FormatModel | tuple | Enum) for item in items):
+            return items
+        return tuple(_identity(item) for item in items)
     if isinstance(value, Enum):
         return (type(value).__name__, value.value)
     return cast("Hashable", value)

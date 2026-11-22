@@ -275,7 +275,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   comparing `ten_zone_multipliers` with `ten_zone_explicit`: groups, floor areas and every
   FR-014–FR-021 total within 0.1 %; FR-022 and FR-022a values compared only within the
   difference of the two simulations.
-- [ ] T044 [P] [US1] Write `tests/unit/test_features.py`: on `bar_building`, the daylighting
+- [X] T044 [P] [US1] Write `tests/unit/test_features.py`: on `bar_building`, the daylighting
   controls and exterior lights of the fixture appear in `not_represented[]` with the zones they
   affect, and exterior lights with their annual energy; on `three_zone`, no entry comes from
   `UNSUPPORTED_FEATURES` (FR-026, R20).
@@ -327,7 +327,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   standard-density air volume per zone (zone-equipment fans to their zone, air-loop fans by
   hourly inlet-node mass flow), per-mode volume and delivered energy, volume without demand;
   `specific_fan_power` and `effective_supply_delta` (R19).
-- [ ] T055 [P] [US1] Implement `src/archetypal/reduction/features.py`: the
+- [X] T055 [P] [US1] Implement `src/archetypal/reduction/features.py`: the
   `UNSUPPORTED_FEATURES` table of research R20 (object type, what it does, the parameter its
   effect is folded into or none), read with literal keys only (R18), and
   `find_unsupported(source) -> tuple[NotRepresented, ...]` with affected zones and, where the

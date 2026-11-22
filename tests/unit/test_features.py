@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from idfkit import load_idf
 from pydantic import ValidationError
 
 from archetypal.reduction.features import UNSUPPORTED_FEATURES, NotRepresented, find_unsupported
@@ -91,11 +92,29 @@ def test_only_present_features_listed(bar_building: tuple[NotRepresented, ...]) 
 
 def test_entries_in_table_order(bar_building: tuple[NotRepresented, ...]) -> None:
     order = [feature.object_type for feature in UNSUPPORTED_FEATURES]
-    found = [order.index(entry.object_type) for entry in bar_building]
+    found = [order.index(entry.object_type or "") for entry in bar_building]
     assert found == sorted(found)
 
 
+def test_shading_resolves_zones_through_surfaces() -> None:
+    doc = load_idf(MODELS / "bar_building.idf")
+    doc.add("Shading:Overhang", "South Overhang", window_or_door_name="South_Perimeter_Wall_01_Window", depth=1.0)
+    doc.add(
+        "Shading:Site:Detailed",
+        "Tree",
+        vertices=[
+            {"vertex_x_coordinate": 0.0, "vertex_y_coordinate": -5.0, "vertex_z_coordinate": 0.0},
+            {"vertex_x_coordinate": 1.0, "vertex_y_coordinate": -5.0, "vertex_z_coordinate": 0.0},
+            {"vertex_x_coordinate": 1.0, "vertex_y_coordinate": -5.0, "vertex_z_coordinate": 5.0},
+        ],
+    )
+    entries = find_unsupported(load_sources(doc, MODELS / "bar_building.sql"))
+    assert _entry(entries, "Shading:Overhang").affected_zones == ("South_Perimeter",)
+    assert _entry(entries, "Shading:Site:Detailed").affected_zones == ("North_Perimeter", "South_Perimeter")
+
+
 def test_three_zone_has_no_unsupported_feature() -> None:
+    # Runs every reader of the table: a row without one raises KeyError.
     assert find_unsupported(_sources("three_zone")) == ()
 
 

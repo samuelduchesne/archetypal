@@ -196,7 +196,8 @@ models and results, schedules, deterministic files and test fixtures.
   - `bar_building.idf`: perimeter zones only (US2 scenario 3), with `Daylighting:Controls` and
     `Exterior:Lights` for R20;
 
-  each with a `.sql` result cut down to the R2 outputs, a few MB each, committed.
+  each with a `.sql` result cut down to the R2 outputs, committed: a few MB each, except
+  `ten_zone_explicit.sql` (about 30 MB), whose 37 zones need 176 hourly series.
 
 **Checkpoint**: the foundation's unit tests pass; `make check` is clean.
 
@@ -258,8 +259,8 @@ accounts for every zone (spec US1, SC-005, SC-006).
 - [X] T039 [P] [US1] Test conversion in `tests/unit/test_to_sbem.py`: every derivation rule of
   data-model.md produces its SBEM field from a synthetic ledger; the archetype validates as the
   fork's multi-group model; every set leaf field has a `parameters[]` entry with its rule id;
-  the number of storeys is right for `ten_zone_multipliers` (one typical floor × 10) and
-  `three_zone` (R6, FR-024).
+  the number of storeys is right for `ten_zone_multipliers` (12: ground, one typical floor
+  × 10 and top; the basement is unconditioned) and `three_zone` (R6, FR-024).
 - [X] T040 [P] [US1] Test the report in `tests/unit/test_report.py`: invariants 1–7 of
   `contracts/reduction-report.md` on the fixture reductions, and the published JSON Schema
   validates the written file.

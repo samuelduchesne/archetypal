@@ -39,6 +39,7 @@ nav:
       - explanation/index.md
       - explanation/stack.md
       - explanation/reduction.md
+      - explanation/umi-translation.md
 # Generates the removed-capability tables of the migration guide and reference (spec 001, R7).
 hooks:
   - docs/hooks/removed.py

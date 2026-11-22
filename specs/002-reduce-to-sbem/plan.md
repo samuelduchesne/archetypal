@@ -45,9 +45,9 @@ epinterface; research R15, R17).
 
 **Primary Dependencies**:
 - epinterface, from the maintained fork (roadmap C-17): declared as `epinterface>=X` and
-  resolved to a fork tag through `[tool.uv.sources]`; SBEM data model, first fork tag with
-  UP-1 and UP-2;
-- idfkit `>=1.3,<2` (model I/O, schedule evaluation, SQLite and tabular results, single
+  resolved through `[tool.uv.sources]` to fork commit dee8d34 until the maintainer cuts a fork
+  tag; SBEM data model with UP-1, UP-2, UP-8 and UP-9;
+- idfkit `>=1.3.0rc2,<2` until 1.3.0 is released (model I/O, schedule evaluation, SQLite and tabular results, single
   simulation run), used through its typed interface only (R18);
 - numpy;
 - pydantic v2 (research R17).
@@ -130,13 +130,13 @@ only v3's PyPI release.
 | Item | Repository | What | Blocks "implemented"? |
 |---|---|---|---|
 | UP-1 | epinterface | Depend on idfkit instead of `archetypal==2.18.10`. `sbem.components` must be importable without archetypal, eppy or a generated Prisma client, and PyYAML must be declared. | Yes |
-| UP-2 | epinterface | Several zone groups per archetype. It also adds these fields, which this plan's research showed are missing: per-orientation envelope and window ratios (FR-024), an infiltration schedule (FR-018), numeric heat-recovery effectiveness, sensible and latent (FR-019; spec 003 maps both), holiday and design-day slots in `WeekComponent` (FR-023), and save/load helpers with a schema version (R14). | Zone groups: yes. Each extra field: not a dependency (until it lands, its loss is reported under FR-026). Unset floor-area shares (spec 003): not a dependency; 002 always sets shares. |
+| UP-2 | epinterface | Several zone groups per archetype. It also adds these fields, which this plan's research showed are missing: per-orientation envelope and window ratios (FR-024), an infiltration schedule (FR-018), numeric heat-recovery effectiveness, sensible and latent (FR-019; spec 003 maps both), holiday and design-day slots in `WeekComponent` (FR-023), and save/load helpers with a schema version (R14). | Zone groups: yes. Each extra field: not a dependency. The pinned fork commit (dee8d34) carries them since d1283ca, so `to_sbem` writes them; what they cannot hold (design-day profiles, latent effectiveness) is reported under FR-026. Unset floor-area shares (spec 003): not a dependency; 002 always sets shares. |
 | UP-3 | epinterface | Upstream releases on PyPI what archetypal uses (UP-1 and the SBEM fields). The fork is not published (C-17). | Not a dependency; it gates only v3's PyPI release (C-18) |
 | UP-4 | epinterface | Heavy dependencies become optional (Prisma, geopandas, ladybug), and exact pins are loosened (`click==8.1.7`, `pandas<2.3`). | Not a dependency (install size and conflicts) |
 | UP-5 | idfkit | Day-type-aware `Schedule:Compact` creation. Now also a faster day-profile evaluation if the R5 benchmark fails. | Not a dependency |
-| UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final, so the typed `schedule_weeks[i].start_month: int` really is an `int`. | Yes; bridged meanwhile |
+| UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on files of EnergyPlus 9.0–22.1 (`int('1.0')` in `schedules/year.py`) before 1.3.0 final, so the typed `schedule_weeks[i].start_month: int` really is an `int`. | Yes; bridged meanwhile |
 | UP-7 (new) | idfkit | Typed readers for EnergyPlus's static SQLite tables (`Zones`, `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`), in place of raw `SQLResult.query` rows. | Yes; bridged by `_sql_tables.py` meanwhile |
-| UP-8 (new) | epinterface | SBEM energy conversion beyond a constant COP, still on ideal loads: a specific fan power and ideal-loads supply-air temperature limits, with fans reported as their own end use; and a COP that depends on outdoor temperature (R12, R19). | Yes (SC-002's fan target). Reduction is built without it: fans are folded into `DistributionCOP` and reported as not represented until it lands. |
+| UP-8 (new) | epinterface | SBEM energy conversion beyond a constant COP, still on ideal loads: a specific fan power and ideal-loads supply-air temperature limits, with fans reported as their own end use; and a COP that depends on outdoor temperature (R12, R19). | Yes (SC-002's fan target). The pinned fork commit (dee8d34) carries it, so `to_sbem` writes the specific fan power, supply-air limits and EIR slope; "released" still means a fork tag the maintainer cuts. |
 
 The roadmap is updated with UP-6, UP-7 and UP-8 and the broader UP-2 and UP-5 scope. UP-3 is
 open: it gates only v3's PyPI release (roadmap C-18).

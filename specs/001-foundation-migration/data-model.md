@@ -55,7 +55,8 @@ Regenerated only by the script; a test checks the file's `archetypal_version`.
 
 ## ExitStatus
 
-The command line's exit statuses (FR-014, R6).
+The command line's exit statuses (FR-014, R6), in `cli/_summary.py`. The commands themselves
+live in private modules (`cli/_reduce.py`, `_merge.py`, `_compare.py`, `_translate.py`).
 
 | Value | Name | When |
 |---|---|---|

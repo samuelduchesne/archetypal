@@ -10,3 +10,5 @@ Discussion of why archetypal is built the way it is.
   smaller than archetypal 2, and why SBEM is its one data model.
 - [About reduction](reduction.md): what an archetype conserves of its detailed model, how zones
   are grouped, and what SBEM cannot hold.
+- [About UMI translation](umi-translation.md): what reading and writing UMI template libraries
+  lose, and why: two zones, one window, constant setpoints, schedules by month.

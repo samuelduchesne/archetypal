@@ -1,6 +1,18 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.11.0 → 1.11.1
+Bump rationale: PATCH — facts found while implementing 001–003; no decision changes.
+
+Changes this revision:
+  - UP-6: affects only files with EnergyPlus 9.0–22.1 schemas, not every file read
+  - UP-1, UP-2, UP-4, UP-8, UP-9: status notes (on the fork branch, awaiting the maintainer)
+  - UP-6, UP-7, UP-10: status notes (drafted as idfkit issues, not filed)
+
+Specs affected: none
+Open questions added/resolved: none
+
+Previous revision (1.11.0):
 Version change: 1.10.0 → 1.11.0
 Bump rationale: MINOR — the cross-spec analysis of 001–003 found that the plans listed upstream
 items their "mark implemented" tasks ignored (constitution, Development Workflow). New decision
@@ -416,7 +428,7 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   dependency (epinterface currently pins `archetypal==2.18.10`). A draft PR is open. It must
   also leave `epinterface.sbem.components` importable without archetypal, eppy or a generated
   Prisma client, and declare PyYAML (imported by `sbem/builder.py`, undeclared in 1.5.0).
-  *Blocking for 002.*
+  *Blocking for 002.* *Status (2026-11-22):* on the fork branch `claude/admiring-meitner-1f43qk` (commit 136ab81); awaiting merge into the fork's `main`, a fork tag and the upstream pull request, all by the maintainer. archetypal pins fork commit dee8d34.
 - **UP-2 — epinterface `Model` holds several zone groups** (zone definition plus floor-area
   share, C-03). Built by us, released in the fork, offered upstream (C-17). The 002 plan's research
   adds: envelope and window ratios by orientation, an infiltration schedule, numeric
@@ -425,6 +437,7 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   group, meaning "set by the building's geometry when applied", as UMI does. Zone groups block
   002; unset shares block 003; each added field does not (its loss is reported until it
   lands). The UMI fields SBEM lacks are UP-9, not UP-2.
+  *Status (2026-11-22):* on the fork branch `claude/admiring-meitner-1f43qk` (8 commits, d96a048 to d1283ca); awaiting merge into the fork's `main`, a fork tag and the upstream pull request, all by the maintainer. archetypal pins fork commit dee8d34.
   ~~Revision 1.0.0: separate core and perimeter zones only.~~
 - **UP-3 — upstream epinterface releases on PyPI what archetypal uses.** A package on PyPI
   cannot depend on a git repository, and the fork is not published (C-17). archetypal 3
@@ -439,6 +452,7 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   EPW file; idfkit's weather module is the likely replacement, which would drop the dependency
   rather than make it optional. Also loosen 1.5.0's exact pins (`click==8.1.7`,
   `pandas<2.3`), which would otherwise constrain every archetypal user.
+  *Status (2026-11-22):* on the fork branch `claude/admiring-meitner-1f43qk` (commit 9ff8add); awaiting merge into the fork's `main`, a fork tag and the upstream pull request, all by the maintainer. archetypal pins fork commit dee8d34.
 - **UP-5 — idfkit: `Schedule:Compact` creation aware of day types** (weekday, weekend,
   holiday). Optional; only if spec 002's plan shows idfkit is the right home for it. The 002
   plan adds: a faster day-profile schedule evaluation, needed only if 002's performance
@@ -449,11 +463,13 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   raises `ValueError` (22.2 and later files are not affected). Fix before idfkit 1.3.0 final. 002
   bridges it temporarily (plan, Complexity Tracking). The fix must also make the typed field
   `schedule_weeks[i].start_month: int` an `int` at run time. *Blocking for 002's release.*
+  *Status (2026-11-22):* drafted as an idfkit issue (specs/002-reduce-to-sbem/upstream/idfkit-issues.md), not filed.
 - **UP-7 — idfkit: typed readers for EnergyPlus's static SQLite tables** (`Zones`,
   `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`). Today they are
   reachable only through `SQLResult.query`, which returns untyped rows. archetypal uses idfkit
   only through its typed interface (002 research R18), so it bridges this with one module of
   typed rows until the readers exist. Not blocking.
+  *Status (2026-11-22):* drafted as an idfkit issue (specs/002-reduce-to-sbem/upstream/idfkit-issues.md), not filed.
 - **UP-8 — epinterface: SBEM energy beyond a constant COP, still on ideal loads.** SBEM
   converts ideal loads to energy with one constant `SystemCOP × DistributionCOP` per mode, so
   an archetype has no fan end use and no part of its consumption depends on the weather. Add:
@@ -465,6 +481,7 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   three (research R12, R19).
   *Blocking for 002's release* (SC-002's fan target); reduction is built without it and
   reports what is not yet represented. Real HVAC systems are the separate, undecided 009.
+  *Status (2026-11-22):* on the fork branch `claude/admiring-meitner-1f43qk` (commit 14ac778); awaiting merge into the fork's `main`, a fork tag and the upstream pull request, all by the maintainer. archetypal pins fork commit dee8d34.
 - **UP-9 — epinterface: SBEM fields for UMI template libraries** (C-13). The 003 plan's
   field-by-field mapping found no SBEM home for: layered glazing constructions; window
   settings (operable area, shading, zone mixing, virtual partition, airflow-network
@@ -477,11 +494,13 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   ignoring natural ventilation. Built by us, released in the fork, offered upstream (C-14,
   C-17). *Not blocking for building 003*; all its fields block marking 003 implemented: the
   simulation-relevant ones for SC-003, the life-cycle and descriptive ones for FR-010 (C-20). Until each lands, every read reports it as lost.
+  *Status (2026-11-22):* on the fork branch `claude/admiring-meitner-1f43qk` (18 commits, 3a89d64 to dee8d34); awaiting merge into the fork's `main`, a fork tag and the upstream pull request, all by the maintainer. archetypal pins fork commit dee8d34.
 - **UP-10 — idfkit: equivalent glazing layer of a simple-glazing window**, from EnergyPlus's
   simple window model (U, SHGC and VT → one glazing layer). UMI has no simple-glazing material,
   so writing an archetype with simple glazing to UMI needs it. *Blocking, bridged meanwhile*
   (C-20): 003 is built and tagged with a temporary bridge (003 plan, Complexity Tracking) and
   marked implemented once idfkit releases it.
+  *Status (2026-11-22):* drafted as an idfkit issue (specs/003-umi-translation/upstream/idfkit-issues.md), not filed.
 
 ## Planned Specs
 
@@ -661,4 +680,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.11.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
+**Version**: 1.11.1 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

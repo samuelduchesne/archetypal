@@ -4,9 +4,10 @@ diataxis: reference
 
 # UMI translation API
 
-The public Python API of spec 003: reading UMI template libraries into SBEM archetypes and
-writing archetypes back as one library, and comparing libraries and archetypes field by field. `archetypal.read_umi` and `archetypal.write_umi` are the
-same functions as `archetypal.umi.read_umi` and `archetypal.umi.write_umi`. Each section is
+The public Python API of spec 003: reading UMI template libraries into SBEM archetypes,
+writing archetypes back as one library, and comparing libraries and archetypes field by field.
+`archetypal.read_umi` and `archetypal.write_umi` are the same functions as
+`archetypal.umi.read_umi` and `archetypal.umi.write_umi`. Each section is
 generated from the docstrings; [Translation report](../translation-report.md) describes the
 report's fields and [UMI correspondence](../umi-correspondence.md) what each UMI field becomes.
 

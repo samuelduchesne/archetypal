@@ -100,8 +100,8 @@ def schedule_compact(schedule: epinterface.sbem.<YearComponent>, *, name: str | 
 
 - Returns the EnergyPlus `Schedule:Compact` object, as IDF text, for any schedule an archetype
   holds (FR-023): one `Through: <month end>` block per run of equal months, `For:` blocks
-  Monday to Sunday, and `For: Holiday`, `SummerDesignDay`, `WinterDesignDay` once UP-2's slots
-  exist.
+  Monday to Sunday, and `For: Holiday`, `SummerDesignDay`, `WinterDesignDay` for UP-2's slots
+  that are set (the pinned fork carries them).
 - `name` defaults to the schedule's `Name`.
 - Lossless: evaluating the text with idfkit gives the same hourly values as the SBEM schedule
   on the reference year.

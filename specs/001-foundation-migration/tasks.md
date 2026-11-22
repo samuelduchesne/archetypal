@@ -224,14 +224,14 @@ with a weather file and open the library; the Python route gives the same librar
   `src/archetypal/cli/_removed_options.py`: hidden click options and a hidden `transition`
   command built from those rows, each raising a usage error with the row's message before any
   work (FR-013, R6).
-- [X] T033 [US1] Implement `src/archetypal/cli/reduce.py` per contracts/cli.md: model
+- [X] T033 [US1] Implement `src/archetypal/cli/_reduce.py` per contracts/cli.md: model
   expansion, `--weather`, `--output` defaults (`myumitemplate.json` for UMI), `--to`,
   `--results`, `--layout`, `--threshold`, `-p/--parallel` (separate processes, `-1` = every
   core), `--force`; `--to umi` reduces each model at core/perimeter and writes one library with
   003's writer; reports beside the output; summary and exit status from `_summary` (FR-012,
   FR-014, FR-015).
-- [X] T034 [P] [US1] Implement `src/archetypal/cli/merge.py`, `compare.py` and
-  `translate.py` per contracts/cli.md, as thin wrappers over 002's `merge` and `compare` and
+- [X] T034 [P] [US1] Implement `src/archetypal/cli/_merge.py`, `_compare.py` and
+  `_translate.py` per contracts/cli.md, as thin wrappers over 002's `merge` and `compare` and
   003's read and write functions (`--strict` raises `LossyTranslationError`) (FR-011).
 - [X] T035 [US1] Re-export the top-level names of data-model.md (Public interface) from
   `src/archetypal/__init__.py`; keep `archetypal.reduction`, `archetypal.comparison`,

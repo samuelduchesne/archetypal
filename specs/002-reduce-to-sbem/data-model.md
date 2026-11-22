@@ -157,8 +157,8 @@ The total types:
 - **`HotWaterTotals`**: `volume: Profile` and `heat: Profile` (Σ volume × temperature rise),
   from which the mean rise follows.
 - **`EnergyTotals`**: `delivered` (equipment delivery, R12) and `consumed_by_fuel: dict[Fuel, float]`, plus
-  `distribution_by_fuel` (pumps and heat rejection folded per R12, and fans until UP-8 per
-  R19), `unattributed`
+  `distribution_by_fuel` (pumps and heat rejection folded per R12; fans are not folded, since
+  the pinned fork carries UP-8, R19), `unattributed`
   (FR-022 standby), `rated_efficiency: float | None` (used only when `delivered == 0`) and
   `eir_sums`, the additive sums R12's constrained fit of the outdoor-temperature slope needs.
 - **`FanTotals`** (FR-022a, R19): `energy`, `volume` (standard density), and, per mode,
@@ -243,7 +243,7 @@ A pydantic model whose JSON Schema is published (contract:
 | `not_represented[]` | feature, affected groups, magnitude, the parameter it was folded into (or none); from the folding modules and from R20's `UNSUPPORTED_FEATURES` |
 | `merged_distinctions[]` | for a coarser layout, one entry per resulting group: `into_key`, `from_keys[]` (the finest keys merged into it, sorted) and `lost` (`"space_use"`, `"exposure"` or both) (US2; read by spec 003) |
 | `unattributed_energy` | standby and pilot consumption by fuel (FR-022) |
-| `building` | conditioned floor area and the unrounded storey ratio (R6), kept so `merge` needs no model |
+| `building` | `BuildingBlock`: conditioned floor area, the unrounded storey ratio (R6), the run-period `calendar` (`CalendarBlock`: year, holidays, custom days), the annual-mean `mains_temperature` (°C, `None` without hot water) and the fans' standard `air_density` (kg/m³), kept so `merge` needs no model; `merge` refuses a report without the calendar or air density |
 
 ## ComparisonResult (FR-027, FR-028)
 

@@ -104,7 +104,7 @@ Status abbreviations: **E** exact, **C** converted, **U** upstream (item), **N**
 | `OpaqueMaterial` | `Conductivity`, `Density`, `SpecificHeat`, `SolarAbsorptance`, `VisibleAbsorptance` → same names. `ThermalEmittance` → `ThermalAbsorptance`. `Roughness` → `Roughness` (6 keywords). | E |
 | | `Cost` → `Cost` (`RateUnit="m3"`). `EmbodiedCarbon` → `EmbodiedCarbon × Density` per m³ (`material.carbon_per_m3`). | C |
 | | `EmbodiedEnergy`, `Transport*`, `Substitution*`, `MoistureDiffusionResistance`, `DesignStrength`, `ModulusOfElasticity` | U (UP-9) |
-| `GlazingMaterial`, `GasMaterial`, `WindowConstruction` | Layers → UP-9 layered window (E once released). Until then: U, SHGC and VT via idfkit (`window.simple_from_layers`, approximate). | U / C |
+| `GlazingMaterial`, `GasMaterial`, `WindowConstruction` | Layers → UP-9 layered window (`window.layers`). Layers it cannot hold: U, SHGC and VT via idfkit (bridge `simple_from_layers`, approximate, reported under `window.layers`). | U / C |
 | `MaterialLayer` | `Thickness` → `Thickness`; list position → `LayerOrder`. | E |
 | `OpaqueConstruction` | `Layers` → `Layers`. `Assembly*`, `Disassembly*` → U (UP-9). | E / U |
 | `StructureInformation`, `MassRatio` | everything | U (UP-9) |
@@ -141,8 +141,8 @@ Status abbreviations: **E** exact, **C** converted, **U** upstream (item), **N**
 | `material.carbon_per_m3` | `C_m3 = C_kg × ρ` | `C_kg = C_m3 / ρ` (refused for ρ = 0) | Embodied carbon per unit volume |
 | `schedule.months` | Month-aligned: copy; misaligned: 002 projection | 12 months → parts, merged when equal | Monthly sum (exact for aligned) |
 | `thermostat.constant` | Constant temperature schedules | Max (heating) / min (cooling) | Occupied setpoint; setback hours reported |
-| `window.simple_from_layers` | idfkit U/SHGC/VT (bridge until UP-9) | — | U, SHGC, VT (approximate) |
-| `window.equivalent_layer` | — | EnergyPlus simple-glazing model (bridge until UP-10) | U, SHGC, VT as EnergyPlus computes them |
+| `window.layers` | Layer by layer to UP-9's layered window; layers it cannot hold (more than 4 panes, panes and gases not alternating) go through the bridge `simple_from_layers` (idfkit U/SHGC/VT, approximate) | Layered window back layer by layer; simple glazing through the bridge `equivalent_layer` (EnergyPlus simple-glazing model, until UP-10) | Layers exactly; through a bridge, U, SHGC, VT (approximate) |
+| `building.partition_ratio` | `PartitionAreaPerFloorArea = 2 × PartitionRatio` (the ratio is partition wall area per floor area; SBEM counts both faces) | `PartitionRatio = PartitionAreaPerFloorArea / 2`, from the perimeter group | Partition face area |
 | `vent.provider` | (mech, nat) → None/Natural/Mechanical/Both | inverse | Both switches |
 | `wwr.uniform` | Same ratio on every orientation | Facade-area-weighted mean; loss if orientations differ | Window area for a given facade |
 

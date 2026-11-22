@@ -146,7 +146,7 @@ C-18 counts on for outside feedback.
   `reportUnknownVariableType` and `reportUnknownArgumentType` as errors, so no untyped object
   leaks in from a dependency (SC-005).
 - **Dependencies:** runtime `epinterface>=X,<Y` resolved to the SBEM fork through
-  `[tool.uv.sources]` (roadmap C-17), `idfkit>=1.3,<2`, `click>=8.1,<9` (R6),
+  `[tool.uv.sources]` (roadmap C-17), `idfkit>=1.3.0rc2,<2` (the release candidate until 1.3.0 is released), `click>=8.1,<9` (R6),
   `pydantic>=2.9,<3`, `numpy>=1.26`. Development group: the template's, plus `pytest-timeout`,
   `hypothesis`, `pytest-markdown-docs` (R5), `mkdocs-click` (R6).
 - **Tests:** three tiers selected by markers, as spec 002 needs them and as later specs will:
@@ -253,7 +253,8 @@ of v2's RST and keeps every existing v2 link alive.
 - **Library:** click (`>=8.1,<9`). v2 used click, epinterface uses click, and `mkdocs-click`
   generates its reference. epinterface's exact pin (`click==8.1.7`) is loosened by UP-4 in the
   fork.
-- **Module:** `src/archetypal/cli/`, entry point `archetypal = "archetypal.cli:main"`.
+- **Module:** `src/archetypal/cli/`, entry point `archetypal = "archetypal.cli:main"`; one
+  private module per command (`_reduce.py`, `_merge.py`, `_compare.py`, `_translate.py`).
 - **Commands** (contract: [contracts/cli.md](contracts/cli.md)):
   - `reduce MODELS... -w/--weather EPW -o/--output PATH` with `--to umi|sbem` (default
     `umi`, v2's result, scenario 1.4), `--results` (one SQLite file per model, optional),

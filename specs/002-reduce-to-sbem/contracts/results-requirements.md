@@ -35,7 +35,9 @@ asserts they agree.
 
 An item that does not apply to the model is not required. For example, a model with no
 `WaterUse:Equipment` needs no hot-water outputs, and a model without baseboards needs no
-`Baseboard Total Heating Energy`. "Every heating coil" means every `Coil:Heating:*` object
+`Baseboard Total Heating Energy`. `Zone Mechanical Ventilation Standard Density Volume Flow
+Rate` is required only for zones with equipment connections (`ZoneHVAC:EquipmentConnections`):
+EnergyPlus reports none for an attic, a basement or a return plenum. "Every heating coil" means every `Coil:Heating:*` object
 and "every cooling coil" every `Coil:Cooling:*` object, except the `Coil:Cooling:DX:CurveFit:*`
 performance objects and thermal-storage coils (`requirements.delivery_outputs`).
 

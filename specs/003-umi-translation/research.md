@@ -79,8 +79,8 @@ rejected. Sources:
      first key of its object and unique. It checks that each `$ref` is a string, that the
      object holding it has no other key, and that the id was seen **earlier** in the file.
   2. Objects are built from the index, so a reference is an object, never `None`.
-  A dangling or forward reference is a validation problem (R3), not a silent `null` as in
-  Basilisk.
+  A dangling or forward reference is a format problem (R3, `UmiFormatError`), not a silent
+  `null` as in Basilisk.
 - `BuildingTemplates` have no `$id`. Window settings may be defined inline in the first
   template that uses them (Basilisk's own order) or in the `WindowSettings` collection (v2's
   order); both are read.
@@ -119,13 +119,15 @@ with UMI projects and is the most likely older library in users' hands.
 
 ## R3 — Validation before translation (FR-004, edge cases)
 
-**Decision.** Reading collects every problem before producing anything, then raises one
-`UmiValidationError` that lists them all, each with a JSON pointer (`/Zones/2/Loads`) and the
-template affected. Three kinds of problem:
+**Decision.** Reading collects every problem of a kind before producing anything, then raises
+one error that lists them all, each with a JSON pointer (`/Zones/2/Loads`) and the template
+affected. Three kinds of problem:
 
 1. **Format** (always fatal for the library): malformed JSON, duplicate `$id`, `$id` not first,
    a non-string `$ref`, extra keys beside `$ref`, a dangling or forward `$ref`, a JSON type
-   that does not convert (Basilisk's own errors).
+   that does not convert (Basilisk's own errors). Reference resolution raises these as one
+   `UmiFormatError`, before completeness and range are checked, so they never appear inside
+   an `UmiValidationError`.
 2. **Completeness.** Required references, inferred from what Basilisk's editor dereferences
    and what UMI needs to build a model (Basilisk research §4.4), must not be null:
    - each layer's material;
@@ -145,7 +147,8 @@ template affected. Three kinds of problem:
    temperature, absorptances and fractions in [0, 1], a specific heat of at least 100 J/kg·K,
    and so on.
 
-`skip_invalid_templates=True` makes completeness and range problems skip only the templates
+Completeness and range problems are raised together as one `UmiValidationError`.
+`skip_invalid_templates=True` makes them skip only the templates
 they affect. Those templates are listed in the report and the others are read. Format
 problems are never skipped. Duplicate names are not a problem; R11 handles them.
 

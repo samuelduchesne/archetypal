@@ -47,7 +47,7 @@ epinterface; C-07, R9).
 
 **Primary Dependencies**:
 - epinterface, from the SBEM fork (C-17), through `[tool.uv.sources]`;
-- idfkit `>=1.3,<2`, used through its typed interface (spec 002, R18);
+- idfkit `>=1.3.0rc2,<2` (until 1.3.0 is released), used through its typed interface (spec 002, R18);
 - click `>=8.1,<9` for the command line (R6);
 - pydantic v2 and numpy (spec 002).
 
@@ -170,8 +170,8 @@ src/archetypal/
 ├── _optional.py               + # require(module, extra) (R12)
 ├── cli/
 │   ├── __init__.py            + # main group: --version, --log-level, -d/--debug (R6)
-│   ├── reduce.py              + # reduce command
-│   ├── merge.py, compare.py, translate.py   +
+│   ├── _reduce.py             + # reduce command (command modules are private)
+│   ├── _merge.py, _compare.py, _translate.py   +
 │   ├── _removed_options.py    + # hidden options and commands from REMOVED (FR-013)
 │   └── _summary.py            + # report summary and exit statuses (FR-014)
 ├── dataportal.py … zone_graph.py   + # 12 two-line stubs for removed v2 modules (R7)

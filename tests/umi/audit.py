@@ -13,7 +13,8 @@ Shared by `tests/unit/umi/test_audit.py` (the UMI test set) and
 A difference is *explained* by a loss when the loss names the same subject (or the whole
 library) and its location is the difference's location, a parent of it, or a reference field
 through which the difference was reached (`Difference.via`). A rename (`names.collision`) also
-explains a difference whose values are the name before and after. A numeric difference within
+explains a difference whose values are the name before and after, or a name read back from the
+renamed component (`"<name> occupancy"`). A numeric difference within
 `rel_tol` (SC-003's 0.01 %) is numerical noise, not a loss.
 
 Each function returns the problems found, as readable lines; an empty list passes.
@@ -37,6 +38,24 @@ if TYPE_CHECKING:
 
     from archetypal.umi.report import Loss
     from archetypal.umi.write import ArchetypeLike
+
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "umi"
+SAMPLES = ("BostonTemplateLibrary_2.json", "BostonTemplateLibrary_nodup.json", "umi_samples_BostonTemplateLibrary.json")
+"""The three real libraries of the UMI test set (research R18)."""
+EDGE_READABLE = (
+    "archsim_dialect.json",
+    "duplicate_names.json",
+    "misaligned_parts.json",
+    "no_templates.json",
+    "shared_zone.json",
+    "unused_components.json",
+)
+"""The hand-made edge cases that read without error (the others are refused by design)."""
+TEST_SET: tuple[Path, ...] = (
+    *(FIXTURES / name for name in SAMPLES),
+    *(FIXTURES / "edge" / name for name in EDGE_READABLE),
+)
+"""Every library of the UMI test set that reads, in a stable order."""
 
 REL_TOL = 1e-4
 """SC-003's tolerance: numeric differences within it are not losses."""
@@ -77,7 +96,16 @@ def explains(entry: Loss | Note, difference: Difference) -> bool:
     if entry.kind is LossKind.COPIED and difference.original is None:
         # A single group is written as both zones: the zone it was copied to reads back as a group.
         return _same_subject(entry, difference) and difference.location == str(entry.replacement).lower()
-    return entry.kind is LossKind.RENAMED and (difference.original, difference.result) == (entry.value, entry.replacement)
+    if entry.kind is not LossKind.RENAMED or not isinstance(entry.value, str):
+        return False
+    # A renamed component, or a name read back from it (`"<name> occupancy"`).
+    original, result = difference.original, difference.result
+    return (
+        isinstance(original, str)
+        and isinstance(result, str)
+        and original.startswith(entry.value)
+        and result == f"{entry.replacement}{original[len(entry.value) :]}"
+    )
 
 
 def _matches(loss: Loss, difference: Difference) -> bool:

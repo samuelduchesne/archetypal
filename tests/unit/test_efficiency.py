@@ -25,6 +25,7 @@ from archetypal.reduction.sources import load_sources
 
 if TYPE_CHECKING:
     from archetypal.reduction.classify import ClassifiedZone
+    from archetypal.reduction.ledger import Mode
     from archetypal.reduction.sources import SourceData
 
 MODELS = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "models"
@@ -232,12 +233,13 @@ def test_fixture_meters_are_conserved_over_conditioned_zones(
     hook = efficiency_hook(sources, zones, evaluate)
     ledgers = [GroupLedger.from_zone(z, evaluate, hooks=[hook]) for z in zones if z.conditioned]
     total = sum(ledgers, GroupLedger())
-    for mode, meter, fuel in (
+    checks: tuple[tuple[Mode, str, str], ...] = (
         ("heating", "Heating:NaturalGas", "NaturalGas"),
         ("heating", "Heating:Electricity", "Electricity"),
         ("cooling", "Cooling:Electricity", "Electricity"),
         ("hot_water", "WaterSystems:NaturalGas", "NaturalGas"),
-    ):
+    )
+    for mode, meter, fuel in checks:
         energy = total.energy[mode]
         assert energy.consumed_by_fuel[fuel] + hook.unattributed[mode].get(fuel, 0.0) == pytest.approx(
             _meter(sources, meter), rel=1e-9

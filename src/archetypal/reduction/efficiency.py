@@ -144,10 +144,9 @@ def _meters(results: SQLResult) -> dict[str, list[tuple[str, str]]]:
     for info in results.list_variables():
         if not info.is_meter or info.frequency != _HOURLY:
             continue
-        parts = info.name.split(":")
-        if len(parts) != 2 or parts[1].casefold() in _NOT_FUELS:
+        end_use, _, fuel = info.name.partition(":")
+        if not fuel or ":" in fuel or fuel.casefold() in _NOT_FUELS:
             continue
-        end_use, fuel = parts
         if end_use in _PRIMARY or end_use in _DISTRIBUTION:
             meters.setdefault(end_use, []).append((info.name, fuel))
     return meters
@@ -214,8 +213,8 @@ def _nonzero(values: Mapping[str, float]) -> dict[str, float]:
 def _divide(numerator: _Array, denominator: _Array, fallback: _Array | None = None) -> _Array:
     """`numerator / denominator` where the denominator is positive, else `fallback` (0)."""
     shape = np.broadcast_shapes(numerator.shape, denominator.shape)
-    out = np.zeros(shape) if fallback is None else np.array(np.broadcast_to(fallback, shape), dtype=np.float64)
-    return np.divide(numerator, denominator, out=out, where=np.broadcast_to(denominator > 0.0, shape))
+    out = np.zeros(shape) if fallback is None else np.zeros(shape) + fallback
+    return np.divide(numerator, denominator, out=out, where=denominator > 0.0)
 
 
 class _Ledgers:
@@ -243,10 +242,10 @@ class _Ledgers:
         return {mode: [{} for _ in self.names] for mode in self.modes}
 
     def _add_mode(self, mode: Mode, by_zone: Mapping[str, Profile]) -> None:
-        zeros = np.zeros(self.hours)
-        matrix = np.array([by_zone.get(n, zeros) for n in self.names], dtype=np.float64).reshape(
-            len(self.names), self.hours
-        )
+        matrix = np.zeros((len(self.names), self.hours))
+        for i, name in enumerate(self.names):
+            if name in by_zone:
+                matrix[i] = by_zone[name]
         total = (self.mult[:, None] * matrix).sum(axis=0)
         self.delivered[mode] = matrix
         self.building[mode] = total
@@ -328,7 +327,7 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
         for fuel, series in data.distribution.items()
     }
     temperature = np.asarray(data.outdoor_temperature, dtype=np.float64)
-    zones = {
+    zones: dict[str, Mapping[Mode, EnergyTotals]] = {
         name: {mode: ledgers.totals(i, mode, data.rated.get(name, {}).get(mode), temperature) for mode in ledgers.modes}
         for i, name in enumerate(ledgers.names)
     }
@@ -399,61 +398,79 @@ def _names(*values: str | None) -> tuple[str, ...]:
     return tuple(value for value in values if value)
 
 
-def _units(doc: IDFDocumentSince22_1) -> dict[tuple[str, str], ZoneEquipment]:
-    """Each zone-equipment unit's parts, keyed by (object type, name), case-folded."""
-    units: dict[tuple[str, str], ZoneEquipment] = {}
+def _add(units: dict[tuple[str, str], ZoneEquipment], object_type: str, name: str, parts: ZoneEquipment) -> None:
+    units[object_type.casefold(), name.casefold()] = parts
 
-    def add(object_type: str, name: str, parts: ZoneEquipment) -> None:
-        units[object_type.casefold(), name.casefold()] = parts
 
+def _packaged_units(doc: IDFDocumentSince22_1, units: dict[tuple[str, str], ZoneEquipment]) -> None:
+    """Packaged terminal units, heat pumps and fan coils."""
     for o in doc["ZoneHVAC:PackagedTerminalAirConditioner"]:
-        add(
+        _add(
+            units,
             o.obj_type,
             o.name,
             ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
         )
     for o in doc["ZoneHVAC:PackagedTerminalHeatPump"]:
-        add(
+        _add(
+            units,
             o.obj_type,
             o.name,
             ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
         )
     for o in doc["ZoneHVAC:WaterToAirHeatPump"]:
-        add(
+        _add(
+            units,
             o.obj_type,
             o.name,
             ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
         )
     for o in doc["ZoneHVAC:FourPipeFanCoil"]:
-        add(
+        _add(
+            units,
             o.obj_type,
             o.name,
             ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
         )
+
+
+def _other_units(doc: IDFDocumentSince22_1, units: dict[tuple[str, str], ZoneEquipment]) -> None:
+    """Unit heaters and ventilators, window units, ERVs, evaporative coolers, VRF terminals, unitary systems, exhaust fans."""
     for o in doc["ZoneHVAC:UnitHeater"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name)))
+        _add(units, o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name)))
     for o in doc["ZoneHVAC:UnitVentilator"]:
-        add(
+        _add(
+            units,
             o.obj_type,
             o.name,
             ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
         )
     for o in doc["ZoneHVAC:WindowAirConditioner"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), (), _names(o.dx_cooling_coil_name)))
+        _add(
+            units, o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), (), _names(o.dx_cooling_coil_name))
+        )
     for o in doc["ZoneHVAC:EnergyRecoveryVentilator"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name, o.exhaust_air_fan_name)))
+        _add(units, o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name, o.exhaust_air_fan_name)))
     for o in doc["ZoneHVAC:EvaporativeCoolerUnit"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name)))
+        _add(units, o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name)))
     for o in doc["ZoneHVAC:TerminalUnit:VariableRefrigerantFlow"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_object_name)))
+        _add(units, o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_object_name)))
     for o in doc["AirLoopHVAC:UnitarySystem"]:
-        add(
+        _add(
+            units,
             o.obj_type,
             o.name,
             ZoneEquipment(_names(o.supply_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
         )
     for o in doc["Fan:ZoneExhaust"]:
-        add(o.obj_type, o.name, ZoneEquipment((o.name,)))
+        _add(units, o.obj_type, o.name, ZoneEquipment((o.name,)))
+
+
+def _units(doc: IDFDocumentSince22_1) -> dict[tuple[str, str], ZoneEquipment]:
+    """Each zone-equipment unit's parts, keyed by (object type, name), case-folded."""
+    units: dict[tuple[str, str], ZoneEquipment] = {}
+    _packaged_units(doc, units)
+    _other_units(doc, units)
     return units
 
 

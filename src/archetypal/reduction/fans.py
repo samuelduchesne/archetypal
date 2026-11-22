@@ -32,7 +32,7 @@ Group quantities (UP-8)
 -----------------------
 - `specific_fan_power(totals) = energy / volume`, W/(m³/s); times the detailed volume it gives
   the detailed fan energy exactly (SC-005).
-- `effective_supply_delta(totals, mode) = delivered_in_mode / (ρ·c_p·volume_in_mode)`, K: added
+- `effective_supply_delta(totals, mode) = delivered_in_mode / (rho·c_p·volume_in_mode)`, K: added
   to the heating setpoint (subtracted from the cooling setpoint) it is the ideal loads' supply
   air temperature limit (rule `fans.effective_supply_delta`).
 
@@ -49,9 +49,8 @@ from the archetype stays in `FanAttribution.zones` for the report.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 
@@ -65,6 +64,9 @@ from archetypal.reduction.efficiency import (
 from archetypal.reduction.ledger import FanTotals, Mode
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    import numpy.typing as npt
     from idfkit.versioned import IDFDocumentSince22_1
 
     from archetypal.reduction.classify import ClassifiedZone
@@ -95,6 +97,8 @@ _ENERGY_VARIABLE = "Fan Electricity Energy"
 _FLOW_VARIABLE = "Fan Air Mass Flow Rate"
 _NODE_VARIABLE = "System Node Mass Flow Rate"
 _AirMode = Literal["heating", "cooling"]
+_Array: TypeAlias = "npt.NDArray[np.float64]"
+_Bool: TypeAlias = "npt.NDArray[np.bool_]"
 
 
 def standard_air_density(elevation: float) -> float:
@@ -182,6 +186,51 @@ class FanAttribution:
 # --- attribution ---------------------------------------------------------------------------------
 
 
+def _loop_shares(data: BuildingFans, served: Sequence[str], hours: int) -> _Array:
+    """Each served zone's share (every copy) of an air-loop fan, hour by hour."""
+    flows = np.zeros((len(served), hours))
+    for i, zone in enumerate(served):
+        if zone in data.inlet_flow:
+            flows[i] = data.inlet_flow[zone]
+    total = flows.sum(axis=0)
+    annual = flows.sum(axis=1)
+    if float(annual.sum()) <= 0.0:
+        annual = np.array([data.multipliers[z] * data.floor_area.get(z, 0.0) for z in served], dtype=np.float64)
+    if float(annual.sum()) <= 0.0:
+        annual = np.ones(len(served))
+    fallback = np.zeros((len(served), hours)) + (annual / annual.sum())[:, None]
+    return np.divide(flows, total, out=fallback, where=total > 0.0)
+
+
+def _zone_totals(data: BuildingFans, name: str, energy: _Array, volume: _Array) -> FanTotals:
+    """One copy's `FanTotals` from its hourly fan energy and volume."""
+    zero = np.zeros(len(volume))
+    heat = np.asarray(data.delivered.get("heating", {}).get(name, zero), dtype=np.float64)
+    cool = np.asarray(data.delivered.get("cooling", {}).get(name, zero), dtype=np.float64)
+    outdoor = np.asarray(data.outdoor_air.get(name, zero), dtype=np.float64)
+    if len(outdoor) != len(volume):
+        outdoor = zero
+    idle = (heat <= 0.0) & (cool <= 0.0) & (outdoor <= 0.0)
+    modes: tuple[tuple[Mode, _Bool, _Array], ...] = (
+        ("heating", (heat > 0.0) & (heat >= cool), heat),
+        ("cooling", (cool > 0.0) & (cool > heat), cool),
+    )
+    volume_in_mode: dict[Mode, float] = {}
+    delivered_in_mode: dict[Mode, float] = {}
+    for mode, hours_in_mode, delivered in modes:
+        mode_volume = float(volume[hours_in_mode].sum())
+        if mode_volume != 0.0:
+            volume_in_mode[mode] = mode_volume
+            delivered_in_mode[mode] = float(delivered[hours_in_mode].sum())
+    return FanTotals(
+        energy=float(energy.sum()),
+        volume=float(volume.sum()),
+        volume_in_mode=volume_in_mode,
+        delivered_in_mode=delivered_in_mode,
+        volume_without_demand=float(volume[idle].sum()),
+    )
+
+
 def attribute_fans(data: BuildingFans) -> FanAttribution:
     """Attribute fan energy and air volume to zones (R19).
 
@@ -192,8 +241,8 @@ def attribute_fans(data: BuildingFans) -> FanAttribution:
         One copy's totals per zone, and the fans matched to no zone.
     """
     names = sorted(data.multipliers)
-    lengths = [len(fan.energy) for fan in data.fans]
-    hours = lengths[0] if lengths else 0
+    profiles = [fan.energy for fan in data.fans] + [p for by_zone in data.delivered.values() for p in by_zone.values()]
+    hours = len(profiles[0]) if profiles else 0
     energy = {name: np.zeros(hours) for name in names}
     volume = {name: np.zeros(hours) for name in names}
     orphans: list[str] = []
@@ -203,57 +252,21 @@ def attribute_fans(data: BuildingFans) -> FanAttribution:
         fan_volume = np.asarray(fan.mass_flow, dtype=np.float64) * _SECONDS_PER_HOUR / data.air_density
         served = [zone for zone in fan.loop_zones if zone in data.multipliers]
         if fan.zone is not None and fan.zone in data.multipliers:
-            multiplier = data.multipliers[fan.zone]
-            energy[fan.zone] += fan_energy / multiplier
-            volume[fan.zone] += fan_volume / multiplier
+            shares: list[tuple[str, _Array | float]] = [(fan.zone, 1.0)]
         elif served:
-            flows = np.vstack([np.asarray(data.inlet_flow.get(z, np.zeros(hours)), dtype=np.float64) for z in served])
-            total = flows.sum(axis=0)
-            annual = flows.sum(axis=1)
-            if float(annual.sum()) <= 0.0:
-                annual = np.asarray([data.multipliers[z] * data.floor_area.get(z, 0.0) for z in served])
-            if float(annual.sum()) <= 0.0:
-                annual = np.ones(len(served))
-            fallback = annual / annual.sum()
-            with np.errstate(invalid="ignore", divide="ignore"):
-                share = np.where(total > 0.0, flows / np.where(total > 0.0, total, 1.0), fallback[:, None])
-            for i, zone in enumerate(served):
-                multiplier = data.multipliers[zone]
-                energy[zone] += share[i] * fan_energy / multiplier
-                volume[zone] += share[i] * fan_volume / multiplier
+            matrix = _loop_shares(data, served, hours)
+            shares = [(zone, matrix[i]) for i, zone in enumerate(served)]
         else:
             orphans.append(fan.name)
             orphan_energy += float(fan_energy.sum())
             orphan_volume += float(fan_volume.sum())
-
-    zones: dict[str, FanTotals] = {}
-    for name in names:
-        zero = np.zeros(hours)
-        heat = np.asarray(data.delivered.get("heating", {}).get(name, zero), dtype=np.float64)
-        cool = np.asarray(data.delivered.get("cooling", {}).get(name, zero), dtype=np.float64)
-        outdoor = np.asarray(data.outdoor_air.get(name, zero), dtype=np.float64)
-        if len(outdoor) != hours:
-            outdoor = zero
-        hourly_volume = volume[name]
-        heating_hours = (heat > 0.0) & (heat >= cool)
-        cooling_hours = (cool > 0.0) & (cool > heat)
-        idle = (heat <= 0.0) & (cool <= 0.0) & (outdoor <= 0.0)
-        volume_in_mode: dict[Mode, float] = {}
-        delivered_in_mode: dict[Mode, float] = {}
-        for mode, hours_in_mode, delivered in (("heating", heating_hours, heat), ("cooling", cooling_hours, cool)):
-            mode_volume = float(hourly_volume[hours_in_mode].sum())
-            if mode_volume != 0.0:
-                volume_in_mode[mode] = mode_volume
-                delivered_in_mode[mode] = float(delivered[hours_in_mode].sum())
-        zones[name] = FanTotals(
-            energy=float(energy[name].sum()),
-            volume=float(hourly_volume.sum()),
-            volume_in_mode=volume_in_mode,
-            delivered_in_mode=delivered_in_mode,
-            volume_without_demand=float(hourly_volume[idle].sum()),
-        )
+            continue
+        for zone, share in shares:
+            multiplier = data.multipliers[zone]
+            energy[zone] += share * fan_energy / multiplier
+            volume[zone] += share * fan_volume / multiplier
     return FanAttribution(
-        zones=zones,
+        zones={name: _zone_totals(data, name, energy[name], volume[name]) for name in names},
         multipliers=dict(data.multipliers),
         air_density=data.air_density,
         unattributed_fans=tuple(orphans),
@@ -292,7 +305,7 @@ def effective_supply_delta(
         specific_heat: Air's specific heat, J/(kg·K).
 
     Returns:
-        `delivered_in_mode / (ρ·c_p·volume_in_mode)`, or `None` without air moved in that mode.
+        `delivered_in_mode / (rho·c_p·volume_in_mode)`, or `None` without air moved in that mode.
     """
     volume = totals.volume_in_mode.get(mode, 0.0)
     if volume <= 0.0:
@@ -331,7 +344,7 @@ def _loop_zones(doc: IDFDocumentSince22_1, node_lists: Mapping[str, tuple[str, .
     }
     loops: dict[str, set[str]] = {}
     for loop in doc["AirLoopHVAC"]:
-        collected = paths.get(loop.demand_side_outlet_node_name.casefold(), set())
+        collected = paths.get((loop.demand_side_outlet_node_name or "").casefold(), set())
         loops[loop.name.casefold()] = {zone for zone, nodes in returns.items() if nodes & collected}
     return loops
 
@@ -340,6 +353,34 @@ def _elevation(doc: IDFDocumentSince22_1) -> float:
     for location in doc["Site:Location"]:
         return float(location.elevation or 0.0)
     return 0.0
+
+
+def _adu_nodes(
+    doc: IDFDocumentSince22_1, model_names: Mapping[str, str], node_lists: Mapping[str, tuple[str, ...]]
+) -> dict[str, tuple[str, ...]]:
+    """Each zone's inlet nodes fed by an air distribution unit, by zone name."""
+    adu_outlets = {o.air_distribution_unit_outlet_node_name.casefold() for o in doc["ZoneHVAC:AirDistributionUnit"]}
+    adu_nodes: dict[str, tuple[str, ...]] = {}
+    for connections in doc["ZoneHVAC:EquipmentConnections"]:
+        name = model_names.get(connections.zone_name.casefold())
+        inlets = _expand(connections.zone_air_inlet_node_or_nodelist_name, node_lists)
+        fed = tuple(node for node in inlets if node.casefold() in adu_outlets)
+        if name is not None and fed:
+            adu_nodes[name] = fed
+    return adu_nodes
+
+
+def _fan_zones(sources: SourceData, model_names: Mapping[str, str]) -> dict[str, str]:
+    """The zone of each zone-equipment and air-terminal fan, by case-folded fan name."""
+    fan_zone: dict[str, str] = {}
+    for zone_key, parts in zone_equipment(sources.model).items():
+        if zone_key in model_names:
+            fan_zone.update((fan.casefold(), model_names[zone_key]) for fan in parts.fans)
+    for row in equipment_table(sources.results, "Air Terminals").values():
+        fan, zone = row.get("Fan Name", ""), row.get("Zone Name", "")
+        if fan and zone.casefold() in model_names:
+            fan_zone[fan.casefold()] = model_names[zone.casefold()]
+    return fan_zone
 
 
 def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> BuildingFans:
@@ -357,14 +398,7 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
     model_names = {zone.zone.name.casefold(): zone.zone.name for zone in zones}
     node_lists = _node_lists(doc)
 
-    adu_outlets = {o.air_distribution_unit_outlet_node_name.casefold() for o in doc["ZoneHVAC:AirDistributionUnit"]}
-    adu_nodes: dict[str, tuple[str, ...]] = {}
-    for connections in doc["ZoneHVAC:EquipmentConnections"]:
-        name = model_names.get(connections.zone_name.casefold())
-        inlets = _expand(connections.zone_air_inlet_node_or_nodelist_name, node_lists)
-        fed = tuple(node for node in inlets if node.casefold() in adu_outlets)
-        if name is not None and fed:
-            adu_nodes[name] = fed
+    adu_nodes = _adu_nodes(doc, model_names, node_lists)
 
     loops = _loop_zones(doc, node_lists)
     assigned = {zone for served in loops.values() for zone in served}
@@ -372,15 +406,7 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
     if unassigned and len(loops) == 1:
         next(iter(loops.values())).update(unassigned)
 
-    fan_zone: dict[str, str] = {}
-    for zone_key, parts in zone_equipment(doc).items():
-        for fan in parts.fans:
-            if zone_key in model_names:
-                fan_zone[fan.casefold()] = model_names[zone_key]
-    for row in equipment_table(results, "Air Terminals").values():
-        fan, zone = row.get("Fan Name", ""), row.get("Zone Name", "")
-        if fan and zone.casefold() in model_names:
-            fan_zone[fan.casefold()] = model_names[zone.casefold()]
+    fan_zone = _fan_zones(sources, model_names)
     fan_loop = {
         name.casefold(): row.get("Airloop Name", "").casefold()
         for name, row in equipment_table(results, "Fans").items()

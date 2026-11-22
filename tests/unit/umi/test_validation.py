@@ -178,7 +178,7 @@ REQUIRED: list[Mutation] = [
 ]
 
 
-@pytest.mark.parametrize(("collection", "index", "key"), REQUIRED, ids=lambda value: str(value))
+@pytest.mark.parametrize(("collection", "index", "key"), REQUIRED, ids=str)
 def test_required_references(collection: str, index: int, key: str) -> None:
     document = base()
     items(document, collection)[index][key] = None
@@ -191,7 +191,8 @@ def test_required_references(collection: str, index: int, key: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "key", ["AfnWindowAvailability", "ShadingSystemAvailabilitySchedule", "ZoneMixingAvailabilitySchedule", "Construction"]
+    "key",
+    ["AfnWindowAvailability", "ShadingSystemAvailabilitySchedule", "ZoneMixingAvailabilitySchedule", "Construction"],
 )
 def test_window_settings_references(key: str) -> None:
     document = base()

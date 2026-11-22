@@ -49,9 +49,10 @@ import json
 import math
 import re
 from collections import Counter
+from dataclasses import dataclass, field
 from importlib import metadata
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator
@@ -59,7 +60,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, f
 from archetypal.errors import ReductionError
 from archetypal.io import dumps
 from archetypal.reduction.classify import Role, SpaceUseSource  # noqa: TC001 - pydantic needs them
-from archetypal.reduction.features import NotRepresented
+from archetypal.reduction.features import NotRepresented  # noqa: TC001 - pydantic needs it
 from archetypal.reduction.ledger import EnvelopeAssignment, Fuel, GroupLedger
 from archetypal.reduction.options import (
     Distinction,
@@ -71,6 +72,8 @@ from archetypal.reduction.options import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
+
+    from numpy.typing import NDArray
 
 __all__ = [
     "RULE_IDS",
@@ -255,7 +258,7 @@ class GroupMember(_Record):
 
     Attributes:
         zone: The zone name (model spelling).
-        multiplier: Its multiplier, `Multiplier × ListMultiplier`.
+        multiplier: Its multiplier, `Multiplier` times `ListMultiplier`.
         floor_area: The floor area of one copy, m².
         space_use: Its space use (R4).
         space_use_source: Which tier of FR-007 decided the space use.
@@ -501,11 +504,12 @@ def gather_not_represented(
     Returns:
         The entries for `ReductionReport.not_represented`.
     """
-    gathered: set[NotRepresented] = set()
+    gathered: dict[str, NotRepresented] = {}
     for entry in entries:
         groups = {zone_groups[z] for z in entry.affected_zones if z in zone_groups} | set(entry.affected_groups)
-        gathered.add(entry.model_copy(update={"affected_groups": tuple(sorted(groups))}))
-    return tuple(sorted(gathered, key=_not_represented_key))
+        filled = entry.model_copy(update={"affected_groups": tuple(sorted(groups))})
+        gathered[filled.model_dump_json()] = filled
+    return tuple(sorted(gathered.values(), key=_not_represented_key))
 
 
 # --- invariants ----------------------------------------------------------------------------------
@@ -544,38 +548,44 @@ def check_accounting(
     Returns:
         One message per violation.
     """
-    found: list[str] = []
-
-    def fail(text: str) -> None:
-        found.append(_message(1, "accounting", text))
-
+    texts: list[str] = []
     counts = Counter(z.casefold() for z in _all_zones(report))
-    for zone, count in sorted(counts.items()):
-        if count > 1:
-            fail(f"zone {zone!r} appears {count} times among the groups and excluded zones")
+    texts.extend(
+        f"zone {zone!r} appears {count} times among the groups and excluded zones"
+        for zone, count in sorted(counts.items())
+        if count > 1
+    )
     for group in report.groups:
         names = tuple(sorted(m.zone for m in group.members))
         if names != group.ledger.members:
-            fail(f"group {group.name!r} lists members {list(names)} but its ledger holds {list(group.ledger.members)}")
+            texts.append(
+                f"group {group.name!r} lists members {list(names)} but its ledger holds {list(group.ledger.members)}"
+            )
     if zone_names is not None:
         expected = {z.casefold() for z in zone_names}
         missing, extra = sorted(expected - set(counts)), sorted(set(counts) - expected)
         if missing:
-            fail(f"zones of the model missing from the report: {missing}")
+            texts.append(f"zones of the model missing from the report: {missing}")
         if extra:
-            fail(f"zones in the report that the model lacks: {extra}")
+            texts.append(f"zones in the report that the model lacks: {extra}")
     if zone_roles is not None:
-        excluded = {z.zone.casefold(): z.role for z in report.excluded_zones}
-        grouped = {m.zone.casefold() for g in report.groups for m in g.members}
-        for zone, role in sorted(zone_roles.items()):
-            key = zone.casefold()
-            if role == "conditioned":
-                if key not in grouped:
-                    fail(f"conditioned zone {zone!r} is in no group")
-            elif excluded.get(key) != role:
-                where = f"excluded with role {excluded[key]!r}" if key in excluded else "not excluded"
-                fail(f"zone {zone!r} has role {role!r} but is {where}")
-    return found
+        texts.extend(_role_mismatches(report, zone_roles))
+    return [_message(1, "accounting", text) for text in texts]
+
+
+def _role_mismatches(report: ReductionReport, zone_roles: Mapping[str, Role]) -> list[str]:
+    excluded = {z.zone.casefold(): z.role for z in report.excluded_zones}
+    grouped = {m.zone.casefold() for g in report.groups for m in g.members}
+    texts: list[str] = []
+    for zone, role in sorted(zone_roles.items()):
+        key = zone.casefold()
+        if role == "conditioned":
+            if key not in grouped:
+                texts.append(f"conditioned zone {zone!r} is in no group")
+        elif excluded.get(key) != role:
+            where = f"excluded with role {excluded[key]!r}" if key in excluded else "not excluded"
+            texts.append(f"zone {zone!r} has role {role!r} but is {where}")
+    return texts
 
 
 def check_area(report: ReductionReport, *, conditioned_floor_area: float | None = None) -> list[str]:
@@ -588,35 +598,34 @@ def check_area(report: ReductionReport, *, conditioned_floor_area: float | None 
     Returns:
         One message per violation.
     """
-    found: list[str] = []
-
-    def fail(text: str) -> None:
-        found.append(_message(2, "area", text))
-
     if not report.groups:
-        fail("the report has no group")
-        return found
+        return [_message(2, "area", "the report has no group")]
+    texts: list[str] = []
     share_sum = math.fsum(g.floor_area_share for g in report.groups)
     if abs(share_sum - 1.0) > SHARE_TOLERANCE:
-        fail(f"floor-area shares sum to {share_sum!r}, not 1 within {SHARE_TOLERANCE}")
+        texts.append(f"floor-area shares sum to {share_sum!r}, not 1 within {SHARE_TOLERANCE}")
     total = math.fsum(g.floor_area for g in report.groups)
     for group in report.groups:
         if not _close(group.floor_area, group.ledger.floor_area, AREA_RTOL):
-            fail(
+            texts.append(
                 f"group {group.name!r} floor area {group.floor_area!r} differs from its ledger's {group.ledger.floor_area!r}"
             )
         from_members = math.fsum(m.multiplier * m.floor_area for m in group.members)
         if not _close(group.floor_area, from_members, LEDGER_RTOL):
-            fail(f"group {group.name!r} floor area {group.floor_area!r} differs from its members' {from_members!r}")
+            texts.append(
+                f"group {group.name!r} floor area {group.floor_area!r} differs from its members' {from_members!r}"
+            )
         if total > 0 and abs(group.floor_area_share - group.floor_area / total) > SHARE_TOLERANCE:
-            fail(f"group {group.name!r} share {group.floor_area_share!r} is not its floor area over the total")
+            texts.append(f"group {group.name!r} share {group.floor_area_share!r} is not its floor area over the total")
     if not _close(total, report.building.conditioned_floor_area, AREA_RTOL):
-        fail(f"groups' floor area {total!r} differs from the building's {report.building.conditioned_floor_area!r}")
+        texts.append(
+            f"groups' floor area {total!r} differs from the building's {report.building.conditioned_floor_area!r}"
+        )
     if conditioned_floor_area is not None and not _close(total, conditioned_floor_area, AREA_RTOL):
-        fail(
+        texts.append(
             f"groups' floor area {total!r} differs from the results' conditioned floor area {conditioned_floor_area!r}"
         )
-    return found
+    return [_message(2, "area", text) for text in texts]
 
 
 def check_parameters(
@@ -636,32 +645,34 @@ def check_parameters(
     Returns:
         One message per violation.
     """
-    found: list[str] = []
-
-    def fail(text: str) -> None:
-        found.append(_message(3, "parameters", text))
-
+    texts: list[str] = []
     names = {g.name for g in report.groups}
     if len(names) != len(report.groups):
-        fail("group names are not unique")
+        texts.append("group names are not unique")
     counts = Counter((p.group, p.path) for p in report.parameters)
-    for (group, path), count in sorted(counts.items(), key=lambda item: (item[0][0] or "", item[0][1])):
-        if count > 1:
-            fail(f"parameter {path!r} of group {group!r} appears {count} times")
+    texts.extend(
+        f"parameter {path!r} of group {group!r} appears {count} times"
+        for (group, path), count in sorted(counts.items(), key=lambda item: (item[0][0] or "", item[0][1]))
+        if count > 1
+    )
     for parameter in report.parameters:
         if parameter.rule not in rule_ids:
-            fail(f"parameter {parameter.path!r} of group {parameter.group!r} has unknown rule {parameter.rule!r}")
+            texts.append(
+                f"parameter {parameter.path!r} of group {parameter.group!r} has unknown rule {parameter.rule!r}"
+            )
         if parameter.group is not None and parameter.group not in names:
-            fail(f"parameter {parameter.path!r} names group {parameter.group!r}, which the report lacks")
+            texts.append(f"parameter {parameter.path!r} names group {parameter.group!r}, which the report lacks")
     if set_parameters is not None:
-        for group, path in set_parameters:
-            if (group, path) not in counts:
-                fail(f"field {path!r} of group {group!r} is set but has no parameters[] entry")
-    return found
+        texts.extend(
+            f"field {path!r} of group {group!r} is set but has no parameters[] entry"
+            for group, path in set_parameters
+            if (group, path) not in counts
+        )
+    return [_message(3, "parameters", text) for text in texts]
 
 
-def _identity(entry: NotRepresented) -> NotRepresented:
-    return entry.model_copy(update={"affected_groups": ()})
+def _identity(entry: NotRepresented) -> str:
+    return entry.model_copy(update={"affected_groups": ()}).model_dump_json()
 
 
 def check_not_represented(report: ReductionReport, *, expected: Iterable[NotRepresented] | None = None) -> list[str]:
@@ -676,47 +687,92 @@ def check_not_represented(report: ReductionReport, *, expected: Iterable[NotRepr
     Returns:
         One message per violation.
     """
-    found: list[str] = []
-
-    def fail(text: str) -> None:
-        found.append(_message(4, "not represented", text))
-
+    texts: list[str] = []
     names = {g.name for g in report.groups}
     zones = {z.casefold() for z in _all_zones(report)}
     for entry in report.not_represented:
         unknown_groups = sorted(set(entry.affected_groups) - names)
         if unknown_groups:
-            fail(f"{entry.feature!r} names groups the report lacks: {unknown_groups}")
+            texts.append(f"{entry.feature!r} names groups the report lacks: {unknown_groups}")
         unknown_zones = sorted(z for z in entry.affected_zones if z.casefold() not in zones)
         if unknown_zones:
-            fail(f"{entry.feature!r} names zones the report lacks: {unknown_zones}")
+            texts.append(f"{entry.feature!r} names zones the report lacks: {unknown_zones}")
     if expected is not None:
         present = {_identity(e) for e in report.not_represented}
         for entry in expected:
             if _identity(entry) not in present:
                 what = entry.feature if entry.object_type is None else f"{entry.feature} ({entry.object_type})"
-                fail(f"{what!r} is missing from not_represented[]")
-    return found
+                texts.append(f"{what!r} is missing from not_represented[]")
+    return [_message(4, "not represented", text) for text in texts]
+
+
+def _arrays_close(a: NDArray[np.float64], b: NDArray[np.float64]) -> bool:
+    if a.shape != b.shape:
+        return False
+    return bool((np.abs(a - b) <= LEDGER_ATOL + LEDGER_RTOL * np.abs(b)).all())
 
 
 def _ledger_differences(a: object, b: object, path: str) -> list[str]:
+    """The paths where two ledgers (or parts of them) differ beyond the ledger tolerances."""
     if isinstance(a, BaseModel) and isinstance(b, BaseModel):
-        out: list[str] = []
-        for name in type(a).model_fields:
-            out.extend(_ledger_differences(getattr(a, name), getattr(b, name), f"{path}.{name}"))
-        return out
+        return [
+            d
+            for name in type(a).model_fields
+            for d in _ledger_differences(getattr(a, name), getattr(b, name), f"{path}.{name}")
+        ]
     if isinstance(a, dict) and isinstance(b, dict):
-        left: dict[Any, Any] = a  # pyright: ignore[reportUnknownVariableType]
-        right: dict[Any, Any] = b  # pyright: ignore[reportUnknownVariableType]
-        if left.keys() != right.keys():
-            return [path]
-        return [d for k in left for d in _ledger_differences(left[k], right[k], f"{path}[{k}]")]
-    if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
-        same = a.shape == b.shape and bool(np.allclose(a, b, rtol=LEDGER_RTOL, atol=LEDGER_ATOL))
-        return [] if same else [path]
-    if isinstance(a, float) and isinstance(b, float):
-        return [] if _close(a, b, LEDGER_RTOL, LEDGER_ATOL) else [path]
-    return [] if a == b else [path]
+        left, right = cast("dict[Any, Any]", a), cast("dict[Any, Any]", b)
+        if left.keys() == right.keys():
+            return [d for k in left for d in _ledger_differences(left[k], right[k], f"{path}[{k}]")]
+        same = False
+    elif isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+        same = _arrays_close(cast("NDArray[np.float64]", a), cast("NDArray[np.float64]", b))
+    elif isinstance(a, float) and isinstance(b, float):
+        same = _close(a, b, LEDGER_RTOL, LEDGER_ATOL)
+    else:
+        same = a == b
+    return [] if same else [path]
+
+
+@dataclass
+class _Split:
+    """How the pre-threshold ledgers fall into the report's groups."""
+
+    parts: dict[str, list[GroupLedger]] = field(default_factory=dict[str, list[GroupLedger]])
+    from_keys: dict[GroupKey, set[GroupKey]] = field(default_factory=dict[GroupKey, set[GroupKey]])
+    seen: Counter[str] = field(default_factory=Counter[str])
+
+
+def _split_pre_threshold(report: ReductionReport, texts: list[str]) -> _Split:
+    member_info = {m.zone: (g, m) for g in report.groups for m in g.members}
+    split = _Split(parts={g.name: [] for g in report.groups}, from_keys={g.key: set() for g in report.groups})
+    for pre in report.pre_threshold_groups:
+        if len(pre.key) != _FINEST_KEY_LENGTH:
+            texts.append(f"pre-threshold key {pre.key!r} is not a (space use, exposure) key")
+        split.seen.update(pre.ledger.members)
+        owners: set[str] = set()
+        for zone in pre.ledger.members:
+            if zone not in member_info:
+                texts.append(f"pre-threshold zone {zone!r} is in no group")
+                continue
+            group, info = member_info[zone]
+            owners.add(group.name)
+            if (info.space_use, info.exposure) != pre.key:
+                texts.append(
+                    f"zone {zone!r} has key {(info.space_use, info.exposure)!r} but sits in pre-threshold {pre.key!r}"
+                )
+            split.from_keys[group.key].add(pre.key)
+        if len(owners) > 1:
+            texts.append(f"pre-threshold {pre.key!r} is split over groups {sorted(owners)}")
+        elif owners:
+            split.parts[owners.pop()].append(pre.ledger)
+    texts.extend(
+        f"grouped zone {zone!r} is in no pre-threshold ledger" for zone in sorted(set(member_info) - set(split.seen))
+    )
+    texts.extend(
+        f"zone {zone!r} is in {count} pre-threshold ledgers" for zone, count in sorted(split.seen.items()) if count > 1
+    )
+    return split
 
 
 def check_mergeable(report: ReductionReport) -> list[str]:
@@ -733,99 +789,102 @@ def check_mergeable(report: ReductionReport) -> list[str]:
     Returns:
         One message per violation.
     """
-    found: list[str] = []
-
-    def fail(text: str) -> None:
-        found.append(_message(5, "mergeable", text))
-
+    texts: list[str] = []
     layout = report.reproducibility.options.layout
-    member_info = {m.zone: (g, m) for g in report.groups for m in g.members}
-    for group in report.groups:
-        if len(group.key) != len(layout.distinctions):
-            fail(f"group {group.name!r} key {group.key!r} does not fit layout {layout.value!r}")
+    texts.extend(
+        f"group {group.name!r} key {group.key!r} does not fit layout {layout.value!r}"
+        for group in report.groups
+        if len(group.key) != len(layout.distinctions)
+    )
     keys = Counter(p.key for p in report.pre_threshold_groups)
-    for key, count in sorted(keys.items()):
-        if count > 1:
-            fail(f"pre-threshold key {key!r} appears {count} times")
-    seen: Counter[str] = Counter()
-    parts: dict[str, list[GroupLedger]] = {g.name: [] for g in report.groups}
-    from_keys: dict[GroupKey, set[GroupKey]] = {g.key: set() for g in report.groups}
-    for pre in report.pre_threshold_groups:
-        if len(pre.key) != _FINEST_KEY_LENGTH:
-            fail(f"pre-threshold key {pre.key!r} is not a (space use, exposure) key")
-        seen.update(pre.ledger.members)
-        owners: set[str] = set()
-        for zone in pre.ledger.members:
-            if zone not in member_info:
-                fail(f"pre-threshold zone {zone!r} is in no group")
-                continue
-            group, info = member_info[zone]
-            owners.add(group.name)
-            if (info.space_use, info.exposure) != pre.key:
-                fail(f"zone {zone!r} has key {(info.space_use, info.exposure)!r} but sits in pre-threshold {pre.key!r}")
-            from_keys[group.key].add(pre.key)
-        if len(owners) > 1:
-            fail(f"pre-threshold {pre.key!r} is split over groups {sorted(owners)}")
-        elif owners:
-            parts[owners.pop()].append(pre.ledger)
-    for zone in sorted(set(member_info) - set(seen)):
-        fail(f"grouped zone {zone!r} is in no pre-threshold ledger")
-    for zone, count in sorted(seen.items()):
-        if count > 1:
-            fail(f"zone {zone!r} is in {count} pre-threshold ledgers")
+    texts.extend(f"pre-threshold key {key!r} appears {count} times" for key, count in sorted(keys.items()) if count > 1)
+    split = _split_pre_threshold(report, texts)
     for group in report.groups:
         try:
-            total = sum(parts[group.name], GroupLedger())
+            total = sum(split.parts[group.name], GroupLedger())
         except ValueError as exc:
-            fail(f"group {group.name!r}: pre-threshold ledgers cannot be added ({exc})")
+            texts.append(f"group {group.name!r}: pre-threshold ledgers cannot be added ({exc})")
             continue
         differences = _ledger_differences(total, group.ledger, "ledger")
         if differences:
-            fail(f"group {group.name!r}: pre-threshold ledgers do not add up to its ledger at {differences}")
-    found.extend(_check_distinctions(report, layout, from_keys))
-    return found
+            texts.append(f"group {group.name!r}: pre-threshold ledgers do not add up to its ledger at {differences}")
+    texts.extend(_distinction_mismatches(report, layout, split.from_keys))
+    return [_message(5, "mergeable", text) for text in texts]
 
 
-def _check_distinctions(
+def _distinction_mismatches(
     report: ReductionReport, layout: Layout, from_keys: Mapping[GroupKey, set[GroupKey]]
 ) -> list[str]:
-    found: list[str] = []
     entries = report.merged_distinctions
     if layout is Layout.SPACE_USE_EXPOSURE:
-        if entries:
-            found.append(_message(5, "mergeable", "merged_distinctions[] must be empty for the finest layout"))
-        return found
+        return ["merged_distinctions[] must be empty for the finest layout"] if entries else []
     possible = set(layout.lost_from(Layout.SPACE_USE_EXPOSURE))
-    by_key = {e.into_key: e for e in entries}
-    for key in sorted(set(from_keys) - set(by_key)):
-        found.append(_message(5, "mergeable", f"group {key!r} has no merged_distinctions[] entry"))
+    listed = {e.into_key for e in entries}
+    texts = [f"group {key!r} has no merged_distinctions[] entry" for key in sorted(set(from_keys) - listed)]
     for entry in entries:
         if entry.into_key not in from_keys:
-            found.append(
-                _message(
-                    5, "mergeable", f"merged_distinctions[] names group {entry.into_key!r}, which the report lacks"
-                )
-            )
+            texts.append(f"merged_distinctions[] names group {entry.into_key!r}, which the report lacks")
             continue
         if set(entry.from_keys) != from_keys[entry.into_key]:
-            expected = sorted(from_keys[entry.into_key])
-            found.append(
-                _message(5, "mergeable", f"group {entry.into_key!r} merges {expected}, not {list(entry.from_keys)}")
+            texts.append(
+                f"group {entry.into_key!r} merges {sorted(from_keys[entry.into_key])}, not {list(entry.from_keys)}"
             )
         if not set(entry.lost) <= possible:
-            found.append(
-                _message(
-                    5,
-                    "mergeable",
-                    f"group {entry.into_key!r} loses {list(entry.lost)}; layout {layout.value!r} can only lose {sorted(possible)}",
-                )
+            texts.append(
+                f"group {entry.into_key!r} loses {list(entry.lost)}; layout {layout.value!r} can only lose {sorted(possible)}"
             )
-    return found
+    return texts
 
 
 def _is_sorted(items: Sequence[Any], key: Callable[[Any], Any]) -> bool:
     keys = [key(item) for item in items]
     return keys == sorted(keys)
+
+
+def _block_problems(block: Reproducibility) -> list[str]:
+    texts = [
+        f"the {name} version is missing"
+        for name in ("archetypal", "epinterface", "idfkit", "energyplus")
+        if not getattr(block, name)
+    ]
+    hashes = {"model_sha256": block.model_sha256, "results_sha256": block.results_sha256}
+    if block.weather_sha256 is not None:
+        hashes["weather_sha256"] = block.weather_sha256
+    texts.extend(
+        f"{name} is not a lowercase SHA-256: {value!r}" for name, value in hashes.items() if not _SHA256.match(value)
+    )
+    return texts
+
+
+def _order_problems(report: ReductionReport) -> list[str]:
+    orders: tuple[tuple[str, Sequence[Any], Callable[[Any], Any]], ...] = (
+        ("groups", report.groups, lambda g: g.key),
+        ("pre_threshold_groups", report.pre_threshold_groups, lambda g: g.key),
+        ("parameters", report.parameters, _parameter_key),
+        ("excluded_zones", report.excluded_zones, lambda z: z.zone),
+        ("small_group_merges", report.small_group_merges, lambda m: (m.key, m.into_key)),
+        ("not_represented", report.not_represented, _not_represented_key),
+        ("merged_distinctions", report.merged_distinctions, lambda d: d.into_key),
+    )
+    texts = [f"{name}[] is not sorted" for name, items, key in orders if not _is_sorted(items, key)]
+    texts.extend(
+        f"members of group {group.name!r} are not sorted"
+        for group in report.groups
+        if not _is_sorted(group.members, lambda m: m.zone)
+    )
+    return texts
+
+
+def _read_back_problem(report: ReductionReport) -> str | None:
+    try:
+        text = dumps(report)
+    except ValueError as exc:
+        return str(exc)
+    try:
+        again = dumps(ReductionReport.model_validate_json(text))
+    except ValidationError as exc:
+        return f"the written report does not read back: {exc.error_count()} validation errors"
+    return None if again == text else "the written report does not read back to the same text"
 
 
 def check_reproducible(report: ReductionReport) -> list[str]:
@@ -840,49 +899,11 @@ def check_reproducible(report: ReductionReport) -> list[str]:
     Returns:
         One message per violation.
     """
-    found: list[str] = []
-
-    def fail(text: str) -> None:
-        found.append(_message(6, "reproducible", text))
-
-    block = report.reproducibility
-    for name in ("archetypal", "epinterface", "idfkit", "energyplus"):
-        if not getattr(block, name):
-            fail(f"the {name} version is missing")
-    for name in ("model_sha256", "results_sha256", "weather_sha256"):
-        value: str | None = getattr(block, name)
-        if value is None and name == "weather_sha256":
-            continue
-        if value is None or not _SHA256.match(value):
-            fail(f"{name} is not a lowercase SHA-256: {value!r}")
-    orders: tuple[tuple[str, Sequence[Any], Callable[[Any], Any]], ...] = (
-        ("groups", report.groups, lambda g: g.key),
-        ("pre_threshold_groups", report.pre_threshold_groups, lambda g: g.key),
-        ("parameters", report.parameters, _parameter_key),
-        ("excluded_zones", report.excluded_zones, lambda z: z.zone),
-        ("small_group_merges", report.small_group_merges, lambda m: (m.key, m.into_key)),
-        ("not_represented", report.not_represented, _not_represented_key),
-        ("merged_distinctions", report.merged_distinctions, lambda d: d.into_key),
-    )
-    for name, items, key in orders:
-        if not _is_sorted(items, key):
-            fail(f"{name}[] is not sorted")
-    for group in report.groups:
-        if not _is_sorted(group.members, lambda m: m.zone):
-            fail(f"members of group {group.name!r} are not sorted")
-    try:
-        text = dumps(report)
-    except ValueError as exc:
-        fail(str(exc))
-        return found
-    try:
-        again = dumps(ReductionReport.model_validate_json(text))
-    except ValidationError as exc:
-        fail(f"the written report does not read back: {exc.error_count()} validation errors")
-        return found
-    if again != text:
-        fail("the written report does not read back to the same text")
-    return found
+    texts = [*_block_problems(report.reproducibility), *_order_problems(report)]
+    problem = _read_back_problem(report)
+    if problem is not None:
+        texts.append(problem)
+    return [_message(6, "reproducible", text) for text in texts]
 
 
 def check_schema_version(report: ReductionReport) -> list[str]:
@@ -972,7 +993,7 @@ def raise_for_invariants(
         rule_ids=rule_ids,
     )
     if found:
-        raise ReductionError("reduction report", "; ".join(found))
+        raise ReductionError("reduction report", "; ".join(found))  # noqa: TRY003 - lists the violations
 
 
 # --- the published schema ------------------------------------------------------------------------

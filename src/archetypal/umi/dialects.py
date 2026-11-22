@@ -10,7 +10,7 @@ file holds:
 | `archsim-json` | Materials carrying `GasType`, `Life` or `Comment` | Read through the Archsim key map. |
 | Legacy or Core XML, a `.umi` project | An XML root, or a zip archive | Refused, naming the dialect. |
 
-The Archsim key map renames `Comment` to `Comments`, turns `GasType` 0–4 into the gas names
+The Archsim key map renames `Comment` to `Comments`, turns `GasType` 0 to 4 into the gas names
 `AIR`, `ARGON`, `KRYPTON`, `XENON` and `SF6` (the gas's own `Type: "Gas"` is ignored), and moves
 a material's `Type` to its `Category`. The keys of the collections' objects that have no Core
 counterpart (`Life`, `EmbodiedEnergyStdDev`, `PhaseChange`, `Optical`, …) are removed and listed
@@ -57,9 +57,7 @@ ARCHSIM_JSON: Final = "archsim-json"
 COLLECTIONS: Final[tuple[str, ...]] = tuple(field.alias or name for name, field in UmiLibrary.model_fields.items())
 """The 17 collection keys of a UMI library, in the order Basilisk writes them."""
 
-LEGACY_XML_MESSAGE: Final = (
-    "Legacy UMI XML library is not supported; open and save it in UMI to convert it to JSON"
-)
+LEGACY_XML_MESSAGE: Final = "Legacy UMI XML library is not supported; open and save it in UMI to convert it to JSON"
 
 _MATERIALS: Final = ("GasMaterials", "GlazingMaterials", "OpaqueMaterials")
 _ARCHSIM_MARKERS: Final = frozenset({"GasType", "Life", "Comment"})
@@ -130,7 +128,9 @@ def _known_keys() -> dict[str, frozenset[str]]:
     return known
 
 
-def _archsim_object(item: Json, collection: str, known: frozenset[str], pointer: str) -> tuple[Json, list[tuple[str, object]]]:
+def _archsim_object(
+    item: Json, collection: str, known: frozenset[str], pointer: str
+) -> tuple[Json, list[tuple[str, object]]]:
     """Map one Archsim object to Core keys; return it and the keys without a counterpart."""
     material = collection in _MATERIALS
     mapped: Json = {}
@@ -170,7 +170,7 @@ def _apply_archsim_map(document: Json) -> tuple[Json, tuple[tuple[str, object], 
                 items.append(item_map)
                 lost.extend(item_lost)
             else:
-                items.append(item)
+                items.append(cast("object", item))
         mapped[collection] = items
     return mapped, tuple(lost)
 

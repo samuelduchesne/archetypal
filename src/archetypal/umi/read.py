@@ -39,7 +39,6 @@ from archetypal.errors import InputError, Problem, UmiValidationError
 from archetypal.io import ARCHETYPE_SUFFIX, dumps
 from archetypal.umi import dialects
 from archetypal.umi._format import (
-    ConstructionBase,
     LibraryComponent,
     MaterialBase,
     OpaqueConstruction,
@@ -237,6 +236,14 @@ def _report_table_upstream(component: FormatModel, rule_id: str, context: RuleCo
 # --- Translation ------------------------------------------------------------------------------------
 
 
+def _need(value: _T | None, pointer: str) -> _T:
+    """Return a reference that validation guarantees is set."""
+    if value is None:  # pragma: no cover - validation refuses a null reference
+        msg = f"{pointer} is null; validation should have refused it"
+        raise ValueError(msg)
+    return value
+
+
 class _Reader:
     """Translates the templates of one library, translating each shared component once."""
 
@@ -330,14 +337,16 @@ class _Reader:
         """The SBEM zone definition of a UMI zone definition, with the template's window."""
         return self._cached(("zone", id(zone), window_key), context, lambda local: self._zone(zone, window, local))
 
-    def _zone(self, zone: ZoneDefinition, window: GlazingConstructionSimpleComponent, context: RuleContext) -> ZoneComponent:
-        loads, conditioning, ventilation = zone.loads, zone.conditioning, zone.ventilation
-        dhw, constructions, mass = zone.domestic_hot_water, zone.constructions, zone.internal_mass_construction
-        if None in (loads, conditioning, ventilation, dhw, constructions, mass):  # pragma: no cover - validated
-            msg = f"{self.index.pointer(zone)}: the zone definition misses a reference"
-            raise ValueError(msg)
-        assert loads is not None and conditioning is not None and ventilation is not None  # noqa: S101 - narrowed
-        assert dhw is not None and constructions is not None and mass is not None  # noqa: S101 - narrowed
+    def _zone(
+        self, zone: ZoneDefinition, window: GlazingConstructionSimpleComponent, context: RuleContext
+    ) -> ZoneComponent:
+        where = self.index.pointer(zone)
+        loads = _need(zone.loads, f"{where}/Loads")
+        conditioning = _need(zone.conditioning, f"{where}/Conditioning")
+        ventilation = _need(zone.ventilation, f"{where}/Ventilation")
+        dhw = _need(zone.domestic_hot_water, f"{where}/DomesticHotWater")
+        constructions = _need(zone.constructions, f"{where}/Constructions")
+        mass = _need(zone.internal_mass_construction, f"{where}/InternalMassConstruction")
         subject = context.subject
         loads_at, conditioning_at = self._at(loads, context), self._at(conditioning, context)
         ventilation_at, dhw_at = self._at(ventilation, context), self._at(dhw, context)
@@ -469,14 +478,29 @@ def _unused(index: LibraryIndex) -> list[Loss]:
     ]
 
 
-def _library_findings(raw: dialects.RawLibrary, defaulted: Iterable[str], unknown: Iterable[tuple[str, object]]) -> list[_Finding]:
+def _default_value(index: LibraryIndex, pointer: str) -> JsonValue:
+    """The value a defaulted key took, when the object holding it is known; else `None`."""
+    parent, _, key = pointer.rpartition("/")
+    item = index.at(parent)
+    if item is None:
+        return None
+    aliases = {info.alias or name: name for name, info in type(item).model_fields.items()}
+    try:
+        return json_value(getattr(item, aliases[key]))
+    except (KeyError, TypeError):
+        return None
+
+
+def _library_findings(
+    raw: dialects.RawLibrary, index: LibraryIndex, defaulted: Iterable[str], unknown: Iterable[tuple[str, object]]
+) -> list[_Finding]:
     """The library-level notes (defaults, unknown keys) and the Archsim keys lost."""
     found: list[_Finding] = [
         Note(
             kind=NoteKind.DEFAULTED,
             subject="",
             location=pointer,
-            value=None,
+            value=_default_value(index, pointer),
             rule=_BASILISK_DEFAULT,
             reason="The key is absent from the file; Basilisk's default was used.",
         )
@@ -606,7 +630,7 @@ def read_umi(
         raise UmiValidationError(path, failed)
 
     findings.extend(_unused(index))
-    findings.extend(_library_findings(raw, resolution.defaulted, resolution.unknown_keys))
+    findings.extend(_library_findings(raw, index, resolution.defaulted, resolution.unknown_keys))
     kept = _unique(findings)
     report = TranslationReport(
         direction=_DIRECTION,

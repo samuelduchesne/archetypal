@@ -347,7 +347,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   of storeys by rule `geometry.storeys` (R6) and record the unrounded ratio in the report's
   `building` block. Validate the result as the fork's archetype model and raise `ReductionError`
   with epinterface's message on failure.
-- [ ] T058 [US1] Implement `src/archetypal/reduction/report.py`: pydantic models for
+- [X] T058 [US1] Implement `src/archetypal/reduction/report.py`: pydantic models for
   `ReductionReport` with every field of data-model.md (ReductionReport), `schema_version =
   "1.0"`, the `building` block, `not_represented[]` gathered from the folding modules and
   `features.find_unsupported`, ledgers serialised with base64 profiles, and

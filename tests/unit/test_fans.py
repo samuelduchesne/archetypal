@@ -201,3 +201,10 @@ def test_fixture_zone_equipment_fans_three_zone(
         key = f"{zone} PTAC Fan".upper()
         assert hook.zones[zone].energy == pytest.approx(_series(sources, "Fan Electricity Energy", key).sum())
     assert hook.unattributed_fans == ()
+
+
+def test_fixture_without_fans_bar_building() -> None:
+    sources, zones, _ = _load("bar_building")
+    hook = fans_hook(sources, zones)
+    assert all(totals == FanTotals() for totals in hook.zones.values())
+    assert hook.unattributed_fans == ()

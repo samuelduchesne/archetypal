@@ -80,6 +80,7 @@ def test_descriptive_fields_are_lost_until_up9(b2: UmiImport) -> None:
 
 def test_window_to_wall_ratio_on_every_orientation(b2: UmiImport) -> None:
     for archetype in b2.archetypes:
+        assert archetype.Geometry.WindowToWallRatio is not None
         ratios = set(archetype.Geometry.WindowToWallRatio.values())
         assert len(ratios) == 1
 
@@ -142,7 +143,7 @@ def test_upstream_fields_without_a_function_are_reported_from_the_table() -> Non
 def test_duplicate_names_keep_both_components_and_templates() -> None:
     result = read_umi(EDGE / "duplicate_names.json")
     assert [archetype.Name for archetype in result.archetypes] == ["Office", "Office #2"]
-    renamed = {(loss.value, loss.replacement) for loss in losses(result, LossKind.RENAMED)}
+    renamed = {(str(loss.value), str(loss.replacement)) for loss in losses(result, LossKind.RENAMED)}
     assert ("Concrete", "Concrete #2") in renamed
     assert ("Clear 6mm", "Clear 6mm #2") in renamed
     assert ("Office", "Office #2") in renamed
@@ -189,7 +190,7 @@ def test_no_templates_lists_every_component_as_unused() -> None:
 def test_unused_components_are_listed() -> None:
     result = read_umi(EDGE / "unused_components.json")
     assert len(result.archetypes) == 1
-    assert {loss.value for loss in losses(result, LossKind.UNUSED)} == {"Brick", "Brick wall", "Half on"}
+    assert {str(loss.value) for loss in losses(result, LossKind.UNUSED)} == {"Brick", "Brick wall", "Half on"}
 
 
 def test_boston_library_unused_components() -> None:

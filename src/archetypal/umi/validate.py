@@ -160,6 +160,7 @@ class LibraryIndex:
         self.library = library
         self._pointers: dict[int, str] = {}
         self._keep: list[FormatModel] = []
+        self._by_pointer: dict[str, FormatModel] | None = None
         self._fields = {field.alias or name: name for name, field in UmiLibrary.model_fields.items()}
         self._order = [key for key in document if key in self._fields]
         self._order += [key for key in self._fields if key not in document]
@@ -227,6 +228,12 @@ class LibraryIndex:
             KeyError: The component is not part of the library.
         """
         return self._pointers[id(item)]
+
+    def at(self, pointer: str) -> FormatModel | None:
+        """Return the component the file defines at `pointer`, or `None`."""
+        if self._by_pointer is None:
+            self._by_pointer = {where: item for item in self._keep for where in (self._pointers[id(item)],)}
+        return self._by_pointer.get(pointer)
 
     def reachable(self, template: int) -> list[tuple[FormatModel, str]]:
         """Return every object template number `template` uses, itself first, with its pointer."""
@@ -324,7 +331,7 @@ def _bounds() -> dict[str, list[_Bound]]:
         info = _sbem_field(row.sbem_paths[0], classes)
         if info is None:
             continue
-        limits = {"ge": None, "gt": None, "le": None, "lt": None}
+        limits: dict[str, float | None] = {"ge": None, "gt": None, "le": None, "lt": None}
         for constraint in info.metadata:
             for limit in limits:
                 value = getattr(constraint, limit, None)
@@ -381,7 +388,10 @@ def _week_problems(week: WeekSchedule, pointer: str, template: str) -> list[Prob
     if len(week.days) != len(range(7)):
         return [
             Problem(
-                f"{pointer}/Days", template, REQUIRED_REFERENCE, f"a week needs 7 days, Monday first, not {len(week.days)}"
+                f"{pointer}/Days",
+                template,
+                REQUIRED_REFERENCE,
+                f"a week needs 7 days, Monday first, not {len(week.days)}",
             )
         ]
     return [
@@ -424,9 +434,7 @@ def _year_problems(year: YearSchedule, pointer: str, template: str) -> list[Prob
         start, end = (part.from_month, part.from_day), (part.to_month, part.to_day)
         bad = [_day(*when) for when in (start, end) if not _valid_date(*when)]
         if bad:
-            problems.append(
-                Problem(where, template, YEAR_COVERAGE, f"part {index}: {' and '.join(bad)} is not a date")
-            )
+            problems.append(Problem(where, template, YEAR_COVERAGE, f"part {index}: {' and '.join(bad)} is not a date"))
         else:
             ranges.append((index, start, end))
     if problems:
@@ -455,48 +463,66 @@ def _year_problems(year: YearSchedule, pointer: str, template: str) -> list[Prob
 # --- Range -------------------------------------------------------------------------------------------
 
 
-def _plausibility(item: FormatModel, pointer: str, template: str) -> list[Problem]:
-    problems: list[Problem] = []
-
-    def problem(key: str, rule: str, message: str) -> None:
-        problems.append(Problem(f"{pointer}/{key}", template, rule, message))
-
-    if isinstance(item, OpaqueMaterial):
-        problems.extend(material_problems(item, pointer, template))
-        if item.specific_heat < _MIN_SPECIFIC_HEAT:
-            problem(
-                "SpecificHeat",
-                "material.properties",
-                f"SpecificHeat is {item.specific_heat!r} J/kg-K; a material needs at least {_MIN_SPECIFIC_HEAT}",
-            )
-    elif isinstance(item, MaterialLayer):
-        layer = cast("MaterialLayer[OpaqueMaterial]", item)
-        if layer.thickness <= 0:
-            problem("Thickness", "construction.layers", f"Thickness is {layer.thickness!r} m; a layer needs more than 0")
-    elif isinstance(item, GlazingMaterial):
-        for name in _GLAZING_FRACTIONS:
-            value: float = getattr(item, name)
-            if not 0 <= value <= 1:
-                key = _alias(GlazingMaterial, name)
-                problem(key, "window.simple_from_layers", f"{key} is {value!r}; it must be in [0, 1]")
-    elif isinstance(item, GasMaterial):
-        if item.type.strip().upper() not in _GASES and (item.name or "").strip().upper() not in _GASES:
-            problem(
-                "Type",
-                "window.simple_from_layers",
-                f"gas {item.type!r} is not one EnergyPlus models ({', '.join(sorted(_GASES))})",
-            )
-    elif isinstance(item, BuildingTemplate):
-        ratio = item.default_window_to_wall_ratio
-        if not 0 <= ratio <= 1:
-            problem("DefaultWindowToWallRatio", "wwr.uniform", f"DefaultWindowToWallRatio is {ratio!r}; it must be in [0, 1]")
-    elif isinstance(item, ZoneLoads):
-        problems.extend(loads.range_problems(item, pointer=pointer, template=template))
-    elif isinstance(item, ZoneConditioning):
-        problems.extend(conditioning.range_problems(item, pointer=pointer, template=template))
-    elif isinstance(item, ZoneVentilation):
-        problems.extend(ventilation.range_problems(item, pointer=pointer, template=template))
+def _opaque_material(item: OpaqueMaterial, pointer: str, template: str) -> list[Problem]:
+    problems = material_problems(item, pointer, template)
+    if item.specific_heat < _MIN_SPECIFIC_HEAT:
+        message = f"SpecificHeat is {item.specific_heat!r} J/kg-K; a material needs at least {_MIN_SPECIFIC_HEAT}"
+        problems.append(Problem(f"{pointer}/SpecificHeat", template, "material.properties", message))
     return problems
+
+
+def _layer(item: MaterialLayer[OpaqueMaterial], pointer: str, template: str) -> list[Problem]:
+    if item.thickness > 0:
+        return []
+    message = f"Thickness is {item.thickness!r} m; a layer needs more than 0"
+    return [Problem(f"{pointer}/Thickness", template, "construction.layers", message)]
+
+
+def _glazing(item: GlazingMaterial, pointer: str, template: str) -> list[Problem]:
+    problems: list[Problem] = []
+    for name in _GLAZING_FRACTIONS:
+        value: float = getattr(item, name)
+        if not 0 <= value <= 1:
+            key = _alias(GlazingMaterial, name)
+            message = f"{key} is {value!r}; it must be in [0, 1]"
+            problems.append(Problem(f"{pointer}/{key}", template, "window.simple_from_layers", message))
+    return problems
+
+
+def _gas(item: GasMaterial, pointer: str, template: str) -> list[Problem]:
+    if item.type.strip().upper() in _GASES or (item.name or "").strip().upper() in _GASES:
+        return []
+    message = f"gas {item.type!r} is not one EnergyPlus models ({', '.join(sorted(_GASES))})"
+    return [Problem(f"{pointer}/Type", template, "window.simple_from_layers", message)]
+
+
+def _template(item: BuildingTemplate, pointer: str, template: str) -> list[Problem]:
+    ratio = item.default_window_to_wall_ratio
+    if 0 <= ratio <= 1:
+        return []
+    message = f"DefaultWindowToWallRatio is {ratio!r}; it must be in [0, 1]"
+    return [Problem(f"{pointer}/DefaultWindowToWallRatio", template, "wwr.uniform", message)]
+
+
+def _plausibility(item: FormatModel, pointer: str, template: str) -> list[Problem]:  # noqa: PLR0911 - one branch per class
+    """The range rules of the rule modules and research R3's plausibility rules for one object."""
+    if isinstance(item, OpaqueMaterial):
+        return _opaque_material(item, pointer, template)
+    if isinstance(item, MaterialLayer):
+        return _layer(cast("MaterialLayer[OpaqueMaterial]", item), pointer, template)
+    if isinstance(item, GlazingMaterial):
+        return _glazing(item, pointer, template)
+    if isinstance(item, GasMaterial):
+        return _gas(item, pointer, template)
+    if isinstance(item, BuildingTemplate):
+        return _template(item, pointer, template)
+    if isinstance(item, ZoneLoads):
+        return loads.range_problems(item, pointer=pointer, template=template)
+    if isinstance(item, ZoneConditioning):
+        return conditioning.range_problems(item, pointer=pointer, template=template)
+    if isinstance(item, ZoneVentilation):
+        return ventilation.range_problems(item, pointer=pointer, template=template)
+    return []
 
 
 def _problems_of(item: FormatModel, pointer: str, template: str, index: LibraryIndex) -> list[Problem]:

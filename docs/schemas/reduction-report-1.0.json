@@ -560,7 +560,7 @@
       "type": "object"
     },
     "GroupMember": {
-      "description": "A zone of a group (FR-007, FR-012).\n\nAttributes:\n    zone: The zone name (model spelling).\n    multiplier: Its multiplier, `Multiplier \u00d7 ListMultiplier`.\n    floor_area: The floor area of one copy, m\u00b2.\n    space_use: Its space use (R4).\n    space_use_source: Which tier of FR-007 decided the space use.\n    exposure: Its exposure (R7).",
+      "description": "A zone of a group (FR-007, FR-012).\n\nAttributes:\n    zone: The zone name (model spelling).\n    multiplier: Its multiplier, `Multiplier` times `ListMultiplier`.\n    floor_area: The floor area of one copy, m\u00b2.\n    space_use: Its space use (R4).\n    space_use_source: Which tier of FR-007 decided the space use.\n    exposure: Its exposure (R7).",
       "properties": {
         "zone": {
           "title": "Zone",

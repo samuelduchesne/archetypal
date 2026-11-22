@@ -6,6 +6,9 @@ diataxis: reference
 
 Reference pages describe archetypal as it is, one page per part of the code or the project.
 
+- [Command line](cli.md): the `archetypal` command, its options, exit statuses and reports,
+  generated from the code.
+- [Python API](api.md): the public modules and their names, and the errors.
 - [Removed v2 capabilities](removed.md): every archetypal 2 name, module, command and option
   that archetypal 3 does not provide, with its replacement.
 - [UMI to SBEM field correspondence](umi-correspondence.md): every UMI field, its SBEM

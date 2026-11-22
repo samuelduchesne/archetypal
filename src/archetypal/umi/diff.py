@@ -28,7 +28,6 @@ from typing import TYPE_CHECKING, Final, cast
 
 from pydantic import BaseModel
 
-from archetypal.errors import UmiFormatError
 from archetypal.umi import dialects
 from archetypal.umi._format import (
     DaySchedule,
@@ -289,7 +288,7 @@ class _UmiComparer:
             return
         self._seen.add(key)
         model = type(a)
-        if type(b) is not model and not isinstance(b, model.__mro__[0]):
+        if not isinstance(b, model) and not isinstance(a, type(b)):
             self.add(pointer, Relevance.SIMULATION, type(a).__name__, type(b).__name__, None, who)
             return
         for name, field in model.model_fields.items():
@@ -419,18 +418,11 @@ def _unused(first: LibraryIndex, second: LibraryIndex, comparer: _UmiComparer) -
     for item, pointer in first.components():
         if first.users(item) or not isinstance(item, LibraryComponent):
             continue
-        if isinstance(item, DaySchedule | WeekSchedule) and _used_by_year(first, item):
-            continue
         other = by_name.get((type(item), item.name))
         if other is None:
             comparer.add(pointer, Relevance.DESCRIPTIVE, item.name, None, None, "")
         else:
             comparer.compare(item, other, pointer, "")
-
-
-def _used_by_year(index: LibraryIndex, item: FormatModel) -> bool:
-    """Whether a day or week schedule is reached through a year schedule a template uses."""
-    return bool(index.users(item))
 
 
 # --- SBEM ------------------------------------------------------------------------------------------

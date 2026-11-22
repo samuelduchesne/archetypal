@@ -22,6 +22,8 @@ nav:
       - how-to/write-archetypes-to-umi.md
   - Reference:
       - reference/index.md
+      - reference/cli.md
+      - reference/api.md
       - reference/removed.md
       - reference/umi-correspondence.md
       - reference/translation-report.md

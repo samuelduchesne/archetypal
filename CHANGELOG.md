@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- archetypal now depends on `epinterface` (`>=1.5.0,<1.6`) from the SBEM fork (https://github.com/samuelduchesne/epinterface), pinned to commit `cc81de2cecd83271daa97cf18a0031f701225243`. The pin will be replaced by a fork tag (`v1.5.0.post1`) once the maintainer tags it.
+- archetypal now depends on `epinterface` (`>=1.5.0,<1.6`) from the SBEM fork (https://github.com/samuelduchesne/epinterface), pinned to commit `9ff8adddd5f62f935b1bbd77d66aa74e0b4a4a4d`. The pin will be replaced by a fork tag (`v1.5.0.post1`) once the maintainer tags it.
 
 ### Removed
 

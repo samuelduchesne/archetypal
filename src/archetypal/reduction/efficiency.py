@@ -57,7 +57,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
 
 import numpy as np
 from idfkit.exceptions import ResultLookupError
@@ -244,7 +244,9 @@ class _Ledgers:
 
     def _add_mode(self, mode: Mode, by_zone: Mapping[str, Profile]) -> None:
         zeros = np.zeros(self.hours)
-        matrix = np.array([by_zone.get(n, zeros) for n in self.names], dtype=np.float64).reshape(len(self.names), self.hours)
+        matrix = np.array([by_zone.get(n, zeros) for n in self.names], dtype=np.float64).reshape(
+            len(self.names), self.hours
+        )
         total = (self.mult[:, None] * matrix).sum(axis=0)
         self.delivered[mode] = matrix
         self.building[mode] = total
@@ -279,7 +281,8 @@ class _Ledgers:
         both = heat + cool
         heat_fraction = _divide(heat, both)
         cool_fraction = _divide(cool, both)
-        for mode, fraction in (("heating", heat_fraction), ("cooling", cool_fraction)):
+        parts: tuple[tuple[Mode, _Array], ...] = (("heating", heat_fraction), ("cooling", cool_fraction))
+        for mode, fraction in parts:
             per_zone = self.hourly_share[mode] * (energy * fraction)
             for i in range(len(self.names)):
                 self._add(self.distribution[mode][i], fuel, float(per_zone[i].sum()))
@@ -326,9 +329,7 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
     }
     temperature = np.asarray(data.outdoor_temperature, dtype=np.float64)
     zones = {
-        name: {
-            mode: ledgers.totals(i, mode, data.rated.get(name, {}).get(mode), temperature) for mode in ledgers.modes
-        }
+        name: {mode: ledgers.totals(i, mode, data.rated.get(name, {}).get(mode), temperature) for mode in ledgers.modes}
         for i, name in enumerate(ledgers.names)
     }
     return EnergyAttribution(
@@ -577,8 +578,12 @@ def rated_efficiencies(sources: SourceData, zones: Sequence[ClassifiedZone]) -> 
             "cooling": _coil_mean(cooling_coils, parts.cooling_coils) if parts.cooling_coils else None,
             "hot_water": None,
         }
-        chosen = {mode: value if value is not None else fallback[mode] for mode, value in values.items()}
-        rated[zone.zone.name] = {mode: value for mode, value in chosen.items() if value is not None}
+        chosen: dict[Mode, float] = {}
+        for mode, value in values.items():
+            best = value if value is not None else fallback[mode]
+            if best is not None:
+                chosen[mode] = best
+        rated[zone.zone.name] = chosen
     return rated
 
 

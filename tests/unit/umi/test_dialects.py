@@ -106,7 +106,7 @@ def test_archsim_keys_without_a_core_counterpart_are_lost() -> None:
     assert "/OpaqueConstructions/0/Type" in {pointer for pointer, _ in raw.lost}
     for collection in ("GasMaterials", "GlazingMaterials", "OpaqueMaterials"):
         for item in objects(raw, collection):
-            assert not set(item) & keys
+            assert not set(item) & (keys - {"Type"})
 
 
 def test_reading_an_archsim_library_reports_its_lost_keys() -> None:

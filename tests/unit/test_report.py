@@ -110,7 +110,9 @@ def make_report(**update: Any) -> ReductionReport:
     parameters = [Parameter(group=None, path="BuildingGeometry.NumStoreys", value=1, rule="geometry.storeys")]
     for group in groups:
         parameters.append(
-            Parameter(group=group.name, path="ZoneGroup.FloorAreaShare", value=group.floor_area_share, rule="area.share")
+            Parameter(
+                group=group.name, path="ZoneGroup.FloorAreaShare", value=group.floor_area_share, rule="area.share"
+            )
         )
         density = group.ledger.gains["people"].installed / group.floor_area
         parameters.append(
@@ -188,14 +190,17 @@ def numbers(found: list[str]) -> set[int]:
 
 def test_valid_report_holds_every_invariant() -> None:
     report = make_report()
-    assert messages(
-        report,
-        zone_names=ALL_ZONES,
-        zone_roles={"Attic": "attic", "Plenum": "excluded"},
-        conditioned_floor_area=CONDITIONED_AREA,
-        set_parameters=[(None, "BuildingGeometry.NumStoreys")],
-        expected_not_represented=report.not_represented,
-    ) == []
+    assert (
+        messages(
+            report,
+            zone_names=ALL_ZONES,
+            zone_roles={"Attic": "attic", "Plenum": "excluded"},
+            conditioned_floor_area=CONDITIONED_AREA,
+            set_parameters=[(None, "BuildingGeometry.NumStoreys")],
+            expected_not_represented=report.not_represented,
+        )
+        == []
+    )
     raise_for_invariants(report)
 
 
@@ -368,9 +373,7 @@ def test_invariant_3_unknown_rule_duplicate_and_missing() -> None:
     orphan = Parameter(group="no such group", path="X", value=1, rule="area.share")
     assert numbers(check_parameters(make_report(parameters=(*report.parameters, orphan)))) == {3}
     assert numbers(check_parameters(report, set_parameters=[(None, "BuildingGeometry.Height")])) == {3}
-    assert numbers(check_parameters(report, set_parameters=[("office / core", "Space.Lighting.PowerDensity")])) == {
-        3
-    }
+    assert numbers(check_parameters(report, set_parameters=[("office / core", "Space.Lighting.PowerDensity")])) == {3}
 
 
 def test_invariant_4_feature_dropped() -> None:
@@ -401,7 +404,9 @@ def test_invariant_5_finest_key() -> None:
     report = make_report()
     first = report.pre_threshold_groups[0]
     coarse = first.model_copy(update={"key": (first.key[0],)})
-    found = check_mergeable(report.model_copy(update={"pre_threshold_groups": (coarse, *report.pre_threshold_groups[1:])}))
+    found = check_mergeable(
+        report.model_copy(update={"pre_threshold_groups": (coarse, *report.pre_threshold_groups[1:])})
+    )
     assert numbers(found) == {5}
     wrong_key = first.model_copy(update={"key": ("lab", first.key[1])})
     found = check_mergeable(
@@ -414,7 +419,9 @@ def test_invariant_5_ledger_totals_must_add_up() -> None:
     report = make_report()
     first = report.pre_threshold_groups[0]
     heavier = first.model_copy(update={"ledger": first.ledger.model_copy(update={"unheated_area": 7.0})})
-    found = check_mergeable(report.model_copy(update={"pre_threshold_groups": (heavier, *report.pre_threshold_groups[1:])}))
+    found = check_mergeable(
+        report.model_copy(update={"pre_threshold_groups": (heavier, *report.pre_threshold_groups[1:])})
+    )
     assert numbers(found) == {5}
 
 
@@ -481,7 +488,7 @@ def test_schema_describes_the_written_file() -> None:
     assert schema["$id"].endswith("/schemas/reduction-report-1.0.json")
     written = json.loads(io.dumps(make_report()))
     assert set(schema["properties"]) == set(written)
-    assert "EncodedProfile" in schema["$defs"]
+    assert "base64-float64-le" in json.dumps(schema)  # the profile encoding is documented
     assert "NotRepresented" in schema["$defs"]
 
 

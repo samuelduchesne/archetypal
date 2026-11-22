@@ -77,6 +77,7 @@ _GASES: Final = frozenset({"AIR", "ARGON", "KRYPTON", "XENON"})
 
 # The references of research R3's list, by class: (field name, Basilisk key).
 _REQUIRED: Final[Mapping[type[FormatModel], tuple[tuple[str, str], ...]]] = {
+    MaterialLayer: (("material", "Material"),),
     BuildingTemplate: (("core", "Core"), ("perimeter", "Perimeter"), ("windows", "Windows")),
     ZoneDefinition: (
         ("conditioning", "Conditioning"),
@@ -163,8 +164,10 @@ class LibraryIndex:
         self._order = [key for key in document if key in self._fields]
         self._order += [key for key in self._fields if key not in document]
         for key in self._order:
+            raw = document.get(key)
+            elements = cast("list[object]", raw) if isinstance(raw, list) else []
             for index, item in enumerate(cast("tuple[FormatModel, ...]", getattr(library, self._fields[key]))):
-                self._define(item, f"/{key}/{index}")
+                self._define_tree(item, f"/{key}/{index}", elements[index] if index < len(elements) else None)
         self._reach: list[list[tuple[FormatModel, str]]] = []
         self._users: dict[int, list[int]] = {}
         for index, template in enumerate(library.building_templates):
@@ -178,6 +181,27 @@ class LibraryIndex:
         if id(item) not in self._pointers:
             self._pointers[id(item)] = pointer
             self._keep.append(item)
+
+    def _define_tree(self, item: FormatModel, pointer: str, raw: object) -> None:
+        """Give `item` and the objects defined inline in it their place in the file.
+
+        `raw` is the JSON at `pointer`; an object written there as a `$ref` is defined elsewhere.
+        """
+        if not isinstance(raw, dict) or "$ref" in raw:
+            return
+        self._define(item, pointer)
+        obj = cast("dict[str, object]", raw)
+        for name, field in type(item).model_fields.items():
+            key = field.alias or name
+            value: object = getattr(item, name)
+            child = obj.get(key)
+            if isinstance(value, FormatModel):
+                self._define_tree(value, f"{pointer}/{_escape(key)}", child)
+            elif isinstance(value, tuple) and isinstance(child, list):
+                children = cast("list[object]", child)
+                for position, element in enumerate(cast("tuple[object, ...]", value)):
+                    if isinstance(element, FormatModel) and position < len(children):
+                        self._define_tree(element, f"{pointer}/{_escape(key)}/{position}", children[position])
 
     def _walk(self, item: FormatModel, pointer: str, reached: list[tuple[FormatModel, str]], seen: set[int]) -> None:
         if id(item) in seen:

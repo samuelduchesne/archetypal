@@ -182,6 +182,8 @@ REQUIRED: list[Mutation] = [
 def test_required_references(collection: str, index: int, key: str) -> None:
     document = base()
     items(document, collection)[index][key] = None
+    if key == "Windows":  # the template defines its window settings inline; the collection refers to them
+        document["WindowSettings"] = []
     problems = problems_of(document)
     pointer = f"/{collection}/{index}/{key}"
     assert (pointer, "Office") in where(problems)

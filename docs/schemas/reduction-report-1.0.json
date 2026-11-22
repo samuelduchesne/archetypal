@@ -1,0 +1,1300 @@
+{
+  "$defs": {
+    "AirflowTotals": {
+      "additionalProperties": false,
+      "description": "An airflow: infiltration, or the base of outdoor air (R9, FR-018, FR-019).\n\nAttributes:\n    design_flow: \u03a3 design flow, m\u00b3/s.\n    hourly: \u03a3 flow per hour, m\u00b3/s.\n    constant_weighted: \u03a3 design flow \u00b7 constant coefficient (infiltration).\n    temperature_weighted: \u03a3 design flow \u00b7 temperature coefficient.\n    velocity_weighted: \u03a3 design flow \u00b7 velocity coefficient.\n    velocity_squared_weighted: \u03a3 design flow \u00b7 velocity-squared coefficient.",
+      "properties": {
+        "design_flow": {
+          "default": 0.0,
+          "title": "Design Flow",
+          "type": "number"
+        },
+        "hourly": {
+          "additionalProperties": false,
+          "description": "A profile (for example 8760 hourly values) stored compactly in a JSON file.\n\nAttributes:\n    encoding: Always `\"base64-float64-le\"`: the values as little-endian IEEE 754 float64,\n        base64-encoded (RFC 4648, with padding).\n    length: The number of values.\n    data: The base64 text.",
+          "properties": {
+            "encoding": {
+              "const": "base64-float64-le",
+              "default": "base64-float64-le",
+              "title": "Encoding",
+              "type": "string"
+            },
+            "length": {
+              "title": "Length",
+              "type": "integer"
+            },
+            "data": {
+              "title": "Data",
+              "type": "string"
+            }
+          },
+          "required": [
+            "length",
+            "data"
+          ],
+          "title": "EncodedProfile",
+          "type": "object"
+        },
+        "constant_weighted": {
+          "default": 0.0,
+          "title": "Constant Weighted",
+          "type": "number"
+        },
+        "temperature_weighted": {
+          "default": 0.0,
+          "title": "Temperature Weighted",
+          "type": "number"
+        },
+        "velocity_weighted": {
+          "default": 0.0,
+          "title": "Velocity Weighted",
+          "type": "number"
+        },
+        "velocity_squared_weighted": {
+          "default": 0.0,
+          "title": "Velocity Squared Weighted",
+          "type": "number"
+        }
+      },
+      "title": "AirflowTotals",
+      "type": "object"
+    },
+    "BuildingBlock": {
+      "description": "Building facts `merge` needs without the model (R6).\n\nAttributes:\n    conditioned_floor_area: \u03a3 floor area of the conditioned zones, multipliers applied, m\u00b2.\n    storey_ratio: Conditioned floor area \u00f7 floor area of the lowest level, unrounded.",
+      "properties": {
+        "conditioned_floor_area": {
+          "exclusiveMinimum": 0.0,
+          "title": "Conditioned Floor Area",
+          "type": "number"
+        },
+        "storey_ratio": {
+          "exclusiveMinimum": 0.0,
+          "title": "Storey Ratio",
+          "type": "number"
+        }
+      },
+      "required": [
+        "conditioned_floor_area",
+        "storey_ratio"
+      ],
+      "title": "BuildingBlock",
+      "type": "object"
+    },
+    "EirSums": {
+      "additionalProperties": false,
+      "description": "The additive sums of R12's constrained fit `c_h = (a + b\u00b7(T_h - T_ref))\u00b7d_h`.\n\nEach sum runs over (zone, hour) pairs, with d the delivered and c the consumed energy (J)\nand T the outdoor dry-bulb temperature (\u00b0C).\n\nAttributes:\n    d: \u03a3 d.\n    d_t: \u03a3 d\u00b7T.\n    d2: \u03a3 d\u00b2.\n    d2_t: \u03a3 d\u00b2\u00b7T.\n    d2_t2: \u03a3 d\u00b2\u00b7T\u00b2.\n    c: \u03a3 c.\n    c_d: \u03a3 c\u00b7d.\n    c_d_t: \u03a3 c\u00b7d\u00b7T.",
+      "properties": {
+        "d": {
+          "default": 0.0,
+          "title": "D",
+          "type": "number"
+        },
+        "d_t": {
+          "default": 0.0,
+          "title": "D T",
+          "type": "number"
+        },
+        "d2": {
+          "default": 0.0,
+          "title": "D2",
+          "type": "number"
+        },
+        "d2_t": {
+          "default": 0.0,
+          "title": "D2 T",
+          "type": "number"
+        },
+        "d2_t2": {
+          "default": 0.0,
+          "title": "D2 T2",
+          "type": "number"
+        },
+        "c": {
+          "default": 0.0,
+          "title": "C",
+          "type": "number"
+        },
+        "c_d": {
+          "default": 0.0,
+          "title": "C D",
+          "type": "number"
+        },
+        "c_d_t": {
+          "default": 0.0,
+          "title": "C D T",
+          "type": "number"
+        }
+      },
+      "title": "EirSums",
+      "type": "object"
+    },
+    "EnergyTotals": {
+      "additionalProperties": false,
+      "description": "Delivered and consumed energy of one mode (R12, FR-022).\n\nAttributes:\n    delivered: \u03a3 delivered energy, J.\n    consumed_by_fuel: \u03a3 consumed energy of the primary meters per fuel, J.\n    distribution_by_fuel: \u03a3 pump and heat-rejection energy folded into this mode (and fans\n        until UP-8, R19) per fuel, J.\n    unattributed: Consumption in hours without delivery (standby, pilot) per fuel, J.\n    rated_weight: \u03a3 weight of the rated efficiencies (for example rated capacity).\n    rated_weighted: \u03a3 weight \u00b7 rated efficiency, from *Equipment Summary*.\n    eir_sums: The sums of the energy-input-ratio fit.",
+      "properties": {
+        "delivered": {
+          "default": 0.0,
+          "title": "Delivered",
+          "type": "number"
+        },
+        "consumed_by_fuel": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Consumed By Fuel",
+          "type": "object"
+        },
+        "distribution_by_fuel": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Distribution By Fuel",
+          "type": "object"
+        },
+        "unattributed": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Unattributed",
+          "type": "object"
+        },
+        "rated_weight": {
+          "default": 0.0,
+          "title": "Rated Weight",
+          "type": "number"
+        },
+        "rated_weighted": {
+          "default": 0.0,
+          "title": "Rated Weighted",
+          "type": "number"
+        },
+        "eir_sums": {
+          "$ref": "#/$defs/EirSums"
+        }
+      },
+      "title": "EnergyTotals",
+      "type": "object"
+    },
+    "EnvelopeAssignment": {
+      "additionalProperties": false,
+      "description": "Envelope of an excluded zone assigned to a conditioned member (R6, R8, FR-013).\n\nThe assigned totals themselves are added to the member's `envelope`; this records where\nthey came from, for the report.\n\nAttributes:\n    source_zone: The excluded zone (plenum, attic, crawlspace...).\n    target_zone: The conditioned zone that receives the envelope.\n    envelope_class: The class of the assigned surfaces.\n    area: The area assigned, m\u00b2 (extensive).\n    share: The target's share of the source's envelope of that class, by shared area.",
+      "properties": {
+        "source_zone": {
+          "title": "Source Zone",
+          "type": "string"
+        },
+        "target_zone": {
+          "title": "Target Zone",
+          "type": "string"
+        },
+        "envelope_class": {
+          "enum": [
+            "exterior_wall",
+            "roof",
+            "exposed_floor",
+            "ground_floor",
+            "ground_wall",
+            "partition",
+            "floor_ceiling"
+          ],
+          "title": "Envelope Class",
+          "type": "string"
+        },
+        "area": {
+          "title": "Area",
+          "type": "number"
+        },
+        "share": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Share",
+          "type": "number"
+        }
+      },
+      "required": [
+        "source_zone",
+        "target_zone",
+        "envelope_class",
+        "area",
+        "share"
+      ],
+      "title": "EnvelopeAssignment",
+      "type": "object"
+    },
+    "EnvelopeTotals": {
+      "additionalProperties": false,
+      "description": "One opaque surface class of a group (R6, FR-016, FR-017).\n\nAttributes:\n    area: \u03a3 net area, m\u00b2.\n    ua: \u03a3 area \u00b7 U with films, W/K.\n    capacity_inner: \u03a3 heat capacity inside each construction's most resistive layer, J/K.\n    capacity_outer: \u03a3 heat capacity outside it, J/K.\n    area_by_orientation: \u03a3 area per orientation sector, m\u00b2.",
+      "properties": {
+        "area": {
+          "default": 0.0,
+          "title": "Area",
+          "type": "number"
+        },
+        "ua": {
+          "default": 0.0,
+          "title": "Ua",
+          "type": "number"
+        },
+        "capacity_inner": {
+          "default": 0.0,
+          "title": "Capacity Inner",
+          "type": "number"
+        },
+        "capacity_outer": {
+          "default": 0.0,
+          "title": "Capacity Outer",
+          "type": "number"
+        },
+        "area_by_orientation": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "propertyNames": {
+            "enum": [
+              "N",
+              "NE",
+              "E",
+              "SE",
+              "S",
+              "SW",
+              "W",
+              "NW"
+            ]
+          },
+          "title": "Area By Orientation",
+          "type": "object"
+        }
+      },
+      "title": "EnvelopeTotals",
+      "type": "object"
+    },
+    "ExcludedZone": {
+      "description": "A zone in no group (FR-013, R8).\n\nAttributes:\n    zone: The zone name.\n    multiplier: Its multiplier.\n    floor_area: The floor area of one copy, m\u00b2.\n    role: `attic`, `basement` or `excluded` (plenums, unconditioned spaces).\n    reason: Why, in words.\n    envelope: Where its envelope went, sorted.",
+      "properties": {
+        "zone": {
+          "title": "Zone",
+          "type": "string"
+        },
+        "multiplier": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Multiplier",
+          "type": "integer"
+        },
+        "floor_area": {
+          "minimum": 0.0,
+          "title": "Floor Area",
+          "type": "number"
+        },
+        "role": {
+          "enum": [
+            "attic",
+            "basement",
+            "excluded"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "envelope": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EnvelopeAssignment"
+          },
+          "title": "Envelope",
+          "type": "array"
+        }
+      },
+      "required": [
+        "zone",
+        "floor_area",
+        "role",
+        "reason"
+      ],
+      "title": "ExcludedZone",
+      "type": "object"
+    },
+    "FanTotals": {
+      "additionalProperties": false,
+      "description": "Fan energy and air volume (R19, FR-022a).\n\nAttributes:\n    energy: \u03a3 fan electricity, J.\n    volume: \u03a3 air volume at standard density, m\u00b3.\n    volume_in_mode: \u03a3 air volume in hours of each mode, m\u00b3.\n    delivered_in_mode: \u03a3 delivered energy in those hours, J.\n    volume_without_demand: \u03a3 air volume in hours with neither load nor outdoor-air demand, m\u00b3.",
+      "properties": {
+        "energy": {
+          "default": 0.0,
+          "title": "Energy",
+          "type": "number"
+        },
+        "volume": {
+          "default": 0.0,
+          "title": "Volume",
+          "type": "number"
+        },
+        "volume_in_mode": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "propertyNames": {
+            "enum": [
+              "heating",
+              "cooling",
+              "hot_water"
+            ]
+          },
+          "title": "Volume In Mode",
+          "type": "object"
+        },
+        "delivered_in_mode": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "propertyNames": {
+            "enum": [
+              "heating",
+              "cooling",
+              "hot_water"
+            ]
+          },
+          "title": "Delivered In Mode",
+          "type": "object"
+        },
+        "volume_without_demand": {
+          "default": 0.0,
+          "title": "Volume Without Demand",
+          "type": "number"
+        }
+      },
+      "title": "FanTotals",
+      "type": "object"
+    },
+    "GainTotals": {
+      "additionalProperties": false,
+      "description": "One kind of internal gain (FR-015).\n\nAttributes:\n    installed: \u03a3 design level: W, or people for occupancy.\n    hourly: \u03a3 design level \u00b7 schedule, per hour (W, or people).\n    radiant: Annual radiant energy, J.\n    latent: Annual latent energy, J.\n    lost: Annual energy lost to the zone (lost fraction, and lights' return-air fraction), J.",
+      "properties": {
+        "installed": {
+          "default": 0.0,
+          "title": "Installed",
+          "type": "number"
+        },
+        "hourly": {
+          "additionalProperties": false,
+          "description": "A profile (for example 8760 hourly values) stored compactly in a JSON file.\n\nAttributes:\n    encoding: Always `\"base64-float64-le\"`: the values as little-endian IEEE 754 float64,\n        base64-encoded (RFC 4648, with padding).\n    length: The number of values.\n    data: The base64 text.",
+          "properties": {
+            "encoding": {
+              "const": "base64-float64-le",
+              "default": "base64-float64-le",
+              "title": "Encoding",
+              "type": "string"
+            },
+            "length": {
+              "title": "Length",
+              "type": "integer"
+            },
+            "data": {
+              "title": "Data",
+              "type": "string"
+            }
+          },
+          "required": [
+            "length",
+            "data"
+          ],
+          "title": "EncodedProfile",
+          "type": "object"
+        },
+        "radiant": {
+          "default": 0.0,
+          "title": "Radiant",
+          "type": "number"
+        },
+        "latent": {
+          "default": 0.0,
+          "title": "Latent",
+          "type": "number"
+        },
+        "lost": {
+          "default": 0.0,
+          "title": "Lost",
+          "type": "number"
+        }
+      },
+      "title": "GainTotals",
+      "type": "object"
+    },
+    "GroupLedger": {
+      "additionalProperties": false,
+      "description": "The conserved totals of a group of zones (data-model.md: GroupLedger).\n\nAttributes:\n    members: The zone names, sorted (FR-025 provenance).\n    floor_area: \u03a3 floor area, multipliers applied, m\u00b2 (FR-014).\n    envelope: Opaque totals per surface class (FR-016, FR-017).\n    window_by_orientation: Window totals per orientation (FR-016, FR-024).\n    internal_mass_capacity: \u03a3 heat capacity of internal mass, J/K (FR-017).\n    internal_mass_area: \u03a3 exposed area of internal mass, m\u00b2.\n    gains: Totals per gain kind (FR-015).\n    infiltration: Infiltration (FR-018).\n    outdoor_air: Mechanical outdoor air with HRV and economiser categories (FR-019).\n    heating_setpoint: Area-weighted heating setpoint of the heated members (FR-020).\n    cooling_setpoint: Area-weighted cooling setpoint of the cooled members (FR-020).\n    unheated_area: \u03a3 floor area of members not heated, m\u00b2.\n    uncooled_area: \u03a3 floor area of members not cooled, m\u00b2.\n    hot_water: Domestic hot water (FR-021).\n    energy: Delivered and consumed energy per mode (FR-022).\n    fans: Fan energy and air volume (FR-022a).\n    excluded_envelope: Envelope of excluded zones assigned to members, sorted (FR-013).",
+      "properties": {
+        "members": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "floor_area": {
+          "default": 0.0,
+          "title": "Floor Area",
+          "type": "number"
+        },
+        "envelope": {
+          "additionalProperties": {
+            "$ref": "#/$defs/EnvelopeTotals"
+          },
+          "propertyNames": {
+            "enum": [
+              "exterior_wall",
+              "roof",
+              "exposed_floor",
+              "ground_floor",
+              "ground_wall",
+              "partition",
+              "floor_ceiling"
+            ]
+          },
+          "title": "Envelope",
+          "type": "object"
+        },
+        "window_by_orientation": {
+          "additionalProperties": {
+            "$ref": "#/$defs/WindowTotals"
+          },
+          "propertyNames": {
+            "enum": [
+              "N",
+              "NE",
+              "E",
+              "SE",
+              "S",
+              "SW",
+              "W",
+              "NW"
+            ]
+          },
+          "title": "Window By Orientation",
+          "type": "object"
+        },
+        "internal_mass_capacity": {
+          "default": 0.0,
+          "title": "Internal Mass Capacity",
+          "type": "number"
+        },
+        "internal_mass_area": {
+          "default": 0.0,
+          "title": "Internal Mass Area",
+          "type": "number"
+        },
+        "gains": {
+          "additionalProperties": {
+            "$ref": "#/$defs/GainTotals"
+          },
+          "propertyNames": {
+            "enum": [
+              "people",
+              "lights",
+              "electric",
+              "gas",
+              "hot_water_equipment",
+              "steam",
+              "other",
+              "baseboard"
+            ]
+          },
+          "title": "Gains",
+          "type": "object"
+        },
+        "infiltration": {
+          "$ref": "#/$defs/AirflowTotals"
+        },
+        "outdoor_air": {
+          "$ref": "#/$defs/OutdoorAirTotals"
+        },
+        "heating_setpoint": {
+          "$ref": "#/$defs/WeightedProfile"
+        },
+        "cooling_setpoint": {
+          "$ref": "#/$defs/WeightedProfile"
+        },
+        "unheated_area": {
+          "default": 0.0,
+          "title": "Unheated Area",
+          "type": "number"
+        },
+        "uncooled_area": {
+          "default": 0.0,
+          "title": "Uncooled Area",
+          "type": "number"
+        },
+        "hot_water": {
+          "$ref": "#/$defs/HotWaterTotals"
+        },
+        "energy": {
+          "additionalProperties": {
+            "$ref": "#/$defs/EnergyTotals"
+          },
+          "propertyNames": {
+            "enum": [
+              "heating",
+              "cooling",
+              "hot_water"
+            ]
+          },
+          "title": "Energy",
+          "type": "object"
+        },
+        "fans": {
+          "$ref": "#/$defs/FanTotals"
+        },
+        "excluded_envelope": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EnvelopeAssignment"
+          },
+          "title": "Excluded Envelope",
+          "type": "array"
+        }
+      },
+      "title": "GroupLedger",
+      "type": "object"
+    },
+    "GroupMember": {
+      "description": "A zone of a group (FR-007, FR-012).\n\nAttributes:\n    zone: The zone name (model spelling).\n    multiplier: Its multiplier, `Multiplier \u00d7 ListMultiplier`.\n    floor_area: The floor area of one copy, m\u00b2.\n    space_use: Its space use (R4).\n    space_use_source: Which tier of FR-007 decided the space use.\n    exposure: Its exposure (R7).",
+      "properties": {
+        "zone": {
+          "title": "Zone",
+          "type": "string"
+        },
+        "multiplier": {
+          "minimum": 1,
+          "title": "Multiplier",
+          "type": "integer"
+        },
+        "floor_area": {
+          "minimum": 0.0,
+          "title": "Floor Area",
+          "type": "number"
+        },
+        "space_use": {
+          "title": "Space Use",
+          "type": "string"
+        },
+        "space_use_source": {
+          "enum": [
+            "user",
+            "space_type",
+            "signature"
+          ],
+          "title": "Space Use Source",
+          "type": "string"
+        },
+        "exposure": {
+          "enum": [
+            "perimeter",
+            "core"
+          ],
+          "title": "Exposure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "zone",
+        "multiplier",
+        "floor_area",
+        "space_use",
+        "space_use_source",
+        "exposure"
+      ],
+      "title": "GroupMember",
+      "type": "object"
+    },
+    "HotWaterTotals": {
+      "additionalProperties": false,
+      "description": "Domestic hot water (R11, FR-021).\n\nAttributes:\n    volume: \u03a3 hot-water volume per hour, m\u00b3.\n    heat: \u03a3 volume \u00b7 temperature rise per hour, m\u00b3\u00b7K.",
+      "properties": {
+        "volume": {
+          "additionalProperties": false,
+          "description": "A profile (for example 8760 hourly values) stored compactly in a JSON file.\n\nAttributes:\n    encoding: Always `\"base64-float64-le\"`: the values as little-endian IEEE 754 float64,\n        base64-encoded (RFC 4648, with padding).\n    length: The number of values.\n    data: The base64 text.",
+          "properties": {
+            "encoding": {
+              "const": "base64-float64-le",
+              "default": "base64-float64-le",
+              "title": "Encoding",
+              "type": "string"
+            },
+            "length": {
+              "title": "Length",
+              "type": "integer"
+            },
+            "data": {
+              "title": "Data",
+              "type": "string"
+            }
+          },
+          "required": [
+            "length",
+            "data"
+          ],
+          "title": "EncodedProfile",
+          "type": "object"
+        },
+        "heat": {
+          "additionalProperties": false,
+          "description": "A profile (for example 8760 hourly values) stored compactly in a JSON file.\n\nAttributes:\n    encoding: Always `\"base64-float64-le\"`: the values as little-endian IEEE 754 float64,\n        base64-encoded (RFC 4648, with padding).\n    length: The number of values.\n    data: The base64 text.",
+          "properties": {
+            "encoding": {
+              "const": "base64-float64-le",
+              "default": "base64-float64-le",
+              "title": "Encoding",
+              "type": "string"
+            },
+            "length": {
+              "title": "Length",
+              "type": "integer"
+            },
+            "data": {
+              "title": "Data",
+              "type": "string"
+            }
+          },
+          "required": [
+            "length",
+            "data"
+          ],
+          "title": "EncodedProfile",
+          "type": "object"
+        }
+      },
+      "title": "HotWaterTotals",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "Layout": {
+      "description": "How conditioned zones are grouped into SBEM zone groups.\n\nAttributes:\n    SPACE_USE_EXPOSURE: One group per space use and exposure (the default, the finest).\n    SPACE_USE: One group per space use.\n    CORE_PERIMETER: One group per exposure.\n    SINGLE_ZONE: One group for the whole building (the coarsest).",
+      "enum": [
+        "space_use_exposure",
+        "space_use",
+        "core_perimeter",
+        "single_zone"
+      ],
+      "title": "Layout",
+      "type": "string"
+    },
+    "MergedDistinction": {
+      "description": "For a coarser layout, which finest keys one resulting group merges (US2; read by spec 003).\n\nAttributes:\n    into_key: The resulting group's key.\n    from_keys: The finest keys merged into it, sorted.\n    lost: The distinctions lost, in group-key order.",
+      "properties": {
+        "into_key": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Into Key",
+          "type": "array"
+        },
+        "from_keys": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "From Keys",
+          "type": "array"
+        },
+        "lost": {
+          "items": {
+            "enum": [
+              "space_use",
+              "exposure"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Lost",
+          "type": "array"
+        }
+      },
+      "required": [
+        "into_key",
+        "from_keys",
+        "lost"
+      ],
+      "title": "MergedDistinction",
+      "type": "object"
+    },
+    "NotRepresented": {
+      "additionalProperties": false,
+      "description": "One entry of the report's `not_represented[]` (data-model.md, ReductionReport; FR-026).\n\nAttributes:\n    feature: What is not represented, in words (`\"Daylighting controls\"`, `\"Fan energy\"`).\n    effect: What it does in the detailed model.\n    object_type: The EnergyPlus object type, when the entry comes from one.\n    objects: The names of the objects found, sorted.\n    affected_zones: The zones it affects, sorted (model spelling).\n    affected_groups: The groups it affects, sorted; filled by the report once zones are\n        grouped, empty before.\n    magnitude: Its size, such as the annual energy, or `None` when the results do not give\n        it.\n    unit: The unit of `magnitude` (`\"J\"` for energy), or `None`.\n    folded_into: The SBEM parameter its effect is folded into, or `None` when it is dropped.\n    source: R20's table (`\"unsupported_features\"`) or the module that folded it.",
+      "properties": {
+        "feature": {
+          "title": "Feature",
+          "type": "string"
+        },
+        "effect": {
+          "title": "Effect",
+          "type": "string"
+        },
+        "object_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Object Type"
+        },
+        "objects": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Objects",
+          "type": "array"
+        },
+        "affected_zones": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Zones",
+          "type": "array"
+        },
+        "affected_groups": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Groups",
+          "type": "array"
+        },
+        "magnitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Magnitude"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "folded_into": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Folded Into"
+        },
+        "source": {
+          "default": "unsupported_features",
+          "enum": [
+            "unsupported_features",
+            "envelope",
+            "airflow",
+            "thermostats",
+            "hotwater",
+            "efficiency",
+            "fans",
+            "schedules",
+            "to_sbem"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "feature",
+        "effect"
+      ],
+      "title": "NotRepresented",
+      "type": "object"
+    },
+    "OutdoorAirTotals": {
+      "additionalProperties": false,
+      "description": "Mechanical outdoor air, with heat recovery and economiser categories (R9, FR-019).\n\nAttributes:\n    hrv_weighted: SBEM HRV category \u2192 \u03a3 annual outdoor-air volume it serves, m\u00b3.\n    economiser_weighted: SBEM economiser category \u2192 \u03a3 annual outdoor-air volume, m\u00b3.\n    effectiveness_weighted: \u03a3 annual volume \u00b7 sensible heat-recovery effectiveness, m\u00b3.",
+      "properties": {
+        "design_flow": {
+          "default": 0.0,
+          "title": "Design Flow",
+          "type": "number"
+        },
+        "hourly": {
+          "additionalProperties": false,
+          "description": "A profile (for example 8760 hourly values) stored compactly in a JSON file.\n\nAttributes:\n    encoding: Always `\"base64-float64-le\"`: the values as little-endian IEEE 754 float64,\n        base64-encoded (RFC 4648, with padding).\n    length: The number of values.\n    data: The base64 text.",
+          "properties": {
+            "encoding": {
+              "const": "base64-float64-le",
+              "default": "base64-float64-le",
+              "title": "Encoding",
+              "type": "string"
+            },
+            "length": {
+              "title": "Length",
+              "type": "integer"
+            },
+            "data": {
+              "title": "Data",
+              "type": "string"
+            }
+          },
+          "required": [
+            "length",
+            "data"
+          ],
+          "title": "EncodedProfile",
+          "type": "object"
+        },
+        "constant_weighted": {
+          "default": 0.0,
+          "title": "Constant Weighted",
+          "type": "number"
+        },
+        "temperature_weighted": {
+          "default": 0.0,
+          "title": "Temperature Weighted",
+          "type": "number"
+        },
+        "velocity_weighted": {
+          "default": 0.0,
+          "title": "Velocity Weighted",
+          "type": "number"
+        },
+        "velocity_squared_weighted": {
+          "default": 0.0,
+          "title": "Velocity Squared Weighted",
+          "type": "number"
+        },
+        "hrv_weighted": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Hrv Weighted",
+          "type": "object"
+        },
+        "economiser_weighted": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Economiser Weighted",
+          "type": "object"
+        },
+        "effectiveness_weighted": {
+          "default": 0.0,
+          "title": "Effectiveness Weighted",
+          "type": "number"
+        }
+      },
+      "title": "OutdoorAirTotals",
+      "type": "object"
+    },
+    "Parameter": {
+      "description": "One SBEM value and the rule that produced it (FR-025).\n\nAttributes:\n    group: The group name, or `None` for a building-level field (number of storeys).\n    path: The SBEM field path, dotted (`\"Space.Occupancy.PeopleDensity\"`).\n    value: The value written (JSON).\n    rule: The rule id from the derivation table (`RULE_IDS`).",
+      "properties": {
+        "group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Group"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        }
+      },
+      "required": [
+        "group",
+        "path",
+        "value",
+        "rule"
+      ],
+      "title": "Parameter",
+      "type": "object"
+    },
+    "PreThresholdGroup": {
+      "description": "A ledger before small groups are merged, at the finest key (FR-011; input to `merge`).\n\nAttributes:\n    key: `(space_use, exposure)`, whatever the layout.\n    ledger: The totals of the zones with that key.",
+      "properties": {
+        "key": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key",
+          "type": "array"
+        },
+        "ledger": {
+          "$ref": "#/$defs/GroupLedger"
+        }
+      },
+      "required": [
+        "key",
+        "ledger"
+      ],
+      "title": "PreThresholdGroup",
+      "type": "object"
+    },
+    "ReductionOptions": {
+      "additionalProperties": false,
+      "description": "The options of a reduction. Frozen: derive variants with `model_copy(update=...)`.\n\nAttributes:\n    layout: How conditioned zones are grouped.\n    small_group_threshold: A share of conditioned floor area in [0, 1). A group smaller\n        than this share is merged into its most similar eligible group.\n    space_use_mapping: Zone name to space use, overriding the space use reduction\n        infers (research R4). `None` infers every space use.",
+      "properties": {
+        "layout": {
+          "$ref": "#/$defs/Layout",
+          "default": "space_use_exposure"
+        },
+        "small_group_threshold": {
+          "default": 0.05,
+          "description": "a share of conditioned floor area in [0, 1)",
+          "exclusiveMaximum": 1.0,
+          "minimum": 0.0,
+          "title": "Small Group Threshold",
+          "type": "number"
+        },
+        "space_use_mapping": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Space Use Mapping"
+        }
+      },
+      "title": "ReductionOptions",
+      "type": "object"
+    },
+    "ReportGroup": {
+      "description": "One SBEM zone group of the archetype.\n\nAttributes:\n    name: The group's name, unique; `group_name(key)` by default.\n    key: The group key of the layout (`Layout.group_key`).\n    members: The zones, sorted by name.\n    floor_area: \u03a3 floor area, multipliers applied, m\u00b2 (equals `ledger.floor_area`).\n    floor_area_share: `floor_area / \u03a3 floor_area` over the groups (rule `area.share`).\n    ledger: The group's conserved totals.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "key": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key",
+          "type": "array"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/GroupMember"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "floor_area": {
+          "minimum": 0.0,
+          "title": "Floor Area",
+          "type": "number"
+        },
+        "floor_area_share": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Floor Area Share",
+          "type": "number"
+        },
+        "ledger": {
+          "$ref": "#/$defs/GroupLedger"
+        }
+      },
+      "required": [
+        "name",
+        "key",
+        "members",
+        "floor_area",
+        "floor_area_share",
+        "ledger"
+      ],
+      "title": "ReportGroup",
+      "type": "object"
+    },
+    "Reproducibility": {
+      "description": "What a reduction needs to be repeated (invariant 6; research R14).\n\nAttributes:\n    archetypal: The version of archetypal.\n    epinterface: The version of epinterface (the SBEM fork).\n    idfkit: The version of idfkit.\n    energyplus: The EnergyPlus version of the model and results, `MAJOR.MINOR.PATCH`.\n    model_sha256: SHA-256 of the model.\n    results_sha256: SHA-256 of the SQLite results.\n    weather_sha256: SHA-256 of the weather file, or `None` without one.\n    options: The reduction's options; a space-use mapping is held sorted by zone.",
+      "properties": {
+        "archetypal": {
+          "title": "Archetypal",
+          "type": "string"
+        },
+        "epinterface": {
+          "title": "Epinterface",
+          "type": "string"
+        },
+        "idfkit": {
+          "title": "Idfkit",
+          "type": "string"
+        },
+        "energyplus": {
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "title": "Energyplus",
+          "type": "string"
+        },
+        "model_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Model Sha256",
+          "type": "string"
+        },
+        "results_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Results Sha256",
+          "type": "string"
+        },
+        "weather_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weather Sha256"
+        },
+        "options": {
+          "$ref": "#/$defs/ReductionOptions"
+        }
+      },
+      "required": [
+        "archetypal",
+        "epinterface",
+        "idfkit",
+        "energyplus",
+        "model_sha256",
+        "results_sha256",
+        "options"
+      ],
+      "title": "Reproducibility",
+      "type": "object"
+    },
+    "SmallGroupMerge": {
+      "description": "A group below the threshold merged into its most similar group (FR-008).\n\nAttributes:\n    key: The merged group's key.\n    into_key: The key of the group it went into.\n    share: Its share of the conditioned floor area.\n    distance: The similarity distance that chose `into_key`.",
+      "properties": {
+        "key": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key",
+          "type": "array"
+        },
+        "into_key": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Into Key",
+          "type": "array"
+        },
+        "share": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Share",
+          "type": "number"
+        },
+        "distance": {
+          "minimum": 0.0,
+          "title": "Distance",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "into_key",
+        "share",
+        "distance"
+      ],
+      "title": "SmallGroupMerge",
+      "type": "object"
+    },
+    "WeightedProfile": {
+      "additionalProperties": false,
+      "description": "An area-weighted hourly profile, such as a setpoint (FR-020).\n\nAttributes:\n    weight: \u03a3 area of the members that count, m\u00b2.\n    weighted: \u03a3 area \u00b7 value per hour.",
+      "properties": {
+        "weight": {
+          "default": 0.0,
+          "title": "Weight",
+          "type": "number"
+        },
+        "weighted": {
+          "additionalProperties": false,
+          "description": "A profile (for example 8760 hourly values) stored compactly in a JSON file.\n\nAttributes:\n    encoding: Always `\"base64-float64-le\"`: the values as little-endian IEEE 754 float64,\n        base64-encoded (RFC 4648, with padding).\n    length: The number of values.\n    data: The base64 text.",
+          "properties": {
+            "encoding": {
+              "const": "base64-float64-le",
+              "default": "base64-float64-le",
+              "title": "Encoding",
+              "type": "string"
+            },
+            "length": {
+              "title": "Length",
+              "type": "integer"
+            },
+            "data": {
+              "title": "Data",
+              "type": "string"
+            }
+          },
+          "required": [
+            "length",
+            "data"
+          ],
+          "title": "EncodedProfile",
+          "type": "object"
+        }
+      },
+      "title": "WeightedProfile",
+      "type": "object"
+    },
+    "WindowTotals": {
+      "additionalProperties": false,
+      "description": "The windows of one orientation (R6, FR-016, FR-024).\n\nAttributes:\n    area: \u03a3 glazed area, m\u00b2.\n    ua: \u03a3 area \u00b7 U, W/K.\n    a_shgc: \u03a3 area \u00b7 SHGC, m\u00b2.\n    a_vt: \u03a3 area \u00b7 visible transmittance, m\u00b2.",
+      "properties": {
+        "area": {
+          "default": 0.0,
+          "title": "Area",
+          "type": "number"
+        },
+        "ua": {
+          "default": 0.0,
+          "title": "Ua",
+          "type": "number"
+        },
+        "a_shgc": {
+          "default": 0.0,
+          "title": "A Shgc",
+          "type": "number"
+        },
+        "a_vt": {
+          "default": 0.0,
+          "title": "A Vt",
+          "type": "number"
+        }
+      },
+      "title": "WindowTotals",
+      "type": "object"
+    }
+  },
+  "$id": "https://samuelduchesne.github.io/archetypal/schemas/reduction-report-1.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The report of a reduction (data-model.md, ReductionReport; contracts/reduction-report.md).\n\nAttributes:\n    schema_version: The file format's version, `MAJOR.MINOR`; `\"1.0\"` when written.\n    reproducibility: Versions, input hashes and options.\n    groups: The zone groups, sorted by key.\n    pre_threshold_groups: Ledgers at the finest key before thresholding, sorted by key.\n    parameters: Every SBEM value with its rule, sorted by group then path.\n    excluded_zones: Zones in no group, sorted by name.\n    small_group_merges: Small groups merged, sorted by key.\n    not_represented: Features and values SBEM cannot hold (FR-026), sorted.\n    merged_distinctions: For a coarser layout, the finest keys each group merges.\n    unattributed_energy: Standby and pilot consumption by fuel, J (FR-022).\n    building: Conditioned floor area and the unrounded storey ratio.",
+  "properties": {
+    "schema_version": {
+      "default": "1.0",
+      "pattern": "^1\\.(0|[1-9][0-9]*)$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "reproducibility": {
+      "$ref": "#/$defs/Reproducibility"
+    },
+    "groups": {
+      "items": {
+        "$ref": "#/$defs/ReportGroup"
+      },
+      "title": "Groups",
+      "type": "array"
+    },
+    "pre_threshold_groups": {
+      "items": {
+        "$ref": "#/$defs/PreThresholdGroup"
+      },
+      "title": "Pre Threshold Groups",
+      "type": "array"
+    },
+    "parameters": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Parameter"
+      },
+      "title": "Parameters",
+      "type": "array"
+    },
+    "excluded_zones": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ExcludedZone"
+      },
+      "title": "Excluded Zones",
+      "type": "array"
+    },
+    "small_group_merges": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SmallGroupMerge"
+      },
+      "title": "Small Group Merges",
+      "type": "array"
+    },
+    "not_represented": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/NotRepresented"
+      },
+      "title": "Not Represented",
+      "type": "array"
+    },
+    "merged_distinctions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/MergedDistinction"
+      },
+      "title": "Merged Distinctions",
+      "type": "array"
+    },
+    "unattributed_energy": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Unattributed Energy",
+      "type": "object"
+    },
+    "building": {
+      "$ref": "#/$defs/BuildingBlock"
+    }
+  },
+  "required": [
+    "reproducibility",
+    "groups",
+    "pre_threshold_groups",
+    "building"
+  ],
+  "title": "ReductionReport",
+  "type": "object"
+}

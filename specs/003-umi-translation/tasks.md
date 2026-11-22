@@ -288,7 +288,7 @@ the correspondence table and every conversion rule in both directions, and the l
 - [X] T037 [P] Implement `src/archetypal/umi/rules/hotwater.py` (R10).
 - [X] T038 [P] Implement `src/archetypal/umi/rules/building.py` (R4, R11, R13): template ↔
   archetype groups and shares, `wwr.uniform`, metadata, and the naming rules.
-- [ ] T039 Generate the two reference pages with `/project-kit:diataxis` (reference mode):
+- [X] T039 Generate the two reference pages with `/project-kit:diataxis` (reference mode):
   `docs/reference/umi-correspondence.md` built from `CORRESPONDENCE` at docs build time by
   `docs/scripts/gen_umi_correspondence.py` (never hand-written), and
   `docs/reference/translation-report.md` from `docs/schemas/translation-report-1.0.json`;

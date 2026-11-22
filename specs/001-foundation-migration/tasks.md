@@ -112,11 +112,11 @@ table's type, the docs site and its checks, the install checks.
 
 ### Tests for the foundation
 
-- [ ] T013 [P] Test the error hierarchy in `tests/unit/test_errors.py`: the tree of
+- [X] T013 [P] Test the error hierarchy in `tests/unit/test_errors.py`: the tree of
   research R8; every error takes the input at fault first and `str(error)` starts with it;
   `RemovedInArchetypal3Error` is also an `ImportError` and an `AttributeError`;
   `OptionalDependencyError` names the extra to install (FR-010).
-- [ ] T014 [P] Write `tests/unit/test_no_side_effects.py` for import: in a temporary working
+- [X] T014 [P] Write `tests/unit/test_no_side_effects.py` for import: in a temporary working
   directory with `HOME`, `XDG_*` and `TMPDIR` pointed into it, `import archetypal` (in a
   subprocess) leaves the directory tree unchanged, reads no `ARCHETYPAL_*` variable, and
   leaves the root logger's handlers unchanged (FR-006, SC-006, R10).
@@ -129,13 +129,13 @@ table's type, the docs site and its checks, the install checks.
   `geomeppy`, `esoreader`, `energy_pandas`, `pyclipper`, `pypoly2tri`, `transforms3d` or
   `shapely`; the wheel built by `uv build` contains no data files (FR-002, FR-004, SC-002,
   R12). Mark it to skip with a reason when offline.
-- [ ] T017 [P] Write `tests/unit/test_removed_table.py`: every `RemovedCapability`
+- [X] T017 [P] Write `tests/unit/test_removed_table.py`: every `RemovedCapability`
   has a unique `v2_path`, a non-empty `reason`, and `replacement` set unless `reason` explains
   why there is none (data-model.md, RemovedCapability).
 
 ### Implementation of the foundation
 
-- [ ] T018 [P] Implement `src/archetypal/errors.py` with the hierarchy of research R8:
+- [X] T018 [P] Implement `src/archetypal/errors.py` with the hierarchy of research R8:
   `ArchetypalError(subject, message)`; `InputError`; `UnsupportedFeatureError`;
   `LossyTranslationError(subject, message, report)`, whose `.report` is the report of what
   would have been lost (typed as an object with `losses`, so 001 does not import 003);
@@ -143,12 +143,12 @@ table's type, the docs site and its checks, the install checks.
   `RemovedInArchetypal3Error`, also deriving from `ImportError` and `AttributeError`. Spec 002
   adds `ReductionError` under `InputError`; spec 003 adds `UmiFormatError` and
   `UmiValidationError` under `InputError`.
-- [ ] T019 Implement `src/archetypal/__init__.py`: `__version__` from package metadata, a
+- [X] T019 Implement `src/archetypal/__init__.py`: `__version__` from package metadata, a
   `NullHandler` on the `archetypal` logger and nothing else at import (FR-006, R10); leave room
   for the public re-exports of 002 and 003 and the module `__getattr__` of US2.
-- [ ] T020 [P] Implement `src/archetypal/_optional.py`: `require(module: str, extra: str)`
+- [X] T020 [P] Implement `src/archetypal/_optional.py`: `require(module: str, extra: str)`
   importing a module or raising `OptionalDependencyError` naming the extra (FR-005, R12).
-- [ ] T021 [P] Implement `src/archetypal/_removed.py`: the `RemovedCapability`,
+- [X] T021 [P] Implement `src/archetypal/_removed.py`: the `RemovedCapability`,
   `Replacement` and `FrequentTask` types with the fields of data-model.md (`kind:
   Literal["name", "module", "command", "option"]`, `v2_path` unique, `replacement: Replacement
   | None` "None only when reason says why there is none", `reason` "always set", `frequent_task:

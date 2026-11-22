@@ -101,7 +101,7 @@ models and results, schedules, deterministic files and test fixtures.
 
 ### Tests for the foundation
 
-- [ ] T012 [P] Test 002's errors in `tests/unit/test_errors.py`: each derives from 001's
+- [X] T012 [P] Test 002's errors in `tests/unit/test_errors.py`: each derives from 001's
   `InputError` or `ArchetypalError` and starts its message with the input at fault;
   `MissingResults` lists items and suggests `simulate=True`; `UnsupportedEnergyPlusVersion`
   names the supported range and `idfkit.migration.migrate`.
@@ -140,7 +140,7 @@ models and results, schedules, deterministic files and test fixtures.
 
 ### Implementation of the foundation
 
-- [ ] T020 [P] Extend `src/archetypal/errors.py` (spec 001, research R8): `ReductionError`
+- [X] T020 [P] Extend `src/archetypal/errors.py` (spec 001, research R8): `ReductionError`
   under `InputError`, with `NoConditionedZones`, `MissingResults`, `ModelResultsMismatch`,
   `UnsupportedEnergyPlusVersion`; and `NotComparableError` under `ArchetypalError`. Each
   takes the input at fault first (plan.md, Source Code; contracts/python-api.md).

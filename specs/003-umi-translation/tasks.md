@@ -142,7 +142,7 @@ the correspondence table and every conversion rule in both directions, and the l
 
 ### Tests for the foundation (write first, see them fail)
 
-- [ ] T010 [P] Test the errors in `tests/unit/umi/test_errors.py`: `UmiFormatError` and
+- [X] T010 [P] Test the errors in `tests/unit/umi/test_errors.py`: `UmiFormatError` and
   `UmiValidationError` derive from `InputError`; `UmiValidationError.problems` is a
   `list[Problem]`, each with `pointer` (a JSON pointer), `template` (`str | None`), `rule` and
   `message`; the error's message lists every problem; its subject is the library path.
@@ -243,7 +243,7 @@ the correspondence table and every conversion rule in both directions, and the l
 
 ### Implementation of the foundation
 
-- [ ] T024 [P] Extend `src/archetypal/errors.py` (001 research R8): `Problem` (frozen
+- [X] T024 [P] Extend `src/archetypal/errors.py` (001 research R8): `Problem` (frozen
   dataclass: `pointer`, `template`, `rule`, `message`), `UmiFormatError(InputError)` and
   `UmiValidationError(InputError)` with `.problems: list[Problem]`, with Google docstrings.
 - [ ] T025 [P] Implement `src/archetypal/umi/_format.py` (R1): the frozen pydantic v2 models

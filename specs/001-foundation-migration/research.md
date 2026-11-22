@@ -10,7 +10,7 @@ Spec 001 owns the package as a whole, so the decisions here apply to every v3 sp
 
 Facts come from:
 
-- the v2 tree on `main` (release 2.18.11, 2026-10-25);
+- the v2 tree on `main` (last release 2.18.10, tag `v2.18.10`);
 - the project-kit-cookiecutter template at commit `73646700cea8`, generated in a scratch folder
   on 2026-11-22 with the answers of R1;
 - the three skills the user named for this work: `/project-kit:new-project`,
@@ -107,7 +107,7 @@ and the `archetypal<3` pin rely on.
 
 **Decision.**
 
-- **`v2.x`** is cut from the `v2.18.11` release commit at the start. It receives v2 security
+- **`v2.x`** is cut from the `v2.18.10` release commit at the start. It receives v2 security
   fixes only (FR-020, C-08), keeps v2's poetry, Sphinx and Read the Docs setup, and releases
   `2.18.x` patches.
 - **`v3`** is the integration branch for v3 work from the first task until milestone M1. CI
@@ -300,8 +300,9 @@ gain, and no `mkdocs-click` equivalent.
   (data model: RemovedCapability) for every public v2 name, module, command and option.
 - **Names** (`from archetypal import IDF`): `archetypal/__init__.py` defines a module
   `__getattr__` (PEP 562) that raises `RemovedInArchetypal3Error` for any name in the table.
-  The error derives from `ImportError` and `AttributeError`, so `from … import …` and attribute
-  access both raise it. Its message gives the name, its replacement or reason, and the
+  The error derives from `ImportError` only (CPython forbids also deriving from
+  `AttributeError`: instance layout conflict), so `from … import …` and attribute access both
+  raise it, and `hasattr()` on a removed name raises rather than returning `False`. Its message gives the name, its replacement or reason, and the
   migration guide's URL (FR-016). No alias works: nothing from v2 is carried as is (C-04).
 - **Modules** (`import archetypal.idfclass`): one two-line stub module per removed v2 module
   (`dataportal`, `eplus_interface`, `idfclass`, `plot`, `reportdata`, `schedule`,
@@ -310,7 +311,7 @@ gain, and no `mkdocs-click` equivalent.
   that each stub raises.
 - **Options and commands:** `REMOVED_OPTIONS` (R6) is derived from the same table.
 - **Migration guide coverage (SC-003).** `verification/v2_surface.py` runs in a separate
-  environment with `archetypal==2.18.11` and writes `tests/data/v2_surface.json`: every public
+  environment with `archetypal==2.18.10` and writes `tests/data/v2_surface.json`: every public
   module, every public name each defines (no leading underscore, defined in that module or
   listed in `__all__`), every click command and option. The file is committed. Unit tests
   check that:
@@ -345,7 +346,7 @@ ArchetypalError
 ├── LossyTranslationError      strict mode; .report holds the report of what would be lost
 ├── NotComparableError         spec 002
 ├── OptionalDependencyError    names the extra to install (FR-005, FR-010)
-└── RemovedInArchetypal3Error  also ImportError and AttributeError (R7)
+└── RemovedInArchetypal3Error  also ImportError (R7)
 ```
 
 Every error takes the input at fault (a path, a zone name, an option) as a required argument
@@ -406,7 +407,7 @@ from.
   project, Python 3.12) and fails if it contains `eppy`, `geomeppy`, `esoreader`,
   `energy_pandas`, `pyclipper`, `pypoly2tri`, `transforms3d` or `shapely` (geomeppy's
   dependencies).
-- **Count.** A `verification/install_size.py` script resolves archetypal 2.18.11 and v3 on
+- **Count.** A `verification/install_size.py` script resolves archetypal 2.18.10 and v3 on
   Python 3.12 and reports both package counts; the milestone checklist requires v3's to be
   smaller. The count depends on epinterface's own dependencies, which UP-4 makes optional in
   the fork (Prisma, geopandas, ladybug); if the count fails, UP-4 is the fix, not archetypal.

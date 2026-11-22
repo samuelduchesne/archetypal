@@ -123,3 +123,48 @@ except LossyTranslationError as error:
 Notes never fail strict mode. An archetype read from a UMI library passes it, since its layered
 windows are written back layer by layer. An archetype with simple glazing, which is what a
 reduction gives, always fails it: the window is written as one equivalent glazing layer.
+
+## Check a round trip with `diff_umi`
+
+To see what a library loses on its way through SBEM, read it, write it back and compare the
+two files with `diff_umi`. It matches building templates by name and their components through
+each template, compares year schedules by their hourly values over the reference year, and
+returns every difference located by JSON pointer in the original library:
+
+```python
+from archetypal import read_umi, write_umi
+from archetypal.umi import diff_umi
+
+imported = read_umi("BostonTemplateLibrary.json")
+write_umi(imported.archetypes, "round-trip.json")
+diff = diff_umi("BostonTemplateLibrary.json", "round-trip.json")
+print(diff.within_tolerance)
+for difference in diff.beyond():
+    if difference.relevance == "S":
+        print(difference.subject, difference.location, difference.via[-1], difference.relative)
+```
+
+```text
+False
+B_Off_0 /YearSchedules/8/Parts /BuildingTemplates/0/Windows/AfnWindowAvailability 1.0
+B_Ret_0 /YearSchedules/15/Parts /BuildingTemplates/1/Windows/AfnWindowAvailability 1.0
+B_Res_0_Masonry /YearSchedules/1/Parts /BuildingTemplates/2/Windows/AfnWindowAvailability 0.7
+B_Res_0_WoodFrame /YearSchedules/1/Parts /BuildingTemplates/2/Windows/AfnWindowAvailability 0.7
+```
+
+Each difference has a `relevance` (`S` for a value the simulation reads, `L` for life cycle,
+`D` for descriptive), the `original` and `result` values, and a `relative` size, `None` when
+the values are not numbers. `via` lists the reference fields through which the value was
+reached, from the template down. `within_tolerance` is false when a simulation value differs by
+more than `rel_tol`, 0.01 % by default; `beyond()` returns the differences above it.
+
+Every difference should appear in a report. Compare each one with the losses of
+`imported.report` (reading) and of the report `write_umi` returned (writing): a loss explains a
+difference when it names the same template and its `location` is the difference's location, a
+parent of it, or one of its `via` fields. Here each difference is the airflow-network window
+availability schedule, which SBEM cannot hold yet, and `imported.report` lists it as lost with
+`"upstream": "UP-9"`.
+
+`diff_archetypes(a, b)` does the same for two SBEM archetypes, located by field path
+(`perimeter.Operations.SpaceUse.Lighting.PowerDensity`). Use it for the other direction: write
+an archetype, read the library back and compare.

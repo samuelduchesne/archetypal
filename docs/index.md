@@ -38,7 +38,7 @@ archetypal can be read by any tool built on epinterface, without archetypal.
 archetypal 2 was also a general EnergyPlus toolkit: it read and edited models, ran simulations,
 upgraded model versions and read results. idfkit now does that work, so archetypal 3 keeps only
 the archetype half. archetypal 3 is under development and not yet released; archetypal 2 remains
-installable from its last release, 2.18.11.
+installable from its last release, 2.18.10.
 
 If your scripts use archetypal 2, its documentation stays on Read the Docs:
 [archetypal 2 documentation](https://archetypal.readthedocs.io/en/v2.x/).

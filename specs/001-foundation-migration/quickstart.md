@@ -76,7 +76,7 @@ uv run pytest tests/unit/test_docs_tags.py       # one Diátaxis kind per page
 Run by `.github/workflows/tutorial.yml` on milestone tags and weekly: for Python 3.10–3.12 on
 Linux, macOS and Windows, install the tag from git into a clean environment and follow the
 tutorial to a UMI library. `verification/install_size.py` then compares package counts with
-archetypal 2.18.11.
+archetypal 2.18.10.
 
 **Expected:** all nine runs pass; on Python 3.13 the install is refused with the supported
 range; v3 installs fewer packages than v2 and none of the banned duplicates.

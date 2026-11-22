@@ -34,10 +34,11 @@ Six facts drive most of the decisions below.
    - A week holds seven `DayComponent`s, each with 24 hourly values.
    - There are no holiday or design-day slots and no arbitrary date ranges.
    - Infiltration has no schedule at all.
-5. **idfkit 1.3.0rc2's `Schedule:Year` evaluation fails on every model loaded from a file.**
-   `ValueError: invalid literal for int() with base 10: '1.0'` in `idfkit/schedules/year.py`.
-   Reproduced here with a minimal IDF; it passes only for objects built in code with integer
-   fields. Schedule evaluation also costs about 55 ms per schedule-year (pure Python, one
+5. **idfkit 1.3.0rc2's `Schedule:Year` evaluation fails on files of EnergyPlus 9.0–22.1.**
+   Those schemas type the month and day fields as `number`, so they load as floats and
+   `idfkit/schedules/year.py` raises `ValueError: invalid literal for int() with base 10:
+   '1.0'`. Reproduced with a minimal IDF; files of 22.2 and later, whose schemas type the
+   fields `integer`, and objects built in code are not affected (upstream/idfkit-issues.md). Schedule evaluation also costs about 55 ms per schedule-year (pure Python, one
    datetime per step).
 6. **Neither package reduces a model.** idfkit reads, evaluates, simulates and parses.
    epinterface describes and builds a shoebox. Grouping, aggregation and conservation are all

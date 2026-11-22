@@ -179,7 +179,7 @@ src/archetypal/
 └── umi/                       # spec 003 (name confirmed by its plan, R14)
 tests/
 ├── conftest.py                + # tiers, 120 s budget, hypothesis profiles (R3)
-├── data/v2_surface.json       + # generated from archetypal 2.18.11 (R7)
+├── data/v2_surface.json       + # generated from archetypal 2.18.10 (R7)
 ├── unit/                      + # test_removed.py, test_cli.py, test_no_side_effects.py,
 │                              #   test_errors.py, test_docs_tags.py, test_install.py
 └── docs/                      + # runs console examples (R5)

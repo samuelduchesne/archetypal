@@ -443,9 +443,10 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   holiday). Optional; only if spec 002's plan shows idfkit is the right home for it. The 002
   plan adds: a faster day-profile schedule evaluation, needed only if 002's performance
   benchmark (about 55 ms per schedule-year in 1.3.0rc2) misses its budget.
-- **UP-6 — idfkit: `Schedule:Year` evaluation fails on loaded models.** In 1.3.0rc2,
-  `schedules/year.py` calls `int('1.0')` on month and day fields parsed as floats, so every
-  `Schedule:Year` read from a file raises `ValueError`. Fix before idfkit 1.3.0 final. 002
+- **UP-6 — idfkit: `Schedule:Year` evaluation fails on pre-22.2 files.** EnergyPlus 9.0–22.1
+  schemas type the month and day fields as `number`, so idfkit 1.3.0rc2 loads them as floats
+  and `schedules/year.py` calls `int('1.0')`: every `Schedule:Year` read from such a file
+  raises `ValueError` (22.2 and later files are not affected). Fix before idfkit 1.3.0 final. 002
   bridges it temporarily (plan, Complexity Tracking). The fix must also make the typed field
   `schedule_weeks[i].start_month: int` an `int` at run time. *Blocking for 002's release.*
 - **UP-7 — idfkit: typed readers for EnergyPlus's static SQLite tables** (`Zones`,

@@ -41,11 +41,11 @@ name, module or command to use), `docs_url` (the page that documents it).
 ## V2Surface
 
 The committed inventory `tests/data/v2_surface.json`, written by `verification/v2_surface.py`
-in an environment with `archetypal==2.18.11` (R7).
+in an environment with `archetypal==2.18.10` (R7).
 
 | Field | Type |
 |---|---|
-| `archetypal_version` | `str` (`"2.18.11"`) |
+| `archetypal_version` | `str` (`"2.18.10"`) |
 | `modules` | `list[str]`, public modules |
 | `names` | `list[str]`, `module.name` for each public name a module defines or lists in `__all__` |
 | `commands` | `list[str]` |

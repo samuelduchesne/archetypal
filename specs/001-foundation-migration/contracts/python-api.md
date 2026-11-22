@@ -48,8 +48,10 @@ See https://samuelduchesne.github.io/archetypal/how-to/migrate-from-v2/#archetyp
 
 - Raised for every `name` and `module` row of `REMOVED`, by attribute access, `from … import`
   and `import archetypal.<module>`.
-- `RemovedInArchetypal3Error` derives from `ArchetypalError`, `ImportError` and
-  `AttributeError`, so `except ImportError` in v2-era code still catches it.
+- `RemovedInArchetypal3Error` derives from `ArchetypalError` and `ImportError` only, so
+  `except ImportError` in v2-era code still catches it. CPython does not let a class derive
+  from both `ImportError` and `AttributeError` (instance layout conflict), so
+  `hasattr(archetypal, "IDF")` raises the error instead of returning `False`.
 - No removed name works as an alias, in any 3.x release.
 
 ## Import-time behaviour (FR-006)

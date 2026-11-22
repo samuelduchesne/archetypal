@@ -49,7 +49,7 @@ The template's src layout (plan.md, Project Structure): `src/archetypal/`, `test
 **Purpose**: generate the project, carry it onto the `v3` branch and set the shared tooling
 (research R1–R4, R9).
 
-- [ ] T001 Cut the `v2.x` branch from the `v2.18.11` release commit and push it. It keeps v2's
+- [ ] T001 Cut the `v2.x` branch from the `v2.18.10` release commit and push it. It keeps v2's
   poetry, Sphinx and Read the Docs setup and receives security fixes only (FR-020, R2, R11).
 - [X] T002 Run `/project-kit:new-project` (Python) with a scratch folder outside the
   repository as the parent, and the answers of research R1, step 1: `project_name` archetypal,
@@ -114,7 +114,7 @@ table's type, the docs site and its checks, the install checks.
 
 - [X] T013 [P] Test the error hierarchy in `tests/unit/test_errors.py`: the tree of
   research R8; every error takes the input at fault first and `str(error)` starts with it;
-  `RemovedInArchetypal3Error` is also an `ImportError` and an `AttributeError`;
+  `RemovedInArchetypal3Error` is also an `ImportError` (not an `AttributeError`);
   `OptionalDependencyError` names the extra to install (FR-010).
 - [X] T014 [P] Write `tests/unit/test_no_side_effects.py` for import: in a temporary working
   directory with `HOME`, `XDG_*` and `TMPDIR` pointed into it, `import archetypal` (in a
@@ -140,7 +140,8 @@ table's type, the docs site and its checks, the install checks.
   `LossyTranslationError(subject, message, report)`, whose `.report` is the report of what
   would have been lost (typed as an object with `losses`, so 001 does not import 003);
   `NotComparableError`; `OptionalDependencyError(subject, extra)`;
-  `RemovedInArchetypal3Error`, also deriving from `ImportError` and `AttributeError`. Spec 002
+  `RemovedInArchetypal3Error`, also deriving from `ImportError` only (CPython forbids adding
+  `AttributeError`, so `hasattr()` on a removed name raises). Spec 002
   adds `ReductionError` under `InputError`; spec 003 adds `UmiFormatError` and
   `UmiValidationError` under `InputError`.
 - [X] T019 Implement `src/archetypal/__init__.py`: `__version__` from package metadata, a
@@ -252,7 +253,7 @@ with a weather file and open the library; the Python route gives the same librar
 using a removed one gives the migration error; the guide covers every one, with runnable
 before/after examples for frequent tasks.
 
-**Independent test**: check every public name, command and option of archetypal 2.18.11
+**Independent test**: check every public name, command and option of archetypal 2.18.10
 against the guide; rewrite the v2 tutorial's examples from the guide alone and run them (spec
 US2).
 
@@ -260,7 +261,7 @@ US2).
 
 - [X] T037 [P] [US2] Write `tests/unit/test_v2_coverage.py`: every entry of
   `tests/data/v2_surface.json` is in `REMOVED` or in the public interface; the file's
-  `archetypal_version` is `"2.18.11"` (SC-003, R7).
+  `archetypal_version` is `"2.18.10"` (SC-003, R7).
 - [X] T038 [P] [US2] Write `tests/unit/test_removed_names.py`: for every `name` row,
   `from archetypal import <name>` and `archetypal.<name>` raise `RemovedInArchetypal3Error`
   with the guide's URL; for every `module` row, `import archetypal.<module>` raises it; every
@@ -272,7 +273,7 @@ US2).
 ### Implementation for User Story 2
 
 - [X] T040 [US2] Write `verification/v2_surface.py`: in a separate environment with
-  `archetypal==2.18.11`, list public modules, every public name each defines or lists in
+  `archetypal==2.18.10`, list public modules, every public name each defines or lists in
   `__all__`, every click command and option (with short aliases), and write
   `tests/data/v2_surface.json` with the fields of data-model.md (V2Surface). Run it and commit
   the file.
@@ -355,7 +356,7 @@ pages (FR-022).
 **Purpose**: what 001 owns at milestone M1 and at the first PyPI release (research R2, R11,
 R12; roadmap C-18).
 
-- [ ] T053 Write `verification/install_size.py`: resolve archetypal 2.18.11 and the current
+- [X] T053 Write `verification/install_size.py`: resolve archetypal 2.18.10 and the current
   v3 on Python 3.12 and print both package counts; record the result in the milestone
   checklist. If v3's is not smaller, raise it against UP-4 in the fork (SC-002, R12).
 - [ ] T054 [P] Write the `3.0.0a1` section of `CHANGELOG.md`: added functions and

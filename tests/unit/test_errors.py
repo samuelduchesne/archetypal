@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from archetypal._optional import require
 from archetypal.errors import (
     ArchetypalError,
     InputError,
@@ -108,6 +109,13 @@ def test_optional_dependency_error_names_the_extra() -> None:
     assert str(error).startswith("pandas")
     assert "archetypal[tabula]" in str(error)
     assert error.extra == "tabula"
+
+
+def test_require_imports_or_names_the_extra() -> None:
+    assert require("json", "unused").__name__ == "json"
+    with pytest.raises(OptionalDependencyError, match=r"archetypal\[tabula\]") as info:
+        require("archetypal_no_such_module", "tabula")
+    assert info.value.subject == "archetypal_no_such_module"
 
 
 @pytest.mark.parametrize(

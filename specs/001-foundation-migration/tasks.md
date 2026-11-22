@@ -120,11 +120,11 @@ table's type, the docs site and its checks, the install checks.
   directory with `HOME`, `XDG_*` and `TMPDIR` pointed into it, `import archetypal` (in a
   subprocess) leaves the directory tree unchanged, reads no `ARCHETYPAL_*` variable, and
   leaves the root logger's handlers unchanged (FR-006, SC-006, R10).
-- [ ] T015 [P] Write `tests/unit/test_docs_tags.py`: every Markdown file under `docs/` has
+- [X] T015 [P] Write `tests/unit/test_docs_tags.py`: every Markdown file under `docs/` has
   front matter `diataxis:` with exactly one of `tutorial`, `how-to`, `reference`,
   `explanation`, and sits in the matching folder (`tutorials/`, `how-to/`, `reference/`,
   `explanation/`); `docs/index.md` is tagged `explanation` (SC-008, contracts/docs-site.md).
-- [ ] T016 [P] Write `tests/unit/test_install.py`: resolve the default install with
+- [X] T016 [P] Write `tests/unit/test_install.py`: resolve the default install with
   `uv pip compile pyproject.toml --python-version 3.12` and fail if it contains `eppy`,
   `geomeppy`, `esoreader`, `energy_pandas`, `pyclipper`, `pypoly2tri`, `transforms3d` or
   `shapely`; the wheel built by `uv build` contains no data files (FR-002, FR-004, SC-002,
@@ -154,15 +154,15 @@ table's type, the docs site and its checks, the install checks.
   | None` "None only when reason says why there is none", `reason` "always set", `frequent_task:
   FrequentTask | None`), an empty `REMOVED` tuple filled by US1 and US2, and
   `raise_removed(v2_path: str) -> NoReturn` building the message of contracts/python-api.md.
-- [ ] T022 Configure `mkdocs.yml` for the Diátaxis site (research R5): Material with
+- [X] T022 Configure `mkdocs.yml` for the Diátaxis site (research R5): Material with
   `navigation.indexes`; mkdocstrings over `src/archetypal`; `mkdocs-click`; nav starting with
   `index.md` only (sections are added with their first page, never empty). Set `site_url` and
   links to the v2 docs on Read the Docs (FR-025).
-- [ ] T023 Write `docs/index.md` with `/project-kit:diataxis` (explanation, tagged): what
+- [X] T023 Write `docs/index.md` with `/project-kit:diataxis` (explanation, tagged): what
   archetypal is for, where it sits with epinterface and idfkit, and a link to v2's docs
   (FR-023, FR-025). Remove the template's `docs/modules.md`; move `docs/changelog.md` to
   `docs/reference/changelog.md`, tagged reference (FR-026).
-- [ ] T024 Implement `tests/docs/test_console_examples.py`: for every `console` block
+- [X] T024 Implement `tests/docs/test_console_examples.py`: for every `console` block
   in `docs/`, run each `$ archetypal …` line in a temporary folder holding the example files,
   and compare shown output when the block shows any (FR-024, R5).
 

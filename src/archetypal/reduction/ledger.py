@@ -875,6 +875,27 @@ def _exact_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
     return values
 
 
+def _window_performance(window: Any) -> tuple[float, float, float]:
+    """U, SHGC and VT of an SBEM window: simple glazing's own, or a layered window's (UP-9) by idfkit.thermal.
+
+    A layered window's values come from idfkit's simplified method (normal incidence), which is
+    approximate, as the rest of the rebuilt window is.
+    """
+    if hasattr(window, "UValue"):
+        return float(window.UValue), float(window.SHGF), float(window.TVis)
+    from idfkit import new_document  # noqa: PLC0415 - only for layered windows
+    from idfkit.thermal import calculate_shgc, calculate_u_value, calculate_visible_transmittance  # noqa: PLC0415
+
+    doc = new_document()
+    window.add_to_idf(doc)
+    construction = doc["Construction"][window.Name]
+    return (
+        float(calculate_u_value(construction)),
+        float(calculate_shgc(construction) or 0.0),
+        float(calculate_visible_transmittance(construction) or 0.0),
+    )
+
+
 def _approximate_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
     """The ledger fields rebuilt by floor-area weighting (R12, `APPROXIMATE_PATHS`), and internal mass."""
     from archetypal.reduction.envelope import (  # noqa: PLC0415 - envelope imports this module
@@ -900,14 +921,10 @@ def _approximate_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
         values["internal_mass_capacity"] = exposed * area * (split.inner + split.outer)
 
     window = envelope.Window
-    if window is not None and hasattr(window, "UValue"):
+    if window is not None:
+        u_value, shgc, visible = _window_performance(window)
         values["window_by_orientation"] = {
-            "S": WindowTotals(
-                area=area,
-                ua=area * window.UValue,  # pyright: ignore[reportAttributeAccessIssue]
-                a_shgc=area * window.SHGF,  # pyright: ignore[reportAttributeAccessIssue]
-                a_vt=area * window.TVis,  # pyright: ignore[reportAttributeAccessIssue]
-            )
+            "S": WindowTotals(area=area, ua=area * u_value, a_shgc=area * shgc, a_vt=area * visible)
         }
 
     infiltration = envelope.Infiltration

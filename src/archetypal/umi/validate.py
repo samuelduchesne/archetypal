@@ -485,7 +485,7 @@ def _glazing(item: GlazingMaterial, pointer: str, template: str) -> list[Problem
         if not 0 <= value <= 1:
             key = _alias(GlazingMaterial, name)
             message = f"{key} is {value!r}; it must be in [0, 1]"
-            problems.append(Problem(f"{pointer}/{key}", template, "window.simple_from_layers", message))
+            problems.append(Problem(f"{pointer}/{key}", template, "window.layers", message))
     return problems
 
 

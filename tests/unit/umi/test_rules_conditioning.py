@@ -16,7 +16,14 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from archetypal.reduction.schedules import to_year_component
-from archetypal.umi._format import EconomizerType, FuelType, HeatRecoveryType, ZoneConditioning, ZoneVentilation
+from archetypal.umi._format import (
+    EconomizerType,
+    FuelType,
+    HeatRecoveryType,
+    IdealSystemLimit,
+    ZoneConditioning,
+    ZoneVentilation,
+)
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind, NoteKind
 from archetypal.umi.rules import conditioning as module
@@ -33,7 +40,7 @@ from archetypal.umi.rules.conditioning import (
     system_cop,
 )
 
-from .test_rules_loads import read_schedule, reading, sbem_schedule, umi_schedule, writing
+from .test_rules_loads import read_schedule, reading, sbem_schedule, umi_schedule, write_schedule, writing
 
 POINTER = "/ZoneConditionings/0"
 
@@ -170,7 +177,7 @@ def test_reading_gives_constant_setpoint_schedules() -> None:
 
 def test_writing_takes_the_heating_maximum_and_cooling_minimum() -> None:
     context = writing()
-    written = conditioning_to_umi(hvac(heating=system("Heating")), thermostat(), context=context)
+    written = conditioning_to_umi(hvac(heating=system("Heating")), thermostat(), schedule=write_schedule, context=context)
     assert (written.heating_setpoint, written.cooling_setpoint) == (20.0, 24.0)
     assert [loss for loss in context.losses if loss.rule == "thermostat.constant"] == []
 
@@ -181,7 +188,7 @@ def test_setback_hours_are_lost_with_their_count_and_mean_difference() -> None:
     cooling = np.full(24, 24.0)
     cooling[:6] = 29.0
     context = writing()
-    written = conditioning_to_umi(hvac(), thermostat(hours, cooling), context=context)
+    written = conditioning_to_umi(hvac(), thermostat(hours, cooling), schedule=write_schedule, context=context)
     assert (written.heating_setpoint, written.cooling_setpoint) == (20.0, 24.0)
     by_location = {loss.location: loss for loss in context.losses if loss.rule == "thermostat.constant"}
     heating = by_location["perimeter.Operations.SpaceUse.Thermostat.HeatingSchedule"]
@@ -226,7 +233,7 @@ def test_an_off_system_loses_values_other_than_basilisk_defaults() -> None:
 
 def test_writing_no_system_gives_switch_off_and_defaults() -> None:
     context = writing()
-    written = conditioning_to_umi(hvac(cooling=system("Cooling")), thermostat(), context=context)
+    written = conditioning_to_umi(hvac(cooling=system("Cooling")), thermostat(), schedule=write_schedule, context=context)
     assert (written.is_heating_on, written.is_cooling_on) == (False, True)
     assert written.heating_coeff_of_perf == 0.0
     assert written.heating_fuel_type is FuelType.NaturalGas
@@ -252,14 +259,14 @@ def test_writing_cop_is_the_product(system_value: float, distribution: float) ->
 def test_split_is_lost_when_distribution_cop_is_not_one() -> None:
     context = writing()
     written = conditioning_to_umi(
-        hvac(heating=system("Heating", cop=4.0, distribution=0.8)), thermostat(), context=context
+        hvac(heating=system("Heating", cop=4.0, distribution=0.8)), thermostat(), schedule=write_schedule, context=context
     )
     assert written.heating_coeff_of_perf == pytest.approx(3.2)
     [loss] = [loss for loss in context.losses if loss.rule == "cop.system"]
     assert loss.location == "perimeter.Operations.HVAC.ConditioningSystems.Heating.DistributionCOP"
     assert loss.value == {"SystemCOP": 4.0, "DistributionCOP": 0.8}
     context = writing()
-    conditioning_to_umi(hvac(heating=system("Heating")), thermostat(), context=context)
+    conditioning_to_umi(hvac(heating=system("Heating")), thermostat(), schedule=write_schedule, context=context)
     assert [loss for loss in context.losses if loss.rule == "cop.system"] == []
 
 
@@ -358,7 +365,7 @@ def test_a_cop_of_zero_for_a_system_that_is_on_is_a_range_problem() -> None:
 def test_fresh_air_maps_exactly_both_ways() -> None:
     parts, _ = read(conditioning())
     assert (parts.ventilation.FreshAirPerFloorArea, parts.ventilation.FreshAirPerPerson) == (0.0003, 0.0025)
-    written = conditioning_to_umi(hvac(), thermostat(), context=writing())
+    written = conditioning_to_umi(hvac(), thermostat(), schedule=write_schedule, context=writing())
     assert (written.min_fresh_air_per_area, written.min_fresh_air_per_person) == (0.0003, 0.0025)
 
 
@@ -379,7 +386,7 @@ def test_economizer_and_heat_recovery_map_by_name(economizer: EconomizerType, he
     assert context.losses == []
     use = hvac(hrv=parts.ventilation.HRV)
     use = use.model_copy(update={"Ventilation": parts.ventilation})
-    written = conditioning_to_umi(use, thermostat(), context=writing())
+    written = conditioning_to_umi(use, thermostat(), schedule=write_schedule, context=writing())
     assert (written.economizer_type, written.heat_recovery_type) == (economizer, heat_recovery)
 
 
@@ -394,14 +401,14 @@ def test_mechanical_switch_goes_to_the_provider() -> None:
     parts, _ = read(conditioning(IsMechVentOn=True), natural=True)
     assert parts.ventilation.Provider == "Both"
     written = conditioning_to_umi(
-        hvac(provider="Natural", hrv="NoHRV", economizer="NoEconomizer"), thermostat(), context=writing()
+        hvac(provider="Natural", hrv="NoHRV", economizer="NoEconomizer"), thermostat(), schedule=write_schedule, context=writing()
     )
     assert written.is_mech_vent_on is False
 
 
 def test_a_dcv_other_than_no_dcv_is_lost_on_writing() -> None:
     context = writing()
-    conditioning_to_umi(hvac(dcv="OccupancySchedule"), thermostat(), context=context)
+    conditioning_to_umi(hvac(dcv="OccupancySchedule"), thermostat(), schedule=write_schedule, context=context)
     [loss] = [loss for loss in context.losses if loss.rule == "conditioning.fresh_air"]
     assert (loss.location, loss.value, loss.replacement) == (
         "perimeter.Operations.HVAC.Ventilation.DCV",
@@ -424,38 +431,92 @@ def test_heat_recovery_effectiveness_is_lost_with_up2() -> None:
     assert (loss.location, loss.value, loss.upstream) == (f"{POINTER}/HeatRecoveryEfficiencySensible", 0.8, "UP-2")
 
 
-def test_availability_schedules_are_lost_unless_every_value_is_one() -> None:
-    _, context = read(conditioning())
+def test_always_on_schedules_read_as_none() -> None:
+    parts, context = read(conditioning())
     assert context.losses == []
-    _, context = read(
+    assert parts.systems.HeatingAvailabilitySchedule is None
+    assert parts.systems.CoolingAvailabilitySchedule is None
+    assert parts.ventilation.MechVentSchedule is None
+
+
+def test_availability_and_outdoor_air_schedules_map_to_up9_fields() -> None:
+    parts, context = read(
         conditioning(HeatingSchedule=umi_schedule("season", 0.0), MechVentSchedule=umi_schedule("occ", 0.5))
     )
-    assert {(loss.location, loss.value, loss.upstream, loss.rule) for loss in context.losses} == {
-        (f"{POINTER}/HeatingSchedule", "season", "UP-9", "conditioning.availability"),
-        (f"{POINTER}/MechVentSchedule", "occ", "UP-9", "conditioning.mech_vent_schedule"),
-    }
+    assert context.losses == []
+    heating = parts.systems.HeatingAvailabilitySchedule
+    assert heating is not None
+    assert (heating.Name, heating.schedule_type_limits) == ("season", "Fraction")
+    assert parts.systems.CoolingAvailabilitySchedule is None
+    mechanical = parts.ventilation.MechVentSchedule
+    assert mechanical is not None
+    assert mechanical.Name == "occ"
 
 
-def test_limits_other_than_defaults_are_lost_with_up9() -> None:
-    _, context = read(conditioning(MaxHeatingCapacity=50.0))
-    [loss] = context.losses
-    assert (loss.location, loss.value, loss.upstream, loss.rule) == (
-        f"{POINTER}/MaxHeatingCapacity",
-        50.0,
-        "UP-9",
-        "conditioning.limits",
+def test_a_schedule_without_fraction_limits_is_lost() -> None:
+    temperature = umi_schedule("hot", 21.0)
+
+    def as_temperature(year: object, category: str, pointer: str) -> object:
+        return sbem_schedule("hot", 21.0, "Setpoint") if year is temperature else read_schedule(year, category, pointer)  # type: ignore[arg-type]
+
+    context = reading(POINTER)
+    parts = conditioning_to_sbem(
+        conditioning(HeatingSchedule=temperature),
+        settings(),
+        schedule=as_temperature,  # type: ignore[arg-type]
+        context=context,
+        ventilation_context=reading("/VentilationSettings/0"),
     )
+    assert parts.systems.HeatingAvailabilitySchedule is None
+    [loss] = context.losses
+    assert (loss.location, loss.rule, loss.replacement, loss.upstream) == (
+        f"{POINTER}/HeatingSchedule",
+        "conditioning.availability",
+        ALWAYS_ON,
+        None,
+    )
+
+
+def test_limits_map_exactly() -> None:
+    parts, context = read(
+        conditioning(HeatingLimitType="LimitCapacity", MaxHeatingCapacity=50.0, MaxCoolFlow=0.01)
+    )
+    assert context.losses == []
+    systems = parts.systems
+    assert (systems.HeatingLimitType, systems.MaxHeatingCapacityPerFloorArea) == ("LimitCapacity", 50.0)
+    assert (systems.CoolingLimitType, systems.MaxCoolingFlowPerFloorArea) == ("NoLimit", 0.01)
+
+
+def test_writing_drops_an_autosized_limit_from_the_limit_type() -> None:
+    context = writing()
+    use = hvac(heating=system("Heating"))
+    use = use.model_copy(
+        update={
+            "ConditioningSystems": use.ConditioningSystems.model_copy(
+                update={"HeatingLimitType": "LimitFlowRateAndCapacity", "MaxHeatingFlowPerFloorArea": 0.02}
+            )
+        }
+    )
+    written = conditioning_to_umi(use, thermostat(), schedule=write_schedule, context=context)
+    assert (written.heating_limit_type, written.max_heat_flow) == (IdealSystemLimit.LimitFlowRate, 0.02)
+    assert written.max_heating_capacity == 100.0
+    lost = {(loss.location, loss.replacement) for loss in context.losses if loss.rule == "conditioning.limits"}
+    assert ("perimeter.Operations.HVAC.ConditioningSystems.MaxHeatingCapacityPerFloorArea", "LimitFlowRate") in lost
+    # Cooling's default limit type names both values, both autosized: no limit.
+    assert written.cooling_limit_type is IdealSystemLimit.NoLimit
 
 
 def test_writing_gives_always_on_schedules_and_defaults() -> None:
     context = writing()
-    written = conditioning_to_umi(hvac(heating=system("Heating")), thermostat(), context=context)
+    written = conditioning_to_umi(hvac(heating=system("Heating")), thermostat(), schedule=write_schedule, context=context)
     for year in (written.heating_schedule, written.cooling_schedule, written.mech_vent_schedule):
         assert year is not None
         assert year.name == ALWAYS_ON
     assert (written.max_heating_capacity, written.heat_recovery_efficiency_sensible) == (100.0, 0.7)
     defaulted = {note.rule for note in context.notes if note.kind is NoteKind.DEFAULTED}
-    assert {"conditioning.limits", "conditioning.heat_recovery_efficiency"} <= defaulted
+    assert "conditioning.heat_recovery_efficiency" in defaulted
+    always_on = {note.rule for note in context.notes if note.value == ALWAYS_ON}
+    assert {"conditioning.availability", "conditioning.mech_vent_schedule"} <= always_on
     assert written.name == "C"
     assert written.category == "Office Spaces"
 
@@ -467,7 +528,7 @@ def test_conditioning_round_trip() -> None:
     parts, _ = read(original)
     use = hvac().model_copy(update={"ConditioningSystems": parts.systems, "Ventilation": parts.ventilation})
     context = writing()
-    back = conditioning_to_umi(use, parts.thermostat, context=context)
+    back = conditioning_to_umi(use, parts.thermostat, schedule=write_schedule, context=context)
     assert context.losses == []
     for field in (
         "heating_setpoint",
@@ -484,5 +545,8 @@ def test_conditioning_round_trip() -> None:
         "economizer_type",
         "heat_recovery_type",
         "max_heating_capacity",
+        "max_cool_flow",
+        "heating_limit_type",
+        "cooling_limit_type",
     ):
         assert getattr(back, field) == getattr(original, field), field

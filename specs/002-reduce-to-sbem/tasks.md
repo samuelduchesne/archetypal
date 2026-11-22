@@ -402,7 +402,7 @@ the default layout and merge; the archetypes match (spec US2, SC-007).
   `merged_distinctions` has one entry per resulting group with `into_key`, sorted `from_keys`
   and `lost`; the bar building at
   core/perimeter gives a perimeter group only with a report note (US2 scenarios 1 and 3).
-- [ ] T068 [P] [US2] Write `tests/unit/test_merge.py`: a hypothesis property that
+- [X] T068 [P] [US2] Write `tests/unit/test_merge.py`: a hypothesis property that
   `merge(reduce(m, r, options=o), L)` equals `reduce(m, r,
   options=o.model_copy(update={"layout": L}))` within 0.1 % for every pair of layouts where `L`
   is not strictly finer, including `SPACE_USE` → `CORE_PERIMETER` (FR-010, SC-007, spec 003);
@@ -414,16 +414,16 @@ the default layout and merge; the archetypes match (spec US2, SC-007).
 - [X] T069 [US2] Extend `src/archetypal/reduction/grouping.py` with the `SPACE_USE`,
   `CORE_PERIMETER` and `SINGLE_ZONE` keys, the eligibility rule without exposure ("the most
   similar group"), and the list of merged distinctions (FR-009, FR-011).
-- [ ] T070 [US2] Implement `merge(reduction, layout, *, small_group_threshold=None)` in
+- [X] T070 [US2] Implement `merge(reduction, layout, *, small_group_threshold=None)` in
   `src/archetypal/reduction/__init__.py`: rebuild ledgers from the report's
   `pre_threshold_groups` (always at the finest key), refuse a strictly finer target, regroup by
   the target key, threshold once, convert and report through
   the same path as `reduce` (data-model.md, Grouping and thresholding, step 4).
-- [ ] T071 [US2] Make `Reduction.read` in `src/archetypal/reduction/__init__.py` restore full
+- [X] T071 [US2] Make `Reduction.read` in `src/archetypal/reduction/__init__.py` restore full
   ledgers, profiles included, from `<name>.report.json` (by default beside
   `<name>.sbem.json`, the name stripped of `.sbem.json`), so `merge` works without the model
   (report invariant 5).
-- [ ] T072 [US2] Re-export `merge` from `src/archetypal/__init__.py`.
+- [X] T072 [US2] Re-export `merge` from `src/archetypal/__init__.py`.
 - [ ] T073 [P] [US2] Write `docs/how-to/merge-an-archetype.md` and add choosing a layout to
   `docs/how-to/reduce-a-model.md`; code examples run against the unit fixtures.
 

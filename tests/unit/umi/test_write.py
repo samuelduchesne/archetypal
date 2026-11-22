@@ -162,11 +162,20 @@ def test_reduction_at_core_perimeter_lists_merged_groups(office: Archetype) -> N
     assert merged[0].location == "perimeter"
 
 
-def test_reduction_with_several_groups_is_merged_by_002() -> None:
-    reduction_module = pytest.importorskip("archetypal.reduction")
-    if not hasattr(reduction_module, "merge"):
-        pytest.skip("spec 002's merge (T070) is not implemented yet")
-    pytest.skip("needs a fixture reduction; covered once 002's merge exists")  # pragma: no cover
+@pytest.mark.timeout(30)  # reduces two fixture layouts on first use
+def test_reduction_with_several_groups_is_merged_by_002(reduced: Callable[..., Any]) -> None:
+    from archetypal.reduction.options import Layout, ReductionOptions  # noqa: PLC0415 - imports epinterface
+
+    reduction = reduced("three_zone")  # (Conference, perimeter), (Office, core), (Office, perimeter)
+    assert len(reduction.archetype.Groups) == 3
+    export = to_umi([reduction])
+    merged = losses(export.report, LossKind.MERGED)
+    assert [(loss.location, loss.value) for loss in merged] == [
+        ("perimeter", [["Conference", "perimeter"], ["Office", "perimeter"]])
+    ]
+    direct = to_umi([reduced("three_zone", ReductionOptions(layout=Layout.CORE_PERIMETER))])
+    assert export.text == direct.text  # 002's merge equals reducing directly to core/perimeter
+    assert_basilisk_accepts(export.text)
 
 
 # --- Scenario 3: sharing ----------------------------------------------------------------------------
@@ -288,10 +297,18 @@ def test_existing_loss_report_is_refused(office: Archetype, tmp_path: Path) -> N
     assert not (tmp_path / "offices.json").exists()
 
 
+def test_an_archetype_read_from_umi_writes_back_without_losses(office: Archetype, tmp_path: Path) -> None:
+    """UP-9: every field of a UMI template has an SBEM field, so writing it back loses nothing."""
+    report = write_umi([office], tmp_path / "offices.json", strict=True)
+    assert report.losses == []
+
+
 def test_strict_mode_raises_and_writes_nothing(office: Archetype, tmp_path: Path) -> None:
     path = tmp_path / "offices.json"
+    core, perimeter = office.Groups
+    shared = with_groups(office, ("core", core.Zone, 0.4, "core"), ("perimeter", perimeter.Zone, 0.6, "perimeter"))
     with pytest.raises(LossyTranslationError) as error:
-        write_umi([office], path, strict=True)
+        write_umi([shared], path, strict=True)
     assert error.value.report.losses
     assert list(tmp_path.iterdir()) == []
 

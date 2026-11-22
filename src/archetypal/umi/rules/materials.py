@@ -364,7 +364,7 @@ def life_cycle_to_umi(
         value: object = getattr(component, key)
         if value is None:
             continue
-        if key in _PER_UNIT and rate_unit != _PER_MASS:
+        if key in _PER_UNIT and rate_unit != _PER_MASS and value != 0.0:
             number = cast("float", value)
             if rate_unit not in (None, _PER_VOLUME) or (not density and number != 0.0):
                 why = (
@@ -393,14 +393,10 @@ def assembly_life_cycle_to_sbem(construction: ConstructionBase) -> dict[str, flo
 
     Negative values, which SBEM refuses, are left out; `assembly_life_cycle_losses` lists them.
     """
-    return {
-        key: value for key, name in ASSEMBLY_LIFE_CYCLE.items() if (value := getattr(construction, name)) >= 0
-    }
+    return {key: value for key, name in ASSEMBLY_LIFE_CYCLE.items() if (value := getattr(construction, name)) >= 0}
 
 
-def assembly_life_cycle_losses(
-    construction: ConstructionBase, subject: str, location: str, findings: Findings
-) -> None:
+def assembly_life_cycle_losses(construction: ConstructionBase, subject: str, location: str, findings: Findings) -> None:
     """List the negative life-cycle fields of a UMI construction, which SBEM refuses, as lost."""
     for key, name in ASSEMBLY_LIFE_CYCLE.items():
         value: float = getattr(construction, name)

@@ -16,6 +16,9 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pytest
 from epinterface.sbem.archetype import Archetype, ZoneGroup
+from epinterface.sbem.components.envelope import GlazingConstructionLayeredComponent, GlazingConstructionSimpleComponent
+from idfkit import new_document
+from idfkit.thermal import calculate_u_value
 
 from archetypal.errors import InputError
 from archetypal.reduction.ledger import APPROXIMATE_PATHS, GroupLedger
@@ -42,6 +45,12 @@ def replace(model: Any, path: str, value: object) -> Any:
     if not rest:
         return model.model_copy(update={head: value})
     return model.model_copy(update={head: replace(getattr(model, head), rest, value)})
+
+
+def _idf_construction(window: GlazingConstructionLayeredComponent) -> Any:
+    doc = new_document()
+    window.add_to_idf(doc)
+    return doc["Construction"][window.Name]
 
 
 def group(zone: ZoneComponent, name: str, share: float | None, exposure: str | None) -> ZoneGroup:
@@ -109,7 +118,11 @@ def test_ledgers_of_groups_add(office: ZoneComponent) -> None:
 
 def three_groups(office: ZoneComponent) -> Archetype:
     bright = replace(office, "Operations.SpaceUse.Lighting.PowerDensity", 20.0)
-    bright = replace(bright, "Envelope.Window.UValue", 1.5)
+    bright = replace(
+        bright,
+        "Envelope.Window",
+        GlazingConstructionSimpleComponent(Name="Bright glazing", UValue=1.5, SHGF=0.4, TVis=0.6, Type="Double"),
+    )
     bright = replace(bright, "Name", "Bright office")
     return Archetype(
         Name="three groups",
@@ -138,7 +151,10 @@ def test_merge_weights_intensities_by_floor_area(office: ZoneComponent) -> None:
     )
     window = perimeter.Zone.Envelope.Window
     assert window is not None
-    assert window.UValue == pytest.approx((0.3 * office.Envelope.Window.UValue + 0.2 * 1.5) / 0.5)  # pyright: ignore[reportOptionalMemberAccess]
+    # The office's window is layered (UP-9): the ledger takes its U from idfkit.thermal.
+    assert isinstance(office.Envelope.Window, GlazingConstructionLayeredComponent)
+    office_u = calculate_u_value(_idf_construction(office.Envelope.Window))
+    assert window.UValue == pytest.approx((0.3 * office_u + 0.2 * 1.5) / 0.5)  # pyright: ignore[reportAttributeAccessIssue]
     # The core group has one member: it is kept as it is.
     assert by_exposure["core"].Zone == office
 

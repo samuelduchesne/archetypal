@@ -15,7 +15,6 @@ libraries that are invalid or must translate without loss. It assumes you have t
 Pass the library file to `read_umi`. It returns one archetype per building template, in
 template order, and the report of the translation:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
 from archetypal import read_umi
 
@@ -40,8 +39,10 @@ building's geometry sets them when the archetype is applied.
 
 `read_umi` writes nothing. To keep the result, write it to a directory:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
+from archetypal import read_umi
+
+result = read_umi("BostonTemplateLibrary.json")
 result.write("archetypes")
 ```
 
@@ -60,10 +61,12 @@ assumptions that lose nothing. Each loss names the template (`subject`), the pla
 library as a JSON pointer (`location`), the value, the rule of the correspondence table and,
 when SBEM lacks the field, the upstream item that will add it:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
 from collections import Counter
 
+from archetypal import read_umi
+
+result = read_umi("BostonTemplateLibrary.json")
 print(Counter((loss.kind, loss.rule) for loss in result.report.losses).most_common(5))
 
 for loss in result.report.losses:
@@ -94,12 +97,12 @@ without 24 values, year parts that leave a gap or overlap, or a value outside it
 raises `UmiValidationError`. Both list every problem with its JSON pointer and the template it
 affects:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
+from archetypal import read_umi
 from archetypal.errors import UmiValidationError
 
 try:
-    result = read_umi("library.json")
+    result = read_umi("BostonTemplateLibrary.json")
 except UmiValidationError as error:
     for problem in error.problems:
         print(problem.pointer, problem.template, problem.rule, problem.message)
@@ -108,9 +111,10 @@ except UmiValidationError as error:
 Fix the library at each pointer and read it again. If you only need the valid templates, skip
 the others instead:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
-result = read_umi("library.json", skip_invalid_templates=True)
+from archetypal import read_umi
+
+result = read_umi("BostonTemplateLibrary.json", skip_invalid_templates=True)
 ```
 
 Each skipped template appears in the report as a `skipped_template` loss that carries its
@@ -122,12 +126,12 @@ When an archetype must hold everything the library holds, use strict mode. It tr
 whole library, then raises `LossyTranslationError` if `losses` is not empty; the error carries
 the report, so you can see what would have been lost:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
+from archetypal import read_umi
 from archetypal.errors import LossyTranslationError
 
 try:
-    result = read_umi("library.json", strict=True)
+    result = read_umi("BostonTemplateLibrary.json", strict=True)
 except LossyTranslationError as error:
     print(error.report.summary)
 ```

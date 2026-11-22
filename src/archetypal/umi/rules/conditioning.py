@@ -18,11 +18,16 @@ Spec 003, research R9 and R10.
   at 0.05, above which is a range problem); economizer and heat-recovery types map by name.
   SBEM's demand control (`DCV`) has no UMI field: a value other than `NoDCV` is lost on
   writing. `IsMechVentOn` goes to SBEM's provider with the natural switch (`vent.provider`).
-- **Upstream** (`conditioning.heat_recovery_efficiency` UP-2, `conditioning.availability`,
-  `conditioning.mech_vent_schedule`, `conditioning.limits` UP-9). Reading reports values SBEM
-  cannot hold yet as lost: effectiveness and limits when they differ from Basilisk's defaults,
-  schedules unless every value is 1 (SBEM conditions and ventilates whenever a system exists).
-  Writing gives Basilisk's defaults and always-on schedules (noted).
+- **Availability, outdoor-air schedule and limits** (`conditioning.availability`,
+  `conditioning.mech_vent_schedule`, `conditioning.limits`, UP-9). The heating and cooling
+  availability schedules and the mechanical outdoor-air schedule map to SBEM's optional
+  schedules, whose `None` is always on: an always-on UMI schedule reads as `None`, and `None`
+  writes as an always-on schedule (noted); a schedule without Fraction limits is lost. The
+  ideal-loads limit types and the flows and capacities per floor area map exactly; SBEM's
+  autosized (`None`) flow or capacity has no UMI value, so writing drops it from the limit type
+  (lost) and gives Basilisk's default value.
+- **Upstream** (`conditioning.heat_recovery_efficiency`, UP-2). Reading reports effectiveness
+  that differs from Basilisk's defaults as lost; writing gives the defaults (noted).
 
 `ventilation_to_sbem` assembles SBEM's `VentilationComponent` from the conditioning and the
 ventilation settings; `conditioning_to_sbem` and `conditioning_to_umi` translate a whole
@@ -45,19 +50,26 @@ from epinterface.sbem.components.systems import (
 
 from archetypal.errors import Problem
 from archetypal.reduction.schedules import to_year_component
-from archetypal.umi._format import EconomizerType, FuelType, HeatRecoveryType, ZoneConditioning
+from archetypal.umi._format import EconomizerType, FuelType, HeatRecoveryType, IdealSystemLimit, ZoneConditioning
 from archetypal.umi.correspondence import rule
 from archetypal.umi.report import NoteKind
 from archetypal.umi.rules._common import (
-    all_values_equal,
+    ALWAYS_ON,
     annual_values,
-    constant_year_schedule,
     identity_to_umi,
     json_value,
+    optional_schedule_to_sbem,
+    optional_schedule_to_umi,
     report_upstream,
     upstream_defaults,
 )
-from archetypal.umi.rules.ventilation import natural_schedule_to_sbem, provider_to_sbem, provider_to_umi
+from archetypal.umi.rules.ventilation import (
+    natural_limits_to_sbem,
+    natural_schedule_to_sbem,
+    provider_to_sbem,
+    provider_to_umi,
+    scheduled_to_sbem,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -70,10 +82,11 @@ if TYPE_CHECKING:
     )
     from epinterface.sbem.components.systems import FuelType as SbemFuel
 
-    from archetypal.umi._format import YearSchedule, ZoneVentilation
+    from archetypal.umi._format import ZoneVentilation
     from archetypal.umi.rules._common import (
         RuleContext,
         ScheduleToSbem,
+        ScheduleToUmi,
     )
 
 __all__ = [
@@ -113,9 +126,6 @@ __all__ = [
 
 FRESH_AIR_CAP = 0.05
 """SBEM's upper bound on fresh air per area (m³/s·m²) and per person (m³/s·p)."""
-
-ALWAYS_ON = "Always on"
-"""The name of the schedule written where SBEM has none (availability, mechanical ventilation)."""
 
 
 # --- Fuels --------------------------------------------------------------------------------------
@@ -532,19 +542,22 @@ def ventilation_to_sbem(
                     reason="mechanical ventilation is off, and SBEM allows no economizer or heat recovery without it",
                 )
         economizer, heat_recovery = "NoEconomizer", "NoHRV"
-    return VentilationComponent(
-        Name=conditioning.name or "",
-        FreshAirPerFloorArea=area,
-        FreshAirPerPerson=person,
-        Schedule=natural_schedule_to_sbem(ventilation, schedule=schedule, context=ventilation_context),
-        Provider=provider,
-        HRV=heat_recovery,
-        Economizer=economizer,
-        DCV="NoDCV",
-    )
+    return VentilationComponent.model_validate({
+        "Name": conditioning.name or "",
+        "FreshAirPerFloorArea": area,
+        "FreshAirPerPerson": person,
+        "Schedule": natural_schedule_to_sbem(ventilation, schedule=schedule, context=ventilation_context),
+        "MechVentSchedule": mech_vent_schedule_to_sbem(conditioning, schedule=schedule, context=context),
+        "Provider": provider,
+        "HRV": heat_recovery,
+        "Economizer": economizer,
+        "DCV": "NoDCV",
+        **natural_limits_to_sbem(ventilation, context=ventilation_context),
+        **scheduled_to_sbem(ventilation, schedule=schedule, context=ventilation_context),
+    })
 
 
-# --- Upstream: effectiveness (UP-2), availability, outdoor-air schedule and limits (UP-9) --------
+# --- Effectiveness (UP-2, upstream), availability, outdoor-air schedule and limits (UP-9) -----------
 
 
 @rule("conditioning.heat_recovery_efficiency", to="sbem")
@@ -559,66 +572,188 @@ def heat_recovery_efficiency_to_umi(*, context: RuleContext) -> dict[str, object
     return upstream_defaults(ZoneConditioning, "conditioning.heat_recovery_efficiency", context)
 
 
-def _always_on_or_lost(year: YearSchedule | None, key: str, rule_id: str, context: RuleContext) -> None:
-    if year is not None and not all_values_equal(year, 1.0):
-        context.lose(
-            key,
-            json_value(year),
-            replacement=ALWAYS_ON,
-            rule=rule_id,
-            reason=f"SBEM has no {key} yet; it applies whenever the system exists, as an always-on schedule",
-            upstream="UP-9",
-        )
-
-
-def _always_on(key: str, rule_id: str, context: RuleContext) -> YearSchedule:
-    context.note(
-        "",
-        ALWAYS_ON,
-        rule=rule_id,
-        reason=f"SBEM has no {key}; it applies whenever the system exists, so an always-on schedule is written",
-    )
-    return constant_year_schedule(ALWAYS_ON, 1.0)
+_AVAILABILITY = (
+    ("heating_schedule", "HeatingSchedule", "HeatingAvailabilitySchedule"),
+    ("cooling_schedule", "CoolingSchedule", "CoolingAvailabilitySchedule"),
+)
 
 
 @rule("conditioning.availability", to="sbem")
-def availability_to_sbem(conditioning: ZoneConditioning, *, context: RuleContext) -> None:
-    """Report heating and cooling availability schedules as lost unless every value is 1 (R9)."""
-    _always_on_or_lost(conditioning.heating_schedule, "HeatingSchedule", "conditioning.availability", context)
-    _always_on_or_lost(conditioning.cooling_schedule, "CoolingSchedule", "conditioning.availability", context)
+def availability_to_sbem(
+    conditioning: ZoneConditioning, *, schedule: ScheduleToSbem, context: RuleContext
+) -> dict[str, YearComponent | None]:
+    """Read the heating and cooling availability schedules (UP-9); always on is SBEM's `None`.
+
+    Args:
+        conditioning: The UMI conditioning.
+        schedule: The schedule converter.
+        context: Its reading context.
+
+    Returns:
+        SBEM's `HeatingAvailabilitySchedule` and `CoolingAvailabilitySchedule`.
+    """
+    return {
+        target: optional_schedule_to_sbem(
+            getattr(conditioning, field),
+            key,
+            "Equipment",
+            schedule=schedule,
+            context=context,
+            rule_id="conditioning.availability",
+        )
+        for field, key, target in _AVAILABILITY
+    }
 
 
 @rule("conditioning.availability", to="umi")
-def availability_to_umi(*, context: RuleContext) -> dict[str, object]:
-    """Return always-on heating and cooling availability schedules, noting them (R9)."""
+def availability_to_umi(
+    systems: ConditioningSystemsComponent, *, schedule: ScheduleToUmi, context: RuleContext
+) -> dict[str, object]:
+    """Write the heating and cooling availability schedules (UP-9); `None` is always on (noted).
+
+    Args:
+        systems: The SBEM conditioning systems.
+        schedule: The schedule converter.
+        context: The writing context at them (`<group>.Operations.HVAC.ConditioningSystems`).
+    """
     return {
-        "heating_schedule": _always_on("HeatingSchedule", "conditioning.availability", context),
-        "cooling_schedule": _always_on("CoolingSchedule", "conditioning.availability", context),
+        field: optional_schedule_to_umi(
+            getattr(systems, target), target, schedule=schedule, context=context, rule_id="conditioning.availability"
+        )
+        for field, _, target in _AVAILABILITY
     }
 
 
 @rule("conditioning.mech_vent_schedule", to="sbem")
-def mech_vent_schedule_to_sbem(conditioning: ZoneConditioning, *, context: RuleContext) -> None:
-    """Report the mechanical outdoor-air schedule as lost unless every value is 1 (UP-9)."""
-    _always_on_or_lost(conditioning.mech_vent_schedule, "MechVentSchedule", "conditioning.mech_vent_schedule", context)
+def mech_vent_schedule_to_sbem(
+    conditioning: ZoneConditioning, *, schedule: ScheduleToSbem, context: RuleContext
+) -> YearComponent | None:
+    """Read the mechanical outdoor-air schedule as SBEM's `MechVentSchedule` (UP-9); always on is `None`."""
+    return optional_schedule_to_sbem(
+        conditioning.mech_vent_schedule,
+        "MechVentSchedule",
+        "Window",
+        schedule=schedule,
+        context=context,
+        rule_id="conditioning.mech_vent_schedule",
+    )
 
 
 @rule("conditioning.mech_vent_schedule", to="umi")
-def mech_vent_schedule_to_umi(*, context: RuleContext) -> dict[str, object]:
-    """Return an always-on mechanical outdoor-air schedule, noting it."""
-    return {"mech_vent_schedule": _always_on("MechVentSchedule", "conditioning.mech_vent_schedule", context)}
+def mech_vent_schedule_to_umi(
+    ventilation: VentilationComponent, *, schedule: ScheduleToUmi, context: RuleContext
+) -> dict[str, object]:
+    """Write SBEM's `MechVentSchedule` (UP-9); `None` is an always-on schedule (noted).
+
+    Args:
+        ventilation: The SBEM ventilation.
+        schedule: The schedule converter.
+        context: The writing context at it (`<group>.Operations.HVAC.Ventilation`).
+    """
+    return {
+        "mech_vent_schedule": optional_schedule_to_umi(
+            ventilation.MechVentSchedule,
+            "MechVentSchedule",
+            schedule=schedule,
+            context=context,
+            rule_id="conditioning.mech_vent_schedule",
+        )
+    }
+
+
+# (UMI limit-type field, its key, SBEM limit type, (UMI field, SBEM field) of the flow, of the capacity)
+_LIMITS: tuple[tuple[str, str, str, tuple[str, str], tuple[str, str]], ...] = (
+    (
+        "heating_limit_type",
+        "HeatingLimitType",
+        "HeatingLimitType",
+        ("max_heat_flow", "MaxHeatingFlowPerFloorArea"),
+        ("max_heating_capacity", "MaxHeatingCapacityPerFloorArea"),
+    ),
+    (
+        "cooling_limit_type",
+        "CoolingLimitType",
+        "CoolingLimitType",
+        ("max_cool_flow", "MaxCoolingFlowPerFloorArea"),
+        ("max_cooling_capacity", "MaxCoolingCapacityPerFloorArea"),
+    ),
+)
+_USES_FLOW = frozenset({IdealSystemLimit.LimitFlowRate, IdealSystemLimit.LimitFlowRateAndCapacity})
+_USES_CAPACITY = frozenset({IdealSystemLimit.LimitCapacity, IdealSystemLimit.LimitFlowRateAndCapacity})
+
+
+def _limit_type(flow: bool, capacity: bool) -> IdealSystemLimit:
+    return {
+        (False, False): IdealSystemLimit.NoLimit,
+        (True, False): IdealSystemLimit.LimitFlowRate,
+        (False, True): IdealSystemLimit.LimitCapacity,
+        (True, True): IdealSystemLimit.LimitFlowRateAndCapacity,
+    }[flow, capacity]
 
 
 @rule("conditioning.limits", to="sbem")
-def limits_to_sbem(conditioning: ZoneConditioning, *, context: RuleContext) -> None:
-    """Report ideal-loads limits that differ from Basilisk's defaults as lost (UP-9; SBEM autosizes)."""
-    report_upstream(conditioning, "conditioning.limits", context)
+def limits_to_sbem(conditioning: ZoneConditioning, *, context: RuleContext) -> dict[str, object]:
+    """Read the ideal-loads limits (UP-9): types by name, flows and capacities per floor area copied.
+
+    A negative flow or capacity, which SBEM refuses, is lost and left autosized.
+
+    Args:
+        conditioning: The UMI conditioning.
+        context: Its reading context.
+
+    Returns:
+        SBEM's limit fields of `ConditioningSystemsComponent`.
+    """
+    fields: dict[str, object] = {}
+    for type_field, _, type_target, *quantities in _LIMITS:
+        fields[type_target] = getattr(conditioning, type_field).name
+        for field, target in quantities:
+            value: float = getattr(conditioning, field)
+            if value < 0:
+                context.lose(
+                    _key(field),
+                    value,
+                    rule="conditioning.limits",
+                    reason="SBEM's limit cannot be negative; it is autosized",
+                )
+                continue
+            fields[target] = value
+    return fields
 
 
 @rule("conditioning.limits", to="umi")
-def limits_to_umi(*, context: RuleContext) -> dict[str, object]:
-    """Return Basilisk's default ideal-loads limits, noting each."""
-    return upstream_defaults(ZoneConditioning, "conditioning.limits", context)
+def limits_to_umi(systems: ConditioningSystemsComponent, *, context: RuleContext) -> dict[str, object]:
+    """Write the ideal-loads limits (UP-9).
+
+    A flow or capacity the limit type names that SBEM autosizes (`None`) has no UMI value: it is
+    dropped from the limit type, and lost. An unset value takes Basilisk's default (noted when
+    the limit type names it).
+
+    Args:
+        systems: The SBEM conditioning systems.
+        context: The writing context at them (`<group>.Operations.HVAC.ConditioningSystems`).
+    """
+    fields: dict[str, object] = {}
+    for type_field, _, type_target, flow, capacity in _LIMITS:
+        limit = IdealSystemLimit[getattr(systems, type_target)]
+        uses = {flow: limit in _USES_FLOW, capacity: limit in _USES_CAPACITY}
+        for (field, target), used in list(uses.items()):
+            value: float | None = getattr(systems, target)
+            if value is not None:
+                fields[field] = value
+                continue
+            fields[field] = _default(field)
+            if used:
+                uses[field, target] = False
+                context.lose(
+                    target,
+                    None,
+                    replacement=_limit_type(*uses.values()).name,
+                    rule="conditioning.limits",
+                    reason=f"UMI has no autosized limit; {target} is dropped from {type_target}",
+                )
+        fields[type_field] = _limit_type(*uses.values())
+    return fields
 
 
 # --- Conditioning, whole ------------------------------------------------------------------------
@@ -654,22 +789,25 @@ def conditioning_to_sbem(
         context: The conditioning's reading context (`/ZoneConditionings/<i>`).
         ventilation_context: The ventilation settings' reading context.
     """
+    systems = systems_to_sbem(conditioning, context=context).model_copy(
+        update={
+            **availability_to_sbem(conditioning, schedule=schedule, context=context),
+            **limits_to_sbem(conditioning, context=context),
+        }
+    )
     parts = ConditioningParts(
         thermostat_to_sbem(conditioning, context=context),
-        systems_to_sbem(conditioning, context=context),
+        ConditioningSystemsComponent.model_validate(systems.model_dump()),
         ventilation_to_sbem(
             conditioning, ventilation, schedule=schedule, context=context, ventilation_context=ventilation_context
         ),
     )
     heat_recovery_efficiency_to_sbem(conditioning, context=context)
-    availability_to_sbem(conditioning, context=context)
-    mech_vent_schedule_to_sbem(conditioning, context=context)
-    limits_to_sbem(conditioning, context=context)
     return parts
 
 
 def conditioning_to_umi(
-    hvac: ZoneHVACComponent, thermostat: ThermostatComponent, *, context: RuleContext
+    hvac: ZoneHVACComponent, thermostat: ThermostatComponent, *, schedule: ScheduleToUmi, context: RuleContext
 ) -> ZoneConditioning:
     """Write UMI conditioning from a zone's HVAC and thermostat.
 
@@ -678,6 +816,7 @@ def conditioning_to_umi(
     Args:
         hvac: The zone's HVAC (systems and ventilation).
         thermostat: The zone's thermostat.
+        schedule: The schedule converter.
         context: The writing context at the group (`perimeter`).
     """
     here = context.child("Operations.HVAC")
@@ -691,9 +830,9 @@ def conditioning_to_umi(
         "economizer_type": economizer_to_umi(hvac.Ventilation.Economizer),
         "heat_recovery_type": heat_recovery_to_umi(hvac.Ventilation.HRV),
         **heat_recovery_efficiency_to_umi(context=ventilation),
-        **availability_to_umi(context=here.child("ConditioningSystems")),
-        **mech_vent_schedule_to_umi(context=ventilation),
-        **limits_to_umi(context=here.child("ConditioningSystems")),
+        **availability_to_umi(hvac.ConditioningSystems, schedule=schedule, context=here.child("ConditioningSystems")),
+        **mech_vent_schedule_to_umi(hvac.Ventilation, schedule=schedule, context=ventilation),
+        **limits_to_umi(hvac.ConditioningSystems, context=here.child("ConditioningSystems")),
     }
     return ZoneConditioning.model_validate(fields)
 

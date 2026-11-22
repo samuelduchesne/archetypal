@@ -9,16 +9,25 @@ from typing import Any
 
 import idfkit.thermal
 import pytest
-from epinterface.sbem.components.envelope import GlazingConstructionSimpleComponent
+from epinterface.sbem.components.envelope import GlazingConstructionLayeredComponent, GlazingConstructionSimpleComponent
 from idfkit import new_document
 from idfkit.thermal import calculate_shgc, calculate_u_value, calculate_visible_transmittance
 
 from archetypal.umi import _refs
 from archetypal.umi._bridges import equivalent_glazing_layer
-from archetypal.umi._format import GasMaterial, GlazingMaterial, MaterialLayer, WindowConstruction
+from archetypal.umi._format import (
+    GasMaterial,
+    GlazingMaterial,
+    MaterialLayer,
+    ShadingType,
+    WindowConstruction,
+    WindowSettings,
+)
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind
 from archetypal.umi.rules import windows
+
+from .test_rules_loads import read_schedule, reading, umi_schedule, write_schedule, writing
 
 UMI = Path(__file__).parents[2] / "fixtures" / "umi"
 SAMPLES = {"B2": UMI / "BostonTemplateLibrary_2.json", "UZ": UMI / "umi_samples_BostonTemplateLibrary.json"}
@@ -104,11 +113,56 @@ def simple(
 
 
 def test_rules_are_registered_in_windows() -> None:
-    assert get_rule("window.simple_from_layers").to_sbem is windows.simple_from_layers
-    assert get_rule("window.equivalent_layer").to_umi is windows.equivalent_layer
+    assert get_rule("window.layers").to_sbem is windows.layers_to_sbem
+    assert get_rule("window.layers").to_umi is windows.layers_to_umi
     assert get_rule("window.placement").to_sbem is windows.place_window
     assert get_rule("window.placement").to_umi is windows.template_window
-    assert get_rule("window.settings").id == "window.settings"
+    assert get_rule("window.settings").to_sbem is windows.settings_to_sbem
+    assert get_rule("window.settings").to_umi is windows.settings_to_umi
+
+
+# --- window.layers (UP-9's layered windows) ----------------------------------------------------
+
+
+@pytest.mark.parametrize(("label", "construction"), CONSTRUCTIONS, ids=[label for label, _ in CONSTRUCTIONS])
+def test_layers_read_and_write_back_exactly(label: str, construction: WindowConstruction) -> None:
+    window, losses = windows.layers_to_sbem(construction, subject="T", location="/WindowConstructions/0")
+    assert isinstance(window, GlazingConstructionLayeredComponent), label
+    assert losses == []
+    assert len(window.Layers) == len(construction.layers)
+    for layer, original in zip(window.Layers, construction.layers, strict=True):
+        assert layer.Thickness == original.thickness
+    back, losses = windows.layers_to_umi(window, subject="A", location="perimeter.Envelope.Window")
+    assert losses == []
+    assert [layer.thickness for layer in back.layers] == [layer.thickness for layer in construction.layers]
+    for layer, original in zip(back.layers, construction.layers, strict=True):
+        material, source = layer.material, original.material
+        assert type(material) is type(source)
+        if isinstance(material, GlazingMaterial) and isinstance(source, GlazingMaterial):
+            for field in ("solar_transmittance", "visible_transmittance", "ir_emissivity_front", "conductivity"):
+                assert getattr(material, field) == getattr(source, field), (label, field)
+        elif isinstance(material, GasMaterial) and isinstance(source, GasMaterial):
+            assert material.type == windows._gas_type(source).upper()  # pyright: ignore[reportPrivateUsage]
+
+
+def test_layers_the_fork_cannot_hold_give_simple_glazing() -> None:
+    glass = GlazingMaterial(Name="Glass", Conductivity=0.9)
+    air = GasMaterial(Name="Air", Type="AIR")
+    layer = MaterialLayer[GlazingMaterial | GasMaterial]
+    panes = [layer(Material=glass, Thickness=0.003), layer(Material=air, Thickness=0.012)] * 4
+    construction = WindowConstruction(Name="Quintuple", Layers=(*panes, layer(Material=glass, Thickness=0.003)))
+    window, losses = windows.layers_to_sbem(construction, subject="T", location="/WindowConstructions/0")
+    assert isinstance(window, GlazingConstructionSimpleComponent)
+    assert all(loss.rule == "window.layers" and loss.upstream is None for loss in losses)
+    assert "5 panes" in losses[0].reason
+
+
+def test_a_simple_window_is_written_as_its_equivalent_layer() -> None:
+    window = simple("Low-e double", u=1.8, shgc=0.4, vt=0.6)
+    construction, losses = windows.layers_to_umi(window, subject="A", location="perimeter.Envelope.Window")
+    assert len(construction.layers) == 1
+    (loss,) = losses
+    assert (loss.kind, loss.rule) == (LossKind.APPROXIMATE, "window.layers")
 
 
 # --- window.simple_from_layers (reading) -------------------------------------------------------
@@ -135,12 +189,12 @@ def test_simple_from_layers_lists_layers_lost_and_values_approximate() -> None:
     window, losses = windows.simple_from_layers(construction, subject="B_Off_0", location="/WindowConstructions/3")
     lost = [loss for loss in losses if loss.kind is LossKind.LOST]
     assert [loss.location for loss in lost] == [f"/WindowConstructions/3/Layers/{i}" for i in range(3)]
-    assert all(loss.rule == "window.simple_from_layers" and loss.upstream == "UP-9" for loss in lost)
+    assert all(loss.rule == "window.layers" and loss.upstream is None for loss in lost)
     assert all(loss.subject == "B_Off_0" for loss in losses)
     assert isinstance(lost[1].value, dict)
     assert lost[1].value["Thickness"] == 0.006
     (approximate,) = (loss for loss in losses if loss.kind is LossKind.APPROXIMATE)
-    assert approximate.rule == "window.simple_from_layers"
+    assert approximate.rule == "window.layers"
     assert approximate.replacement == {"UValue": window.UValue, "SHGF": window.SHGF, "TVis": window.TVis}
     assert "idfkit" in approximate.reason
     assert len(losses) == 4
@@ -239,7 +293,7 @@ def test_equivalent_layer_lists_the_window_as_approximate() -> None:
     construction, losses = windows.equivalent_layer(window, subject="A", location="perimeter.Envelope.Window")
     (loss,) = losses
     assert loss.kind is LossKind.APPROXIMATE
-    assert loss.rule == "window.equivalent_layer"
+    assert loss.rule == "window.layers"
     assert loss.location == "perimeter.Envelope.Window"
     assert loss.value == {"UValue": 1.8, "SHGF": 0.4, "TVis": 0.6, "Type": "Double"}
     assert loss.replacement == {
@@ -309,3 +363,74 @@ def test_writing_without_a_perimeter_group_uses_the_only_group() -> None:
     only = simple("Only")
     assert windows.template_window({"whole": only}, subject="A") == (only, [])
     assert windows.template_window({"core": None, "perimeter": None}, subject="A") == (None, [])
+
+
+# --- window.settings (UP-9) --------------------------------------------------------------------
+
+
+def umi_settings(**fields: object) -> WindowSettings:
+    values: dict[str, object] = {
+        "Name": "Shaded",
+        "OperableArea": 0.5,
+        "IsShadingSystemOn": True,
+        "ShadingSystemType": ShadingType.InteriorShade,
+        "ShadingSystemSetpoint": 250.0,
+        "ShadingSystemTransmittance": 0.3,
+        "ShadingSystemAvailabilitySchedule": umi_schedule("summer", 0.0),
+        "AfnWindowAvailability": umi_schedule("on"),
+        "ZoneMixingAvailabilitySchedule": umi_schedule("on"),
+    }
+    values.update(fields)
+    return WindowSettings.model_validate(values)
+
+
+def test_settings_map_to_the_window_settings_component() -> None:
+    context = reading("/BuildingTemplates/0/Windows")
+    component = windows.settings_to_sbem(umi_settings(), schedule=read_schedule, context=context)
+    assert context.losses == []
+    assert (component.Name, component.OperableArea, component.IsShadingSystemOn) == ("Shaded", 0.5, True)
+    assert (component.ShadingSystemType, component.ShadingSystemSetpoint) == ("InteriorShade", 250.0)
+    assert component.ShadingSystemTransmittance == 0.3
+    assert component.ShadingSystemAvailabilitySchedule is not None
+    back = windows.settings_to_umi(
+        component, WindowConstruction(Name="W"), schedule=write_schedule, context=writing("perimeter.Envelope.WindowSettings")
+    )
+    original = umi_settings()
+    for field in (
+        "name",
+        "operable_area",
+        "is_shading_system_on",
+        "shading_system_type",
+        "shading_system_setpoint",
+        "shading_system_transmittance",
+    ):
+        assert getattr(back, field) == getattr(original, field), field
+
+
+def test_interior_window_and_airflow_network_fields_stay_lost_with_up9() -> None:
+    context = reading("/BuildingTemplates/0/Windows")
+    windows.settings_to_sbem(
+        umi_settings(IsZoneMixingOn=True, AfnDischargeC=0.5, Type=1), schedule=read_schedule, context=context
+    )
+    lost = {(loss.location.rsplit("/", 1)[1], loss.upstream, loss.rule) for loss in context.losses}
+    assert lost == {
+        ("IsZoneMixingOn", "UP-9", "window.settings"),
+        ("AfnDischargeC", "UP-9", "window.settings"),
+        ("Type", "UP-9", "window.settings"),
+    }
+
+
+def test_no_settings_write_operable_unshaded_windows() -> None:
+    context = writing("perimeter.Envelope.WindowSettings")
+    written = windows.settings_to_umi(None, WindowConstruction(Name="W"), schedule=write_schedule, context=context)
+    assert (written.name, written.operable_area, written.is_shading_system_on) == ("W settings", 1.0, False)
+    assert context.losses == []
+
+
+def test_writing_uses_the_perimeter_settings_and_loses_another() -> None:
+    context = reading("/BuildingTemplates/0/Windows")
+    shaded = windows.settings_to_sbem(umi_settings(), schedule=read_schedule, context=context)
+    group, chosen, losses = windows.template_settings({"core": None, "perimeter": shaded}, subject="A")
+    assert (group, chosen) == ("perimeter", shaded)
+    (loss,) = losses
+    assert (loss.location, loss.rule, loss.replacement) == ("core.Envelope.WindowSettings", "window.settings", "Shaded")

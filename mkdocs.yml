@@ -15,6 +15,8 @@ nav:
       - how-to/index.md
       - how-to/install.md
       - how-to/migrate-from-v2.md
+      - how-to/reduce-a-model.md
+      - how-to/merge-an-archetype.md
       - how-to/compare-results.md
       - how-to/read-a-umi-library.md
       - how-to/write-archetypes-to-umi.md
@@ -23,17 +25,22 @@ nav:
       - reference/removed.md
       - reference/umi-correspondence.md
       - reference/translation-report.md
+      - reference/reduction-report.md
+      - reference/results-requirements.md
       - reference/api/reduction.md
       - reference/api/umi.md
       - Changelog: reference/changelog.md
   - Explanation:
       - explanation/index.md
       - explanation/stack.md
+      - explanation/reduction.md
 # Generates the removed-capability tables of the migration guide and reference (spec 001, R7).
 hooks:
   - docs/hooks/removed.py
   # Generates the UMI correspondence and translation-report reference pages (spec 003, T039).
   - docs/hooks/umi_reference.py
+  # Generates the reduction-report and results-requirements reference pages (spec 002, T066).
+  - docs/hooks/reduction_reference.py
 # The hook and the examples' pytest configuration live beside the pages but are not pages.
 exclude_docs: |
   /hooks/

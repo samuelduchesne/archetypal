@@ -4,8 +4,8 @@ Reduction reads a model and its simulation results through idfkit, groups the zo
 layout and gives one SBEM archetype with one zone group per group of zones, with a report of
 every simplification made (contracts/python-api.md).
 
-Public names: `reduce` (re-exported as `archetypal.reduce`), `Reduction`,
-`RESULTS_REQUIREMENTS` and `schedule_compact`. Every module of this package is private: its
+Public names: `reduce` and `merge` (re-exported as `archetypal.reduce` and `archetypal.merge`),
+`Reduction`, `RESULTS_REQUIREMENTS` and `schedule_compact`. Every module of this package is private: its
 names may change between milestone tags without notice (contracts/python-api.md, Stability).
 
 Steps of `reduce`, each in its own module:
@@ -20,6 +20,10 @@ Steps of `reduce`, each in its own module:
 5. `to_sbem.to_archetype`: the fork's validated `Archetype` and its parameters;
 6. `report`: the report, checked against invariants 1-7 of contracts/reduction-report.md.
 
+`merge` starts from a report instead of a model: it rebuilds the groups from the report's
+pre-threshold ledgers with `grouping.group`, then runs steps 5 and 6 through the same code
+(`_assemble`), so merging and reducing directly to a layout give the same result (FR-010).
+
 Every error is raised before anything is returned, and `reduce` writes no file
 (`Reduction.write` does), so a refused reduction leaves nothing behind (FR-029).
 """
@@ -28,7 +32,7 @@ from __future__ import annotations
 
 import math
 import os
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -47,12 +51,13 @@ from archetypal.reduction.airflow import AirflowHook
 from archetypal.reduction.classify import ClassifiedZone, classify
 from archetypal.reduction.envelope import EnvelopeHook
 from archetypal.reduction.features import NotRepresented, find_unsupported
-from archetypal.reduction.grouping import Grouping, group_zones
+from archetypal.reduction.grouping import Group, Grouping, group, group_zones
 from archetypal.reduction.inventory import build_inventory
 from archetypal.reduction.ledger import EnvelopeAssignment, GroupLedger, gain_fields
-from archetypal.reduction.options import ReductionOptions
+from archetypal.reduction.options import Layout, ReductionOptions
 from archetypal.reduction.report import (
     BuildingBlock,
+    CalendarBlock,
     ExcludedZone,
     GroupMember,
     MergedDistinction,
@@ -77,15 +82,16 @@ from archetypal.reduction.to_sbem import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
     from idfkit.simulation import EnergyPlusConfig, TimeSeriesResult
     from idfkit.simulation.parsers.sql import Environment, SeriesSpec
     from idfkit.versioned import AnyIDFDocument
 
+    from archetypal.reduction.classify import Role
     from archetypal.reduction.ledger import Fuel, ZoneHook
 
-__all__ = ["RESULTS_REQUIREMENTS", "Reduction", "reduce", "schedule_compact"]
+__all__ = ["RESULTS_REQUIREMENTS", "Reduction", "merge", "reduce", "schedule_compact"]
 
 _DEFAULT_OPTIONS = ReductionOptions()
 
@@ -125,6 +131,9 @@ class Reduction:
         cls, archetype_path: str | os.PathLike[str], report_path: str | os.PathLike[str] | None = None
     ) -> Reduction:
         """Read an archetype and its report.
+
+        The report's ledgers come back whole, profiles included, so `merge` works on the
+        result without the model (report invariant 5).
 
         Args:
             archetype_path: The `<name>.sbem.json` file.
@@ -294,12 +303,8 @@ def _reduce(sources: SourceData, options: ReductionOptions) -> Reduction:
         mains_temperature=mains,
         air_density=fans.air_density,
     )
-    name = _model_name(sources)
-    conversion = to_archetype(grouping.groups, options.layout, facts, name=name)
-
-    expected = (
+    entries = (
         *find_unsupported(sources),
-        *conversion.not_represented,
         *simple_ventilation_not_represented(zones),
         *_excluded_loads(zones),
         *_unassigned_envelope(envelope),
@@ -307,10 +312,11 @@ def _reduce(sources: SourceData, options: ReductionOptions) -> Reduction:
         *_unattributed_energy(energy, conditioned),
         *_unattributed_fans(fans),
     )
-    groups = _report_groups(grouping, zones)
-    zone_groups = {m.zone: g.name for g in groups for m in g.members}
     building = sum((g.ledger for g in grouping.groups), GroupLedger())
-    report = ReductionReport(
+    return _assemble(
+        grouping,
+        facts,
+        name=_model_name(sources),
         reproducibility=Reproducibility.current(
             energyplus_version=sources.energyplus_version,
             model_sha256=sources.model_sha256,
@@ -318,12 +324,56 @@ def _reduce(sources: SourceData, options: ReductionOptions) -> Reduction:
             weather_sha256=sources.weather_sha256,
             options=options,
         ),
+        members={z.zone.name: _member(z) for z in conditioned},
+        excluded_zones=_excluded_zones(zones, building),
+        entries=entries,
+        unattributed_energy=_unattributed_by_fuel(energy),
+        zone_names=sources.facts.zones,
+        zone_roles={z.zone.name: z.role for z in zones},
+    )
+
+
+def _member(zone: ClassifiedZone) -> GroupMember:
+    return GroupMember(
+        zone=zone.zone.name,
+        multiplier=zone.zone.multiplier,
+        floor_area=zone.zone.floor_area,
+        space_use=zone.space_use,
+        space_use_source=zone.space_use_source,
+        exposure=zone.exposure,
+    )
+
+
+def _assemble(  # noqa: PLR0913 - the facts reduce and merge each gather differently
+    grouping: Grouping,
+    facts: BuildingFacts,
+    *,
+    name: str,
+    reproducibility: Reproducibility,
+    members: Mapping[str, GroupMember],
+    excluded_zones: Sequence[ExcludedZone],
+    entries: Sequence[NotRepresented],
+    unattributed_energy: Mapping[Fuel, float],
+    zone_names: Iterable[str],
+    zone_roles: Mapping[str, Role],
+) -> Reduction:
+    """Convert a grouping and build its checked report: the steps `reduce` and `merge` share.
+
+    `entries` are what the archetype does not hold besides the conversion's own entries, with
+    their affected groups still empty; they are gathered by the groups of this grouping.
+    """
+    conversion = to_archetype(grouping.groups, grouping.layout, facts, name=name)
+    expected = (*entries, *conversion.not_represented)
+    groups = _report_groups(grouping, members)
+    zone_groups = {m.zone: g.name for g in groups for m in g.members}
+    report = ReductionReport(
+        reproducibility=reproducibility,
         groups=groups,
         pre_threshold_groups=tuple(
             PreThresholdGroup(key=g.key, ledger=g.ledger) for g in grouping.pre_threshold_groups
         ),
         parameters=conversion.parameters,
-        excluded_zones=_excluded_zones(zones, building),
+        excluded_zones=tuple(excluded_zones),
         small_group_merges=tuple(
             SmallGroupMerge(key=m.merged_key, into_key=m.into_key, share=m.share, distance=m.distance)
             for m in grouping.merges
@@ -333,20 +383,118 @@ def _reduce(sources: SourceData, options: ReductionOptions) -> Reduction:
             MergedDistinction(into_key=d.into_key, from_keys=d.from_keys, lost=d.lost)
             for d in grouping.merged_distinctions
         ),
-        unattributed_energy=_unattributed_by_fuel(energy),
+        unattributed_energy=dict(unattributed_energy),
         building=BuildingBlock(
-            conditioned_floor_area=conversion.conditioned_floor_area, storey_ratio=conversion.storey_ratio
+            conditioned_floor_area=conversion.conditioned_floor_area,
+            storey_ratio=conversion.storey_ratio,
+            calendar=CalendarBlock.from_calendar(facts.calendar),
+            mains_temperature=facts.mains_temperature,
+            air_density=facts.air_density,
         ),
     )
     raise_for_invariants(
         report,
-        zone_names=sources.facts.zones,
-        zone_roles={z.zone.name: z.role for z in zones},
-        conditioned_floor_area=math.fsum(z.zone.floor_area * z.zone.multiplier for z in conditioned),
+        zone_names=zone_names,
+        zone_roles=zone_roles,
+        conditioned_floor_area=math.fsum(m.floor_area * m.multiplier for m in members.values()),
         set_parameters=set_leaf_paths(conversion.archetype),
         expected_not_represented=expected,
     )
     return Reduction(archetype=conversion.archetype, report=report)
+
+
+def merge(reduction: Reduction, layout: Layout, *, small_group_threshold: float | None = None) -> Reduction:
+    """Merge a reduction to a coarser layout, without the model (FR-010, US2).
+
+    The report's pre-threshold ledgers, always at the finest key (space use, exposure), are
+    regrouped by the target layout's key and the small-group threshold is applied once; the
+    groups are then converted and reported as `reduce` does. The result equals reducing the
+    model directly to `layout` with the same options (SC-007): ledgers add exactly.
+
+    `SPACE_USE` merges to `CORE_PERIMETER` and back: neither is finer than the other, and the
+    report keeps every ledger at the finest key.
+
+    Args:
+        reduction: A reduction, from `reduce` or read back with `Reduction.read`.
+        layout: The target layout; not strictly finer than the reduction's.
+        small_group_threshold: The threshold for the target groups; `None` keeps the
+            reduction's.
+
+    Returns:
+        The merged reduction. Nothing is written; call `Reduction.write`.
+
+    Raises:
+        ReductionError: The reduction has no report, its report lacks the building facts a
+            merge needs, or `layout` is strictly finer than the reduction's layout.
+    """
+    report = getattr(reduction, "report", None)
+    if not isinstance(report, ReductionReport):
+        raise ReductionError(
+            "merge", "the reduction has no report; read an archetype with Reduction.read and its <name>.report.json"
+        )
+    options = report.reproducibility.options
+    source = options.layout
+    target = Layout(layout)
+    if target.is_strictly_finer(source):
+        raise ReductionError(
+            "merge",
+            f"layout {target.value!r} is strictly finer than the reduction's {source.value!r}; "
+            "reduce the model again to reach it",
+        )
+    block = report.building
+    if block.calendar is None or block.air_density is None:
+        raise ReductionError(
+            "merge", "the report does not record the run-period calendar and air density merge needs; reduce again"
+        )
+    threshold = options.small_group_threshold if small_group_threshold is None else small_group_threshold
+    try:
+        merged_options = options.model_copy(update={"layout": target, "small_group_threshold": threshold})
+        merged_options = ReductionOptions.model_validate(merged_options.model_dump())
+        pre = tuple(Group(key=p.key, ledger=p.ledger) for p in report.pre_threshold_groups)
+        grouping = group(pre, target, threshold)
+    except ValueError as exc:
+        raise ReductionError("merge", str(exc)) from exc
+    facts = BuildingFacts(
+        calendar=block.calendar.to_calendar(),
+        storey_ratio=block.storey_ratio,
+        mains_temperature=block.mains_temperature,
+        air_density=block.air_density,
+    )
+    name = reduction.archetype.Name
+    members = {m.zone: m for g in report.groups for m in g.members}
+    return _assemble(
+        grouping,
+        facts,
+        name=name,
+        reproducibility=report.reproducibility.model_copy(update={"options": merged_options}),
+        members=members,
+        excluded_zones=report.excluded_zones,
+        entries=_source_entries(report, facts, name),
+        unattributed_energy=report.unattributed_energy,
+        zone_names=(*members, *(z.zone for z in report.excluded_zones)),
+        zone_roles={**dict.fromkeys(members, "conditioned"), **{z.zone: z.role for z in report.excluded_zones}},
+    )
+
+
+def _source_entries(report: ReductionReport, facts: BuildingFacts, name: str) -> tuple[NotRepresented, ...]:
+    """The report's `not_represented` entries without its conversion's, affected groups emptied.
+
+    The conversion's entries depend on the groups, so they are found by converting the
+    report's groups again (deterministic) and left out; `merge` converts its own groups.
+    """
+    layout = report.reproducibility.options.layout
+    groups = tuple(Group(key=g.key, ledger=g.ledger) for g in report.groups)
+    zone_groups = {m.zone: g.name for g in report.groups for m in g.members}
+    converted = to_archetype(groups, layout, facts, name=name).not_represented
+    remaining = Counter(e.model_dump_json() for e in gather_not_represented(converted, zone_groups))
+    kept: list[NotRepresented] = []
+    for entry in report.not_represented:
+        key = entry.model_dump_json()
+        if remaining[key] > 0:
+            remaining[key] -= 1
+            continue
+        kept.append(entry.model_copy(update={"affected_groups": ()}))
+    return tuple(kept)
 
 
 def _sha256_of_results(sources: SourceData) -> str:
@@ -359,33 +507,19 @@ def _sha256_of_results(sources: SourceData) -> str:
 # --- report pieces -------------------------------------------------------------------------------
 
 
-def _report_groups(grouping: Grouping, zones: Sequence[ClassifiedZone]) -> tuple[ReportGroup, ...]:
-    by_name = {z.zone.name: z for z in zones}
+def _report_groups(grouping: Grouping, members: Mapping[str, GroupMember]) -> tuple[ReportGroup, ...]:
     total = sum((g.ledger for g in grouping.groups), GroupLedger()).floor_area
-    out: list[ReportGroup] = []
-    for group in grouping.groups:
-        members = tuple(
-            GroupMember(
-                zone=name,
-                multiplier=by_name[name].zone.multiplier,
-                floor_area=by_name[name].zone.floor_area,
-                space_use=by_name[name].space_use,
-                space_use_source=by_name[name].space_use_source,
-                exposure=by_name[name].exposure,
-            )
-            for name in group.ledger.members
+    return tuple(
+        ReportGroup(
+            name=group_name(group.key),
+            key=group.key,
+            members=tuple(members[name] for name in group.ledger.members),
+            floor_area=group.ledger.floor_area,
+            floor_area_share=group.ledger.floor_area / total,
+            ledger=group.ledger,
         )
-        out.append(
-            ReportGroup(
-                name=group_name(group.key),
-                key=group.key,
-                members=members,
-                floor_area=group.ledger.floor_area,
-                floor_area_share=group.ledger.floor_area / total,
-                ledger=group.ledger,
-            )
-        )
-    return tuple(out)
+        for group in grouping.groups
+    )
 
 
 def _excluded_zones(zones: Sequence[ClassifiedZone], building: GroupLedger) -> tuple[ExcludedZone, ...]:

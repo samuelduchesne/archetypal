@@ -3,8 +3,9 @@
 UMI's `ZoneLoads` maps onto SBEM's occupancy, lighting and equipment components; its
 densities, schedules, switches and dimming type map exactly. SBEM's `MetabolicRate` has no UMI
 field: reading sets epinterface's default (1.2 met) and notes it, writing lists any other value
-as lost. The illuminance target and the zone's daylighting parameters have no SBEM field until
-UP-9 and are lost on reading. Internal mass maps exactly; an exposed area of 0 means no internal
+as lost. The illuminance target and the zone's daylighting parameters (workplane height, mesh
+resolution) map to UP-9's daylighting fields of SBEM's lighting (`loads.daylighting`). Internal
+mass maps exactly; an exposed area of 0 means no internal
 mass, as SBEM requires (both or neither).
 
 Schedules are converted by the schedule rules (research R7). The functions here take the
@@ -14,7 +15,7 @@ evaluate or project a UMI schedule themselves.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, NamedTuple, TypeVar, cast
 
 from epinterface.constants import assumed_constants
 from epinterface.sbem.components.space_use import EquipmentComponent, LightingComponent, OccupancyComponent
@@ -22,23 +23,20 @@ from epinterface.sbem.components.space_use import EquipmentComponent, LightingCo
 from archetypal.errors import Problem
 from archetypal.umi._format import (
     DimmingType,
+    ZoneDefinition,
     ZoneLoads,
 )
 from archetypal.umi.correspondence import rule
+from archetypal.umi.report import NoteKind
 from archetypal.umi.rules._common import (
     identity_to_umi,
     json_value,
-    report_upstream,
-    upstream_defaults,
 )
 
 if TYPE_CHECKING:
     from epinterface.sbem.components.space_use import ZoneSpaceUseComponent
 
-    from archetypal.umi._format import (
-        YearSchedule,
-        ZoneDefinition,
-    )
+    from archetypal.umi._format import YearSchedule
     from archetypal.umi.rules._common import (
         RuleContext,
         ScheduleToSbem,
@@ -231,28 +229,78 @@ def equipment_to_umi(
 
 
 @rule("loads.daylighting", to="sbem")
-def daylighting_to_sbem(component: ZoneLoads | ZoneDefinition, *, context: RuleContext) -> None:
-    """Report the daylighting fields of UMI loads or a zone definition as lost (UP-9).
+def daylighting_to_sbem(
+    lighting: LightingComponent, zone: ZoneDefinition, *, context: RuleContext
+) -> LightingComponent:
+    """Give SBEM's lighting UMI's daylighting parameters (UP-9).
+
+    The illuminance target comes from the zone's loads, the workplane height and mesh
+    resolution from the zone definition. A value SBEM refuses (a target or resolution of 0 or
+    less, a negative height) is lost, SBEM's default kept.
 
     Args:
-        component: The UMI loads (illuminance target) or zone definition (mesh, workplane).
-        context: The component's reading context.
+        lighting: The SBEM lighting read from the zone's loads.
+        zone: The UMI zone definition (its `Loads` hold the illuminance target).
+        context: The zone definition's reading context (`/Zones/<i>`).
+
+    Returns:
+        A copy of the lighting with the daylighting fields.
     """
-    report_upstream(component, "loads.daylighting", context)
+    target = zone.loads.illuminance_target if zone.loads is not None else lighting.IlluminanceTarget
+    candidates = (
+        ("IlluminanceTarget", "Loads/IlluminanceTarget", target, target > 0, "above 0"),
+        (
+            "DaylightWorkplaneHeight",
+            "DaylightWorkplaneHeight",
+            zone.daylight_workplane_height,
+            zone.daylight_workplane_height >= 0,
+            "at least 0",
+        ),
+        (
+            "DaylightMeshResolution",
+            "DaylightMeshResolution",
+            zone.daylight_mesh_resolution,
+            zone.daylight_mesh_resolution > 0,
+            "above 0",
+        ),
+    )
+    update: dict[str, object] = {}
+    for key, location, value, valid, expected in candidates:
+        if valid:
+            update[key] = value
+        else:
+            context.lose(location, value, rule="loads.daylighting", reason=f"SBEM's {key} must be {expected}")
+    return LightingComponent.model_validate({**lighting.model_dump(), **update})
 
 
 @rule("loads.daylighting", to="umi")
-def daylighting_to_umi(model: type[ZoneLoads | ZoneDefinition], *, context: RuleContext) -> dict[str, object]:
-    """Return Basilisk's defaults for the daylighting fields of `model`, noting each.
+def daylighting_to_umi(
+    lighting: LightingComponent, model: type[ZoneLoads | ZoneDefinition], *, context: RuleContext
+) -> dict[str, object]:
+    """Return the daylighting fields of UMI loads or a zone definition from SBEM's lighting (UP-9).
 
     Args:
-        model: `ZoneLoads` or `ZoneDefinition`.
-        context: The writing context at the SBEM component that holds it.
+        lighting: The SBEM lighting.
+        model: `ZoneLoads` (illuminance target) or `ZoneDefinition` (workplane height, mesh).
+        context: The writing context at the lighting (`<group>.Operations.SpaceUse.Lighting`).
 
     Returns:
-        The defaults by field name.
+        The UMI fields by name. SBEM's mesh resolution `None` (no illuminance map) takes
+        Basilisk's default, noted.
     """
-    return upstream_defaults(model, "loads.daylighting", context)
+    if model is ZoneLoads:
+        return {"illuminance_target": lighting.IlluminanceTarget}
+    resolution = lighting.DaylightMeshResolution
+    if resolution is None:
+        resolution = cast("float", ZoneDefinition.model_fields["daylight_mesh_resolution"].default)
+        context.note(
+            "DaylightMeshResolution",
+            resolution,
+            rule="loads.daylighting",
+            reason="SBEM writes no illuminance map; Basilisk's default mesh resolution is written",
+            kind=NoteKind.DEFAULTED,
+        )
+    return {"daylight_workplane_height": lighting.DaylightWorkplaneHeight, "daylight_mesh_resolution": resolution}
 
 
 # --- Loads, whole ---------------------------------------------------------------------------------
@@ -277,13 +325,11 @@ def loads_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: RuleCo
         schedule: The schedule converter.
         context: The loads' reading context (`/ZoneLoads/<i>`).
     """
-    parts = LoadsParts(
+    return LoadsParts(
         occupancy_to_sbem(loads, schedule=schedule, context=context),
         lighting_to_sbem(loads, schedule=schedule, context=context),
         equipment_to_sbem(loads, schedule=schedule, context=context),
     )
-    daylighting_to_sbem(loads, context=context)
-    return parts
 
 
 def loads_to_umi(space_use: ZoneSpaceUseComponent, *, schedule: ScheduleToUmi, context: RuleContext) -> ZoneLoads:
@@ -302,7 +348,7 @@ def loads_to_umi(space_use: ZoneSpaceUseComponent, *, schedule: ScheduleToUmi, c
         **occupancy_to_umi(space_use.Occupancy, schedule=schedule, context=here.child("Occupancy")),
         **lighting_to_umi(space_use.Lighting, schedule=schedule, context=here.child("Lighting")),
         **equipment_to_umi(space_use.Equipment, schedule=schedule, context=here.child("Equipment")),
-        **daylighting_to_umi(ZoneLoads, context=here),
+        **daylighting_to_umi(space_use.Lighting, ZoneLoads, context=here.child("Lighting")),
     }
     return ZoneLoads.model_validate(fields)
 

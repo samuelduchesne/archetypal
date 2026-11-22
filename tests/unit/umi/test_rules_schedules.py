@@ -308,9 +308,23 @@ def test_rules_are_registered(rule_id: str, to_sbem: object, to_umi: object) -> 
     assert (rule.to_sbem, rule.to_umi) == (to_sbem, to_umi)
 
 
-def test_metadata_rule_is_declared() -> None:
+def test_metadata_rule_is_registered() -> None:
     rule = get_rule("schedule.metadata")
-    assert (rule.to_sbem, rule.to_umi) == (None, None)
+    assert (rule.to_sbem, rule.to_umi) == (schedules.metadata_to_sbem, schedules.metadata_to_umi)
+
+
+def test_schedule_metadata_maps_both_ways() -> None:
+    """UP-9: comments and data source map; Basilisk's fixed category reads as unset."""
+    day = DaySchedule.model_validate({"Name": "d", "Values": [0.5] * 24, "Comments": "c", "DataSource": "s"})
+    findings = Findings()
+    component = day_to_sbem(day, "T", "/DaySchedules/0", findings)
+    assert (component.Category, component.Comment, component.DataSource) == (None, "c", "s")
+    back = day_to_umi(component)
+    assert (back.category, back.comments, back.data_source) == ("Day", "c", "s")
+    labelled = component.model_copy(update={"Category": "Office"})
+    schedules.metadata_to_umi(labelled, "A", "y", findings)
+    [loss] = findings.losses
+    assert (loss.location, loss.value, loss.rule, loss.upstream) == ("y.Category", "Office", "schedule.metadata", None)
 
 
 @given(st.lists(st.integers(min_value=0, max_value=2), min_size=12, max_size=12))

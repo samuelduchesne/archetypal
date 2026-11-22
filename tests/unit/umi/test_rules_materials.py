@@ -16,6 +16,12 @@ from archetypal.umi.report import Findings, LossKind, NoteKind
 from archetypal.umi.rules import materials
 from archetypal.umi.rules.materials import (
     FILLED_SLOTS,
+    adiabatic_to_sbem,
+    adiabatic_to_umi,
+    assembly_life_cycle_to_sbem,
+    assembly_life_cycle_to_umi,
+    life_cycle_to_sbem,
+    life_cycle_to_umi,
     ROUGHNESS,
     SBEM_MATERIAL_TYPES,
     SET_SLOTS,
@@ -220,7 +226,7 @@ def test_material_to_umi_reports_what_umi_lacks() -> None:
     losses = {loss.location: loss for loss in findings.losses}
     assert losses["perimeter.m.TemperatureCoefficientThermalConductivity"].value == 0.002
     assert losses["perimeter.m.Type"].value == "Masonry"
-    assert losses["perimeter.m.Life"].upstream == "UP-9"
+    assert losses["perimeter.m.Life"].upstream is None  # UMI has no life: no upstream item adds it
     assert all(loss.subject == "A" for loss in findings.losses)
 
 
@@ -371,10 +377,73 @@ def test_rules_are_registered(rule_id: str, to_sbem: object, to_umi: object) -> 
     assert rule.to_sbem.__module__ == materials.__name__  # type: ignore[union-attr]
 
 
-@pytest.mark.parametrize("rule_id", ["material.environmental", "construction.environmental", "construction.adiabatic"])
-def test_upstream_rules_are_declared(rule_id: str) -> None:
+@pytest.mark.parametrize(
+    ("rule_id", "to_sbem", "to_umi"),
+    [
+        ("material.environmental", life_cycle_to_sbem, life_cycle_to_umi),
+        ("construction.environmental", assembly_life_cycle_to_sbem, assembly_life_cycle_to_umi),
+        ("construction.adiabatic", adiabatic_to_sbem, adiabatic_to_umi),
+    ],
+)
+def test_up9_rules_are_registered(rule_id: str, to_sbem: object, to_umi: object) -> None:
     rule = get_rule(rule_id)
-    assert (rule.to_sbem, rule.to_umi) == (None, None)
+    assert (rule.to_sbem, rule.to_umi) == (to_sbem, to_umi)
+
+
+LIFE_CYCLE = {
+    "EmbodiedEnergy": 2.5,
+    "TransportCarbon": 0.01,
+    "TransportDistance": 300.0,
+    "TransportEnergy": 0.02,
+    "SubstitutionRatePattern": [0.5, 1.0],
+    "SubstitutionTimestep": 20.0,
+    "MoistureDiffusionResistance": 10.0,
+    "DesignStrength": 2.0e7,
+    "ModulusOfElasticity": 1.5e10,
+}
+
+
+def test_material_life_cycle_maps_per_m3_and_back() -> None:
+    """UP-9: per-kg quantities become per m3 (x density); the others are copied; both ways."""
+    findings = Findings()
+    original = brick(**LIFE_CYCLE)
+    sbem = material_to_sbem(original, subject="T", location="/m", findings=findings)
+    assert sbem.EmbodiedEnergy == pytest.approx(2.5 * 1900.0, rel=REL)
+    assert sbem.TransportCarbon == pytest.approx(0.01 * 1900.0, rel=REL)
+    assert sbem.TransportEnergy == pytest.approx(0.02 * 1900.0, rel=REL)
+    assert (sbem.TransportDistance, sbem.SubstitutionRatePattern, sbem.SubstitutionTimestep) == (300.0, [0.5, 1.0], 20.0)
+    assert (sbem.MoistureDiffusionResistance, sbem.DesignStrength, sbem.ModulusOfElasticity) == (10.0, 2.0e7, 1.5e10)
+    back = material_to_umi(sbem, "A", "m", findings)
+    for key, value in LIFE_CYCLE.items():
+        expected = tuple(value) if isinstance(value, list) else value
+        assert getattr(back, _name(key)) == pytest.approx(expected), key
+    assert findings.losses == []
+
+
+def _name(key: str) -> str:
+    return next(name for name, info in OpaqueMaterial.model_fields.items() if info.alias == key)
+
+
+def test_life_cycle_of_a_material_without_density_is_lost() -> None:
+    findings = Findings()
+    sbem = material_to_sbem(brick(Density=0.0, EmbodiedEnergy=2.5), subject="T", location="/m", findings=findings)
+    assert sbem.EmbodiedEnergy == 0.0
+    [loss] = [loss for loss in findings.losses if loss.rule == "material.environmental"]
+    assert (loss.location, loss.rule, loss.upstream) == ("/m/EmbodiedEnergy", "material.environmental", None)
+
+
+def test_assembly_life_cycle_and_adiabatic_flags_map_both_ways() -> None:
+    findings = Findings()
+    wall = WALL.model_copy(update={"assembly_carbon": 12.0, "disassembly_energy": 3.0})
+    original = SET.model_copy(update={"facade": wall, "is_facade_adiabatic": True, "is_slab_adiabatic": True})
+    envelope = assemblies_to_sbem(original, subject="T", location="/s", findings=findings, partition_area=0.7)
+    assert (envelope.IsFacadeAdiabatic, envelope.IsSlabAdiabatic, envelope.IsRoofAdiabatic) == (True, True, False)
+    assert envelope.PartitionAreaPerFloorArea == 0.7
+    assert (envelope.FacadeAssembly.AssemblyCarbon, envelope.FacadeAssembly.DisassemblyEnergy) == (12.0, 3.0)
+    back = assemblies_to_umi(envelope, "A", "perimeter.Envelope.Assemblies", findings)
+    assert (back.is_facade_adiabatic, back.is_slab_adiabatic, back.is_roof_adiabatic) == (True, True, False)
+    assert back.facade is not None
+    assert (back.facade.assembly_carbon, back.facade.disassembly_energy) == (12.0, 3.0)
 
 
 positive = st.floats(min_value=1e-6, max_value=1e6, allow_nan=False, allow_infinity=False)

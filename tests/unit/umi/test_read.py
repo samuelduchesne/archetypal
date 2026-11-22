@@ -9,10 +9,11 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 from epinterface.sbem.archetype import Archetype
+from epinterface.sbem.components.envelope import GlazingConstructionLayeredComponent
 
 import archetypal
 from archetypal.errors import InputError, LossyTranslationError, UmiValidationError
-from archetypal.umi import TranslationReport, UmiImport, read_umi
+from archetypal.umi import TranslationReport, UmiImport, _refs, read_umi
 from archetypal.umi.report import LossKind
 
 if TYPE_CHECKING:
@@ -71,11 +72,19 @@ def test_core_and_perimeter_groups_with_unset_shares(b2: UmiImport) -> None:
         ]
 
 
-def test_descriptive_fields_are_lost_until_up9(b2: UmiImport) -> None:
-    metadata = [loss for loss in b2.report.losses if loss.rule == "building.metadata"]
-    assert metadata
-    assert all(loss.upstream == "UP-9" for loss in metadata)
-    assert all(loss.location.startswith("/BuildingTemplates/") for loss in metadata)
+def test_descriptive_fields_map_to_the_archetype(b2: UmiImport) -> None:
+    """UP-9: a template's descriptive and life-cycle fields are the archetype's (T070)."""
+    library = _refs.resolve(json.loads(B2.read_text(encoding="utf-8")), B2).library
+    for template, archetype in zip(library.building_templates, b2.archetypes, strict=True):
+        assert (archetype.YearFrom, archetype.YearTo, archetype.Lifespan) == (
+            template.year_from,
+            template.year_to,
+            template.lifespan,
+        )
+        assert archetype.Country == list(template.country)
+        assert archetype.Version == template.version
+        assert (archetype.Structure is None) == (template.structure is None)
+    assert not [loss for loss in b2.report.losses if loss.rule in {"building.metadata", "structure.component"}]
 
 
 def test_window_to_wall_ratio_on_every_orientation(b2: UmiImport) -> None:
@@ -124,17 +133,37 @@ def test_misaligned_parts_are_approximate_in_march_and_october() -> None:
     assert months == {"March", "October"}
 
 
-def test_window_settings_and_layers_are_reported(b2: UmiImport) -> None:
-    rules = {loss.rule for loss in b2.report.losses}
-    assert "window.simple_from_layers" in rules
+def test_windows_are_layered_and_settings_mapped(b2: UmiImport) -> None:
+    """UP-9: windows read as their layers, and every group gets the template's window settings."""
+    for archetype in b2.archetypes:
+        for group in archetype.Groups:
+            assert isinstance(group.Zone.Envelope.Window, GlazingConstructionLayeredComponent)
+            assert group.Zone.Envelope.WindowSettings is not None
+    assert "window.layers" not in {loss.rule for loss in b2.report.losses}
+    # Only the fields UP-9 does not add are lost, all naming UP-9.
+    settings = [loss for loss in b2.report.losses if loss.rule == "window.settings"]
+    assert all(loss.upstream == "UP-9" for loss in settings)
+    lost = {loss.location.rsplit("/", 1)[1] for loss in settings}
+    assert lost <= {"AfnDischargeC", "AfnTempSetpoint", "AfnWindowAvailability", "IsVirtualPartition"} | {
+        "IsZoneMixingOn",
+        "Type",
+        "ZoneMixingAvailabilitySchedule",
+        "ZoneMixingDeltaTemperature",
+        "ZoneMixingFlowRate",
+    }
 
 
-def test_upstream_fields_without_a_function_are_reported_from_the_table() -> None:
+def test_window_settings_map_to_each_group() -> None:
     result = read_umi(EDGE / "unused_components.json")
-    rules = {loss.rule for loss in result.report.losses}
+    (archetype,) = result.archetypes
+    settings = [group.Zone.Envelope.WindowSettings for group in archetype.Groups]
+    only = settings[0]
+    assert only is not None
+    assert all(other == only for other in settings)
     # The template's window settings differ from Basilisk's defaults on IsShadingSystemOn.
-    assert "window.settings" in rules
-    assert any(loss.location == "/BuildingTemplates/0/Windows/IsShadingSystemOn" for loss in result.report.losses)
+    assert only.IsShadingSystemOn is False
+    assert only.OperableArea == 0.8
+    assert "window.settings" not in {loss.rule for loss in result.report.losses}
 
 
 # --- Scenario 2: name collisions -------------------------------------------------------------------

@@ -8,6 +8,13 @@ holds the comparison fixtures of the unit tests (spec 002, T078): `detailed.sql`
 `archetype.sql` (two comparable runs of the bar building, the second with more lighting power)
 and `other-period.sql` (a run of the same building over another fortnight).
 
+For the reduction pages (spec 002, T065) it holds the fixture models of the unit tests with
+their annual results, under their fixture names (`three_zone.idf` and `three_zone.sql`,
+`ten_zone_multipliers.idf` and `.sql`, ...), their weather as `chicago.epw`, and
+`office.sbem.json` with `office.report.json`, the reduction of `three_zone`. For the UMI pages
+(spec 003) it holds `BostonTemplateLibrary.json`, a copy of the UMI sample library
+`tests/fixtures/umi/BostonTemplateLibrary_2.json`.
+
 An HTML comment on the line before a block changes how it runs:
 
 - `<!-- example: needs-energyplus -->` marks the block `energyplus`: it runs in the
@@ -34,9 +41,25 @@ if TYPE_CHECKING:
 _DIRECTIVE = re.compile(r"^<!--\s*example:\s*(?P<body>.*?)\s*-->\s*$")
 _ENERGYPLUS_VERSION = (24, 2, 0)
 _WEATHER = "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3"
-_COMPARISON = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "comparison"
+_FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
+_COMPARISON = _FIXTURES / "comparison"
 _COMPARISON_FILES = {"detailed.sql": "base.sql", "archetype.sql": "lights.sql", "other-period.sql": "run_period.sql"}
-EXAMPLE_FILES = ("model.idf", "legacy.idf", "weather.epw", "eplusout.sql", *_COMPARISON_FILES)
+_MODELS = ("three_zone", "ten_zone_multipliers", "ten_zone_explicit", "bar_building")
+_FIXTURE_FILES = {
+    **{f"{m}{suffix}": f"models/{m}{suffix}" for m in _MODELS for suffix in (".idf", ".sql")},
+    "chicago.epw": f"weather/{_WEATHER}.epw",
+    "BostonTemplateLibrary.json": "umi/BostonTemplateLibrary_2.json",
+}
+EXAMPLE_FILES = (
+    "model.idf",
+    "legacy.idf",
+    "weather.epw",
+    "eplusout.sql",
+    *_COMPARISON_FILES,
+    *_FIXTURE_FILES,
+    "office.sbem.json",
+    "office.report.json",
+)
 
 
 def _directive(item: pytest.Item) -> str | None:
@@ -145,6 +168,12 @@ def _simulate(folder: Path, home: Path) -> None:
     shutil.rmtree(run)
 
 
+def _write_reduction(folder: Path) -> None:
+    from archetypal import reduce  # noqa: PLC0415
+
+    reduce(folder / "three_zone.idf", folder / "three_zone.sql").write(folder, "office")
+
+
 @pytest.fixture(scope="session")
 def example_files(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Write the example files once per session and return their folder."""
@@ -153,6 +182,9 @@ def example_files(tmp_path_factory: pytest.TempPathFactory) -> Path:
     _write_model(folder / "legacy.idf", (22, 1, 0))
     for name, fixture in _COMPARISON_FILES.items():
         shutil.copyfile(_COMPARISON / fixture, folder / name)
+    for name, fixture in _FIXTURE_FILES.items():
+        shutil.copyfile(_FIXTURES / fixture, folder / name)
+    _write_reduction(folder)
     home = _energyplus_dir()
     if home is not None:
         _simulate(folder, home)

@@ -7,16 +7,17 @@
    - a `Reduction` (spec 002) already at core/perimeter is taken as it is; a finer one is merged
      with 002's `merge(reduction, Layout.CORE_PERIMETER)`. Each resulting group that merged
      several finest groups is reported (`layout.merged`) with its pre-merge keys, from the
-     report's `merged_distinctions`. Until 002's `merge` exists, a finer reduction's archetype
-     is merged approximately, as a bare archetype;
+     report's `merged_distinctions`. The merge is exact: it starts from the report's
+     pre-threshold ledgers, so it equals reducing the model directly to core/perimeter;
    - a bare archetype with other groups is merged approximately (`approximate_merge`): ledgers
      rebuilt from the groups' parameters (`GroupLedger.approximate_from_group`) are grouped
      with 002's `grouping.group`, and each merged group's parameters are derived from the
      summed ledger.
 2. **Translation.** Each archetype becomes one building template through the registered
    SBEM → UMI rules: `building.groups` (shares dropped, a single group copied),
-   `wwr.uniform`, `window.placement` and `window.equivalent_layer`, and per zone group the
-   loads, conditioning, ventilation, hot water, constructions and internal mass.
+   `wwr.uniform`, `window.placement`, `window.layers` and `window.settings`, the template's
+   metadata, structure and partition ratio (UP-9), and per zone group the loads, conditioning,
+   ventilation, hot water, constructions and internal mass.
 3. **Assembly** (research R13). Components are keyed by content (their canonical JSON without
    `Name`): the same name and content is one component; a name used for different content gets
    ` #2`, ` #3`, … in order of first appearance (`names.collision`). Duplicate archetype names
@@ -27,7 +28,6 @@
 
 from __future__ import annotations
 
-import importlib
 import json
 import os
 import tempfile
@@ -57,28 +57,29 @@ from archetypal.umi._format import (
     WindowSettings,
     ZoneDefinition,
 )
-from archetypal.umi.correspondence import MappingStatus, mappings_for
 from archetypal.umi.read import LOSS_SUFFIX
-from archetypal.umi.report import Findings, Loss, LossKind, Note, NoteKind, SourceInfo, TranslationReport
-from archetypal.umi.rules._common import RuleContext, constant_year_schedule, identity_to_umi
+from archetypal.umi.report import Findings, Loss, LossKind, Note, SourceInfo, TranslationReport
+from archetypal.umi.rules._common import RuleContext, identity_to_umi
 from archetypal.umi.rules.building import (
     CORE_GROUP,
     NAMED_FROM,
     PERIMETER_GROUP,
     UniqueNames,
     collision_loss,
+    partition_ratio_to_umi,
+    structure_to_umi,
+    template_metadata_to_umi,
     template_zones,
     umi_names,
-    window_settings_name,
     wwr_to_umi,
 )
-from archetypal.umi.rules.conditioning import ALWAYS_ON, conditioning_to_umi
+from archetypal.umi.rules.conditioning import conditioning_to_umi
 from archetypal.umi.rules.hotwater import dhw_to_umi
 from archetypal.umi.rules.loads import daylighting_to_umi, internal_mass_to_umi, loads_to_umi
 from archetypal.umi.rules.materials import assemblies_to_umi, construction_to_umi
 from archetypal.umi.rules.schedules import year_to_umi
 from archetypal.umi.rules.ventilation import zone_ventilation_to_umi
-from archetypal.umi.rules.windows import equivalent_layer, template_window
+from archetypal.umi.rules.windows import layers_to_umi, settings_to_umi, template_settings, template_window
 from archetypal.umi.serialise import NAME_GROUPS, serialise
 
 if TYPE_CHECKING:
@@ -101,13 +102,6 @@ _DAYS_PER_YEAR: Final = 365.0
 _MERGED: Final = "merged"
 _DEFAULT_WINDOW: Final = GlazingConstructionSimpleComponent(
     Name="Default single glazing", UValue=5.8, SHGF=0.81, TVis=0.88, Type="Single"
-)
-# Rules without a function whose UMI fields take Basilisk's defaults on writing (research R6).
-_DEFAULTED_RULES: Final = (
-    "material.environmental",
-    "construction.environmental",
-    "schedule.metadata",
-    "window.settings",
 )
 
 
@@ -285,11 +279,19 @@ class _ZoneMerger:
             return
         ventilation = _get(self.zone, path)
         natural = any(_get(m.Zone, path).Provider in {"Natural", "Both"} for m in self.members)
+        mechanical = next((m.Zone for m in self.members if _get(m.Zone, f"{path}.MechVentSchedule") is not None), None)
         update = {
             "FreshAirPerFloorArea": peak / self.area,
             "FreshAirPerPerson": 0.0,
             "Schedule": _schedule(
                 air.hourly / peak, name=_merged_name(ventilation.Schedule.Name), category=ventilation.Schedule.Type
+            ),
+            "MechVentSchedule": None
+            if mechanical is None
+            else _schedule(
+                air.hourly / peak,
+                name=_merged_name(_get(mechanical, f"{path}.MechVentSchedule").Name),
+                category="Window",
             ),
             "Provider": "Both" if natural else "Mechanical",
             "HRV": max(sorted(air.hrv_weighted), key=lambda key: air.hrv_weighted[key]),
@@ -463,10 +465,9 @@ def _from_reduction(reduction: ReductionLike) -> CorePerimeter:
     """Bring a 002 reduction to core and perimeter, listing the groups merged (research R12)."""
     source = reduction
     if not _is_core_perimeter(reduction.archetype):
-        merge = getattr(importlib.import_module("archetypal.reduction"), "merge", None)
-        if merge is None:  # spec 002's merge (T070) is not implemented yet
-            return approximate_merge(reduction.archetype)
-        source = merge(reduction, Layout.CORE_PERIMETER)
+        from archetypal.reduction import Reduction, merge  # noqa: PLC0415 - imports the reduction pipeline only when needed
+
+        source = merge(cast("Reduction", reduction), Layout.CORE_PERIMETER)
     subject = source.archetype.Name
     losses = [
         Loss(
@@ -530,36 +531,12 @@ class _TemplateWriter:
             fallback=fallback,
             context=context.child("Envelope.Assemblies"),
         )
-        flags = {
-            f"is_{slot}_adiabatic": bool(getattr(assemblies, f"Is{slot.capitalize()}Adiabatic", False))
-            for slot in ("facade", "ground", "partition", "roof", "slab")
-        }
-        constructions = constructions.model_copy(update=flags)
-        # Fields of later fork versions (UP-9 work), read only when the installed fork has them.
-        partition_area: float = getattr(assemblies, "PartitionAreaPerFloorArea", 0.0)
-        if partition_area:
-            context.lose(
-                "Envelope.Assemblies.PartitionAreaPerFloorArea",
-                partition_area,
-                rule="building.partition_ratio",
-                reason="A UMI zone definition has no partition area; the template's PartitionRatio is not written "
-                "from it.",
-            )
-        window_settings = getattr(envelope, "WindowSettings", None)
-        if window_settings is not None:
-            context.lose(
-                "Envelope.WindowSettings",
-                _json(window_settings),
-                rule="window.settings",
-                reason="The window settings of an SBEM zone are not written to UMI yet; Basilisk's defaults are.",
-                upstream="UP-9",
-            )
         self.context.findings.extend(umi_names(zone, subject=self.subject, group=group_name).losses)
         fields: dict[str, object] = {
             **identity_to_umi(operations, context.child("Operations")),
             "Name": zone.Name,
             "loads": loads_to_umi(space_use, schedule=self.schedule, context=context),
-            "conditioning": conditioning_to_umi(hvac, space_use.Thermostat, context=context),
+            "conditioning": conditioning_to_umi(hvac, space_use.Thermostat, schedule=self.schedule, context=context),
             "ventilation": zone_ventilation_to_umi(envelope, hvac.Ventilation, schedule=self.schedule, context=context),
             "domestic_hot_water": dhw_to_umi(
                 operations.DHW, space_use.WaterUse, space_use.Occupancy, schedule=self.schedule, context=context
@@ -567,12 +544,14 @@ class _TemplateWriter:
             "constructions": constructions,
             "internal_mass_construction": mass_construction,
             "internal_mass_exposed_per_floor_area": exposed,
-            **daylighting_to_umi(ZoneDefinition, context=context),
+            **daylighting_to_umi(
+                space_use.Lighting, ZoneDefinition, context=context.child("Operations.SpaceUse.Lighting")
+            ),
         }
         return ZoneDefinition.model_validate(fields)
 
     def window(self, archetype: Archetype) -> WindowSettings:
-        """The template's window settings, from the perimeter group's window (research R8)."""
+        """The template's window settings, from the perimeter group's window and settings (R8, UP-9)."""
         chosen, losses = template_window(
             {g.Name: g.Zone.Envelope.Window for g in archetype.Groups}, subject=self.subject
         )
@@ -582,7 +561,7 @@ class _TemplateWriter:
             "Envelope.Window",
         )
         if chosen is None:
-            construction, _ = equivalent_layer(_DEFAULT_WINDOW, subject=self.subject, location=location)
+            construction, _ = layers_to_umi(_DEFAULT_WINDOW, subject=self.subject, location=location)
             self.context.note(
                 location,
                 _DEFAULT_WINDOW.Name,
@@ -590,24 +569,14 @@ class _TemplateWriter:
                 reason="The archetype has no window; UMI needs one, so a single clear glazing was written.",
             )
         else:
-            construction, layer_losses = equivalent_layer(chosen, subject=self.subject, location=location)
+            construction, layer_losses = layers_to_umi(chosen, subject=self.subject, location=location)
             self.context.findings.extend(layer_losses)
-        always_on = constant_year_schedule(ALWAYS_ON, 1.0)
-        self.context.note(
-            "WindowSettings",
-            [row.umi_key for row in mappings_for("window.settings") if row.status is MappingStatus.UPSTREAM],
-            rule="window.settings",
-            reason="SBEM holds no window settings for UMI yet: Basilisk's defaults were written, with always-on "
-            "availability schedules and the shading system off, as SBEM simulates no shading.",
+        group, settings, settings_losses = template_settings(
+            {g.Name: g.Zone.Envelope.WindowSettings for g in archetype.Groups}, subject=self.subject
         )
-        return WindowSettings.model_validate({
-            "Name": window_settings_name(construction.name or ""),
-            "Construction": construction,
-            "AfnWindowAvailability": always_on,
-            "ShadingSystemAvailabilitySchedule": always_on,
-            "ZoneMixingAvailabilitySchedule": always_on,
-            "IsShadingSystemOn": False,
-        })
+        self.context.findings.extend(settings_losses)
+        context = self.context.child(f"{group}.Envelope.WindowSettings")
+        return settings_to_umi(settings, construction, schedule=self.schedule, context=context)
 
     def template(self, archetype: Archetype) -> BuildingTemplate:
         zones = template_zones(archetype)
@@ -617,22 +586,26 @@ class _TemplateWriter:
         perimeter = core if zones.perimeter is zones.core else self.zone(zones.perimeter, names[id(zones.perimeter)])
         ratio = wwr_to_umi(archetype.Geometry, subject=self.subject)
         self.context.findings.extend([*ratio.losses, *ratio.notes])
-        for rule_id in _DEFAULTED_RULES[:-1]:
-            keys = sorted({row.umi_key for row in mappings_for(rule_id) if row.status is MappingStatus.UPSTREAM})
-            self.context.note(
-                "",
-                cast("JsonValue", keys),
-                rule=rule_id,
-                reason="SBEM has no counterpart for these fields yet: every component written carries Basilisk's "
-                "defaults.",
-                kind=NoteKind.DEFAULTED,
+        partition, partition_losses = partition_ratio_to_umi(
+            {g.Name: g.Zone.Envelope.Assemblies.PartitionAreaPerFloorArea for g in archetype.Groups},
+            subject=self.subject,
+        )
+        self.context.findings.extend(partition_losses)
+        structure = None
+        if archetype.Structure is not None:
+            structure, structure_losses = structure_to_umi(
+                archetype.Structure, location="archetype.Structure", subject=self.subject
             )
+            self.context.findings.extend(structure_losses)
         return BuildingTemplate.model_validate({
+            **template_metadata_to_umi(archetype),
             "Name": self.subject,
             "Core": core,
             "Perimeter": perimeter,
             "Windows": self.window(archetype),
             "DefaultWindowToWallRatio": ratio.value,
+            "PartitionRatio": partition,
+            "Structure": structure,
         })
 
     @property

@@ -188,8 +188,8 @@ def report_upstream(component: FormatModel, rule_id: str, context: RuleContext, 
     """Report, on reading, the fields of `component` that wait for an upstream item, as lost.
 
     Until a field lands in a fork release, reading reports it (research R6, FR-010) when it
-    differs from Basilisk's default, which is what writing gives back (`upstream_defaults`), as
-    the building rules do for template-level fields.
+    differs from Basilisk's default, which is what writing gives back (`upstream_defaults`); an
+    always-on schedule loses nothing either, since writing gives one.
 
     Args:
         component: The UMI component read.
@@ -199,8 +199,11 @@ def report_upstream(component: FormatModel, rule_id: str, context: RuleContext, 
     """
     model = type(component)
     for key, name, upstream in _upstream_rows(model, rule_id):
-        if key in skip or getattr(component, name) == model.model_fields[name].default:
+        value: object = getattr(component, name)
+        if key in skip or value == model.model_fields[name].default:
             continue
+        if isinstance(value, YearSchedule) and all_values_equal(value, 1.0):
+            continue  # writing gives an always-on schedule
         context.lose(
             key,
             json_value(getattr(component, name)),
@@ -296,7 +299,7 @@ def all_values_equal(year: YearSchedule, value: float) -> bool:
     return bool(year.parts)
 
 
-def optional_schedule_to_sbem(  # noqa: PLR0913 - one argument per part of the field
+def optional_schedule_to_sbem(
     year: YearSchedule | None,
     key: str,
     role: YearScheduleCategory,

@@ -10,14 +10,17 @@ from archetypal.umi._format import ZoneVentilation
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind, NoteKind
 from archetypal.umi.rules import ventilation as module
+from archetypal.umi.rules._common import ALWAYS_ON, RuleContext
 from archetypal.umi.rules.ventilation import (
     AIR_CHANGES,
     PROVIDERS,
     UNUSED_COEFFICIENTS,
+    natural_limits_to_sbem,
     natural_schedule_to_sbem,
     provider_to_sbem,
     provider_to_umi,
     range_problems,
+    scheduled_to_sbem,
     zone_ventilation_to_sbem,
     zone_ventilation_to_umi,
 )
@@ -208,39 +211,91 @@ def test_natural_schedule_maps_to_the_ventilation_schedule() -> None:
     )
     assert written.nat_vent_schedule is not None
     assert written.nat_vent_schedule.name == "nat"
-    assert written.scheduled_ventilation_schedule == written.nat_vent_schedule
+    # SBEM's constant scheduled ventilation (None) is an always-on schedule.
+    assert written.scheduled_ventilation_schedule is not None
+    assert written.scheduled_ventilation_schedule.name == ALWAYS_ON
 
 
-def test_natural_limits_and_scheduled_ventilation_are_lost_with_up9() -> None:
+def read_ventilation(original: ZoneVentilation, context: RuleContext) -> VentilationComponent:
+    """SBEM's ventilation of UMI settings, assembled as `conditioning_to_sbem` does."""
+    return VentilationComponent.model_validate({
+        **hvac_ventilation().model_dump(),
+        **natural_limits_to_sbem(original, context=context),
+        **scheduled_to_sbem(original, schedule=read_schedule, context=context),
+    })
+
+
+def test_natural_limits_and_scheduled_ventilation_map_to_up9_fields() -> None:
     context = reading(POINTER)
-    zone_ventilation_to_sbem(
-        settings(NatVentMaxOutdoorAirTemp=26.0, ScheduledVentilationAch=1.0, IsWindOn=True), context=context
-    )
-    assert {(loss.location, loss.value, loss.upstream) for loss in context.losses} == {
-        (f"{POINTER}/NatVentMaxOutdoorAirTemp", 26.0, "UP-9"),
-        (f"{POINTER}/IsWindOn", True, "UP-9"),
-        (f"{POINTER}/ScheduledVentilationAch", 1.0, "UP-9"),
+    original = settings(NatVentMaxOutdoorAirTemp=26.0, ScheduledVentilationAch=1.0, IsWindOn=True)
+    ventilation = read_ventilation(original, context)
+    assert context.losses == []
+    assert (ventilation.NatVentMinOutdoorAirTemp, ventilation.NatVentMaxOutdoorAirTemp) == (0.0, 26.0)
+    assert (ventilation.NatVentMaxRelHumidity, ventilation.NatVentZoneTempSetpoint) == (90.0, 18.0)
+    assert (ventilation.IsWindOn, ventilation.IsBuoyancyOn) == (True, True)
+    assert (ventilation.IsScheduledVentilationOn, ventilation.ScheduledVentilationAch) == (False, 1.0)
+    assert ventilation.ScheduledVentilationSetpoint == 18.0
+    schedule = ventilation.ScheduledVentilationSchedule
+    assert schedule is not None
+    assert schedule.Name == "nat"
+
+
+def test_an_inverted_outdoor_band_is_lost_and_sbem_band_kept() -> None:
+    context = reading(POINTER)
+    ventilation = read_ventilation(settings(NatVentMinOutdoorAirTemp=30.0, NatVentMaxOutdoorAirTemp=20.0), context)
+    assert (ventilation.NatVentMinOutdoorAirTemp, ventilation.NatVentMaxOutdoorAirTemp) == (12.0, 25.0)
+    assert {loss.location for loss in context.losses} == {
+        f"{POINTER}/NatVentMinOutdoorAirTemp",
+        f"{POINTER}/NatVentMaxOutdoorAirTemp",
     }
 
 
-def test_a_scheduled_ventilation_schedule_other_than_the_natural_one_is_lost() -> None:
+def test_airflow_network_stays_lost_with_up9() -> None:
     context = reading(POINTER)
-    zone_ventilation_to_sbem(settings(ScheduledVentilationSchedule=umi_schedule("other")), context=context)
+    read_ventilation(settings(Afn=True), context)
     [loss] = context.losses
-    assert (loss.location, loss.value, loss.replacement, loss.rule) == (
-        f"{POINTER}/ScheduledVentilationSchedule",
-        "other",
-        "nat",
-        "vent.scheduled",
-    )
+    assert (loss.location, loss.value, loss.upstream, loss.rule) == (f"{POINTER}/Afn", True, "UP-9", "vent.natural_limits")
 
 
-def test_writing_gives_basilisk_defaults_for_upstream_fields() -> None:
+def test_an_always_on_scheduled_ventilation_schedule_is_none() -> None:
+    context = reading(POINTER)
+    ventilation = read_ventilation(settings(ScheduledVentilationSchedule=umi_schedule("on")), context)
+    assert ventilation.ScheduledVentilationSchedule is None
+    assert context.losses == []
+
+
+def test_writing_copies_the_up9_fields_and_notes_what_umi_lacks() -> None:
     context = writing()
-    written = zone_ventilation_to_umi(
-        envelope(infiltration()), hvac_ventilation(), schedule=write_schedule, context=context
+    sbem = hvac_ventilation().model_copy(
+        update={"NatVentMaxOutdoorAirTemp": 28.0, "IsScheduledVentilationOn": True, "ScheduledVentilationAch": 2.0}
     )
-    assert written.nat_vent_max_outdoor_air_temp == 30.0
-    assert written.is_scheduled_ventilation_on is False
+    written = zone_ventilation_to_umi(envelope(infiltration()), sbem, schedule=write_schedule, context=context)
+    assert (written.nat_vent_min_outdoor_air_temp, written.nat_vent_max_outdoor_air_temp) == (12.0, 28.0)
+    assert (written.is_scheduled_ventilation_on, written.scheduled_ventilation_ach) == (True, 2.0)
+    assert (written.is_wind_on, written.is_buoyancy_on, written.afn) == (True, False, False)
+    # SBEM's None limits (no limit) take the widest UMI value, noted.
+    assert (written.nat_vent_max_rel_humidity, written.nat_vent_zone_temp_setpoint) == (100.0, -100.0)
+    assert written.scheduled_ventilation_setpoint == -100.0
+    assert context.losses == []
     defaulted = {note.rule for note in context.notes if note.kind is NoteKind.DEFAULTED}
-    assert defaulted == {"vent.natural_limits", "vent.scheduled"}
+    assert defaulted == {"vent.natural_limits"}  # Afn
+
+
+def test_ventilation_round_trip() -> None:
+    original = settings(NatVentMaxOutdoorAirTemp=26.0, IsScheduledVentilationOn=True, ScheduledVentilationAch=1.0)
+    ventilation = read_ventilation(original, reading(POINTER)).model_copy(update={"Schedule": sbem_schedule("nat", 0.0, "Window")})
+    context = writing()
+    back = zone_ventilation_to_umi(envelope(infiltration()), ventilation, schedule=write_schedule, context=context)
+    assert context.losses == []
+    for field in (
+        "nat_vent_min_outdoor_air_temp",
+        "nat_vent_max_outdoor_air_temp",
+        "nat_vent_max_rel_humidity",
+        "nat_vent_zone_temp_setpoint",
+        "is_wind_on",
+        "is_buoyancy_on",
+        "is_scheduled_ventilation_on",
+        "scheduled_ventilation_ach",
+        "scheduled_ventilation_setpoint",
+    ):
+        assert getattr(back, field) == getattr(original, field), field

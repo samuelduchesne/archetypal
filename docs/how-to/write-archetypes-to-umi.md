@@ -15,7 +15,6 @@ from a UMI library or returned by a reduction.
 Pass the archetypes and the library's path to `write_umi`. It writes one building template
 per archetype, in the order given, and returns the report of the translation:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
 from archetypal import read_umi, write_umi
 
@@ -41,10 +40,11 @@ To get the library's text without writing a file, call `to_umi` instead. It take
 archetypes and returns a `UmiExport` with the `text` and the `report`; its `write(path)` method
 writes both files later:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
+from archetypal import read_umi
 from archetypal.umi import to_umi
 
+archetypes = read_umi("BostonTemplateLibrary.json").archetypes
 export = to_umi(archetypes)
 export.write("library.json", overwrite=True)
 ```
@@ -77,10 +77,12 @@ The report lists in `losses` every value the library does not represent, and in 
 defaults and assumptions that lose nothing. Each loss names the archetype (`subject`), the SBEM
 field path (`location`, starting with the group), the value, what replaced it and the rule:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
 from collections import Counter
 
+from archetypal import read_umi, write_umi
+
+report = write_umi(read_umi("BostonTemplateLibrary.json").archetypes, "library.json")
 print(Counter((loss.kind, loss.rule) for loss in report.losses))
 for loss in report.losses:
     print(loss.subject, loss.location, loss.kind, loss.rule)
@@ -106,10 +108,11 @@ When the library must hold everything the archetypes hold, use strict mode. `wri
 translates every archetype, then raises `LossyTranslationError` if `losses` is not empty and
 writes nothing. The error carries the report:
 
-<!-- example: skip TODO(003): the examples' folder holds no UMI library yet -->
 ```python
+from archetypal import read_umi, write_umi
 from archetypal.errors import LossyTranslationError
 
+archetypes = read_umi("BostonTemplateLibrary.json").archetypes
 try:
     write_umi(archetypes, "library.json", strict=True)
 except LossyTranslationError as error:

@@ -160,8 +160,33 @@ def test_upstream_items_are_roadmap_items() -> None:
     assert {row.upstream for row in CORRESPONDENCE if row.upstream} <= items
 
 
-def test_fields_without_sbem_counterpart_name_up9() -> None:
-    """FR-002, FR-010: R6's fields are lost with UP-9 until the fork adds them."""
+UP9_NOT_ADDED = [
+    ("ZoneVentilation", "Afn"),
+    ("WindowSettings", "AfnDischargeC"),
+    ("WindowSettings", "AfnTempSetpoint"),
+    ("WindowSettings", "AfnWindowAvailability"),
+    ("WindowSettings", "IsVirtualPartition"),
+    ("WindowSettings", "IsZoneMixingOn"),
+    ("WindowSettings", "Type"),
+    ("WindowSettings", "ZoneMixingAvailabilitySchedule"),
+    ("WindowSettings", "ZoneMixingDeltaTemperature"),
+    ("WindowSettings", "ZoneMixingFlowRate"),
+]
+"""R6's fields the fork's UP-9 does not add: interior windows, zone mixing, airflow network."""
+
+
+def test_fields_up9_does_not_add_stay_lost_naming_up9() -> None:
+    """FR-002, FR-010: the fields UP-9 left out are still lost with UP-9."""
+    upstream = {(row.umi_class, row.umi_key) for row in CORRESPONDENCE if row.upstream == "UP-9"}
+    assert upstream == set(UP9_NOT_ADDED)
+    for cls, key in UP9_NOT_ADDED:
+        row = mapping(cls, key)
+        assert row.status is MappingStatus.UPSTREAM, (cls, key)
+    assert mapping("ZoneConditioning", "HeatRecoveryEfficiencySensible").upstream == "UP-2"
+
+
+def test_fields_up9_adds_are_mapped() -> None:
+    """T070: R6's fields that the fork's UP-9 added map to SBEM paths."""
     for cls, key in [
         ("BuildingTemplate", "PartitionRatio"),
         ("ZoneLoads", "IlluminanceTarget"),
@@ -170,10 +195,17 @@ def test_fields_without_sbem_counterpart_name_up9() -> None:
         ("ZoneConditioning", "MaxHeatingCapacity"),
         ("StructureInformation", "MassRatios"),
         ("DaySchedule", "Category"),
+        ("GlazingMaterial", "SolarTransmittance"),
+        ("WindowConstruction", "Layers"),
+        ("ZoneConstructions", "IsFacadeAdiabatic"),
+        ("MaterialBase", "EmbodiedEnergy"),
+        ("ConstructionBase", "AssemblyCarbon"),
+        ("BuildingTemplate", "YearFrom"),
     ]:
         row = mapping(cls, key)
-        assert (row.status, row.upstream) == (MappingStatus.UPSTREAM, "UP-9"), (cls, key)
-    assert mapping("ZoneConditioning", "HeatRecoveryEfficiencySensible").upstream == "UP-2"
+        assert row.status in {MappingStatus.EXACT, MappingStatus.CONVERTED}, (cls, key)
+        assert row.sbem_paths, (cls, key)
+    assert mapping("WindowConstruction", "Layers").status is MappingStatus.EXACT  # both directions exact
 
 
 def test_conversion_rules_of_data_model_are_used() -> None:
@@ -183,8 +215,7 @@ def test_conversion_rules_of_data_model_are_used() -> None:
         "material.carbon_per_m3",
         "schedule.months",
         "thermostat.constant",
-        "window.simple_from_layers",
-        "window.equivalent_layer",
+        "window.layers",
         "vent.provider",
         "wwr.uniform",
     }
@@ -267,11 +298,11 @@ def test_rule_decorator_registers_both_directions(empty_registry: dict[str, Rule
 
 
 def test_rule_with_one_direction(empty_registry: dict[str, Rule]) -> None:
-    @rule("window.simple_from_layers", to="sbem")
+    @rule("window.layers", to="sbem")
     def simple(layers: list[object]) -> float:
         return float(len(layers))
 
-    assert empty_registry["window.simple_from_layers"].to_umi is None
+    assert empty_registry["window.layers"].to_umi is None
 
 
 def test_rule_refuses_an_id_not_in_the_table(empty_registry: dict[str, Rule]) -> None:

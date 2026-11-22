@@ -261,12 +261,21 @@ def test_rules_are_registered(rule_id: str, to_sbem: object, to_umi: object) -> 
     assert registered.to_umi is to_umi
 
 
+def test_reporting_rules_are_registered() -> None:
+    assert get_rule("building.library").id == "building.library"
+
+
 @pytest.mark.parametrize(
-    "rule_id",
-    ["building.library", "building.metadata", "building.partition_ratio", "structure.upstream"],
+    ("rule_id", "to_sbem", "to_umi"),
+    [
+        ("building.metadata", building.template_metadata_to_sbem, building.template_metadata_to_umi),
+        ("building.partition_ratio", building.partition_area_to_sbem, building.partition_ratio_to_umi),
+        ("structure.component", building.structure_to_sbem, building.structure_to_umi),
+    ],
 )
-def test_reporting_rules_are_registered(rule_id: str) -> None:
-    assert get_rule(rule_id).id == rule_id
+def test_up9_template_rules_are_registered(rule_id: str, to_sbem: object, to_umi: object) -> None:
+    registered = get_rule(rule_id)
+    assert (registered.to_sbem, registered.to_umi) == (to_sbem, to_umi)
 
 
 # --- groups and shares (R4) --------------------------------------------------------------------
@@ -468,39 +477,82 @@ R6_TEMPLATE_FIELDS: dict[str, object] = {
 }
 
 
-def test_each_template_level_field_is_lost_with_up9() -> None:
-    structure = _format.StructureInformation(Name="Steel frame")
-    template = _format.BuildingTemplate.model_validate({"Name": "B", "Structure": structure, **R6_TEMPLATE_FIELDS})
-    losses = template_losses(template, pointer="/BuildingTemplates/3")
-    by_key = {loss.location.rsplit("/", 1)[1]: loss for loss in losses}
-    assert set(by_key) == {*R6_TEMPLATE_FIELDS, "Structure"}
-    for key, loss in by_key.items():
-        assert loss.kind is LossKind.LOST, key
-        assert loss.upstream == "UP-9", key
-        assert loss.subject == "B", key
-        assert loss.location == f"/BuildingTemplates/3/{key}"
-        assert (
-            loss.rule
-            == mapping(
-                "LibraryComponent" if key in {"Category", "Comments", "DataSource"} else "BuildingTemplate", key
-            ).rule
-        )
-    assert by_key["Structure"].value == "Steel frame"
-    assert by_key["Country"].value == ["US"]
-    assert by_key["PartitionRatio"].value == 0.35
+def test_each_template_level_field_maps_to_the_archetype() -> None:
+    """UP-9: R6's template-level fields map to the archetype (T070)."""
+    structure = _format.StructureInformation(Name="Steel frame", UseAdvancedModel=True, AssemblyCarbon=4.0)
+    template = _format.BuildingTemplate.model_validate({
+        "Name": "B",
+        "Structure": structure,
+        "Core": _format.ZoneDefinition(Name="z"),
+        "Perimeter": _format.ZoneDefinition(Name="z"),
+        **R6_TEMPLATE_FIELDS,
+    })
+    assert template_losses(template, pointer="/BuildingTemplates/3") == []
+    archetype, losses = archetype_from_template(template, lambda zone: make_zone(zone.name or ""), pointer="/BuildingTemplates/3")
+    assert losses == []
+    assert (archetype.Lifespan, archetype.YearFrom, archetype.YearTo) == (60, 1950, 1980)
+    assert (archetype.Country, archetype.ClimateZone) == (["US"], ["5A"])
+    assert (archetype.Authors, archetype.AuthorEmails, archetype.Version) == (
+        ["A. Author"],
+        ["author@example.org"],
+        "v2.1",
+    )
+    assert (archetype.Category, archetype.Comment, archetype.DataSource) == ("Office", "A comment", "A survey")
+    assert archetype.Structure is not None
+    assert (archetype.Structure.Name, archetype.Structure.UseAdvancedModel) == ("Steel frame", True)
+    assert archetype.Structure.AssemblyCarbon == 4.0
+    area, _ = building.partition_area_to_sbem(template, pointer="/BuildingTemplates/3")
+    assert area == pytest.approx(0.7)  # both faces of 0.35 m2 of partition per m2 of floor
+    back = building.template_metadata_to_umi(archetype)
+    for key in R6_TEMPLATE_FIELDS.keys() - {"PartitionRatio"}:
+        expected = R6_TEMPLATE_FIELDS[key]
+        assert back[key] == expected, key
+    structure_back, losses = building.structure_to_umi(archetype.Structure, location="archetype.Structure", subject="B")
+    assert losses == []
+    assert structure_back == structure
+
+
+def test_values_sbem_refuses_are_lost() -> None:
+    template = _format.BuildingTemplate.model_validate({
+        "Name": "B",
+        "PartitionRatio": -0.1,
+        "Lifespan": -5,
+        "YearFrom": 1990,
+        "YearTo": 1980,
+    })
+    losses = template_losses(template, pointer="/BuildingTemplates/0")
+    assert {(loss.location, loss.upstream) for loss in losses} == {
+        ("/BuildingTemplates/0/PartitionRatio", None),
+        ("/BuildingTemplates/0/Lifespan", None),
+        ("/BuildingTemplates/0/YearTo", None),
+    }
+
+
+def test_partition_ratio_is_written_from_the_perimeter_group() -> None:
+    ratio, losses = building.partition_ratio_to_umi({"core": 0.4, "perimeter": 0.7}, subject="A")
+    assert ratio == pytest.approx(0.35)
+    (loss,) = losses
+    assert (loss.location, loss.value, loss.rule) == (
+        "core.Envelope.Assemblies.PartitionAreaPerFloorArea",
+        0.4,
+        "building.partition_ratio",
+    )
 
 
 def test_template_fields_at_basilisk_defaults_lose_nothing() -> None:
     assert template_losses(_format.BuildingTemplate(Name="B"), pointer="/BuildingTemplates/0") == []
 
 
-def test_sample_templates_report_their_structure_as_lost() -> None:
+def test_sample_templates_map_their_structure() -> None:
     library = _library(B2)
     for index, template in enumerate(library.building_templates):
-        losses = template_losses(template, pointer=f"/BuildingTemplates/{index}")
-        assert all(loss.upstream == "UP-9" for loss in losses)
+        assert template_losses(template, pointer=f"/BuildingTemplates/{index}") == []
         if template.structure is not None:
-            assert any(loss.rule == "structure.upstream" for loss in losses)
+            structure, losses = building.structure_to_sbem(
+                template.structure, pointer=f"/BuildingTemplates/{index}/Structure", subject="B"
+            )
+            assert [loss for loss in losses if loss.rule == "structure.component"] == []
+            assert len(structure.MassRatios) == len(template.structure.mass_ratios)
 
 
 # --- names (data-model.md, "Names of components without a one-to-one counterpart") ------------

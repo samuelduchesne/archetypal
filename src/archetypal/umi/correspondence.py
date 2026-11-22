@@ -240,7 +240,9 @@ def _row(
     return FieldMapping(umi_class, key, relevance, paths, rule_id, status, upstream, note)
 
 
-_STRUCTURE_NOTE = "Structural model for UMI's life-cycle module: the archetype's StructureComponent (UP-9), field by field."
+_STRUCTURE_NOTE = (
+    "Structural model for UMI's life-cycle module: the archetype's StructureComponent (UP-9), field by field."
+)
 _UP9_NOT_ADDED = (
     "UP-9 does not add it: a shoebox has no interior windows and the builder models no airflow network, so it "
     "is lost on reading unless at Basilisk's default, which writing gives"
@@ -530,7 +532,6 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         "and VT idfkit.thermal computes (approximate); a simple SBEM window is written as the one glazing "
         "layer EnergyPlus's simple window model derives from it (approximate, a bridge until UP-10).",
     ),
-
     *(
         _row(
             "ZoneConstructions",
@@ -560,7 +561,13 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
             E,
             "The same adiabatic flag of the envelope assemblies (UP-9).",
         )
-        for key in ("IsFacadeAdiabatic", "IsGroundAdiabatic", "IsPartitionAdiabatic", "IsRoofAdiabatic", "IsSlabAdiabatic")
+        for key in (
+            "IsFacadeAdiabatic",
+            "IsGroundAdiabatic",
+            "IsPartitionAdiabatic",
+            "IsRoofAdiabatic",
+            "IsSlabAdiabatic",
+        )
     ),
     # --- Structure (life cycle) -------------------------------------------------------------------
     *(

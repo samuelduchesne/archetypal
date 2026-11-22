@@ -29,6 +29,8 @@ from archetypal.umi.rules._common import (
 )
 from archetypal.umi.rules.loads import (
     METABOLIC_RATE,
+    daylighting_to_sbem,
+    daylighting_to_umi,
     internal_mass_to_sbem,
     internal_mass_to_umi,
     loads_to_sbem,
@@ -197,31 +199,44 @@ def test_reading_sets_metabolic_rate_with_a_note() -> None:
     assert "MetabolicRate" in note.reason
 
 
-def test_illuminance_target_is_lost_with_up9() -> None:
-    context = reading()
-    loads_to_sbem(zone_loads(), schedule=read_schedule, context=context)
-    [loss] = losses(context)
-    assert loss.kind is LossKind.LOST
-    assert (loss.location, loss.value, loss.rule, loss.upstream) == (
-        "/ZoneLoads/0/IlluminanceTarget",
-        400.0,
-        "loads.daylighting",
-        "UP-9",
-    )
-    assert loss.subject == "T"
-
-
-def test_zone_definition_daylighting_fields_are_lost_with_up9() -> None:
+def test_daylighting_maps_to_the_lighting() -> None:
+    """UP-9: the target comes from the loads, the workplane and mesh from the zone definition."""
     context = reading("/Zones/0")
-    zone = ZoneDefinition.model_validate({"Name": "z", "DaylightMeshResolution": 2.0})
-    get_rule("loads.daylighting").to_sbem(zone, context=context)  # type: ignore[misc]
-    [loss] = losses(context)  # the workplane height is Basilisk's default, which writing gives back
-    assert (loss.location, loss.value, loss.upstream) == ("/Zones/0/DaylightMeshResolution", 2.0, "UP-9")
+    parts = loads_to_sbem(zone_loads(), schedule=read_schedule, context=reading())
+    zone = ZoneDefinition.model_validate({
+        "Name": "z",
+        "Loads": zone_loads(),
+        "DaylightMeshResolution": 2.0,
+        "DaylightWorkplaneHeight": 0.75,
+    })
+    lighting = daylighting_to_sbem(parts.lighting, zone, context=context)
+    assert (lighting.IlluminanceTarget, lighting.DaylightWorkplaneHeight, lighting.DaylightMeshResolution) == (
+        400.0,
+        0.75,
+        2.0,
+    )
+    assert lighting.PowerDensity == parts.lighting.PowerDensity
+    assert losses(context) == []
 
 
-def test_an_upstream_field_at_basilisk_default_is_not_lost() -> None:
+def test_a_daylighting_value_sbem_refuses_is_lost() -> None:
+    context = reading("/Zones/0")
+    parts = loads_to_sbem(zone_loads(), schedule=read_schedule, context=reading())
+    zone = ZoneDefinition.model_validate({"Name": "z", "Loads": zone_loads(), "DaylightMeshResolution": 0.0})
+    lighting = daylighting_to_sbem(parts.lighting, zone, context=context)
+    assert lighting.DaylightMeshResolution is None
+    [loss] = losses(context)
+    assert (loss.location, loss.value, loss.rule, loss.upstream) == (
+        "/Zones/0/DaylightMeshResolution",
+        0.0,
+        "loads.daylighting",
+        None,
+    )
+
+
+def test_reading_loads_loses_nothing_of_daylighting() -> None:
     context = reading()
-    loads_to_sbem(zone_loads(IlluminanceTarget=500.0), schedule=read_schedule, context=context)
+    loads_to_sbem(zone_loads(IlluminanceTarget=300.0), schedule=read_schedule, context=context)
     assert losses(context) == []
 
 
@@ -253,13 +268,15 @@ def test_writing_maps_densities_switches_schedules_and_metadata() -> None:
     assert losses(context) == []
 
 
-def test_writing_defaults_illuminance_target_with_a_note() -> None:
+def test_writing_takes_the_lighting_daylighting() -> None:
     context = writing()
     written = loads_to_umi(space_use(), schedule=write_schedule, context=context)
-    assert written.illuminance_target == 500.0
+    assert written.illuminance_target == 500.0  # SBEM's default target
+    fields = daylighting_to_umi(space_use().Lighting, ZoneDefinition, context=context)
+    assert fields == {"daylight_workplane_height": 0.8, "daylight_mesh_resolution": 1.0}
     [note] = [note for note in notes(context) if note.rule == "loads.daylighting"]
-    assert note.kind is NoteKind.DEFAULTED
-    assert note.value == 500.0
+    assert note.kind is NoteKind.DEFAULTED  # no illuminance map in SBEM: Basilisk's mesh written
+    assert note.value == 1.0
 
 
 def test_writing_a_non_default_metabolic_rate_is_lost() -> None:

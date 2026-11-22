@@ -13,8 +13,12 @@
 - **Natural-ventilation schedule** (`vent.natural_schedule`). `NatVentSchedule` maps to
   `Ventilation.Schedule`, which epinterface uses for natural ventilation only.
 - **Natural-ventilation limits and scheduled ventilation** (`vent.natural_limits`,
-  `vent.scheduled`). SBEM has no fields for them until UP-9: reading reports each value that
-  differs from Basilisk's default as lost; writing gives Basilisk's defaults (noted).
+  `vent.scheduled`). UP-9's fields of `VentilationComponent` take UMI's names and values. A
+  minimum outdoor temperature not below the maximum, which SBEM refuses, is lost with SBEM's
+  band kept. An always-on scheduled-ventilation schedule is SBEM's `None` (constant), which
+  writes back as the natural-ventilation schedule when that is always on too, else as an
+  always-on schedule (noted). UMI's airflow-network switch (`Afn`) has no SBEM field: UP-9
+  does not add it, so reading reports it when on and writing gives Basilisk's default.
 
 The VentilationComponent itself, which also holds the conditioning's fresh air, economizer and
 heat recovery, is assembled by `archetypal.umi.rules.conditioning`.
@@ -23,7 +27,7 @@ heat recovery, is assembled by `archetypal.umi.rules.conditioning`.
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from epinterface.sbem.components.envelope import InfiltrationComponent
 
@@ -31,9 +35,11 @@ from archetypal.errors import Problem
 from archetypal.umi._format import ZoneVentilation
 from archetypal.umi.correspondence import rule
 from archetypal.umi.rules._common import (
+    all_values_equal,
     identity_to_sbem,
     identity_to_umi,
-    json_value,
+    optional_schedule_to_sbem,
+    optional_schedule_to_umi,
     report_upstream,
     upstream_defaults,
 )
@@ -253,78 +259,195 @@ def natural_schedule_to_umi(
 
 # --- Natural-ventilation limits and scheduled ventilation (UP-9) --------------------------------
 
+_LIMITS: tuple[tuple[str, str], ...] = (
+    ("NatVentMinOutdoorAirTemp", "nat_vent_min_outdoor_air_temp"),
+    ("NatVentMaxOutdoorAirTemp", "nat_vent_max_outdoor_air_temp"),
+    ("NatVentMaxRelHumidity", "nat_vent_max_rel_humidity"),
+    ("NatVentZoneTempSetpoint", "nat_vent_zone_temp_setpoint"),
+    ("IsWindOn", "is_wind_on"),
+    ("IsBuoyancyOn", "is_buoyancy_on"),
+)
+_TEMPERATURE_RANGE = (-100.0, 100.0)
+
 
 @rule("vent.natural_limits", to="sbem")
-def natural_limits_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext) -> None:
-    """Report UMI's natural-ventilation limits and switches that differ from Basilisk's defaults (UP-9)."""
+def natural_limits_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext) -> dict[str, object]:
+    """Read UMI's natural-ventilation limits and switches as UP-9's fields of SBEM's ventilation.
+
+    A temperature outside SBEM's [-100, 100] °C, a humidity outside [0, 100] %, or a minimum
+    outdoor temperature not below the maximum is lost, SBEM's default kept. The airflow-network
+    switch, which UP-9 does not add, is reported when on.
+
+    Args:
+        ventilation: The UMI ventilation settings.
+        context: Their reading context.
+
+    Returns:
+        The SBEM fields by name.
+    """
     report_upstream(ventilation, "vent.natural_limits", context)
+    fields: dict[str, object] = {key: getattr(ventilation, name) for key, name in _LIMITS}
+    low, high = _TEMPERATURE_RANGE
+    bounds = {
+        "NatVentMinOutdoorAirTemp": (low, high),
+        "NatVentMaxOutdoorAirTemp": (low, high),
+        "NatVentZoneTempSetpoint": (low, high),
+        "NatVentMaxRelHumidity": (0.0, 100.0),
+    }
+    for key, (lowest, highest) in bounds.items():
+        value = cast("float", fields[key])
+        if not lowest <= value <= highest:
+            del fields[key]
+            context.lose(
+                key,
+                value,
+                rule="vent.natural_limits",
+                reason=f"SBEM accepts {lowest} to {highest}; its default is kept",
+            )
+    minimum, maximum = fields.get("NatVentMinOutdoorAirTemp"), fields.get("NatVentMaxOutdoorAirTemp")
+    if minimum is not None and maximum is not None and cast("float", minimum) >= cast("float", maximum):
+        for key in ("NatVentMinOutdoorAirTemp", "NatVentMaxOutdoorAirTemp"):
+            context.lose(
+                key,
+                cast("float", fields.pop(key)),
+                rule="vent.natural_limits",
+                reason="SBEM needs a minimum outdoor temperature below the maximum; its band is kept",
+            )
+    return fields
 
 
 @rule("vent.natural_limits", to="umi")
-def natural_limits_to_umi(*, context: RuleContext) -> dict[str, object]:
-    """Return Basilisk's defaults for the natural-ventilation limits and switches, noting each."""
-    return upstream_defaults(ZoneVentilation, "vent.natural_limits", context)
+def natural_limits_to_umi(ventilation: VentilationComponent, *, context: RuleContext) -> dict[str, object]:
+    """Write SBEM's natural-ventilation limits and switches (UP-9).
+
+    SBEM's `None` humidity limit or indoor limit (no limit) has no UMI value: it is written as
+    the widest UMI accepts (100 % and -100 °C) and noted. The airflow-network switch takes
+    Basilisk's default (noted).
+
+    Args:
+        ventilation: The SBEM ventilation.
+        context: The writing context at it (`<group>.Operations.HVAC.Ventilation`).
+    """
+    fields: dict[str, object] = upstream_defaults(ZoneVentilation, "vent.natural_limits", context)
+    for key, name in _LIMITS:
+        value: object = getattr(ventilation, key)
+        if value is None:
+            value = 100.0 if key == "NatVentMaxRelHumidity" else _TEMPERATURE_RANGE[0]
+            context.note(
+                key,
+                value,
+                rule="vent.natural_limits",
+                reason="SBEM's None is no limit; UMI needs a value, so the widest is written",
+            )
+        fields[name] = value
+    return fields
+
+
+_SCHEDULED: tuple[tuple[str, str], ...] = (
+    ("IsScheduledVentilationOn", "is_scheduled_ventilation_on"),
+    ("ScheduledVentilationAch", "scheduled_ventilation_ach"),
+    ("ScheduledVentilationSetpoint", "scheduled_ventilation_setpoint"),
+)
 
 
 @rule("vent.scheduled", to="sbem")
-def scheduled_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext) -> None:
-    """Report UMI's scheduled ventilation that differs from what writing gives back (UP-9).
+def scheduled_to_sbem(
+    ventilation: ZoneVentilation, *, schedule: ScheduleToSbem, context: RuleContext
+) -> dict[str, object]:
+    """Read UMI's scheduled ventilation as UP-9's fields of SBEM's ventilation.
 
-    The scheduled-ventilation schedule is lost unless it is the natural-ventilation schedule,
-    which writing uses for it.
+    The schedule may be a Fraction or AnyNumber multiplier; an always-on one is SBEM's `None`
+    (constant). A negative air-change rate or a setpoint outside [-100, 100] °C is lost.
+
+    Args:
+        ventilation: The UMI ventilation settings.
+        schedule: The schedule converter.
+        context: Their reading context.
+
+    Returns:
+        The SBEM fields by name.
     """
-    report_upstream(ventilation, "vent.scheduled", context, skip=("ScheduledVentilationSchedule",))
-    scheduled, natural = ventilation.scheduled_ventilation_schedule, ventilation.nat_vent_schedule
-    if scheduled != natural:
-        context.lose(
-            "ScheduledVentilationSchedule",
-            json_value(scheduled),
-            replacement=json_value(natural),
-            rule="vent.scheduled",
-            reason="SBEM has no scheduled ventilation yet; writing gives the natural-ventilation schedule",
-            upstream="UP-9",
-        )
+    fields: dict[str, object] = {key: getattr(ventilation, name) for key, name in _SCHEDULED}
+    checks = (
+        ("ScheduledVentilationAch", ventilation.scheduled_ventilation_ach >= 0, "at least 0"),
+        (
+            "ScheduledVentilationSetpoint",
+            _TEMPERATURE_RANGE[0] <= ventilation.scheduled_ventilation_setpoint <= _TEMPERATURE_RANGE[1],
+            "in [-100, 100]",
+        ),
+    )
+    for key, valid, expected in checks:
+        if not valid:
+            context.lose(
+                key,
+                cast("float", fields.pop(key)),
+                rule="vent.scheduled",
+                reason=f"SBEM's {key} must be {expected}; its default is kept",
+            )
+    fields["ScheduledVentilationSchedule"] = optional_schedule_to_sbem(
+        ventilation.scheduled_ventilation_schedule,
+        "ScheduledVentilationSchedule",
+        "Window",
+        schedule=schedule,
+        context=context,
+        rule_id="vent.scheduled",
+        limits=("Fraction", "AnyNumber"),
+    )
+    return fields
 
 
 @rule("vent.scheduled", to="umi")
-def scheduled_to_umi(natural_schedule: YearSchedule, *, context: RuleContext) -> dict[str, object]:
-    """Return Basilisk's defaults for scheduled ventilation, noting each.
+def scheduled_to_umi(
+    ventilation: VentilationComponent,
+    natural_schedule: YearSchedule,
+    *,
+    schedule: ScheduleToUmi,
+    context: RuleContext,
+) -> dict[str, object]:
+    """Write SBEM's scheduled ventilation (UP-9).
 
-    UMI requires a scheduled-ventilation schedule; the natural-ventilation schedule is written.
+    SBEM's `None` schedule (constant) is written as the natural-ventilation schedule when that
+    is always on, so equal schedules stay one component, else as an always-on schedule (noted).
 
     Args:
+        ventilation: The SBEM ventilation.
         natural_schedule: The UMI natural-ventilation schedule written.
-        context: The writing context at the SBEM component that holds the ventilation settings.
+        schedule: The schedule converter.
+        context: The writing context at the ventilation.
     """
-    context.note(
-        "",
-        natural_schedule.name,
-        rule="vent.scheduled",
-        reason="SBEM has no scheduled ventilation; UMI needs a schedule, so the natural-ventilation one is written",
+    fields: dict[str, object] = {name: getattr(ventilation, key) for key, name in _SCHEDULED}
+    if ventilation.ScheduledVentilationSetpoint is None:
+        fields["scheduled_ventilation_setpoint"] = _TEMPERATURE_RANGE[0]
+        context.note(
+            "ScheduledVentilationSetpoint",
+            _TEMPERATURE_RANGE[0],
+            rule="vent.scheduled",
+            reason="SBEM's None is no indoor limit; UMI needs a value, so the lowest SBEM accepts is written",
+        )
+    year = ventilation.ScheduledVentilationSchedule
+    if year is None and all_values_equal(natural_schedule, 1.0):
+        fields["scheduled_ventilation_schedule"] = natural_schedule
+        return fields
+    fields["scheduled_ventilation_schedule"] = optional_schedule_to_umi(
+        year, "ScheduledVentilationSchedule", schedule=schedule, context=context, rule_id="vent.scheduled"
     )
-    return {
-        **upstream_defaults(ZoneVentilation, "vent.scheduled", context),
-        "scheduled_ventilation_schedule": natural_schedule,
-    }
+    return fields
 
 
 # --- Ventilation settings, whole ----------------------------------------------------------------
 
 
 def zone_ventilation_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext) -> InfiltrationParts:
-    """Read UMI ventilation settings: the infiltration, and the losses of what SBEM lacks.
+    """Read UMI ventilation settings: the infiltration.
 
-    The natural-ventilation switch and schedule go to SBEM's ventilation, which
-    `conditioning.ventilation_to_sbem` assembles.
+    The natural-ventilation switch, schedule and limits and the scheduled ventilation go to
+    SBEM's ventilation, which `conditioning.ventilation_to_sbem` assembles.
 
     Args:
         ventilation: The UMI ventilation settings.
         context: Their reading context (`/VentilationSettings/<i>`).
     """
-    parts = infiltration_to_sbem(ventilation, context=context)
-    natural_limits_to_sbem(ventilation, context=context)
-    scheduled_to_sbem(ventilation, context=context)
-    return parts
+    return infiltration_to_sbem(ventilation, context=context)
 
 
 def zone_ventilation_to_umi(
@@ -344,9 +467,8 @@ def zone_ventilation_to_umi(
         schedule: The schedule converter.
         context: The writing context at the group (`perimeter`).
     """
-    natural_schedule = natural_schedule_to_umi(
-        ventilation, schedule=schedule, context=context.child("Operations.HVAC.Ventilation")
-    )
+    at_ventilation = context.child("Operations.HVAC.Ventilation")
+    natural_schedule = natural_schedule_to_umi(ventilation, schedule=schedule, context=at_ventilation)
     here = context.child(_INFILTRATION_PATH)
     fields: dict[str, object] = {
         **identity_to_umi(envelope.Infiltration, here),
@@ -358,8 +480,8 @@ def zone_ventilation_to_umi(
         ),
         "is_nat_vent_on": provider_to_umi(ventilation.Provider)[1],
         "nat_vent_schedule": natural_schedule,
-        **natural_limits_to_umi(context=here),
-        **scheduled_to_umi(natural_schedule, context=here),
+        **natural_limits_to_umi(ventilation, context=at_ventilation),
+        **scheduled_to_umi(ventilation, natural_schedule, schedule=schedule, context=at_ventilation),
     }
     return ZoneVentilation.model_validate(fields)
 

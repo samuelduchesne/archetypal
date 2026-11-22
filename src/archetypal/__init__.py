@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from archetypal.errors import (
         UnsupportedEnergyPlusVersion as UnsupportedEnergyPlusVersion,
     )
+    from archetypal.reduction import merge as merge
     from archetypal.reduction import reduce as reduce
     from archetypal.reduction.options import Layout as Layout
     from archetypal.reduction.options import ReductionOptions as ReductionOptions
@@ -60,6 +61,7 @@ __all__ = [
     "ReductionOptions",
     "UnsupportedEnergyPlusVersion",
     "__version__",
+    "merge",
     "read_umi",
     "reduce",
     "write_umi",
@@ -72,6 +74,7 @@ _LAZY: dict[str, str] = {
     "write_umi": "archetypal.umi.write",
     # Spec 002: reduction and its errors.
     "reduce": "archetypal.reduction",
+    "merge": "archetypal.reduction",
     "Layout": "archetypal.reduction.options",
     "ReductionOptions": "archetypal.reduction.options",
     "ArchetypalError": "archetypal.errors",
@@ -87,7 +90,7 @@ _LAZY: dict[str, str] = {
 def __getattr__(name: str) -> Any:
     """Import a lazy name on first use; raise the migration error for a v2 name (PEP 562, FR-016).
 
-    Each name of `_LAZY` (`read_umi`, `write_umi`, `reduce`, `Layout`, `ReductionOptions` and the
+    Each name of `_LAZY` (`read_umi`, `write_umi`, `reduce`, `merge`, `Layout`, `ReductionOptions` and the
     errors of spec 002) is imported from its module on first use and kept. `archetypal.IDF` and `from archetypal import IDF` raise `RemovedInArchetypal3Error`, which
     names the replacement and the migration guide's section. Because that error is an
     `ImportError`, not an `AttributeError`, `hasattr(archetypal, "IDF")` raises it too instead

@@ -13,10 +13,9 @@
    `UmiValidationError` listing them all, unless `skip_invalid_templates` skips the templates
    they affect (`validation.skipped`).
 5. **Translation**: each template becomes one archetype with `core` and `perimeter` groups and
-   unset shares, through the registered UMI → SBEM rules. The rules without a function of
-   their own (`material.environmental`, `construction.environmental`,
-   `construction.adiabatic`, `window.settings`, `schedule.metadata`) are reported here from
-   `CORRESPONDENCE`: each upstream field that differs from Basilisk's default is lost.
+   unset shares, through the registered UMI → SBEM rules. Fields SBEM has no place for (the
+   rows of `CORRESPONDENCE` still waiting for an upstream item) are lost when they differ from
+   Basilisk's default.
 6. **Report**: components no template uses (`library.unused`), the fields that took
    Basilisk's default and the unknown keys (notes), the Archsim keys without a Core
    counterpart (losses), and the source (file name, SHA-256, dialect, versions).
@@ -40,13 +39,10 @@ from archetypal.io import ARCHETYPE_SUFFIX, dumps
 from archetypal.umi import dialects
 from archetypal.umi._format import (
     LibraryComponent,
-    MaterialBase,
-    OpaqueConstruction,
     UmiLibrary,
     YearSchedule,
 )
 from archetypal.umi._refs import resolve
-from archetypal.umi.correspondence import MappingStatus, mappings_for
 from archetypal.umi.report import Findings, Loss, LossKind, Note, NoteKind, SourceInfo, TranslationReport
 from archetypal.umi.rules._common import RuleContext, json_value
 from archetypal.umi.rules.building import (
@@ -55,6 +51,7 @@ from archetypal.umi.rules.building import (
     archetype_from_template,
     collision_loss,
     metadata_to_sbem,
+    partition_area_to_sbem,
     zone_component,
 )
 from archetypal.umi.rules.conditioning import conditioning_to_sbem
@@ -63,7 +60,7 @@ from archetypal.umi.rules.loads import daylighting_to_sbem, internal_mass_to_sbe
 from archetypal.umi.rules.materials import assemblies_to_sbem, construction_to_sbem
 from archetypal.umi.rules.schedules import year_to_sbem
 from archetypal.umi.rules.ventilation import zone_ventilation_to_sbem
-from archetypal.umi.rules.windows import simple_from_layers
+from archetypal.umi.rules.windows import SbemWindow, layers_to_sbem, settings_to_sbem
 from archetypal.umi.validate import LibraryIndex, template_problems
 
 if TYPE_CHECKING:
@@ -71,7 +68,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Iterable
 
     from epinterface.sbem.archetype import Archetype
-    from epinterface.sbem.components.envelope import GlazingConstructionSimpleComponent
+    from epinterface.sbem.components.envelope import WindowSettingsComponent
     from epinterface.sbem.components.schedules import YearComponent, YearScheduleCategory
     from epinterface.sbem.components.zones import ZoneComponent
     from pydantic import JsonValue
@@ -205,35 +202,18 @@ def _rename_collisions(document: dict[str, object]) -> tuple[dict[str, object], 
     return renamed, losses
 
 
-# --- Upstream fields reported from the table ----------------------------------------------------
-
-
-def _report_table_upstream(component: FormatModel, rule_id: str, context: RuleContext) -> None:
-    """Report each upstream field of `rule_id` that differs from Basilisk's default, as lost.
-
-    Unlike `report_upstream`, rows declared on a base class (`MaterialBase`,
-    `ConstructionBase`) apply to every class derived from it.
-    """
-    model = type(component)
-    classes = {klass.__name__ for klass in model.__mro__}
-    aliases = {info.alias or name: name for name, info in model.model_fields.items()}
-    for row in mappings_for(rule_id):
-        if row.status is not MappingStatus.UPSTREAM or row.umi_class not in classes or row.umi_key not in aliases:
-            continue
-        name = aliases[row.umi_key]
-        value: object = getattr(component, name)
-        if value == model.model_fields[name].get_default(call_default_factory=True):
-            continue
-        context.lose(
-            row.umi_key,
-            json_value(value),
-            rule=rule_id,
-            reason=f"SBEM has no field for {row.umi_key} yet",
-            upstream=row.upstream,
-        )
-
-
 # --- Translation ------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _TemplateEnvelope:
+    """What a template gives every zone's envelope: its window, window settings and partitions."""
+
+    window: SbemWindow
+    settings: WindowSettingsComponent
+    partition_area: float
+    key: tuple[object, ...]
+    """What the zone translation depends on, for its cache key."""
 
 
 def _need(value: _T | None, pointer: str) -> _T:
@@ -290,56 +270,42 @@ class _Reader:
         findings = Findings()
         component = year_to_sbem(year, role, context.subject, pointer, findings)
         self._collect(context, findings)
-        here = self._at(year, context)
-        _report_table_upstream(year, "schedule.metadata", here)
-        for key, value in (("Comments", year.comments), ("DataSource", year.data_source)):
-            if value is not None:
-                here.lose(
-                    key,
-                    value,
-                    rule="schedule.metadata",
-                    reason="SBEM schedules have no metadata yet",
-                    upstream="UP-9",
-                )
         return component
 
-    # --- Constructions --------------------------------------------------------------------------
+    # --- Windows --------------------------------------------------------------------------------
 
-    def _construction_upstream(self, construction: OpaqueConstruction, context: RuleContext) -> None:
-        _report_table_upstream(construction, "construction.environmental", self._at(construction, context))
-        for layer in construction.layers:
-            if layer.material is not None:
-                material: MaterialBase = layer.material
-                _report_table_upstream(material, "material.environmental", self._at(material, context))
-
-    def window(self, settings: WindowSettings, context: RuleContext) -> GlazingConstructionSimpleComponent:
-        """The template's simple-glazing window, from its window settings' construction."""
+    def window(self, settings: WindowSettings, context: RuleContext) -> SbemWindow:
+        """The template's window (layered, or simple glazing), from its window settings' construction."""
         construction = settings.construction
         if construction is None:  # pragma: no cover - validation refuses it
             msg = f"{self.index.pointer(settings)}: the window settings have no construction"
             raise ValueError(msg)
 
-        def build(local: RuleContext) -> GlazingConstructionSimpleComponent:
-            window, losses = simple_from_layers(
+        def build(local: RuleContext) -> SbemWindow:
+            window, losses = layers_to_sbem(
                 construction, subject=local.subject, location=self.index.pointer(construction)
             )
             local.findings.extend(losses)
-            _report_table_upstream(construction, "construction.environmental", self._at(construction, local))
             return window
 
         return self._cached(("window", id(construction)), context, build)
 
+    def window_settings(self, settings: WindowSettings, context: RuleContext) -> WindowSettingsComponent:
+        """The template's window settings (UP-9), which every group gets."""
+
+        def build(local: RuleContext) -> WindowSettingsComponent:
+            here = self._at(settings, local)
+            return settings_to_sbem(settings, schedule=self.schedules(here), context=here)
+
+        return self._cached(("window settings", id(settings)), context, build)
+
     # --- Zones ------------------------------------------------------------------------------------------
 
-    def zone(
-        self, zone: ZoneDefinition, window: GlazingConstructionSimpleComponent, window_key: int, context: RuleContext
-    ) -> ZoneComponent:
-        """The SBEM zone definition of a UMI zone definition, with the template's window."""
-        return self._cached(("zone", id(zone), window_key), context, lambda local: self._zone(zone, window, local))
+    def zone(self, zone: ZoneDefinition, envelope: _TemplateEnvelope, context: RuleContext) -> ZoneComponent:
+        """The SBEM zone definition of a UMI zone definition, with the template's window and partitions."""
+        return self._cached(("zone", id(zone), *envelope.key), context, lambda local: self._zone(zone, envelope, local))
 
-    def _zone(
-        self, zone: ZoneDefinition, window: GlazingConstructionSimpleComponent, context: RuleContext
-    ) -> ZoneComponent:
+    def _zone(self, zone: ZoneDefinition, envelope: _TemplateEnvelope, context: RuleContext) -> ZoneComponent:
         where = self.index.pointer(zone)
         loads = _need(zone.loads, f"{where}/Loads")
         conditioning = _need(zone.conditioning, f"{where}/Conditioning")
@@ -367,7 +333,7 @@ class _Reader:
             **metadata_to_sbem(loads),
             "Name": loads.name or "",
             "Occupancy": gains.occupancy,
-            "Lighting": gains.lighting,
+            "Lighting": daylighting_to_sbem(gains.lighting, zone, context=zone_at),
             "Equipment": gains.equipment,
             "Thermostat": systems.thermostat,
             "WaterUse": hot_water.water_use,
@@ -391,16 +357,9 @@ class _Reader:
             findings,
             internal_mass=assembly,
             internal_mass_exposed=ratio,
+            partition_area=envelope.partition_area,
         )
         self._collect(context, findings)
-        _report_table_upstream(constructions, "construction.adiabatic", self._at(constructions, context))
-        for slot in (constructions.facade, constructions.ground, constructions.partition, constructions.roof):
-            if slot is not None:
-                self._construction_upstream(slot, context)
-        if constructions.slab is not None:
-            self._construction_upstream(constructions.slab, context)
-        self._construction_upstream(mass, context)
-        daylighting_to_sbem(zone, context=zone_at)
 
         component = zone_component(
             zone.name or "",
@@ -411,7 +370,8 @@ class _Reader:
             infiltration=infiltration.infiltration,
             attic_infiltration=infiltration.attic,
             basement_infiltration=infiltration.basement,
-            window=window,
+            window=envelope.window,
+            window_settings=envelope.settings,
             metadata=metadata_to_sbem(zone),
         )
         parts: dict[str, LibraryComponent] = {
@@ -440,12 +400,17 @@ class _Reader:
         if settings is None:  # pragma: no cover - validation refuses it
             msg = f"{pointer}: the building template has no window settings"
             raise ValueError(msg)
-        window = self.window(settings, context)
-        window_key = id(settings.construction)
-        _report_table_upstream(settings, "window.settings", self._at(settings, context))
+        partition_area, partition_losses = partition_area_to_sbem(template, pointer=pointer, subject=name)
+        context.findings.extend(partition_losses)
+        envelope = _TemplateEnvelope(
+            window=self.window(settings, context),
+            settings=self.window_settings(settings, context),
+            partition_area=partition_area,
+            key=(id(settings.construction), id(settings), partition_area),
+        )
         archetype, losses = archetype_from_template(
             template,
-            lambda zone: self.zone(zone, window, window_key, context),
+            lambda zone: self.zone(zone, envelope, context),
             pointer=pointer,
             name=name,
         )

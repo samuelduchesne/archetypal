@@ -60,7 +60,7 @@
       "type": "object"
     },
     "BuildingBlock": {
-      "description": "Building facts `merge` needs without the model (R6).\n\nAttributes:\n    conditioned_floor_area: \u03a3 floor area of the conditioned zones, multipliers applied, m\u00b2.\n    storey_ratio: Conditioned floor area \u00f7 floor area of the lowest level, unrounded.",
+      "description": "Building facts `merge` needs without the model (R6).\n\nAttributes:\n    conditioned_floor_area: \u03a3 floor area of the conditioned zones, multipliers applied, m\u00b2.\n    storey_ratio: Conditioned floor area \u00f7 floor area of the lowest level, unrounded.\n    calendar: The run-period calendar of the profiles; `None` in a report that does not\n        record it, which `merge` refuses.\n    mains_temperature: The annual-mean mains water temperature, \u00b0C, or `None` without hot water.\n    air_density: The standard air density of the fan volumes, kg/m\u00b3, or `None` when not recorded.",
       "properties": {
         "conditioned_floor_area": {
           "exclusiveMinimum": 0.0,
@@ -71,6 +71,42 @@
           "exclusiveMinimum": 0.0,
           "title": "Storey Ratio",
           "type": "number"
+        },
+        "calendar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CalendarBlock"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mains_temperature": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mains Temperature"
+        },
+        "air_density": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Air Density"
         }
       },
       "required": [
@@ -78,6 +114,47 @@
         "storey_ratio"
       ],
       "title": "BuildingBlock",
+      "type": "object"
+    },
+    "CalendarBlock": {
+      "description": "The run-period calendar the ledgers' profiles follow (`schedules.RunPeriodCalendar`).\n\nAttributes:\n    year: The calendar year of the profiles (research R5).\n    holidays: Dates marked `Holiday`, sorted.\n    custom_day_1: Dates marked `CustomDay1`, sorted.\n    custom_day_2: Dates marked `CustomDay2`, sorted.",
+      "properties": {
+        "year": {
+          "title": "Year",
+          "type": "integer"
+        },
+        "holidays": {
+          "default": [],
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "title": "Holidays",
+          "type": "array"
+        },
+        "custom_day_1": {
+          "default": [],
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "title": "Custom Day 1",
+          "type": "array"
+        },
+        "custom_day_2": {
+          "default": [],
+          "items": {
+            "format": "date",
+            "type": "string"
+          },
+          "title": "Custom Day 2",
+          "type": "array"
+        }
+      },
+      "required": [
+        "year"
+      ],
+      "title": "CalendarBlock",
       "type": "object"
     },
     "EirSums": {

@@ -50,6 +50,7 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import date  # noqa: TC003 - pydantic resolves annotations at run time
 from importlib import metadata
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -69,6 +70,7 @@ from archetypal.reduction.options import (
     Layout,
     ReductionOptions,
 )
+from archetypal.reduction.schedules import RunPeriodCalendar
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
@@ -81,6 +83,7 @@ __all__ = [
     "SCHEMA_PATH",
     "SCHEMA_VERSION",
     "BuildingBlock",
+    "CalendarBlock",
     "ExcludedZone",
     "GroupMember",
     "MergedDistinction",
@@ -386,16 +389,70 @@ class MergedDistinction(_Record):
         return tuple(sorted(value))
 
 
+class CalendarBlock(_Record):
+    """The run-period calendar the ledgers' profiles follow (`schedules.RunPeriodCalendar`).
+
+    Attributes:
+        year: The calendar year of the profiles (research R5).
+        holidays: Dates marked `Holiday`, sorted.
+        custom_day_1: Dates marked `CustomDay1`, sorted.
+        custom_day_2: Dates marked `CustomDay2`, sorted.
+    """
+
+    year: int
+    holidays: tuple[date, ...] = ()
+    custom_day_1: tuple[date, ...] = ()
+    custom_day_2: tuple[date, ...] = ()
+
+    @field_validator("holidays", "custom_day_1", "custom_day_2", mode="after")
+    @classmethod
+    def _sorted_dates(cls, value: tuple[date, ...]) -> tuple[date, ...]:
+        return tuple(sorted(set(value)))
+
+    @classmethod
+    def from_calendar(cls, calendar: RunPeriodCalendar) -> CalendarBlock:
+        """Record a run-period calendar.
+
+        Args:
+            calendar: The calendar of the sources.
+
+        Returns:
+            The block.
+        """
+        return cls(
+            year=calendar.year,
+            holidays=tuple(calendar.holidays),
+            custom_day_1=tuple(calendar.custom_day_1),
+            custom_day_2=tuple(calendar.custom_day_2),
+        )
+
+    def to_calendar(self) -> RunPeriodCalendar:
+        """Return the run-period calendar this block records."""
+        return RunPeriodCalendar(
+            year=self.year,
+            holidays=frozenset(self.holidays),
+            custom_day_1=frozenset(self.custom_day_1),
+            custom_day_2=frozenset(self.custom_day_2),
+        )
+
+
 class BuildingBlock(_Record):
     """Building facts `merge` needs without the model (R6).
 
     Attributes:
         conditioned_floor_area: Σ floor area of the conditioned zones, multipliers applied, m².
         storey_ratio: Conditioned floor area ÷ floor area of the lowest level, unrounded.
+        calendar: The run-period calendar of the profiles; `None` in a report that does not
+            record it, which `merge` refuses.
+        mains_temperature: The annual-mean mains water temperature, °C, or `None` without hot water.
+        air_density: The standard air density of the fan volumes, kg/m³, or `None` when not recorded.
     """
 
     conditioned_floor_area: float = Field(gt=0.0)
     storey_ratio: float = Field(gt=0.0)
+    calendar: CalendarBlock | None = None
+    mains_temperature: float | None = None
+    air_density: float | None = Field(default=None, gt=0.0)
 
 
 def _not_represented_key(entry: NotRepresented) -> tuple[Any, ...]:

@@ -57,7 +57,6 @@ from archetypal.umi.report import Findings, Loss, LossKind
 from archetypal.umi.rules._common import (
     identity_to_sbem,
     identity_to_umi,
-    json_value,
     optional_schedule_to_sbem,
     optional_schedule_to_umi,
     report_upstream,
@@ -344,7 +343,9 @@ def _cost_per_kg(cost: float, density: float, pointer: str, subject: str, findin
     return cost / density
 
 
-def _glass_to_sbem(material: GlazingMaterial, pointer: str, subject: str, findings: Findings) -> GlazingMaterialComponent:
+def _glass_to_sbem(
+    material: GlazingMaterial, pointer: str, subject: str, findings: Findings
+) -> GlazingMaterialComponent:
     return GlazingMaterialComponent.model_validate({
         "Name": material.name or "",
         "Category": _category(material.category),
@@ -420,11 +421,13 @@ def _layered(
             )
         elif isinstance(material, GasMaterial):
             layers.append(
-                GasLayerComponent(Thickness=layer.thickness, GasMaterial=_gas_to_sbem(material, pointer, subject, findings))
+                GasLayerComponent(
+                    Thickness=layer.thickness, GasMaterial=_gas_to_sbem(material, pointer, subject, findings)
+                )
             )
         else:
             msg = f"layer {index} has no material"
-            raise ValueError(msg)
+            raise ValueError(msg)  # noqa: TRY004 - a malformed library, not a wrong argument type
     for key, value in (
         ("AssemblyCarbon", construction.assembly_carbon),
         ("AssemblyCost", construction.assembly_cost),
@@ -487,7 +490,9 @@ def _first_error(error: ValidationError) -> str:
     return f"{where}: {first['msg']}" if where else str(first["msg"])
 
 
-def _glass_to_umi(material: GlazingMaterialComponent, location: str, subject: str, findings: Findings) -> GlazingMaterial:
+def _glass_to_umi(
+    material: GlazingMaterialComponent, location: str, subject: str, findings: Findings
+) -> GlazingMaterial:
     density = material.Density or 0.0
     cost = 0.0
     if material.Cost is not None:
@@ -590,7 +595,14 @@ def layers_to_umi(window: SbemWindow, *, subject: str, location: str) -> tuple[W
         )
         layers.append(MaterialLayer[GlazingMaterial | GasMaterial](Material=material, Thickness=layer.Thickness))
     if window.Version is not None:
-        findings.lose(LossKind.LOST, subject, f"{location}.Version", window.Version, "names.metadata", "UMI components have no version.")
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            f"{location}.Version",
+            window.Version,
+            "names.metadata",
+            "UMI components have no version.",
+        )
     construction = WindowConstruction.model_validate({
         "Name": window.Name,
         "Category": window.Category or _UNCATEGORIZED,
@@ -617,9 +629,7 @@ def place_window(window: SbemWindow | None, groups: Sequence[str]) -> dict[str, 
 
 
 @rule("window.placement", to="umi")
-def template_window(
-    windows: Mapping[str, SbemWindow | None], *, subject: str
-) -> tuple[SbemWindow | None, list[Loss]]:
+def template_window(windows: Mapping[str, SbemWindow | None], *, subject: str) -> tuple[SbemWindow | None, list[Loss]]:
     """Choose the building template's window from the zone groups' windows.
 
     The perimeter group's window is used (the first group's when there is no perimeter group).
@@ -690,7 +700,12 @@ def settings_to_sbem(
     }
     checks = (
         ("OperableArea", settings.operable_area, 0.0 <= settings.operable_area <= 1.0, "in [0, 1]"),
-        ("ShadingSystemSetpoint", settings.shading_system_setpoint, settings.shading_system_setpoint >= 0, "at least 0"),
+        (
+            "ShadingSystemSetpoint",
+            settings.shading_system_setpoint,
+            settings.shading_system_setpoint >= 0,
+            "at least 0",
+        ),
     )
     for key, value, valid, expected in checks:
         if not valid:
@@ -729,7 +744,9 @@ def settings_to_umi(
         schedule: The schedule converter.
         context: The writing context at the settings (`<group>.Envelope.WindowSettings`).
     """
-    always_on = optional_schedule_to_umi(None, "AfnWindowAvailability", schedule=schedule, context=context, rule_id=_SETTINGS)
+    always_on = optional_schedule_to_umi(
+        None, "AfnWindowAvailability", schedule=schedule, context=context, rule_id=_SETTINGS
+    )
     fields: dict[str, object] = {
         **upstream_defaults(WindowSettings, _SETTINGS, context),
         "Construction": construction,

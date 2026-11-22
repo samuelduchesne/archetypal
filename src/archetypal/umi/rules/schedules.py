@@ -10,6 +10,10 @@
 - **SBEM to UMI.** Consecutive equal months become one part ending on a month's last day,
   February on the 29th; equal weeks and days are one object. Holiday and design-day slots (when
   the SBEM week has them, UP-2) that differ from the day they replace are lost.
+- **Metadata** (`schedule.metadata`, UP-9). `Comments` and `DataSource` map to the SBEM
+  schedule's `Comment` and `DataSource`. Basilisk fixes each schedule's `Category` (`Day`,
+  `Week`, `Year`): it reads as an unset SBEM category, and another SBEM category is lost on
+  writing.
 - **Type.** `Fraction`, `Temperature` and `AnyNumber` map by name (case-insensitive); any other
   UMI type becomes `AnyNumber`, noted. SBEM's year `Type` is the schedule's role, given by the
   field the schedule fills, so a UMI schedule used in several roles gives one SBEM year per
@@ -33,15 +37,17 @@ from epinterface.sbem.components.schedules import (
 
 from archetypal.reduction.schedules import MONTHS, WEEKDAYS, project
 from archetypal.umi._format import DaySchedule, WeekSchedule, YearSchedule, YearSchedulePart
-from archetypal.umi.correspondence import declare_rule, rule
+from archetypal.umi.correspondence import rule
 from archetypal.umi.report import LossKind
 from archetypal.umi.rules._common import REFERENCE_CALENDAR
 
 if TYPE_CHECKING:
     import numpy as np
+    from epinterface.sbem.common import MetadataMixin
     from epinterface.sbem.components.schedules import YearScheduleCategory
     from pydantic import JsonValue
 
+    from archetypal.umi._format import LibraryComponent
     from archetypal.umi.report import Findings
 
 __all__ = [
@@ -51,6 +57,8 @@ __all__ = [
     "WEEKDAYS",
     "day_to_sbem",
     "day_to_umi",
+    "metadata_to_sbem",
+    "metadata_to_umi",
     "type_to_sbem",
     "type_to_umi",
     "week_to_sbem",
@@ -74,7 +82,36 @@ _HOURS = 24
 # Last day of each month for a part's end; February ends on the 29th (research R7).
 _MONTH_ENDS = (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 
-declare_rule("schedule.metadata")
+
+@rule("schedule.metadata", to="sbem")
+def metadata_to_sbem(schedule: LibraryComponent) -> dict[str, str | None]:
+    """Return an SBEM schedule's metadata (UP-9): UMI's comments and data source; no category.
+
+    Basilisk fixes a schedule's category (`Day`, `Week`, `Year`), so it carries nothing.
+    """
+    return {"Comment": schedule.comments, "DataSource": schedule.data_source}
+
+
+@rule("schedule.metadata", to="umi")
+def metadata_to_umi(schedule: MetadataMixin, subject: str, location: str, findings: Findings) -> dict[str, str | None]:
+    """Return a UMI schedule's metadata (UP-9), listing what Basilisk's schedules cannot hold.
+
+    Args:
+        schedule: The SBEM day, week or year.
+        subject: The archetype being written.
+        location: The schedule's SBEM field path.
+        findings: Collects the losses: a category (Basilisk fixes it) and a version.
+
+    Returns:
+        `Comments` and `DataSource`, by Basilisk key.
+    """
+    for key, value, reason in (
+        ("Category", schedule.Category, "Basilisk fixes the category of schedules (Day, Week, Year)."),
+        ("Version", schedule.Version, "UMI schedules have no version."),
+    ):
+        if value is not None:
+            findings.lose(LossKind.LOST, subject, _path(location, key), value, "schedule.metadata", reason)
+    return {"Comments": schedule.Comment, "DataSource": schedule.DataSource}
 
 
 def _pointer(location: str, *keys: str | int) -> str:
@@ -137,13 +174,19 @@ def day_to_sbem(day: DaySchedule, subject: str, location: str, findings: Finding
         raise ValueError(msg)
     kind = type_to_sbem(day.type, subject, location, findings)
     hours = {f"Hour_{hour:02d}": value for hour, value in enumerate(day.values)}
-    return DayComponent.model_validate({"Name": day.name or "", "Type": kind, **hours})
+    return DayComponent.model_validate({"Name": day.name or "", "Type": kind, **metadata_to_sbem(day), **hours})
 
 
 @rule("schedule.day", to="umi")
 def day_to_umi(day: DayComponent) -> DaySchedule:
-    """Translate an SBEM day to a UMI day schedule."""
-    return DaySchedule.model_validate({"Name": day.Name, "Type": type_to_umi(day.Type), "Values": day.Values})
+    """Translate an SBEM day to a UMI day schedule, with its comment and data source."""
+    return DaySchedule.model_validate({
+        "Name": day.Name,
+        "Comments": day.Comment,
+        "DataSource": day.DataSource,
+        "Type": type_to_umi(day.Type),
+        "Values": day.Values,
+    })
 
 
 # --- schedule.week ------------------------------------------------------------------------
@@ -177,7 +220,7 @@ class _Reader:
                 msg = f"{_pointer(location, 'Days', index)}: the week has no {weekday} schedule"
                 raise ValueError(msg)
             days[weekday] = self.day(day, _pointer(location, "Days", index))
-        component = WeekComponent.model_validate({"Name": week.name or "", **days})
+        component = WeekComponent.model_validate({"Name": week.name or "", **metadata_to_sbem(week), **days})
         _check_type(week.type, component.Type, self.subject, location, self.findings)
         self.weeks[key] = component
         return component
@@ -236,9 +279,10 @@ class _Writer:
         self.days: dict[str, DaySchedule] = {}
         self.weeks: dict[str, WeekSchedule] = {}
 
-    def day(self, day: DayComponent) -> DaySchedule:
+    def day(self, day: DayComponent, location: str) -> DaySchedule:
         key = day.model_dump_json()
         if key not in self.days:
+            metadata_to_umi(day, self.subject, location, self.findings)
             self.days[key] = day_to_umi(day)
         return self.days[key]
 
@@ -261,7 +305,8 @@ class _Writer:
                 )
         schedule = WeekSchedule.model_validate({
             "Name": week.Name,
-            "Days": [self.day(day) for day in week.Days],
+            **metadata_to_umi(week, self.subject, location, self.findings),
+            "Days": [self.day(day, _path(location, weekday)) for weekday, day in zip(WEEKDAYS, week.Days, strict=True)],
             "Type": type_to_umi(week.Type),
         })
         self.weeks[key] = schedule
@@ -392,7 +437,12 @@ def year_to_sbem(
             "representative week that conserves the month's sum over the reference year.",
             replacement=week.Name,
         )
-    component = YearComponent.model_validate({"Name": year.name or "", "Type": role, **months})
+    component = YearComponent.model_validate({
+        "Name": year.name or "",
+        "Type": role,
+        **metadata_to_sbem(year),
+        **months,
+    })
     _check_type(year.type, component.schedule_type_limits, subject, location, findings)
     return component
 
@@ -432,6 +482,7 @@ def year_to_umi(year: YearComponent, subject: str, location: str, findings: Find
         first = month
     return YearSchedule.model_validate({
         "Name": year.Name,
+        **metadata_to_umi(year, subject, location, findings),
         "Parts": parts,
         "Type": type_to_umi(year.schedule_type_limits),
     })

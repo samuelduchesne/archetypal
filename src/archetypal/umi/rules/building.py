@@ -11,9 +11,13 @@
   every orientation. On writing, a uniform ratio is copied; differing ratios become the
   facade-area-weighted mean (the plain mean when facade areas are unknown) and are reported as
   lost. The mean conserves window area for a given facade.
-- **Template-level fields** (`building.metadata`, `building.partition_ratio`,
-  `structure.upstream`, `names.metadata`). SBEM has no place for them until UP-9 (research
-  R6): each one that differs from Basilisk's default is reported as lost.
+- **Template-level fields** (UP-9, research R6). The descriptive and life-cycle fields
+  (`building.metadata`) and the template's `Category`, `Comments` and `DataSource`
+  (`names.metadata`) map to the archetype's fields of the same names; the structure
+  (`structure.component`) to the archetype's `StructureComponent`, field by field. The partition
+  ratio (`building.partition_ratio`), partition wall area per floor area, becomes each group's
+  `PartitionAreaPerFloorArea`, which counts both faces: twice the ratio. Writing takes the
+  perimeter group's and loses a different one of another group.
 - **Names** (`names.component`, data-model.md "Names of components without a one-to-one
   counterpart"). Reading names each SBEM sub-component from the UMI component that holds its
   content; writing recovers the UMI name from the parent, so names survive both round trips.
@@ -31,11 +35,25 @@ from typing import TYPE_CHECKING, Any, NamedTuple, cast
 from epinterface.sbem.archetype import ORIENTATIONS, Archetype, BuildingGeometry, ZoneGroup
 from epinterface.sbem.components.envelope import ZoneEnvelopeComponent
 from epinterface.sbem.components.operations import ZoneOperationsComponent
+from epinterface.sbem.components.structure import StructureComponent
 from epinterface.sbem.components.zones import ZoneComponent
 
-from archetypal.umi._format import BuildingTemplate
+from archetypal.umi._format import (
+    AdvancedStructuralModel,
+    BuildingTemplate,
+    MassRatios,
+    OpaqueMaterial,
+    StructureInformation,
+)
 from archetypal.umi.correspondence import declare_rule, rule
-from archetypal.umi.report import Loss, LossKind, Note, NoteKind
+from archetypal.umi.report import Findings, Loss, LossKind, Note, NoteKind
+from archetypal.umi.rules.materials import (
+    assembly_life_cycle_losses,
+    assembly_life_cycle_to_sbem,
+    assembly_life_cycle_to_umi,
+    material_to_sbem,
+    material_to_umi,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Hashable, Mapping
@@ -44,9 +62,11 @@ if TYPE_CHECKING:
     from epinterface.sbem.common import MetadataMixin
     from epinterface.sbem.components.envelope import (
         EnvelopeAssemblyComponent,
-        GlazingConstructionSimpleComponent,
         InfiltrationComponent,
+        WindowConstruction,
+        WindowSettingsComponent,
     )
+    from epinterface.sbem.components.materials import ConstructionMaterialComponent
     from epinterface.sbem.components.space_use import ZoneSpaceUseComponent
     from epinterface.sbem.components.systems import DHWComponent, ZoneHVACComponent
     from pydantic import JsonValue
@@ -71,10 +91,13 @@ __all__ = [
     "groups_from_template",
     "metadata_to_sbem",
     "metadata_to_umi",
-    "partition_ratio_losses",
-    "structure_losses",
+    "partition_area_to_sbem",
+    "partition_ratio_to_umi",
+    "structure_to_sbem",
+    "structure_to_umi",
     "template_losses",
-    "template_metadata_losses",
+    "template_metadata_to_sbem",
+    "template_metadata_to_umi",
     "template_zones",
     "umi_names",
     "window_settings_name",
@@ -93,7 +116,6 @@ UNCATEGORIZED = "Uncategorized"
 """Basilisk's default `Category`, which SBEM holds as an unset category."""
 
 _WWR_PATH = "archetype.Geometry.WindowToWallRatio"
-_UP9 = "UP-9"
 
 declare_rule("building.library")
 
@@ -149,7 +171,8 @@ def archetype_from_template(
             new name).
 
     Returns:
-        The archetype and the template-level fields it lost (`template_losses`).
+        The archetype, with the template's metadata and structure (UP-9), and what they lost.
+        The partition ratio goes to the zone definitions (`partition_area_to_sbem`).
 
     Raises:
         ValueError: The template has no name, `Core` or `Perimeter`.
@@ -158,12 +181,21 @@ def archetype_from_template(
     if subject is None:
         msg = f"the building template at {pointer} has no name"
         raise ValueError(msg)
-    archetype = Archetype(
-        Name=subject,
-        Groups=groups_from_template(template, translate_zone),
-        Geometry=BuildingGeometry(WindowToWallRatio=wwr_to_sbem(template.default_window_to_wall_ratio)),
-    )
-    return archetype, template_losses(template, pointer=pointer, subject=subject)
+    metadata, losses = template_metadata_to_sbem(template, pointer=pointer, subject=subject)
+    structure = None
+    if template.structure is not None:
+        structure, structure_losses = structure_to_sbem(
+            template.structure, pointer=f"{pointer}/Structure", subject=subject
+        )
+        losses.extend(structure_losses)
+    archetype = Archetype.model_validate({
+        "Name": subject,
+        "Groups": groups_from_template(template, translate_zone),
+        "Geometry": BuildingGeometry(WindowToWallRatio=wwr_to_sbem(template.default_window_to_wall_ratio)),
+        "Structure": structure,
+        **metadata,
+    })
+    return archetype, losses
 
 
 class TemplateZones(NamedTuple):
@@ -340,7 +372,7 @@ def wwr_to_umi(geometry: BuildingGeometry, *, subject: str) -> WindowToWallRatio
     return WindowToWallRatio(mean, (loss,), ())
 
 
-# --- Template-level fields SBEM cannot hold yet (UP-9) -------------------------------------------
+# --- Template-level fields (UP-9) ------------------------------------------------------------------
 
 _TEMPLATE_METADATA: tuple[tuple[str, str], ...] = (
     ("lifespan", "Lifespan"),
@@ -352,11 +384,8 @@ _TEMPLATE_METADATA: tuple[tuple[str, str], ...] = (
     ("author_emails", "AuthorEmails"),
     ("version", "Version"),
 )
-_COMPONENT_METADATA: tuple[tuple[str, str], ...] = (
-    ("category", "Category"),
-    ("comments", "Comments"),
-    ("data_source", "DataSource"),
-)
+PARTITION_FACES = 2.0
+"""Faces of a partition wall exposed to the zone: SBEM's partition area counts both."""
 
 
 def _lost(
@@ -380,77 +409,296 @@ def _json(value: object) -> JsonValue:
     return cast("JsonValue", value)
 
 
-def _upstream_losses(
-    template: BuildingTemplate, fields: tuple[tuple[str, str], ...], rule_id: str, *, pointer: str, subject: str
-) -> list[Loss]:
-    """Report each field that differs from Basilisk's default as lost until UP-9."""
-    losses: list[Loss] = []
-    for attribute, key in fields:
-        value = getattr(template, attribute)
-        default = BuildingTemplate.model_fields[attribute].get_default(call_default_factory=True)
-        if value != default:
-            losses.append(
-                _lost(
-                    subject,
-                    f"{pointer}/{key}",
-                    _json(value),
-                    rule_id,
-                    f"The archetype has no {key} yet; UP-9 adds archetype-level fields for UMI.",
-                    _UP9,
-                )
-            )
-    return losses
-
-
 def _subject(template: BuildingTemplate, subject: str | None) -> str:
     return subject if subject is not None else (template.name or "")
 
 
 @rule("building.partition_ratio", to="sbem")
-def partition_ratio_losses(template: BuildingTemplate, *, pointer: str, subject: str | None = None) -> list[Loss]:
-    """Report a template's `PartitionRatio` as lost unless it is Basilisk's default (UP-9)."""
-    fields = (("partition_ratio", "PartitionRatio"),)
-    return _upstream_losses(
-        template, fields, "building.partition_ratio", pointer=pointer, subject=_subject(template, subject)
-    )
+def partition_area_to_sbem(
+    template: BuildingTemplate, *, pointer: str, subject: str | None = None
+) -> tuple[float, list[Loss]]:
+    """Return SBEM's `PartitionAreaPerFloorArea` of a template's zones: twice its `PartitionRatio`.
 
+    The ratio is partition wall area per floor area; SBEM's internal partitions count both
+    faces, as EnergyPlus internal mass does. A negative ratio is lost (no partitions).
 
-@rule("structure.upstream", to="sbem")
-def structure_losses(template: BuildingTemplate, *, pointer: str, subject: str | None = None) -> list[Loss]:
-    """Report a template's `Structure` as lost, by name, when it has one (UP-9)."""
-    if template.structure is None:
-        return []
-    return [
-        _lost(
+    Args:
+        template: The building template.
+        pointer: Its JSON pointer.
+        subject: The archetype's name; by default the template's.
+
+    Returns:
+        The area per floor area and the losses.
+    """
+    ratio = template.partition_ratio
+    if ratio < 0:
+        loss = _lost(
             _subject(template, subject),
-            f"{pointer}/Structure",
-            template.structure.name,
-            "structure.upstream",
-            "The archetype has no structure yet; UP-9 adds a structure component at building level.",
-            _UP9,
+            f"{pointer}/PartitionRatio",
+            ratio,
+            "building.partition_ratio",
+            "SBEM's partition area cannot be negative; the zones have no internal partitions.",
         )
+        return 0.0, [loss]
+    return PARTITION_FACES * ratio, []
+
+
+@rule("building.partition_ratio", to="umi")
+def partition_ratio_to_umi(areas: Mapping[str, float], *, subject: str) -> tuple[float, list[Loss]]:
+    """Return a template's `PartitionRatio` from its groups' partition areas: half the perimeter group's.
+
+    Another group's different area is lost.
+
+    Args:
+        areas: Each group's `PartitionAreaPerFloorArea`, by group name, in group order.
+        subject: The archetype's name.
+
+    Returns:
+        The ratio and the losses.
+    """
+    if not areas:
+        return 0.0, []
+    chosen = PERIMETER_GROUP if PERIMETER_GROUP in areas else next(iter(areas))
+    area = areas[chosen]
+    losses = [
+        _lost(
+            subject,
+            f"{group}.Envelope.Assemblies.PartitionAreaPerFloorArea",
+            other,
+            "building.partition_ratio",
+            f"A UMI template has one partition ratio: the {chosen} group's partitions are written.",
+        )
+        for group, other in areas.items()
+        if group != chosen and other != area
     ]
+    return area / PARTITION_FACES, losses
+
+
+def _material_to_sbem(
+    material: OpaqueMaterial | None, pointer: str, subject: str, findings: Findings
+) -> ConstructionMaterialComponent | None:
+    return None if material is None else material_to_sbem(material, subject, pointer, findings)
+
+
+def _material_to_umi(
+    material: ConstructionMaterialComponent | None, location: str, subject: str, findings: Findings
+) -> OpaqueMaterial | None:
+    return None if material is None else material_to_umi(material, subject, location, findings)
+
+
+_SYSTEM_SLOTS: tuple[tuple[str, str], ...] = (
+    ("beams", "Beams"),
+    ("columns", "Columns"),
+    ("floors", "Floors"),
+    ("foundations", "Foundations"),
+    ("lateral_system", "LateralSystem"),
+)
+
+
+@rule("structure.component", to="sbem")
+def structure_to_sbem(
+    structure: StructureInformation, *, pointer: str, subject: str
+) -> tuple[StructureComponent, list[Loss]]:
+    """Read a template's structure as the archetype's `StructureComponent` (UP-9), field by field.
+
+    Materials go through the material rules, with their losses.
+
+    Args:
+        structure: The UMI structure.
+        pointer: Its JSON pointer.
+        subject: The archetype's name.
+
+    Returns:
+        The structure and the losses.
+
+    Raises:
+        ValueError: A material has a roughness that is not an EnergyPlus keyword.
+    """
+    findings = Findings()
+    ratios: list[dict[str, object]] = []
+    for index, ratio in enumerate(structure.mass_ratios):
+        where = f"{pointer}/MassRatios/{index}"
+        if ratio.material is None:
+            findings.lose(
+                LossKind.LOST,
+                subject,
+                where,
+                ratio.model_dump(mode="json", by_alias=True),
+                "structure.component",
+                "An SBEM mass ratio needs a material.",
+            )
+            continue
+        ratios.append({
+            "Material": material_to_sbem(ratio.material, subject, f"{where}/Material", findings),
+            "NormalRatio": ratio.normal_ratio,
+            "HighLoadRatio": ratio.high_load_ratio,
+        })
+    advanced = structure.advanced_model
+    systems = advanced.construction_systems
+    assembly_life_cycle_losses(structure, subject, pointer, findings)
+    component = StructureComponent.model_validate({
+        "Name": structure.name or "",
+        **metadata_to_sbem(structure),
+        **assembly_life_cycle_to_sbem(structure),
+        "MassRatios": ratios,
+        "UseAdvancedModel": structure.use_advanced_model,
+        "AdvancedModel": {
+            "ColumnWallSpacing": {
+                "PrimarySpan": advanced.column_wall_spacing.primary_span,
+                "SecondarySpan": advanced.column_wall_spacing.secondary_span,
+            },
+            "ConstructionSystems": {
+                key: {
+                    "Material": _material_to_sbem(
+                        getattr(systems, name).material,
+                        f"{pointer}/AdvancedModel/ConstructionSystems/{key}/Material",
+                        subject,
+                        findings,
+                    ),
+                    "ConstructionSystemType": getattr(systems, name).construction_system_type.value,
+                }
+                for name, key in _SYSTEM_SLOTS
+            },
+            "FoundationSoilSettings": {
+                "FoundationSoilPreset": advanced.foundation_soil_settings.foundation_soil_preset.value,
+                "FoundationSoilValue": advanced.foundation_soil_settings.foundation_soil_value,
+            },
+            "LoadingSettings": {
+                "LiveLoadingPreset": advanced.loading_settings.live_loading_preset.value,
+                "LiveLoadingValue": advanced.loading_settings.live_loading_value,
+            },
+        },
+    })
+    return component, findings.losses
+
+
+@rule("structure.component", to="umi")
+def structure_to_umi(
+    structure: StructureComponent, *, location: str, subject: str
+) -> tuple[StructureInformation, list[Loss]]:
+    """Write the archetype's `StructureComponent` (UP-9) as a template's structure.
+
+    Args:
+        structure: The SBEM structure.
+        location: Its SBEM field path (`archetype.Structure`).
+        subject: The archetype's name.
+
+    Returns:
+        The UMI structure and the losses (materials, SBEM's `Version`).
+    """
+    findings = Findings()
+    metadata = metadata_to_umi(structure, subject=subject, location=location)
+    advanced = structure.AdvancedModel
+    systems = advanced.ConstructionSystems
+    model = AdvancedStructuralModel.model_validate({
+        "ColumnWallSpacing": advanced.ColumnWallSpacing.model_dump(),
+        "ConstructionSystems": {
+            key: {
+                "Material": _material_to_umi(
+                    getattr(systems, key).Material,
+                    f"{location}.AdvancedModel.ConstructionSystems.{key}.Material",
+                    subject,
+                    findings,
+                ),
+                "ConstructionSystemType": getattr(systems, key).ConstructionSystemType,
+            }
+            for _, key in _SYSTEM_SLOTS
+        },
+        "FoundationSoilSettings": advanced.FoundationSoilSettings.model_dump(),
+        "LoadingSettings": advanced.LoadingSettings.model_dump(),
+    })
+    ratios = [
+        MassRatios.model_validate({
+            "Material": material_to_umi(ratio.Material, subject, f"{location}.MassRatios.{index}.Material", findings),
+            "NormalRatio": ratio.NormalRatio,
+            "HighLoadRatio": ratio.HighLoadRatio,
+        })
+        for index, ratio in enumerate(structure.MassRatios)
+    ]
+    information = StructureInformation.model_validate({
+        "Name": structure.Name,
+        **metadata.fields,
+        **assembly_life_cycle_to_umi(structure),
+        "MassRatios": ratios,
+        "UseAdvancedModel": structure.UseAdvancedModel,
+        "AdvancedModel": model,
+    })
+    return information, [*metadata.losses, *findings.losses]
 
 
 @rule("building.metadata", to="sbem")
-def template_metadata_losses(template: BuildingTemplate, *, pointer: str, subject: str | None = None) -> list[Loss]:
-    """Report the template's descriptive and life-cycle fields as lost unless at their defaults (UP-9).
+def template_metadata_to_sbem(
+    template: BuildingTemplate, *, pointer: str, subject: str | None = None
+) -> tuple[dict[str, object], list[Loss]]:
+    """Return the archetype's descriptive and life-cycle fields of a template (UP-9).
 
-    These are `Lifespan`, `YearFrom`, `YearTo`, `Country`, `ClimateZone`, `Authors`,
-    `AuthorEmails` and `Version`.
+    `Lifespan`, `YearFrom`, `YearTo`, `Country`, `ClimateZone`, `Authors`, `AuthorEmails` and
+    `Version` are copied, and the template's `Category`, `Comments` and `DataSource` become the
+    archetype's (`names.metadata`). A negative lifespan, or a `YearTo` before `YearFrom`, which
+    SBEM refuses, is lost.
+
+    Args:
+        template: The building template.
+        pointer: Its JSON pointer.
+        subject: The archetype's name; by default the template's.
+
+    Returns:
+        The archetype's fields by name, and the losses.
     """
-    return _upstream_losses(
-        template, _TEMPLATE_METADATA, "building.metadata", pointer=pointer, subject=_subject(template, subject)
-    )
+    subject = _subject(template, subject)
+    fields: dict[str, object] = {key: _json(getattr(template, name)) for name, key in _TEMPLATE_METADATA}
+    fields.update(metadata_to_sbem(template))
+    losses: list[Loss] = []
+    if template.lifespan < 0:
+        losses.append(
+            _lost(
+                subject,
+                f"{pointer}/Lifespan",
+                template.lifespan,
+                "building.metadata",
+                "SBEM's lifespan cannot be negative.",
+            )
+        )
+        del fields["Lifespan"]
+    year_from, year_to = template.year_from, template.year_to
+    if year_from is not None and year_to is not None and year_from > year_to:
+        losses.append(
+            _lost(subject, f"{pointer}/YearTo", year_to, "building.metadata", "SBEM refuses a YearTo before YearFrom.")
+        )
+        del fields["YearTo"]
+    return fields, losses
+
+
+@rule("building.metadata", to="umi")
+def template_metadata_to_umi(archetype: Archetype) -> dict[str, object]:
+    """Return a template's descriptive and life-cycle fields from the archetype (UP-9).
+
+    Unset fields take Basilisk's defaults; the archetype's `Category`, `Comment` and
+    `DataSource` become the template's (`names.metadata`).
+
+    Args:
+        archetype: The archetype.
+
+    Returns:
+        The template's fields by Basilisk key.
+    """
+    fields: dict[str, object] = {
+        key: value for _, key in _TEMPLATE_METADATA if (value := getattr(archetype, key)) is not None
+    }
+    fields.update({
+        "Category": archetype.Category if archetype.Category is not None else UNCATEGORIZED,
+        "Comments": archetype.Comment,
+        "DataSource": archetype.DataSource,
+    })
+    return fields
 
 
 def template_losses(template: BuildingTemplate, *, pointer: str, subject: str | None = None) -> list[Loss]:
-    """Report every template-level field of research R6's table that the archetype loses.
+    """Report the template-level fields of research R6's table that the archetype loses.
 
-    A field at Basilisk's default loses nothing, since writing the archetype back gives the
-    same default. The others are lost with `upstream: "UP-9"`: `PartitionRatio`, `Structure`,
-    the descriptive and life-cycle fields, and the template's `Category`, `Comments` and
-    `DataSource`.
+    Since UP-9 the archetype holds every one of them, so only values SBEM refuses are lost:
+    a negative partition ratio or lifespan, a `YearTo` before `YearFrom`, and the structure's
+    losses.
 
     Args:
         template: The building template.
@@ -458,15 +706,16 @@ def template_losses(template: BuildingTemplate, *, pointer: str, subject: str | 
         subject: The archetype's name; by default the template's.
 
     Returns:
-        The losses, in R6's order.
+        The losses.
     """
     subject = _subject(template, subject)
-    return [
-        *partition_ratio_losses(template, pointer=pointer, subject=subject),
-        *structure_losses(template, pointer=pointer, subject=subject),
-        *template_metadata_losses(template, pointer=pointer, subject=subject),
-        *_upstream_losses(template, _COMPONENT_METADATA, "names.metadata", pointer=pointer, subject=subject),
+    losses = [
+        *partition_area_to_sbem(template, pointer=pointer, subject=subject)[1],
+        *template_metadata_to_sbem(template, pointer=pointer, subject=subject)[1],
     ]
+    if template.structure is not None:
+        losses.extend(structure_to_sbem(template.structure, pointer=f"{pointer}/Structure", subject=subject)[1])
+    return losses
 
 
 # --- Names (names.component) ----------------------------------------------------------------------
@@ -721,7 +970,8 @@ def zone_component(  # noqa: PLR0913 - one argument per part of an SBEM zone
     infiltration: InfiltrationComponent,
     attic_infiltration: InfiltrationComponent,
     basement_infiltration: InfiltrationComponent,
-    window: GlazingConstructionSimpleComponent | None,
+    window: WindowConstruction | None,
+    window_settings: WindowSettingsComponent | None = None,
     metadata: Mapping[str, str | None] | None = None,
 ) -> ZoneComponent:
     """Assemble the SBEM zone definition of a UMI zone definition from its translated parts.
@@ -739,6 +989,7 @@ def zone_component(  # noqa: PLR0913 - one argument per part of an SBEM zone
         attic_infiltration: The attic's infiltration.
         basement_infiltration: The basement's infiltration.
         window: The template's window, or `None`.
+        window_settings: The template's window settings (UP-9), or `None`.
         metadata: SBEM metadata for the operations (`Category`, `Comment`, `DataSource`).
 
     Returns:
@@ -752,5 +1003,6 @@ def zone_component(  # noqa: PLR0913 - one argument per part of an SBEM zone
         AtticInfiltration=attic_infiltration,
         BasementInfiltration=basement_infiltration,
         Window=window,
+        WindowSettings=window_settings,
     )
     return ZoneComponent(Name=name, Operations=operations, Envelope=envelope)

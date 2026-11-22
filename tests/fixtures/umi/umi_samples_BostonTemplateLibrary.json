@@ -1,0 +1,5854 @@
+{
+  "GasMaterials": [
+    {
+      "$id": "1",
+      "GasType": 0,
+      "Type": "Gas",
+      "EmbodiedEnergy": 0.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Comment": null,
+      "DataSource": null,
+      "Name": "AIR"
+    },
+    {
+      "$id": "2",
+      "GasType": 1,
+      "Type": "Gas",
+      "EmbodiedEnergy": 0.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Comment": null,
+      "DataSource": null,
+      "Name": "ARGON"
+    },
+    {
+      "$id": "3",
+      "GasType": 2,
+      "Type": "Gas",
+      "EmbodiedEnergy": 0.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Comment": null,
+      "DataSource": null,
+      "Name": "KRYPTON"
+    },
+    {
+      "$id": "4",
+      "GasType": 3,
+      "Type": "Gas",
+      "EmbodiedEnergy": 0.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Comment": null,
+      "DataSource": null,
+      "Name": "XENON"
+    },
+    {
+      "$id": "5",
+      "GasType": 4,
+      "Type": "Gas",
+      "EmbodiedEnergy": 0.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Comment": null,
+      "DataSource": null,
+      "Name": "SF6"
+    }
+  ],
+  "GlazingMaterials": [
+    {
+      "$id": "6",
+      "Conductivity": 0.9,
+      "Density": 2500.0,
+      "Optical": "SpectralAverage",
+      "OpticalData": "",
+      "SolarTransmittance": 0.83,
+      "SolarReflectanceFront": 0.07,
+      "SolarReflectanceBack": 0.07,
+      "VisibleTransmittance": 0.89,
+      "VisibleReflectanceFront": 0.08,
+      "VisibleReflectanceBack": 0.08,
+      "IRTransmittance": 0.01,
+      "IREmissivityFront": 0.84,
+      "IREmissivityBack": 0.84,
+      "DirtFactor": 1.0,
+      "Type": "Uncoated",
+      "EmbodiedEnergy": 191.8,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 10.1,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.2
+      ],
+      "SubstitutionTimestep": 50.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Glass_Clear_4"
+    },
+    {
+      "$id": "7",
+      "Conductivity": 0.9,
+      "Density": 2500.0,
+      "Optical": "SpectralAverage",
+      "OpticalData": "",
+      "SolarTransmittance": 0.83,
+      "SolarReflectanceFront": 0.07,
+      "SolarReflectanceBack": 0.07,
+      "VisibleTransmittance": 0.89,
+      "VisibleReflectanceFront": 0.08,
+      "VisibleReflectanceBack": 0.08,
+      "IRTransmittance": 0.01,
+      "IREmissivityFront": 0.84,
+      "IREmissivityBack": 0.84,
+      "DirtFactor": 1.0,
+      "Type": "Uncoated",
+      "EmbodiedEnergy": 96.1,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 5.06,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.2
+      ],
+      "SubstitutionTimestep": 50.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Glass_Clear_3"
+    },
+    {
+      "$id": "8",
+      "Conductivity": 0.9,
+      "Density": 2500.0,
+      "Optical": "SpectralAverage",
+      "OpticalData": "",
+      "SolarTransmittance": 0.11,
+      "SolarReflectanceFront": 0.27,
+      "SolarReflectanceBack": 0.43,
+      "VisibleTransmittance": 0.14,
+      "VisibleReflectanceFront": 0.31,
+      "VisibleReflectanceBack": 0.35,
+      "IRTransmittance": 0.01,
+      "IREmissivityFront": 0.84,
+      "IREmissivityBack": 0.84,
+      "DirtFactor": 1.0,
+      "Type": "Coated",
+      "EmbodiedEnergy": 96.1,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 5.06,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.2
+      ],
+      "SubstitutionTimestep": 50.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Glass_Clear_3_Ref_H"
+    },
+    {
+      "$id": "9",
+      "Conductivity": 0.9,
+      "Density": 2500.0,
+      "Optical": "SpectralAverage",
+      "OpticalData": "",
+      "SolarTransmittance": 0.63,
+      "SolarReflectanceFront": 0.19,
+      "SolarReflectanceBack": 0.22,
+      "VisibleTransmittance": 0.85,
+      "VisibleReflectanceFront": 0.06,
+      "VisibleReflectanceBack": 0.08,
+      "IRTransmittance": 0.01,
+      "IREmissivityFront": 0.84,
+      "IREmissivityBack": 0.84,
+      "DirtFactor": 1.0,
+      "Type": "Coated",
+      "EmbodiedEnergy": 96.1,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 5.06,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.2
+      ],
+      "SubstitutionTimestep": 50.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Glass_Clear_3_LoE_1"
+    }
+  ],
+  "OpaqueMaterials": [
+    {
+      "$id": "10",
+      "Conductivity": 0.14,
+      "Density": 650.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1200.0,
+      "ThermalEmittance": 0.85,
+      "SolarAbsorptance": 0.6,
+      "VisibleAbsorptance": 0.6,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Floorings",
+      "EmbodiedEnergy": 7.4,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.45,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.5,
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Wood_Floor"
+    },
+    {
+      "$id": "11",
+      "Conductivity": 1.25,
+      "Density": 880.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Masonry",
+      "EmbodiedEnergy": 0.71,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.08,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.2
+      ],
+      "SubstitutionTimestep": 50.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Concrete_Block_H"
+    },
+    {
+      "$id": "12",
+      "Conductivity": 0.1,
+      "Density": 1.2,
+      "Roughness": "Rough",
+      "SpecificHeat": 1000.0,
+      "ThermalEmittance": 0.01,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "AirCavity",
+      "EmbodiedEnergy": 0.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 100.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Air_Wall_3cm"
+    },
+    {
+      "$id": "13",
+      "Conductivity": 1.75,
+      "Density": 2400.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Concrete",
+      "EmbodiedEnergy": 2.12,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.24,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 100.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Concrete_RC_Dense"
+    },
+    {
+      "$id": "14",
+      "Conductivity": 1.65,
+      "Density": 2100.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1040.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Concrete",
+      "EmbodiedEnergy": 2.12,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.24,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 100.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Concrete_MC_Light"
+    },
+    {
+      "$id": "15",
+      "Conductivity": 1.77,
+      "Density": 1900.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Masonry",
+      "EmbodiedEnergy": 0.71,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.08,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.2
+      ],
+      "SubstitutionTimestep": 50.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Concrete_Block_S"
+    },
+    {
+      "$id": "16",
+      "Conductivity": 0.16,
+      "Density": 950.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.6,
+      "VisibleAbsorptance": 0.6,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Boards",
+      "EmbodiedEnergy": 6.75,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.38,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.02,
+        0.1,
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Gypsum_Board"
+    },
+    {
+      "$id": "17",
+      "Conductivity": 0.41,
+      "Density": 1000.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 920.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.5,
+      "VisibleAbsorptance": 0.5,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Masonry",
+      "EmbodiedEnergy": 3.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.22,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.2
+      ],
+      "SubstitutionTimestep": 50.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Clay_Brick_H"
+    },
+    {
+      "$id": "18",
+      "Conductivity": 0.7,
+      "Density": 1.2,
+      "Roughness": "Rough",
+      "SpecificHeat": 1000.0,
+      "ThermalEmittance": 0.01,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "AirCavity",
+      "EmbodiedEnergy": 0.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 100.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Air_Floor_15cm"
+    },
+    {
+      "$id": "19",
+      "Conductivity": 0.8,
+      "Density": 2243.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.4,
+      "VisibleAbsorptance": 0.4,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Floorings",
+      "EmbodiedEnergy": 9.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.59,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.5,
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Ceramic_Tile"
+    },
+    {
+      "$id": "20",
+      "Conductivity": 0.037,
+      "Density": 40.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1200.0,
+      "ThermalEmittance": 0.6,
+      "SolarAbsorptance": 0.6,
+      "VisibleAbsorptance": 0.6,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Insulation",
+      "EmbodiedEnergy": 86.4,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 2.7,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.02,
+        0.1,
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_XPS_Board"
+    },
+    {
+      "$id": "21",
+      "Conductivity": 0.42,
+      "Density": 900.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Plaster",
+      "EmbodiedEnergy": 3.2,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.24,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.02,
+        0.1,
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Gypsum_Plaster"
+    },
+    {
+      "$id": "22",
+      "Conductivity": 0.8,
+      "Density": 1900.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.8,
+      "VisibleAbsorptance": 0.8,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Plaster",
+      "EmbodiedEnergy": 1.34,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.18,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.02,
+        0.1,
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Cement_Mortar"
+    },
+    {
+      "$id": "23",
+      "Conductivity": 0.11,
+      "Density": 540.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1880.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Boards",
+      "EmbodiedEnergy": 15.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.81,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.2
+      ],
+      "SubstitutionTimestep": 30.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Plywood_Board"
+    },
+    {
+      "$id": "24",
+      "Conductivity": 0.043,
+      "Density": 12.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.6,
+      "VisibleAbsorptance": 0.6,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Insulation",
+      "EmbodiedEnergy": 28.0,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 1.35,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.5
+      ],
+      "SubstitutionTimestep": 30.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 1000.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Fiberglass_Batts"
+    },
+    {
+      "$id": "25",
+      "Conductivity": 0.045,
+      "Density": 110.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Floorings",
+      "EmbodiedEnergy": 74.4,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 3.89,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 5.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 1000.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Urethane_Carpet"
+    },
+    {
+      "$id": "26",
+      "Conductivity": 0.16,
+      "Density": 680.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1630.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.6,
+      "VisibleAbsorptance": 0.6,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Wood",
+      "EmbodiedEnergy": 7.5,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.45,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.1,
+        0.1,
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Hardwood_General"
+    },
+    {
+      "$id": "27",
+      "Conductivity": 0.13,
+      "Density": 496.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1630.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.6,
+      "VisibleAbsorptance": 0.6,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Wood",
+      "EmbodiedEnergy": 7.5,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.45,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        0.1,
+        0.1,
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Softwood_General"
+    },
+    {
+      "$id": "28",
+      "Conductivity": 1.59,
+      "Density": 1920.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1260.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.6,
+      "VisibleAbsorptance": 0.6,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Roofings",
+      "EmbodiedEnergy": 0.55,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.032,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 30.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Slate_Tile"
+    },
+    {
+      "$id": "29",
+      "Conductivity": 0.04,
+      "Density": 592.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1300.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.6,
+      "VisibleAbsorptance": 0.6,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Roofings",
+      "EmbodiedEnergy": 7.8,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 0.47,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 30.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Wood_Shingle"
+    },
+    {
+      "$id": "30",
+      "Conductivity": 0.16,
+      "Density": 1380.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 1000.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.7,
+      "VisibleAbsorptance": 0.7,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Boards",
+      "EmbodiedEnergy": 77.2,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 2.41,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 20.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Vinyl_Cladding"
+    },
+    {
+      "$id": "31",
+      "Conductivity": 45.3,
+      "Density": 7830.0,
+      "Roughness": "Rough",
+      "SpecificHeat": 500.0,
+      "ThermalEmittance": 0.9,
+      "SolarAbsorptance": 0.4,
+      "VisibleAbsorptance": 0.4,
+      "MoistureDiffusionResistance": 50.0,
+      "PhaseChange": false,
+      "PhaseChangeProperties": "",
+      "VariableConductivity": false,
+      "VariableConductivityProperties": "",
+      "Type": "Metals",
+      "EmbodiedEnergy": 20.1,
+      "EmbodiedEnergyStdDev": 0.0,
+      "EmbodiedCarbon": 1.37,
+      "EmbodiedCarbonStdDev": 0.0,
+      "Cost": 0.0,
+      "Life": 1,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 100.0,
+      "TransportCarbon": 0.067,
+      "TransportDistance": 500.0,
+      "TransportEnergy": 0.94,
+      "Comment": "default",
+      "DataSource": "default",
+      "Name": "B_Steel_General"
+    }
+  ],
+  "OpaqueConstructions": [
+    {
+      "$id": "32",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.2
+        },
+        {
+          "Material": {
+            "$ref": "23"
+          },
+          "Thickness": 0.015
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.07
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.015
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Facade",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Bas_0"
+    },
+    {
+      "$id": "33",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "30"
+          },
+          "Thickness": 0.003
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.01
+        },
+        {
+          "Material": {
+            "$ref": "23"
+          },
+          "Thickness": 0.015
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.1
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.015
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Facade",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Fac_0_WF"
+    },
+    {
+      "$id": "34",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.2
+        },
+        {
+          "Material": {
+            "$ref": "23"
+          },
+          "Thickness": 0.015
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.07
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.015
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Facade",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Bas_0"
+    },
+    {
+      "$id": "35",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "17"
+          },
+          "Thickness": 0.06
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "11"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.05
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.015
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Facade",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Fac_0"
+    },
+    {
+      "$id": "36",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "17"
+          },
+          "Thickness": 0.06
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "11"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.05
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.015
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Facade",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Fac_0"
+    },
+    {
+      "$id": "37",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.2
+        },
+        {
+          "Material": {
+            "$ref": "23"
+          },
+          "Thickness": 0.015
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.07
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.015
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Facade",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Bas_0"
+    },
+    {
+      "$id": "38",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "14"
+          },
+          "Thickness": 0.1
+        },
+        {
+          "Material": {
+            "$ref": "23"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.12
+        },
+        {
+          "Material": {
+            "$ref": "18"
+          },
+          "Thickness": 0.1
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 1,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Roof",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Rof_0"
+    },
+    {
+      "$id": "39",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.1
+        },
+        {
+          "Material": {
+            "$ref": "14"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.2
+        },
+        {
+          "Material": {
+            "$ref": "18"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 1,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Roof",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Rof_0"
+    },
+    {
+      "$id": "40",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.1
+        },
+        {
+          "Material": {
+            "$ref": "14"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.2
+        },
+        {
+          "Material": {
+            "$ref": "18"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 1,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Roof",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Rof_0"
+    },
+    {
+      "$id": "41",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "14"
+          },
+          "Thickness": 0.04
+        },
+        {
+          "Material": {
+            "$ref": "22"
+          },
+          "Thickness": 0.03
+        },
+        {
+          "Material": {
+            "$ref": "19"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 2,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Ground Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Gro_0"
+    },
+    {
+      "$id": "42",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "14"
+          },
+          "Thickness": 0.04
+        },
+        {
+          "Material": {
+            "$ref": "22"
+          },
+          "Thickness": 0.03
+        },
+        {
+          "Material": {
+            "$ref": "19"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 2,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Ground Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Gro_0"
+    },
+    {
+      "$id": "43",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "14"
+          },
+          "Thickness": 0.04
+        },
+        {
+          "Material": {
+            "$ref": "22"
+          },
+          "Thickness": 0.03
+        },
+        {
+          "Material": {
+            "$ref": "19"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 2,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Ground Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Gro_0"
+    },
+    {
+      "$id": "44",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "10"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.01
+        },
+        {
+          "Material": {
+            "$ref": "23"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "18"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 3,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Interior Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Inf_0"
+    },
+    {
+      "$id": "45",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "25"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "22"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "18"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 3,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Interior Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Inf_0"
+    },
+    {
+      "$id": "46",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "25"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "22"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "18"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 3,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Interior Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Inf_0"
+    },
+    {
+      "$id": "47",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "26"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.04
+        },
+        {
+          "Material": {
+            "$ref": "23"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "10"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 4,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Exterior Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Exf_0"
+    },
+    {
+      "$id": "48",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "27"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 5,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Partition",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Par_0"
+    },
+    {
+      "$id": "49",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "27"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 5,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Partition",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Par_0"
+    },
+    {
+      "$id": "50",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "27"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 5,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Partition",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Par_0"
+    },
+    {
+      "$id": "51",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.04
+        },
+        {
+          "Material": {
+            "$ref": "22"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "25"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 4,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Exterior Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Exf_0"
+    },
+    {
+      "$id": "52",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "13"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.04
+        },
+        {
+          "Material": {
+            "$ref": "22"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "25"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 4,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Exterior Floor",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Exf_0"
+    },
+    {
+      "$id": "53",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "27"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "ThermalMass",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Thm_0"
+    },
+    {
+      "$id": "54",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "27"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "ThermalMass",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Thm_0"
+    },
+    {
+      "$id": "55",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "27"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "21"
+          },
+          "Thickness": 0.02
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "ThermalMass",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Thm_0"
+    },
+    {
+      "$id": "56",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "17"
+          },
+          "Thickness": 0.06
+        },
+        {
+          "Material": {
+            "$ref": "20"
+          },
+          "Thickness": 0.02
+        },
+        {
+          "Material": {
+            "$ref": "11"
+          },
+          "Thickness": 0.15
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.05
+        },
+        {
+          "Material": {
+            "$ref": "16"
+          },
+          "Thickness": 0.015
+        }
+      ],
+      "Type": 0,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Facade",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Fac_0_MS"
+    }
+  ],
+  "WindowConstructions": [
+    {
+      "$id": "57",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "7"
+          },
+          "Thickness": 0.003
+        },
+        {
+          "Material": {
+            "$ref": "1"
+          },
+          "Thickness": 0.006
+        },
+        {
+          "Material": {
+            "$ref": "7"
+          },
+          "Thickness": 0.003
+        }
+      ],
+      "Type": 2,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Double",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Dbl_Air_Cl"
+    },
+    {
+      "$id": "58",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "9"
+          },
+          "Thickness": 0.003
+        },
+        {
+          "Material": {
+            "$ref": "1"
+          },
+          "Thickness": 0.006
+        },
+        {
+          "Material": {
+            "$ref": "7"
+          },
+          "Thickness": 0.003
+        }
+      ],
+      "Type": 2,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Double",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Dbl_Air_Le"
+    },
+    {
+      "$id": "59",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "7"
+          },
+          "Thickness": 0.003
+        },
+        {
+          "Material": {
+            "$ref": "2"
+          },
+          "Thickness": 0.006
+        },
+        {
+          "Material": {
+            "$ref": "7"
+          },
+          "Thickness": 0.003
+        }
+      ],
+      "Type": 2,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Double",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Dbl_Arg_Cl"
+    },
+    {
+      "$id": "60",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "9"
+          },
+          "Thickness": 0.003
+        },
+        {
+          "Material": {
+            "$ref": "2"
+          },
+          "Thickness": 0.006
+        },
+        {
+          "Material": {
+            "$ref": "7"
+          },
+          "Thickness": 0.003
+        }
+      ],
+      "Type": 2,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Double",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Dbl_Arg_Le"
+    },
+    {
+      "$id": "61",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "6"
+          },
+          "Thickness": 0.004
+        }
+      ],
+      "Type": 1,
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Single",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Sng_Cl"
+    }
+  ],
+  "StructureDefinitions": [
+    {
+      "$id": "62",
+      "MassRatios": [
+        {
+          "HighLoadRatio": 305.0,
+          "Material": {
+            "$ref": "31"
+          },
+          "NormalRatio": 305.0
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Steel",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Str_0"
+    },
+    {
+      "$id": "63",
+      "MassRatios": [
+        {
+          "HighLoadRatio": 305.0,
+          "Material": {
+            "$ref": "31"
+          },
+          "NormalRatio": 305.0
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Steel",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Str_0"
+    },
+    {
+      "$id": "64",
+      "MassRatios": [
+        {
+          "HighLoadRatio": 5.0,
+          "Material": {
+            "$ref": "27"
+          },
+          "NormalRatio": 5.0
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Timber",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Str_W_0"
+    },
+    {
+      "$id": "65",
+      "MassRatios": [
+        {
+          "HighLoadRatio": 305.0,
+          "Material": {
+            "$ref": "31"
+          },
+          "NormalRatio": 305.0
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Steel",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Str_S_0"
+    }
+  ],
+  "DaySchedules": [
+    {
+      "$id": "66",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "hourlyAllOn"
+    },
+    {
+      "$id": "67",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.7,
+        0.3,
+        0.3,
+        0.3,
+        0.3,
+        0.3,
+        0.3,
+        0.3,
+        0.3,
+        0.3,
+        0.7,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Occ_WD"
+    },
+    {
+      "$id": "68",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.7,
+        0.7,
+        0.7,
+        0.7,
+        0.7,
+        0.3,
+        0.3,
+        0.3,
+        0.3,
+        0.7,
+        0.7,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Occ_WE"
+    },
+    {
+      "$id": "69",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        0.5,
+        0.5,
+        0.2,
+        0.2,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.5,
+        0.8,
+        0.8,
+        0.8,
+        0.8,
+        0.2
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Lgt_WD"
+    },
+    {
+      "$id": "70",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        0.5,
+        0.2,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.5,
+        0.8,
+        0.8,
+        0.8,
+        0.8,
+        0.2
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Lgt_WE"
+    },
+    {
+      "$id": "71",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.6,
+        0.6,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.6,
+        1.0,
+        1.0,
+        0.8,
+        0.8,
+        0.6,
+        0.6
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Plg_WD"
+    },
+    {
+      "$id": "72",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.2,
+        0.2,
+        0.2,
+        0.2,
+        1.0,
+        1.0,
+        0.8,
+        0.8,
+        0.6
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Plg_WE"
+    },
+    {
+      "$id": "73",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Dhw_WD"
+    },
+    {
+      "$id": "74",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Dhw_WE"
+    },
+    {
+      "$id": "75",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Het_WD"
+    },
+    {
+      "$id": "76",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Het_WE"
+    },
+    {
+      "$id": "77",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Col_WD"
+    },
+    {
+      "$id": "78",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Col_WE"
+    },
+    {
+      "$id": "79",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Nat_WD"
+    },
+    {
+      "$id": "80",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Nat_WE"
+    },
+    {
+      "$id": "81",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_D_Off"
+    },
+    {
+      "$id": "82",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.1,
+        0.2,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.3,
+        0.2,
+        0.1,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Occ_WD"
+    },
+    {
+      "$id": "83",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Occ_WE"
+    },
+    {
+      "$id": "84",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.3,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.8,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.5,
+        0.3,
+        0.3,
+        0.2,
+        0.2,
+        0.1,
+        0.1
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Lgt_WD"
+    },
+    {
+      "$id": "85",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Lgt_WE"
+    },
+    {
+      "$id": "86",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.3,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.8,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.3,
+        0.3,
+        0.2,
+        0.2,
+        0.1,
+        0.1
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Plg_WD"
+    },
+    {
+      "$id": "87",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Plg_WE"
+    },
+    {
+      "$id": "88",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.6,
+        0.6,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.2,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Dhw_WD"
+    },
+    {
+      "$id": "89",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Dhw_WE"
+    },
+    {
+      "$id": "90",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Het_WD"
+    },
+    {
+      "$id": "91",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Het_WE"
+    },
+    {
+      "$id": "92",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Col_WD"
+    },
+    {
+      "$id": "93",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Col_WE"
+    },
+    {
+      "$id": "94",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Nat_WD"
+    },
+    {
+      "$id": "95",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Nat_WE"
+    },
+    {
+      "$id": "96",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_D_Off"
+    },
+    {
+      "$id": "97",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        0.4,
+        0.6,
+        0.6,
+        0.8,
+        0.8,
+        0.8,
+        0.8,
+        0.8,
+        0.8,
+        0.6,
+        0.6,
+        0.4,
+        0.4,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Occ_WD"
+    },
+    {
+      "$id": "98",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.1,
+        0.2,
+        0.2,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.2,
+        0.1,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Occ_WE"
+    },
+    {
+      "$id": "99",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.2,
+        0.6,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.6,
+        0.6,
+        0.4,
+        0.2,
+        0.1,
+        0.1
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Lgt_WD"
+    },
+    {
+      "$id": "100",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.2,
+        0.2,
+        0.4,
+        0.4,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.4,
+        0.2,
+        0.1,
+        0.1
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Lgt_WE"
+    },
+    {
+      "$id": "101",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.2,
+        0.6,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.6,
+        0.6,
+        0.4,
+        0.2,
+        0.1,
+        0.1
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Plg_WD"
+    },
+    {
+      "$id": "102",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.2,
+        0.2,
+        0.4,
+        0.4,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.6,
+        0.4,
+        0.2,
+        0.1,
+        0.1
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Plg_WE"
+    },
+    {
+      "$id": "103",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        0.2,
+        0.3,
+        0.4,
+        0.6,
+        0.6,
+        0.6,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.3,
+        0.3,
+        0.2,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Dhw_WD"
+    },
+    {
+      "$id": "104",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.1,
+        0.3,
+        0.3,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.4,
+        0.3,
+        0.1,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Dhw_WE"
+    },
+    {
+      "$id": "105",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Het_WD"
+    },
+    {
+      "$id": "106",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Het_WE"
+    },
+    {
+      "$id": "107",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Col_WD"
+    },
+    {
+      "$id": "108",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Col_WE"
+    },
+    {
+      "$id": "109",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Nat_WD"
+    },
+    {
+      "$id": "110",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Nat_WE"
+    },
+    {
+      "$id": "111",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_D_Off"
+    }
+  ],
+  "WeekSchedules": [
+    {
+      "$id": "112",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "66"
+        },
+        {
+          "$ref": "66"
+        },
+        {
+          "$ref": "66"
+        },
+        {
+          "$ref": "66"
+        },
+        {
+          "$ref": "66"
+        },
+        {
+          "$ref": "66"
+        },
+        {
+          "$ref": "66"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "weekAllOn"
+    },
+    {
+      "$id": "113",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "67"
+        },
+        {
+          "$ref": "67"
+        },
+        {
+          "$ref": "67"
+        },
+        {
+          "$ref": "67"
+        },
+        {
+          "$ref": "67"
+        },
+        {
+          "$ref": "68"
+        },
+        {
+          "$ref": "68"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_W_Occ"
+    },
+    {
+      "$id": "114",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "69"
+        },
+        {
+          "$ref": "69"
+        },
+        {
+          "$ref": "69"
+        },
+        {
+          "$ref": "69"
+        },
+        {
+          "$ref": "69"
+        },
+        {
+          "$ref": "70"
+        },
+        {
+          "$ref": "70"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_W_Lgt"
+    },
+    {
+      "$id": "115",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "71"
+        },
+        {
+          "$ref": "71"
+        },
+        {
+          "$ref": "71"
+        },
+        {
+          "$ref": "71"
+        },
+        {
+          "$ref": "71"
+        },
+        {
+          "$ref": "72"
+        },
+        {
+          "$ref": "72"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_W_Plg"
+    },
+    {
+      "$id": "116",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "73"
+        },
+        {
+          "$ref": "73"
+        },
+        {
+          "$ref": "73"
+        },
+        {
+          "$ref": "73"
+        },
+        {
+          "$ref": "73"
+        },
+        {
+          "$ref": "74"
+        },
+        {
+          "$ref": "74"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_W_Dhw"
+    },
+    {
+      "$id": "117",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "75"
+        },
+        {
+          "$ref": "75"
+        },
+        {
+          "$ref": "75"
+        },
+        {
+          "$ref": "75"
+        },
+        {
+          "$ref": "75"
+        },
+        {
+          "$ref": "76"
+        },
+        {
+          "$ref": "76"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_W_Het"
+    },
+    {
+      "$id": "118",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "77"
+        },
+        {
+          "$ref": "77"
+        },
+        {
+          "$ref": "77"
+        },
+        {
+          "$ref": "77"
+        },
+        {
+          "$ref": "77"
+        },
+        {
+          "$ref": "78"
+        },
+        {
+          "$ref": "78"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_W_Col"
+    },
+    {
+      "$id": "119",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "79"
+        },
+        {
+          "$ref": "79"
+        },
+        {
+          "$ref": "79"
+        },
+        {
+          "$ref": "79"
+        },
+        {
+          "$ref": "79"
+        },
+        {
+          "$ref": "80"
+        },
+        {
+          "$ref": "80"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_W_Nat"
+    },
+    {
+      "$id": "120",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "81"
+        },
+        {
+          "$ref": "81"
+        },
+        {
+          "$ref": "81"
+        },
+        {
+          "$ref": "81"
+        },
+        {
+          "$ref": "81"
+        },
+        {
+          "$ref": "81"
+        },
+        {
+          "$ref": "81"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_W_Off"
+    },
+    {
+      "$id": "121",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "82"
+        },
+        {
+          "$ref": "82"
+        },
+        {
+          "$ref": "82"
+        },
+        {
+          "$ref": "82"
+        },
+        {
+          "$ref": "82"
+        },
+        {
+          "$ref": "83"
+        },
+        {
+          "$ref": "83"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_W_Occ"
+    },
+    {
+      "$id": "122",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "84"
+        },
+        {
+          "$ref": "84"
+        },
+        {
+          "$ref": "84"
+        },
+        {
+          "$ref": "84"
+        },
+        {
+          "$ref": "84"
+        },
+        {
+          "$ref": "85"
+        },
+        {
+          "$ref": "85"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_W_Lgt"
+    },
+    {
+      "$id": "123",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "86"
+        },
+        {
+          "$ref": "86"
+        },
+        {
+          "$ref": "86"
+        },
+        {
+          "$ref": "86"
+        },
+        {
+          "$ref": "86"
+        },
+        {
+          "$ref": "87"
+        },
+        {
+          "$ref": "87"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_W_Plg"
+    },
+    {
+      "$id": "124",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "88"
+        },
+        {
+          "$ref": "88"
+        },
+        {
+          "$ref": "88"
+        },
+        {
+          "$ref": "88"
+        },
+        {
+          "$ref": "88"
+        },
+        {
+          "$ref": "89"
+        },
+        {
+          "$ref": "89"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_W_Dhw"
+    },
+    {
+      "$id": "125",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "90"
+        },
+        {
+          "$ref": "90"
+        },
+        {
+          "$ref": "90"
+        },
+        {
+          "$ref": "90"
+        },
+        {
+          "$ref": "90"
+        },
+        {
+          "$ref": "91"
+        },
+        {
+          "$ref": "91"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_W_Het"
+    },
+    {
+      "$id": "126",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "92"
+        },
+        {
+          "$ref": "92"
+        },
+        {
+          "$ref": "92"
+        },
+        {
+          "$ref": "92"
+        },
+        {
+          "$ref": "92"
+        },
+        {
+          "$ref": "93"
+        },
+        {
+          "$ref": "93"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_W_Col"
+    },
+    {
+      "$id": "127",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "94"
+        },
+        {
+          "$ref": "94"
+        },
+        {
+          "$ref": "94"
+        },
+        {
+          "$ref": "94"
+        },
+        {
+          "$ref": "94"
+        },
+        {
+          "$ref": "95"
+        },
+        {
+          "$ref": "95"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_W_Nat"
+    },
+    {
+      "$id": "128",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "96"
+        },
+        {
+          "$ref": "96"
+        },
+        {
+          "$ref": "96"
+        },
+        {
+          "$ref": "96"
+        },
+        {
+          "$ref": "96"
+        },
+        {
+          "$ref": "96"
+        },
+        {
+          "$ref": "96"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_W_Off"
+    },
+    {
+      "$id": "129",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "97"
+        },
+        {
+          "$ref": "97"
+        },
+        {
+          "$ref": "97"
+        },
+        {
+          "$ref": "97"
+        },
+        {
+          "$ref": "97"
+        },
+        {
+          "$ref": "97"
+        },
+        {
+          "$ref": "98"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_W_Occ"
+    },
+    {
+      "$id": "130",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "99"
+        },
+        {
+          "$ref": "99"
+        },
+        {
+          "$ref": "99"
+        },
+        {
+          "$ref": "99"
+        },
+        {
+          "$ref": "99"
+        },
+        {
+          "$ref": "99"
+        },
+        {
+          "$ref": "100"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_W_Lgt"
+    },
+    {
+      "$id": "131",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "101"
+        },
+        {
+          "$ref": "101"
+        },
+        {
+          "$ref": "101"
+        },
+        {
+          "$ref": "101"
+        },
+        {
+          "$ref": "101"
+        },
+        {
+          "$ref": "101"
+        },
+        {
+          "$ref": "102"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_W_Plg"
+    },
+    {
+      "$id": "132",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "103"
+        },
+        {
+          "$ref": "103"
+        },
+        {
+          "$ref": "103"
+        },
+        {
+          "$ref": "103"
+        },
+        {
+          "$ref": "103"
+        },
+        {
+          "$ref": "103"
+        },
+        {
+          "$ref": "104"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_W_Dhw"
+    },
+    {
+      "$id": "133",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "105"
+        },
+        {
+          "$ref": "105"
+        },
+        {
+          "$ref": "105"
+        },
+        {
+          "$ref": "105"
+        },
+        {
+          "$ref": "105"
+        },
+        {
+          "$ref": "105"
+        },
+        {
+          "$ref": "106"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_W_Het"
+    },
+    {
+      "$id": "134",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "107"
+        },
+        {
+          "$ref": "107"
+        },
+        {
+          "$ref": "107"
+        },
+        {
+          "$ref": "107"
+        },
+        {
+          "$ref": "107"
+        },
+        {
+          "$ref": "107"
+        },
+        {
+          "$ref": "108"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_W_Col"
+    },
+    {
+      "$id": "135",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "109"
+        },
+        {
+          "$ref": "109"
+        },
+        {
+          "$ref": "109"
+        },
+        {
+          "$ref": "109"
+        },
+        {
+          "$ref": "109"
+        },
+        {
+          "$ref": "109"
+        },
+        {
+          "$ref": "110"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_W_Nat"
+    },
+    {
+      "$id": "136",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "111"
+        },
+        {
+          "$ref": "111"
+        },
+        {
+          "$ref": "111"
+        },
+        {
+          "$ref": "111"
+        },
+        {
+          "$ref": "111"
+        },
+        {
+          "$ref": "111"
+        },
+        {
+          "$ref": "111"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_W_Off"
+    }
+  ],
+  "YearSchedules": [
+    {
+      "$id": "137",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "112"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "AllOn"
+    },
+    {
+      "$id": "138",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "113"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Y_Occ"
+    },
+    {
+      "$id": "139",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "114"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Y_Lgt"
+    },
+    {
+      "$id": "140",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "115"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Y_Plg"
+    },
+    {
+      "$id": "141",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "116"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Y_Dhw"
+    },
+    {
+      "$id": "142",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 30,
+          "ToMonth": 4,
+          "Schedule": {
+            "$ref": "117"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 5,
+          "ToDay": 30,
+          "ToMonth": 9,
+          "Schedule": {
+            "$ref": "120"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 10,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "117"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Y_Het"
+    },
+    {
+      "$id": "143",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 30,
+          "ToMonth": 6,
+          "Schedule": {
+            "$ref": "120"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 7,
+          "ToDay": 30,
+          "ToMonth": 9,
+          "Schedule": {
+            "$ref": "118"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 10,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "120"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Y_Col"
+    },
+    {
+      "$id": "144",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 30,
+          "ToMonth": 4,
+          "Schedule": {
+            "$ref": "120"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 5,
+          "ToDay": 31,
+          "ToMonth": 10,
+          "Schedule": {
+            "$ref": "119"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 11,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "120"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Res_Y_Nat"
+    },
+    {
+      "$id": "145",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "121"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Y_Occ"
+    },
+    {
+      "$id": "146",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "122"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Y_Lgt"
+    },
+    {
+      "$id": "147",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "123"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Y_Plg"
+    },
+    {
+      "$id": "148",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "124"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Y_Dhw"
+    },
+    {
+      "$id": "149",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 30,
+          "ToMonth": 4,
+          "Schedule": {
+            "$ref": "125"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 5,
+          "ToDay": 30,
+          "ToMonth": 9,
+          "Schedule": {
+            "$ref": "128"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 10,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "125"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Y_Het"
+    },
+    {
+      "$id": "150",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 3,
+          "Schedule": {
+            "$ref": "128"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 4,
+          "ToDay": 30,
+          "ToMonth": 9,
+          "Schedule": {
+            "$ref": "126"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 10,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "128"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Y_Col"
+    },
+    {
+      "$id": "151",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 3,
+          "Schedule": {
+            "$ref": "128"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 4,
+          "ToDay": 31,
+          "ToMonth": 10,
+          "Schedule": {
+            "$ref": "127"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 11,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "128"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Off_Y_Nat"
+    },
+    {
+      "$id": "152",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "129"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Y_Occ"
+    },
+    {
+      "$id": "153",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "130"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Y_Lgt"
+    },
+    {
+      "$id": "154",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "131"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Y_Plg"
+    },
+    {
+      "$id": "155",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "132"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Y_Dhw"
+    },
+    {
+      "$id": "156",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 30,
+          "ToMonth": 4,
+          "Schedule": {
+            "$ref": "133"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 5,
+          "ToDay": 30,
+          "ToMonth": 9,
+          "Schedule": {
+            "$ref": "136"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 10,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "133"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Y_Het"
+    },
+    {
+      "$id": "157",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 30,
+          "ToMonth": 4,
+          "Schedule": {
+            "$ref": "136"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 5,
+          "ToDay": 30,
+          "ToMonth": 9,
+          "Schedule": {
+            "$ref": "134"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 10,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "136"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Y_Col"
+    },
+    {
+      "$id": "158",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 30,
+          "ToMonth": 6,
+          "Schedule": {
+            "$ref": "136"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 7,
+          "ToDay": 30,
+          "ToMonth": 9,
+          "Schedule": {
+            "$ref": "135"
+          }
+        },
+        {
+          "FromDay": 1,
+          "FromMonth": 10,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "136"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": "default",
+      "DataSource": "default",
+      "Name": "B_Ret_Y_Nat"
+    }
+  ],
+  "DomesticHotWaterSettings": [
+    {
+      "$id": "159",
+      "FlowRatePerFloorArea": 0.00021,
+      "IsOn": true,
+      "WaterSchedule": {
+        "$ref": "148"
+      },
+      "WaterSupplyTemperature": 55.0,
+      "WaterTemperatureInlet": 16.0,
+      "Category": "Office Spaces",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Off_0 hot water"
+    },
+    {
+      "$id": "160",
+      "FlowRatePerFloorArea": 6E-05,
+      "IsOn": true,
+      "WaterSchedule": {
+        "$ref": "155"
+      },
+      "WaterSupplyTemperature": 55.0,
+      "WaterTemperatureInlet": 16.0,
+      "Category": "Retail",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Ret_0 hot water"
+    },
+    {
+      "$id": "161",
+      "FlowRatePerFloorArea": 0.00049,
+      "IsOn": true,
+      "WaterSchedule": {
+        "$ref": "141"
+      },
+      "WaterSupplyTemperature": 55.0,
+      "WaterTemperatureInlet": 16.0,
+      "Category": "Residential and Lodging",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0 hot water"
+    }
+  ],
+  "VentilationSettings": [
+    {
+      "$id": "162",
+      "Afn": false,
+      "IsBuoyancyOn": true,
+      "Infiltration": 0.35,
+      "IsInfiltrationOn": true,
+      "IsNatVentOn": false,
+      "IsScheduledVentilationOn": false,
+      "NatVentMaxRelHumidity": 80.0,
+      "NatVentMaxOutdoorAirTemp": 26.0,
+      "NatVentMinOutdoorAirTemp": 20.0,
+      "NatVentSchedule": {
+        "$ref": "151"
+      },
+      "NatVentZoneTempSetpoint": 22.0,
+      "ScheduledVentilationAch": 0.6,
+      "ScheduledVentilationSchedule": {
+        "$ref": "151"
+      },
+      "ScheduledVentilationSetpoint": 22.0,
+      "IsWindOn": false,
+      "Category": "Office Spaces",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Off_0 ventilation"
+    },
+    {
+      "$id": "163",
+      "Afn": false,
+      "IsBuoyancyOn": true,
+      "Infiltration": 0.35,
+      "IsInfiltrationOn": true,
+      "IsNatVentOn": false,
+      "IsScheduledVentilationOn": false,
+      "NatVentMaxRelHumidity": 80.0,
+      "NatVentMaxOutdoorAirTemp": 26.0,
+      "NatVentMinOutdoorAirTemp": 20.0,
+      "NatVentSchedule": {
+        "$ref": "158"
+      },
+      "NatVentZoneTempSetpoint": 22.0,
+      "ScheduledVentilationAch": 0.6,
+      "ScheduledVentilationSchedule": {
+        "$ref": "158"
+      },
+      "ScheduledVentilationSetpoint": 22.0,
+      "IsWindOn": false,
+      "Category": "Retail",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Ret_0 ventilation"
+    },
+    {
+      "$id": "164",
+      "Afn": false,
+      "IsBuoyancyOn": true,
+      "Infiltration": 0.35,
+      "IsInfiltrationOn": true,
+      "IsNatVentOn": false,
+      "IsScheduledVentilationOn": false,
+      "NatVentMaxRelHumidity": 80.0,
+      "NatVentMaxOutdoorAirTemp": 26.0,
+      "NatVentMinOutdoorAirTemp": 18.0,
+      "NatVentSchedule": {
+        "$ref": "144"
+      },
+      "NatVentZoneTempSetpoint": 22.0,
+      "ScheduledVentilationAch": 0.6,
+      "ScheduledVentilationSchedule": {
+        "$ref": "144"
+      },
+      "ScheduledVentilationSetpoint": 22.0,
+      "IsWindOn": false,
+      "Category": "Residential and Lodging",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0 ventilation"
+    }
+  ],
+  "ZoneConditionings": [
+    {
+      "$id": "165",
+      "CoolingSchedule": {
+        "$ref": "150"
+      },
+      "CoolingCoeffOfPerf": 3.0,
+      "CoolingSetpoint": 24.0,
+      "CoolingLimitType": 0,
+      "EconomizerType": 0,
+      "HeatingCoeffOfPerf": 0.9,
+      "HeatingLimitType": 0,
+      "HeatingSchedule": {
+        "$ref": "149"
+      },
+      "HeatingSetpoint": 20.0,
+      "HeatRecoveryEfficiencyLatent": 0.65,
+      "HeatRecoveryEfficiencySensible": 0.7,
+      "HeatRecoveryType": 0,
+      "IsCoolingOn": true,
+      "IsHeatingOn": true,
+      "IsMechVentOn": true,
+      "MaxCoolFlow": 100.0,
+      "MaxCoolingCapacity": 100.0,
+      "MaxHeatFlow": 100.0,
+      "MaxHeatingCapacity": 100.0,
+      "MechVentSchedule": {
+        "$ref": "145"
+      },
+      "MinFreshAirPerArea": 0.0003,
+      "MinFreshAirPerPerson": 0.0025,
+      "Category": "Office Spaces",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Off_0 conditioning"
+    },
+    {
+      "$id": "166",
+      "CoolingSchedule": {
+        "$ref": "157"
+      },
+      "CoolingCoeffOfPerf": 3.0,
+      "CoolingSetpoint": 24.0,
+      "CoolingLimitType": 0,
+      "EconomizerType": 0,
+      "HeatingCoeffOfPerf": 0.9,
+      "HeatingLimitType": 0,
+      "HeatingSchedule": {
+        "$ref": "156"
+      },
+      "HeatingSetpoint": 20.0,
+      "HeatRecoveryEfficiencyLatent": 0.65,
+      "HeatRecoveryEfficiencySensible": 0.7,
+      "HeatRecoveryType": 0,
+      "IsCoolingOn": true,
+      "IsHeatingOn": true,
+      "IsMechVentOn": true,
+      "MaxCoolFlow": 100.0,
+      "MaxCoolingCapacity": 100.0,
+      "MaxHeatFlow": 100.0,
+      "MaxHeatingCapacity": 100.0,
+      "MechVentSchedule": {
+        "$ref": "152"
+      },
+      "MinFreshAirPerArea": 0.0006,
+      "MinFreshAirPerPerson": 0.0,
+      "Category": "Retail",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Ret_0 conditioning"
+    },
+    {
+      "$id": "167",
+      "CoolingSchedule": {
+        "$ref": "143"
+      },
+      "CoolingCoeffOfPerf": 3.0,
+      "CoolingSetpoint": 24.0,
+      "CoolingLimitType": 0,
+      "EconomizerType": 0,
+      "HeatingCoeffOfPerf": 0.9,
+      "HeatingLimitType": 0,
+      "HeatingSchedule": {
+        "$ref": "142"
+      },
+      "HeatingSetpoint": 20.0,
+      "HeatRecoveryEfficiencyLatent": 0.65,
+      "HeatRecoveryEfficiencySensible": 0.7,
+      "HeatRecoveryType": 0,
+      "IsCoolingOn": true,
+      "IsHeatingOn": true,
+      "IsMechVentOn": false,
+      "MaxCoolFlow": 100.0,
+      "MaxCoolingCapacity": 100.0,
+      "MaxHeatFlow": 100.0,
+      "MaxHeatingCapacity": 100.0,
+      "MechVentSchedule": {
+        "$ref": "138"
+      },
+      "MinFreshAirPerArea": 0.0,
+      "MinFreshAirPerPerson": 0.0,
+      "Category": "Residential and Lodging",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0 conditioning"
+    }
+  ],
+  "ZoneConstructionSets": [
+    {
+      "$id": "168",
+      "Facade": {
+        "$ref": "35"
+      },
+      "Ground": {
+        "$ref": "42"
+      },
+      "Partition": {
+        "$ref": "48"
+      },
+      "Roof": {
+        "$ref": "39"
+      },
+      "Slab": {
+        "$ref": "45"
+      },
+      "IsFacadeAdiabatic": false,
+      "IsGroundAdiabatic": false,
+      "IsPartitionAdiabatic": false,
+      "IsRoofAdiabatic": false,
+      "IsSlabAdiabatic": false,
+      "Category": "Office Spaces",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Off_0 constructions"
+    },
+    {
+      "$id": "169",
+      "Facade": {
+        "$ref": "36"
+      },
+      "Ground": {
+        "$ref": "43"
+      },
+      "Partition": {
+        "$ref": "49"
+      },
+      "Roof": {
+        "$ref": "40"
+      },
+      "Slab": {
+        "$ref": "46"
+      },
+      "IsFacadeAdiabatic": false,
+      "IsGroundAdiabatic": false,
+      "IsPartitionAdiabatic": false,
+      "IsRoofAdiabatic": false,
+      "IsSlabAdiabatic": false,
+      "Category": "Retail",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Ret_0 constructions"
+    },
+    {
+      "$id": "170",
+      "Facade": {
+        "$ref": "56"
+      },
+      "Ground": {
+        "$ref": "41"
+      },
+      "Partition": {
+        "$ref": "50"
+      },
+      "Roof": {
+        "$ref": "38"
+      },
+      "Slab": {
+        "$ref": "44"
+      },
+      "IsFacadeAdiabatic": false,
+      "IsGroundAdiabatic": false,
+      "IsPartitionAdiabatic": false,
+      "IsRoofAdiabatic": false,
+      "IsSlabAdiabatic": false,
+      "Category": "Residential and Lodging",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0_MS constructions"
+    },
+    {
+      "$id": "171",
+      "Facade": {
+        "$ref": "33"
+      },
+      "Ground": {
+        "$ref": "41"
+      },
+      "Partition": {
+        "$ref": "50"
+      },
+      "Roof": {
+        "$ref": "38"
+      },
+      "Slab": {
+        "$ref": "44"
+      },
+      "IsFacadeAdiabatic": false,
+      "IsGroundAdiabatic": false,
+      "IsPartitionAdiabatic": false,
+      "IsRoofAdiabatic": false,
+      "IsSlabAdiabatic": false,
+      "Category": "Residential and Lodging",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0_WF constructions"
+    }
+  ],
+  "ZoneLoads": [
+    {
+      "$id": "172",
+      "DimmingType": 1,
+      "EquipmentAvailabilitySchedule": {
+        "$ref": "147"
+      },
+      "EquipmentPowerDensity": 8.0,
+      "IlluminanceTarget": 500.0,
+      "LightingPowerDensity": 12.0,
+      "LightsAvailabilitySchedule": {
+        "$ref": "146"
+      },
+      "OccupancySchedule": {
+        "$ref": "145"
+      },
+      "IsEquipmentOn": true,
+      "IsLightingOn": true,
+      "IsPeopleOn": true,
+      "PeopleDensity": 0.055,
+      "Category": "Office Spaces",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Off_0 loads"
+    },
+    {
+      "$id": "173",
+      "DimmingType": 1,
+      "EquipmentAvailabilitySchedule": {
+        "$ref": "154"
+      },
+      "EquipmentPowerDensity": 6.0,
+      "IlluminanceTarget": 300.0,
+      "LightingPowerDensity": 16.0,
+      "LightsAvailabilitySchedule": {
+        "$ref": "154"
+      },
+      "OccupancySchedule": {
+        "$ref": "152"
+      },
+      "IsEquipmentOn": true,
+      "IsLightingOn": true,
+      "IsPeopleOn": true,
+      "PeopleDensity": 0.1,
+      "Category": "Retail",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Ret_0 loads"
+    },
+    {
+      "$id": "174",
+      "DimmingType": 1,
+      "EquipmentAvailabilitySchedule": {
+        "$ref": "140"
+      },
+      "EquipmentPowerDensity": 4.0,
+      "IlluminanceTarget": 200.0,
+      "LightingPowerDensity": 7.0,
+      "LightsAvailabilitySchedule": {
+        "$ref": "139"
+      },
+      "OccupancySchedule": {
+        "$ref": "138"
+      },
+      "IsEquipmentOn": true,
+      "IsLightingOn": true,
+      "IsPeopleOn": true,
+      "PeopleDensity": 0.025,
+      "Category": "Residential and Lodging",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0 loads"
+    }
+  ],
+  "Zones": [
+    {
+      "$id": "175",
+      "Conditioning": {
+        "$ref": "165"
+      },
+      "Constructions": {
+        "$ref": "168"
+      },
+      "DaylightMeshResolution": 1.0,
+      "DaylightWorkplaneHeight": 0.8,
+      "DomesticHotWater": {
+        "$ref": "159"
+      },
+      "InternalMassConstruction": {
+        "$ref": "54"
+      },
+      "InternalMassExposedPerFloorArea": 1.05,
+      "Loads": {
+        "$ref": "172"
+      },
+      "Ventilation": {
+        "$ref": "162"
+      },
+      "Category": "Office Spaces",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Off_0"
+    },
+    {
+      "$id": "176",
+      "Conditioning": {
+        "$ref": "166"
+      },
+      "Constructions": {
+        "$ref": "169"
+      },
+      "DaylightMeshResolution": 1.0,
+      "DaylightWorkplaneHeight": 0.8,
+      "DomesticHotWater": {
+        "$ref": "160"
+      },
+      "InternalMassConstruction": {
+        "$ref": "55"
+      },
+      "InternalMassExposedPerFloorArea": 0.45,
+      "Loads": {
+        "$ref": "173"
+      },
+      "Ventilation": {
+        "$ref": "163"
+      },
+      "Category": "Retail",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Ret_0"
+    },
+    {
+      "$id": "177",
+      "Conditioning": {
+        "$ref": "167"
+      },
+      "Constructions": {
+        "$ref": "170"
+      },
+      "DaylightMeshResolution": 1.0,
+      "DaylightWorkplaneHeight": 0.8,
+      "DomesticHotWater": {
+        "$ref": "161"
+      },
+      "InternalMassConstruction": {
+        "$ref": "53"
+      },
+      "InternalMassExposedPerFloorArea": 0.9,
+      "Loads": {
+        "$ref": "174"
+      },
+      "Ventilation": {
+        "$ref": "164"
+      },
+      "Category": "Residential and Lodging",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0_MS"
+    },
+    {
+      "$id": "178",
+      "Conditioning": {
+        "$ref": "167"
+      },
+      "Constructions": {
+        "$ref": "171"
+      },
+      "DaylightMeshResolution": 1.0,
+      "DaylightWorkplaneHeight": 0.8,
+      "DomesticHotWater": {
+        "$ref": "161"
+      },
+      "InternalMassConstruction": {
+        "$ref": "53"
+      },
+      "InternalMassExposedPerFloorArea": 0.9,
+      "Loads": {
+        "$ref": "174"
+      },
+      "Ventilation": {
+        "$ref": "164"
+      },
+      "Category": "Residential and Lodging",
+      "Comments": null,
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0_WF"
+    }
+  ],
+  "BuildingTemplates": [
+    {
+      "Core": {
+        "$ref": "175"
+      },
+      "Lifespan": 60,
+      "PartitionRatio": 0.35,
+      "Perimeter": {
+        "$ref": "175"
+      },
+      "Structure": {
+        "$ref": "62"
+      },
+      "Windows": {
+        "$id": "179",
+        "AfnDischargeC": 0.65,
+        "AfnTempSetpoint": 20.0,
+        "AfnWindowAvailability": {
+          "$ref": "145"
+        },
+        "Construction": {
+          "$ref": "57"
+        },
+        "IsShadingSystemOn": false,
+        "IsVirtualPartition": false,
+        "IsZoneMixingOn": false,
+        "OperableArea": 0.8,
+        "ShadingSystemAvailabilitySchedule": {
+          "$ref": "145"
+        },
+        "ShadingSystemSetpoint": 350.0,
+        "ShadingSystemTransmittance": 0.5,
+        "ShadingSystemType": 0,
+        "Type": 0,
+        "ZoneMixingAvailabilitySchedule": {
+          "$ref": "145"
+        },
+        "ZoneMixingDeltaTemperature": 2.0,
+        "ZoneMixingFlowRate": 0.001,
+        "Category": "Office Spaces",
+        "Comments": "Base building definition for MIT 4433",
+        "DataSource": "MIT_SDL",
+        "Name": "B_Off_0 windows"
+      },
+      "Category": "Office Spaces",
+      "Comments": "Base building definition for MIT 4433",
+      "DataSource": "MIT_SDL",
+      "Name": "B_Off_0"
+    },
+    {
+      "Core": {
+        "$ref": "176"
+      },
+      "Lifespan": 60,
+      "PartitionRatio": 0.15,
+      "Perimeter": {
+        "$ref": "176"
+      },
+      "Structure": {
+        "$ref": "63"
+      },
+      "Windows": {
+        "$id": "180",
+        "AfnDischargeC": 0.65,
+        "AfnTempSetpoint": 20.0,
+        "AfnWindowAvailability": {
+          "$ref": "152"
+        },
+        "Construction": {
+          "$ref": "57"
+        },
+        "IsShadingSystemOn": false,
+        "IsVirtualPartition": false,
+        "IsZoneMixingOn": false,
+        "OperableArea": 0.8,
+        "ShadingSystemAvailabilitySchedule": {
+          "$ref": "152"
+        },
+        "ShadingSystemSetpoint": 0.5,
+        "ShadingSystemTransmittance": 0.5,
+        "ShadingSystemType": 0,
+        "Type": 0,
+        "ZoneMixingAvailabilitySchedule": {
+          "$ref": "152"
+        },
+        "ZoneMixingDeltaTemperature": 2.0,
+        "ZoneMixingFlowRate": 0.001,
+        "Category": "Retail",
+        "Comments": "Base building definition for MIT 4433",
+        "DataSource": "MIT_SDL",
+        "Name": "B_Ret_0 windows"
+      },
+      "Category": "Retail",
+      "Comments": "Base building definition for MIT 4433",
+      "DataSource": "MIT_SDL",
+      "Name": "B_Ret_0"
+    },
+    {
+      "Core": {
+        "$ref": "177"
+      },
+      "Lifespan": 60,
+      "PartitionRatio": 0.3,
+      "Perimeter": {
+        "$ref": "177"
+      },
+      "Structure": {
+        "$ref": "65"
+      },
+      "Windows": {
+        "$id": "181",
+        "AfnDischargeC": 0.65,
+        "AfnTempSetpoint": 20.0,
+        "AfnWindowAvailability": {
+          "$ref": "138"
+        },
+        "Construction": {
+          "$ref": "57"
+        },
+        "IsShadingSystemOn": false,
+        "IsVirtualPartition": false,
+        "IsZoneMixingOn": false,
+        "OperableArea": 0.8,
+        "ShadingSystemAvailabilitySchedule": {
+          "$ref": "138"
+        },
+        "ShadingSystemSetpoint": 0.5,
+        "ShadingSystemTransmittance": 0.5,
+        "ShadingSystemType": 0,
+        "Type": 0,
+        "ZoneMixingAvailabilitySchedule": {
+          "$ref": "138"
+        },
+        "ZoneMixingDeltaTemperature": 2.0,
+        "ZoneMixingFlowRate": 0.001,
+        "Category": "Residential and Lodging",
+        "Comments": "Base building definition for MIT 4433",
+        "DataSource": "MIT_SDL",
+        "Name": "B_Res_0 windows"
+      },
+      "Category": "Residential and Lodging",
+      "Comments": "Base building definition for MIT 4433",
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0_Masonry"
+    },
+    {
+      "Core": {
+        "$ref": "178"
+      },
+      "Lifespan": 60,
+      "PartitionRatio": 0.3,
+      "Perimeter": {
+        "$ref": "178"
+      },
+      "Structure": {
+        "$ref": "64"
+      },
+      "Windows": {
+        "$ref": "181"
+      },
+      "Category": "Residential and Lodging",
+      "Comments": "Base building definition for MIT 4433",
+      "DataSource": "MIT_SDL",
+      "Name": "B_Res_0_WoodFrame"
+    }
+  ],
+  "WindowSettings": [
+    {
+      "$ref": "179"
+    },
+    {
+      "$ref": "180"
+    },
+    {
+      "$ref": "181"
+    }
+  ]
+}

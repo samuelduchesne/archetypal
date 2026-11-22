@@ -1,5 +1,6 @@
 # cruft and spec-kit write these files themselves, so the hooks leave their formatting alone.
-exclude: ^(\.cruft\.json|\.specify/.*)$
+# The UMI sample libraries are verbatim copies whose SHA-256 is recorded in their README.
+exclude: ^(\.cruft\.json|\.specify/.*|tests/fixtures/umi/(BostonTemplateLibrary_2|BostonTemplateLibrary_nodup|umi_samples_BostonTemplateLibrary)\.json)$
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

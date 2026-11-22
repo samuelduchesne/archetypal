@@ -1,0 +1,265 @@
+{
+  "AdvancedStructuralModel": [
+    "ColumnWallSpacing",
+    "ConstructionSystems",
+    "FoundationSoilSettings",
+    "LoadingSettings"
+  ],
+  "BuildingTemplate": [
+    "Core",
+    "Lifespan",
+    "PartitionRatio",
+    "Perimeter",
+    "Structure",
+    "Windows",
+    "DefaultWindowToWallRatio",
+    "YearFrom",
+    "YearTo",
+    "Country",
+    "ClimateZone",
+    "Authors",
+    "AuthorEmails",
+    "Version"
+  ],
+  "ColumnWallSpacingSettings": [
+    "PrimarySpan",
+    "SecondarySpan"
+  ],
+  "ConstructionBase": [
+    "AssemblyCarbon",
+    "AssemblyCost",
+    "AssemblyEnergy",
+    "DisassemblyCarbon",
+    "DisassemblyEnergy"
+  ],
+  "ConstructionSystem": [
+    "Material",
+    "ConstructionSystemType"
+  ],
+  "ConstructionSystemSettings": [
+    "Beams",
+    "Columns",
+    "Floors",
+    "Foundations",
+    "LateralSystem"
+  ],
+  "DaySchedule": [
+    "Category",
+    "Type",
+    "Values"
+  ],
+  "DomesticHotWaterSettings": [
+    "CoefficientOfPerformance",
+    "FlowRatePerFloorArea",
+    "FuelType",
+    "IsOn",
+    "WaterSchedule",
+    "WaterSupplyTemperature",
+    "WaterTemperatureInlet"
+  ],
+  "FoundationSoilSettings": [
+    "FoundationSoilPreset",
+    "FoundationSoilValue"
+  ],
+  "GasMaterial": [
+    "Category",
+    "Type"
+  ],
+  "GlazingMaterial": [
+    "DirtFactor",
+    "IREmissivityBack",
+    "IREmissivityFront",
+    "IRTransmittance",
+    "SolarReflectanceBack",
+    "SolarReflectanceFront",
+    "SolarTransmittance",
+    "VisibleReflectanceBack",
+    "VisibleReflectanceFront",
+    "VisibleTransmittance"
+  ],
+  "Library": [
+    "GasMaterials",
+    "GlazingMaterials",
+    "OpaqueMaterials",
+    "OpaqueConstructions",
+    "WindowConstructions",
+    "StructureDefinitions",
+    "DaySchedules",
+    "WeekSchedules",
+    "YearSchedules",
+    "DomesticHotWaterSettings",
+    "VentilationSettings",
+    "ZoneConditionings",
+    "ZoneConstructionSets",
+    "ZoneLoads",
+    "Zones",
+    "BuildingTemplates",
+    "WindowSettings"
+  ],
+  "LibraryComponent": [
+    "Category",
+    "Comments",
+    "DataSource",
+    "Name"
+  ],
+  "LoadingSettings": [
+    "LiveLoadingPreset",
+    "LiveLoadingValue"
+  ],
+  "MassRatios": [
+    "HighLoadRatio",
+    "Material",
+    "NormalRatio"
+  ],
+  "MaterialBase": [
+    "Conductivity",
+    "Cost",
+    "Density",
+    "EmbodiedCarbon",
+    "EmbodiedEnergy",
+    "SubstitutionRatePattern",
+    "SubstitutionTimestep",
+    "TransportCarbon",
+    "TransportDistance",
+    "TransportEnergy"
+  ],
+  "MaterialLayer": [
+    "Material",
+    "Thickness"
+  ],
+  "OpaqueConstruction": [
+    "Layers"
+  ],
+  "OpaqueMaterial": [
+    "DesignStrength",
+    "ModulusOfElasticity",
+    "MoistureDiffusionResistance",
+    "Roughness",
+    "SolarAbsorptance",
+    "SpecificHeat",
+    "ThermalEmittance",
+    "VisibleAbsorptance"
+  ],
+  "StructureInformation": [
+    "AdvancedModel",
+    "MassRatios",
+    "UseAdvancedModel"
+  ],
+  "WeekSchedule": [
+    "Category",
+    "Days",
+    "Type"
+  ],
+  "WindowConstruction": [
+    "Layers"
+  ],
+  "WindowSettings": [
+    "AfnDischargeC",
+    "AfnTempSetpoint",
+    "AfnWindowAvailability",
+    "Construction",
+    "IsShadingSystemOn",
+    "IsVirtualPartition",
+    "IsZoneMixingOn",
+    "OperableArea",
+    "ShadingSystemAvailabilitySchedule",
+    "ShadingSystemSetpoint",
+    "ShadingSystemTransmittance",
+    "ShadingSystemType",
+    "Type",
+    "ZoneMixingAvailabilitySchedule",
+    "ZoneMixingDeltaTemperature",
+    "ZoneMixingFlowRate"
+  ],
+  "YearSchedule": [
+    "Category",
+    "Parts",
+    "Type"
+  ],
+  "YearSchedulePart": [
+    "FromDay",
+    "FromMonth",
+    "ToDay",
+    "ToMonth",
+    "Schedule"
+  ],
+  "ZoneConditioning": [
+    "CoolingSchedule",
+    "CoolingCoeffOfPerf",
+    "CoolingSetpoint",
+    "CoolingLimitType",
+    "CoolingFuelType",
+    "EconomizerType",
+    "HeatingCoeffOfPerf",
+    "HeatingLimitType",
+    "HeatingFuelType",
+    "HeatingSchedule",
+    "HeatingSetpoint",
+    "HeatRecoveryEfficiencyLatent",
+    "HeatRecoveryEfficiencySensible",
+    "HeatRecoveryType",
+    "IsCoolingOn",
+    "IsHeatingOn",
+    "IsMechVentOn",
+    "MaxCoolFlow",
+    "MaxCoolingCapacity",
+    "MaxHeatFlow",
+    "MaxHeatingCapacity",
+    "MechVentSchedule",
+    "MinFreshAirPerArea",
+    "MinFreshAirPerPerson"
+  ],
+  "ZoneConstructions": [
+    "Facade",
+    "Ground",
+    "Partition",
+    "Roof",
+    "Slab",
+    "IsFacadeAdiabatic",
+    "IsGroundAdiabatic",
+    "IsPartitionAdiabatic",
+    "IsRoofAdiabatic",
+    "IsSlabAdiabatic"
+  ],
+  "ZoneDefinition": [
+    "Conditioning",
+    "Constructions",
+    "DaylightMeshResolution",
+    "DaylightWorkplaneHeight",
+    "DomesticHotWater",
+    "InternalMassConstruction",
+    "InternalMassExposedPerFloorArea",
+    "Loads",
+    "Ventilation"
+  ],
+  "ZoneLoads": [
+    "DimmingType",
+    "EquipmentAvailabilitySchedule",
+    "EquipmentPowerDensity",
+    "IlluminanceTarget",
+    "LightingPowerDensity",
+    "LightsAvailabilitySchedule",
+    "OccupancySchedule",
+    "IsEquipmentOn",
+    "IsLightingOn",
+    "IsPeopleOn",
+    "PeopleDensity"
+  ],
+  "ZoneVentilation": [
+    "Afn",
+    "IsBuoyancyOn",
+    "Infiltration",
+    "IsInfiltrationOn",
+    "IsNatVentOn",
+    "IsScheduledVentilationOn",
+    "NatVentMaxRelHumidity",
+    "NatVentMaxOutdoorAirTemp",
+    "NatVentMinOutdoorAirTemp",
+    "NatVentSchedule",
+    "NatVentZoneTempSetpoint",
+    "ScheduledVentilationAch",
+    "ScheduledVentilationSchedule",
+    "ScheduledVentilationSetpoint",
+    "IsWindOn"
+  ]
+}

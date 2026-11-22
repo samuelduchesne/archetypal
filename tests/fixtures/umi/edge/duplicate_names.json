@@ -1,0 +1,803 @@
+{
+  "GasMaterials": [
+    {
+      "$id": "24",
+      "Category": "Gases",
+      "Type": "ARGON",
+      "Conductivity": 0.0,
+      "Cost": 0.0,
+      "Density": 0.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedEnergy": 0.0,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Clear 6mm"
+    }
+  ],
+  "GlazingMaterials": [
+    {
+      "$id": "1",
+      "DirtFactor": 1.0,
+      "IREmissivityBack": 0.84,
+      "IREmissivityFront": 0.84,
+      "IRTransmittance": 0.0,
+      "SolarReflectanceBack": 0.075,
+      "SolarReflectanceFront": 0.075,
+      "SolarTransmittance": 0.775,
+      "VisibleReflectanceBack": 0.081,
+      "VisibleReflectanceFront": 0.081,
+      "VisibleTransmittance": 0.881,
+      "Conductivity": 0.9,
+      "Cost": 0.0,
+      "Density": 2500.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedEnergy": 0.0,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Category": "Glazing",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Clear 6mm"
+    }
+  ],
+  "OpaqueMaterials": [
+    {
+      "$id": "2",
+      "DesignStrength": 0.0,
+      "ModulusOfElasticity": 0.0,
+      "MoistureDiffusionResistance": 50.0,
+      "Roughness": "Rough",
+      "SolarAbsorptance": 0.7,
+      "SpecificHeat": 900.0,
+      "ThermalEmittance": 0.9,
+      "VisibleAbsorptance": 0.7,
+      "Conductivity": 1.95,
+      "Cost": 0.0,
+      "Density": 2240.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedEnergy": 0.0,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Category": "Concrete",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Concrete"
+    },
+    {
+      "$id": "3",
+      "DesignStrength": 0.0,
+      "ModulusOfElasticity": 0.0,
+      "MoistureDiffusionResistance": 50.0,
+      "Roughness": "Rough",
+      "SolarAbsorptance": 0.7,
+      "SpecificHeat": 840.0,
+      "ThermalEmittance": 0.9,
+      "VisibleAbsorptance": 0.7,
+      "Conductivity": 0.04,
+      "Cost": 0.0,
+      "Density": 30.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedEnergy": 0.0,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Category": "Insulation",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Mineral wool"
+    },
+    {
+      "$id": "23",
+      "DesignStrength": 0.0,
+      "ModulusOfElasticity": 0.0,
+      "MoistureDiffusionResistance": 50.0,
+      "Roughness": "Rough",
+      "SolarAbsorptance": 0.7,
+      "SpecificHeat": 900.0,
+      "ThermalEmittance": 0.9,
+      "VisibleAbsorptance": 0.7,
+      "Conductivity": 1.4,
+      "Cost": 0.0,
+      "Density": 2000.0,
+      "EmbodiedCarbon": 0.0,
+      "EmbodiedEnergy": 0.0,
+      "SubstitutionRatePattern": [
+        1.0
+      ],
+      "SubstitutionTimestep": 0.0,
+      "TransportCarbon": 0.0,
+      "TransportDistance": 0.0,
+      "TransportEnergy": 0.0,
+      "Category": "Concrete",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Concrete"
+    }
+  ],
+  "OpaqueConstructions": [
+    {
+      "$id": "4",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "2"
+          },
+          "Thickness": 0.2
+        },
+        {
+          "Material": {
+            "$ref": "3"
+          },
+          "Thickness": 0.1
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Facade",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Insulated wall"
+    },
+    {
+      "$id": "5",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "23"
+          },
+          "Thickness": 0.15
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Slab",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Concrete slab"
+    },
+    {
+      "$id": "6",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "3"
+          },
+          "Thickness": 0.2
+        },
+        {
+          "Material": {
+            "$ref": "2"
+          },
+          "Thickness": 0.15
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Roof",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Insulated roof"
+    }
+  ],
+  "WindowConstructions": [
+    {
+      "$id": "7",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "1"
+          },
+          "Thickness": 0.006
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Single",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Single clear"
+    },
+    {
+      "$id": "25",
+      "Layers": [
+        {
+          "Material": {
+            "$ref": "1"
+          },
+          "Thickness": 0.006
+        },
+        {
+          "Material": {
+            "$ref": "24"
+          },
+          "Thickness": 0.012
+        },
+        {
+          "Material": {
+            "$ref": "1"
+          },
+          "Thickness": 0.006
+        }
+      ],
+      "AssemblyCarbon": 0.0,
+      "AssemblyCost": 0.0,
+      "AssemblyEnergy": 0.0,
+      "DisassemblyCarbon": 0.0,
+      "DisassemblyEnergy": 0.0,
+      "Category": "Double",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Double clear argon"
+    }
+  ],
+  "StructureDefinitions": [],
+  "DaySchedules": [
+    {
+      "$id": "8",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "All on"
+    },
+    {
+      "$id": "9",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.5,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.5,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office day"
+    },
+    {
+      "$id": "10",
+      "Category": "Day",
+      "Type": "Fraction",
+      "Values": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "All off"
+    }
+  ],
+  "WeekSchedules": [
+    {
+      "$id": "11",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "8"
+        },
+        {
+          "$ref": "8"
+        },
+        {
+          "$ref": "8"
+        },
+        {
+          "$ref": "8"
+        },
+        {
+          "$ref": "8"
+        },
+        {
+          "$ref": "8"
+        },
+        {
+          "$ref": "8"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Week all on"
+    },
+    {
+      "$id": "12",
+      "Category": "Week",
+      "Days": [
+        {
+          "$ref": "9"
+        },
+        {
+          "$ref": "9"
+        },
+        {
+          "$ref": "9"
+        },
+        {
+          "$ref": "9"
+        },
+        {
+          "$ref": "9"
+        },
+        {
+          "$ref": "10"
+        },
+        {
+          "$ref": "10"
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office week"
+    }
+  ],
+  "YearSchedules": [
+    {
+      "$id": "13",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "11"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Always on"
+    },
+    {
+      "$id": "14",
+      "Category": "Year",
+      "Parts": [
+        {
+          "FromDay": 1,
+          "FromMonth": 1,
+          "ToDay": 31,
+          "ToMonth": 12,
+          "Schedule": {
+            "$ref": "12"
+          }
+        }
+      ],
+      "Type": "Fraction",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office"
+    }
+  ],
+  "DomesticHotWaterSettings": [
+    {
+      "$id": "15",
+      "CoefficientOfPerformance": 0.9,
+      "FlowRatePerFloorArea": 0.0002,
+      "FuelType": 2,
+      "IsOn": true,
+      "WaterSchedule": {
+        "$ref": "14"
+      },
+      "WaterSupplyTemperature": 55.0,
+      "WaterTemperatureInlet": 10.0,
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office hot water"
+    }
+  ],
+  "VentilationSettings": [
+    {
+      "$id": "16",
+      "Afn": false,
+      "IsBuoyancyOn": true,
+      "Infiltration": 0.3,
+      "IsInfiltrationOn": true,
+      "IsNatVentOn": false,
+      "IsScheduledVentilationOn": false,
+      "NatVentMaxRelHumidity": 90.0,
+      "NatVentMaxOutdoorAirTemp": 30.0,
+      "NatVentMinOutdoorAirTemp": 0.0,
+      "NatVentSchedule": {
+        "$ref": "13"
+      },
+      "NatVentZoneTempSetpoint": 18.0,
+      "ScheduledVentilationAch": 0.6,
+      "ScheduledVentilationSchedule": {
+        "$ref": "13"
+      },
+      "ScheduledVentilationSetpoint": 18.0,
+      "IsWindOn": false,
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office ventilation"
+    }
+  ],
+  "ZoneConditionings": [
+    {
+      "$id": "17",
+      "CoolingSchedule": {
+        "$ref": "13"
+      },
+      "CoolingCoeffOfPerf": 3.0,
+      "CoolingSetpoint": 24.0,
+      "CoolingLimitType": 0,
+      "CoolingFuelType": 1,
+      "EconomizerType": 0,
+      "HeatingCoeffOfPerf": 0.9,
+      "HeatingLimitType": 0,
+      "HeatingFuelType": 2,
+      "HeatingSchedule": {
+        "$ref": "13"
+      },
+      "HeatingSetpoint": 20.0,
+      "HeatRecoveryEfficiencyLatent": 0.65,
+      "HeatRecoveryEfficiencySensible": 0.7,
+      "HeatRecoveryType": 0,
+      "IsCoolingOn": true,
+      "IsHeatingOn": true,
+      "IsMechVentOn": true,
+      "MaxCoolFlow": 100.0,
+      "MaxCoolingCapacity": 100.0,
+      "MaxHeatFlow": 100.0,
+      "MaxHeatingCapacity": 100.0,
+      "MechVentSchedule": {
+        "$ref": "14"
+      },
+      "MinFreshAirPerArea": 0.0003,
+      "MinFreshAirPerPerson": 0.0025,
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office conditioning"
+    }
+  ],
+  "ZoneConstructionSets": [
+    {
+      "$id": "18",
+      "Facade": {
+        "$ref": "4"
+      },
+      "Ground": {
+        "$ref": "5"
+      },
+      "Partition": {
+        "$ref": "4"
+      },
+      "Roof": {
+        "$ref": "6"
+      },
+      "Slab": {
+        "$ref": "5"
+      },
+      "IsFacadeAdiabatic": false,
+      "IsGroundAdiabatic": false,
+      "IsPartitionAdiabatic": false,
+      "IsRoofAdiabatic": false,
+      "IsSlabAdiabatic": false,
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office constructions"
+    }
+  ],
+  "ZoneLoads": [
+    {
+      "$id": "19",
+      "DimmingType": 1,
+      "EquipmentAvailabilitySchedule": {
+        "$ref": "14"
+      },
+      "EquipmentPowerDensity": 8.0,
+      "IlluminanceTarget": 500.0,
+      "LightingPowerDensity": 10.0,
+      "LightsAvailabilitySchedule": {
+        "$ref": "14"
+      },
+      "OccupancySchedule": {
+        "$ref": "14"
+      },
+      "IsEquipmentOn": true,
+      "IsLightingOn": true,
+      "IsPeopleOn": true,
+      "PeopleDensity": 0.05,
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office loads"
+    }
+  ],
+  "Zones": [
+    {
+      "$id": "20",
+      "Conditioning": {
+        "$ref": "17"
+      },
+      "Constructions": {
+        "$ref": "18"
+      },
+      "DaylightMeshResolution": 1.0,
+      "DaylightWorkplaneHeight": 0.8,
+      "DomesticHotWater": {
+        "$ref": "15"
+      },
+      "InternalMassConstruction": {
+        "$ref": "5"
+      },
+      "InternalMassExposedPerFloorArea": 0.0,
+      "Loads": {
+        "$ref": "19"
+      },
+      "Ventilation": {
+        "$ref": "16"
+      },
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office core"
+    },
+    {
+      "$id": "21",
+      "Conditioning": {
+        "$ref": "17"
+      },
+      "Constructions": {
+        "$ref": "18"
+      },
+      "DaylightMeshResolution": 1.0,
+      "DaylightWorkplaneHeight": 0.8,
+      "DomesticHotWater": {
+        "$ref": "15"
+      },
+      "InternalMassConstruction": {
+        "$ref": "5"
+      },
+      "InternalMassExposedPerFloorArea": 1.0,
+      "Loads": {
+        "$ref": "19"
+      },
+      "Ventilation": {
+        "$ref": "16"
+      },
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office perimeter"
+    }
+  ],
+  "BuildingTemplates": [
+    {
+      "Core": {
+        "$ref": "20"
+      },
+      "Lifespan": 60,
+      "PartitionRatio": 0.3,
+      "Perimeter": {
+        "$ref": "21"
+      },
+      "Structure": null,
+      "Windows": {
+        "$id": "22",
+        "AfnDischargeC": 0.65,
+        "AfnTempSetpoint": 20.0,
+        "AfnWindowAvailability": {
+          "$ref": "13"
+        },
+        "Construction": {
+          "$ref": "7"
+        },
+        "IsShadingSystemOn": false,
+        "IsVirtualPartition": false,
+        "IsZoneMixingOn": false,
+        "OperableArea": 0.8,
+        "ShadingSystemAvailabilitySchedule": {
+          "$ref": "13"
+        },
+        "ShadingSystemSetpoint": 180.0,
+        "ShadingSystemTransmittance": 0.5,
+        "ShadingSystemType": 0,
+        "Type": 0,
+        "ZoneMixingAvailabilitySchedule": {
+          "$ref": "13"
+        },
+        "ZoneMixingDeltaTemperature": 2.0,
+        "ZoneMixingFlowRate": 0.001,
+        "Category": "Office",
+        "Comments": null,
+        "DataSource": "archetypal test fixture",
+        "Name": "Office windows"
+      },
+      "DefaultWindowToWallRatio": 0.4,
+      "YearFrom": 1980,
+      "YearTo": 2000,
+      "Country": [
+        "CA"
+      ],
+      "ClimateZone": [
+        "6A"
+      ],
+      "Authors": [
+        "archetypal"
+      ],
+      "AuthorEmails": [],
+      "Version": "v1.0",
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office"
+    },
+    {
+      "Core": {
+        "$ref": "20"
+      },
+      "Lifespan": 60,
+      "PartitionRatio": 0.3,
+      "Perimeter": {
+        "$ref": "21"
+      },
+      "Structure": null,
+      "Windows": {
+        "$id": "26",
+        "AfnDischargeC": 0.65,
+        "AfnTempSetpoint": 20.0,
+        "AfnWindowAvailability": {
+          "$ref": "13"
+        },
+        "Construction": {
+          "$ref": "25"
+        },
+        "IsShadingSystemOn": false,
+        "IsVirtualPartition": false,
+        "IsZoneMixingOn": false,
+        "OperableArea": 0.8,
+        "ShadingSystemAvailabilitySchedule": {
+          "$ref": "13"
+        },
+        "ShadingSystemSetpoint": 180.0,
+        "ShadingSystemTransmittance": 0.5,
+        "ShadingSystemType": 0,
+        "Type": 0,
+        "ZoneMixingAvailabilitySchedule": {
+          "$ref": "13"
+        },
+        "ZoneMixingDeltaTemperature": 2.0,
+        "ZoneMixingFlowRate": 0.001,
+        "Category": "Office",
+        "Comments": null,
+        "DataSource": "archetypal test fixture",
+        "Name": "Office windows double"
+      },
+      "DefaultWindowToWallRatio": 0.4,
+      "YearFrom": 1980,
+      "YearTo": 2000,
+      "Country": [
+        "CA"
+      ],
+      "ClimateZone": [
+        "6A"
+      ],
+      "Authors": [
+        "archetypal"
+      ],
+      "AuthorEmails": [],
+      "Version": "v1.0",
+      "Category": "Office",
+      "Comments": null,
+      "DataSource": "archetypal test fixture",
+      "Name": "Office"
+    }
+  ],
+  "WindowSettings": [
+    {
+      "$ref": "22"
+    },
+    {
+      "$ref": "26"
+    }
+  ]
+}

@@ -652,19 +652,27 @@ namespace BasiliskCheck
                 result[ClassName(type)] = keys;
             }
 
+            // The layout of the pretty-format-json pre-commit hook (two-space indent, one key per
+            // line, ASCII only, final newline), so the committed file stays byte-identical.
             var sb = new StringBuilder();
             sb.Append("{\n");
             int n = 0;
             foreach (var (cls, keys) in result)
             {
-                sb.Append("  ").Append(JsonConvert.ToString(cls)).Append(": [");
-                sb.Append(string.Join(", ", keys.Select(k => JsonConvert.ToString(k))));
-                sb.Append(']');
+                sb.Append("  ").Append(Quote(cls)).Append(": [\n");
+                for (int i = 0; i < keys.Count; i++)
+                {
+                    sb.Append("    ").Append(Quote(keys[i])).Append(i + 1 < keys.Count ? ",\n" : "\n");
+                }
+                sb.Append("  ]");
                 sb.Append(++n < result.Count ? ",\n" : "\n");
             }
             sb.Append("}\n");
             return sb.ToString();
         }
+
+        private static string Quote(string s) =>
+            JsonConvert.ToString(s, '"', StringEscapeHandling.EscapeNonAscii);
 
         private static bool Declares(Type type, Type? declaring)
         {

@@ -95,8 +95,8 @@ The names and commands documented in the reference (FR-007). At M1:
 
 - **From 002:** `reduce`, `merge`, `compare`, `Layout`, `ReductionOptions`, `Reduction`,
   `ComparisonResult`, `AcceptanceTargets`, `RESULTS_REQUIREMENTS`.
-- **From 003:** the UMI read and write functions and the loss report (names from 003's plan,
-  R14).
+- **From 003:** `read_umi`, `write_umi`, `to_umi` and `TranslationReport` (003
+  contracts/python-api.md; 001 R14).
 - **From 001:** the errors of R8; `__version__`.
 - **Commands:** `archetypal reduce`, `merge`, `compare`, `translate`.
 

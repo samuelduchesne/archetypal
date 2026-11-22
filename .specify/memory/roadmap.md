@@ -1,6 +1,22 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.9.0 → 1.10.0
+Bump rationale: MINOR — spec 003's plan mapped every UMI field to SBEM. The fields SBEM lacks
+become a new upstream item UP-9 (split from UP-2, which blocks 002 and needs none of them);
+converting simple glazing to an equivalent UMI glass layer becomes UP-10 (idfkit); UP-2 must
+also allow unset floor-area shares ("set by geometry", as UMI does).
+
+Changes this revision:
+  - C-13: the missing UMI fields are added by UP-9, not UP-2
+  - UP-2: unset floor-area shares added to its scope
+  - Added UP-9 (epinterface: SBEM fields for UMI) and UP-10 (idfkit: equivalent glazing layer)
+  - 003: depends also on 002, UP-9 (for verification) and UP-10 (bridged)
+
+Specs affected: 003 (and 002 only through UP-2's broader scope)
+Open questions added/resolved: none
+
+Previous revision (1.9.0):
 Version change: 1.8.0 → 1.9.0
 Bump rationale: MINOR — new decision C-19 on how archetypal 3 is built: the project is
 generated with project-kit's new-project skill and kept current with its upgrade skill;
@@ -271,7 +287,7 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
     model generation), which is the chain users rely on.
 - **C-13 — UMI fields** *(resolves Q2)*: every UMI field that affects simulation results
   (structure and thermal mass, window settings, partition ratio, among others) must be
-  representable in SBEM; where it is not, UP-2 adds it. Descriptive fields (names, comments,
+  representable in SBEM; where it is not, UP-9 adds it (split from UP-2 by 003's plan). Descriptive fields (names, comments,
   lifespan, embodied-carbon data) map to SBEM's metadata and environmental fields. Nothing is
   dropped silently. The field-by-field mapping is part of spec 003.
 - **C-14 — Coordinating changes to SBEM** *(resolves Q3)*: archetypal pins the SBEM fork
@@ -293,7 +309,7 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   main epinterface repository is not expected to accept our pull requests for a long time, and
   its releases pin `archetypal==2.18.10`, so archetypal 3 cannot depend on them at all.
   - *Home:* `samuelduchesne/epinterface`. Its `main` is upstream `main` plus one topic branch
-    per prerequisite (UP-1, UP-2, UP-4, UP-8), merged in that order. Each topic branch is also
+    per prerequisite (UP-1, UP-2, UP-4, UP-8, UP-9), merged in that order. Each topic branch is also
     an open pull request to upstream.
   - *Package:* not published on PyPI; publishing is reserved for after upstream accepts our
     pull requests. The distribution and import names stay `epinterface`. archetypal declares
@@ -356,7 +372,7 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
 ## Upstream Prerequisites
 
 Not archetypal specs. Pull requests to other repositories that archetypal specs depend on.
-The epinterface items (UP-1, UP-2, UP-3, UP-4, UP-8) are delivered in the SBEM fork (C-17):
+The epinterface items (UP-1, UP-2, UP-3, UP-4, UP-8, UP-9) are delivered in the SBEM fork (C-17):
 "blocking" means blocking until released by the fork. Their upstream pull requests stay open
 but are no longer a dependency of any spec. The idfkit items are unchanged.
 
@@ -370,8 +386,10 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   (C-13). Built by us, released in the fork, offered upstream (C-17). The 002 plan's research
   adds: envelope and window ratios by orientation, an infiltration schedule, numeric
   heat-recovery effectiveness, holiday and design-day slots in `WeekComponent`, and save/load
-  helpers with a schema version. Zone groups block 002; each added field does not (its loss is
-  reported until it lands).
+  helpers with a schema version. The 003 plan adds: floor-area shares may be unset for every
+  group, meaning "set by the building's geometry when applied", as UMI does. Zone groups block
+  002; unset shares block 003; each added field does not (its loss is reported until it
+  lands). The UMI fields SBEM lacks are UP-9, not UP-2.
   ~~Revision 1.0.0: separate core and perimeter zones only.~~
 - **UP-3 — upstream epinterface releases on PyPI what archetypal uses.** A package on PyPI
   cannot depend on a git repository, and the fork is not published (C-17). archetypal 3
@@ -411,6 +429,22 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   three (research R12, R19).
   *Blocking for 002's release* (SC-002's fan target); reduction is built without it and
   reports what is not yet represented. Real HVAC systems are the separate, undecided 009.
+- **UP-9 — epinterface: SBEM fields for UMI template libraries** (C-13). The 003 plan's
+  field-by-field mapping found no SBEM home for: layered glazing constructions; window
+  settings (operable area, shading, zone mixing, virtual partition, airflow-network
+  parameters); partition ratio; natural-ventilation limits and switches; scheduled
+  ventilation; a mechanical-ventilation schedule; ideal-loads heating and cooling limits;
+  heating and cooling availability schedules; daylighting parameters; adiabatic flags per
+  assembly; archetype-level metadata (years, country, climate zone, authors, lifespan,
+  version); a structure component; environmental fields on materials and assemblies; metadata
+  on schedules. Also fixes `fractional_year_sum`'s weekday count and `Provider="Both"`
+  ignoring natural ventilation. Built by us, released in the fork, offered upstream (C-14,
+  C-17). *Not blocking for implementing 003*; its simulation-relevant fields block marking
+  003 implemented (SC-003). Until each lands, every read reports it as lost.
+- **UP-10 — idfkit: equivalent glazing layer of a simple-glazing window**, from EnergyPlus's
+  simple window model (U, SHGC and VT → one glazing layer). UMI has no simple-glazing material,
+  so writing an archetype with simple glazing to UMI needs it. *Not blocking*: 003 bridges it
+  temporarily (003 plan, Complexity Tracking).
 
 ## Planned Specs
 
@@ -484,11 +518,11 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
   is told; UMI library-level concerns (shared components,
   naming, duplicates such as #459).
 - **Scope (out):** UMI templates as editable Python objects (C-02); other formats (008).
-- **Depends on:** 001, UP-2
+- **Depends on:** 001, 002 (merging, schedule projection), UP-2, UP-9 (for verification),
+  UP-10 (bridged)
 - **Governed by:** C-02, C-11, C-13
 - **Spec dir:** specs/003-umi-translation/
-- **Notes:** The field mapping done for this spec also decides what UP-2 must add to
-  epinterface (C-13).
+- **Notes:** The field mapping done for this spec decided what SBEM must add: UP-9 (C-13).
 
 ### M2 — create from published sources
 
@@ -590,4 +624,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.9.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
+**Version**: 1.10.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

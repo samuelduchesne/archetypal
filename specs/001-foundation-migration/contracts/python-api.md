@@ -11,7 +11,7 @@ from archetypal.errors import (
     ArchetypalError, InputError, UnsupportedFeatureError, LossyTranslationError,
     NotComparableError, OptionalDependencyError, RemovedInArchetypal3Error,
 )
-# spec 003: UMI read and write functions, re-exported here once its plan names them (R14)
+from archetypal import read_umi, write_umi                                 # spec 003 (R14)
 ```
 
 The full list is in [../data-model.md](../data-model.md), Public interface. Everything is

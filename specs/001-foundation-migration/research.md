@@ -440,4 +440,8 @@ provides it:
 - write SBEM archetypes (one per model) to one UMI library, with a loss report;
 - a strict mode that raises `LossyTranslationError` instead of reporting.
 
-003's plan confirms the names; 001's command-line tasks wait for it.
+003's plan names them (003 research R17, contracts/python-api.md): `read_umi(path, *,
+strict, skip_invalid_templates) -> UmiImport`, `write_umi(archetypes, path, *, strict,
+overwrite) -> TranslationReport` and `to_umi(...)`, raising `UmiFormatError` and
+`UmiValidationError` (both `InputError`) and `LossyTranslationError`. Status 4 is returned
+when the report's `losses` is not empty.

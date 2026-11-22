@@ -175,7 +175,7 @@ out) and the new ones (SBEM output, merge, compare, translate), with reports, a 
 distinct exit statuses.
 
 **Prerequisites**: spec 002's `reduce`, `merge` and `compare` (002 US1–US3) and spec 003's
-UMI read and write functions (named in 003's plan, research R14).
+`read_umi`, `write_umi` and `TranslationReport` (003 contracts/python-api.md; research R14).
 
 **Independent test**: on a fresh environment, run the documented command on a reference model
 with a weather file and open the library; the Python route gives the same library (spec US1).

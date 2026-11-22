@@ -21,10 +21,62 @@ if TYPE_CHECKING:
 
     from idfkit.simulation import SQLResult
 
-__all__ = ["RESULTS_REQUIREMENTS", "ModelFacts", "ResultRequirement", "check_results"]
+__all__ = [
+    "BASEBOARD_VARIABLE",
+    "COOLING_COIL_VARIABLE",
+    "HEATING_COIL_VARIABLE",
+    "IDEAL_COOLING_VARIABLE",
+    "IDEAL_HEATING_VARIABLE",
+    "RADIANT_COOLING_VARIABLE",
+    "RADIANT_HEATING_VARIABLE",
+    "RESULTS_REQUIREMENTS",
+    "ModelFacts",
+    "ResultRequirement",
+    "check_results",
+    "delivery_outputs",
+]
 
 FUEL = "<fuel>"
 """The placeholder for a fuel in a meter's name (`Heating:<fuel>`)."""
+
+IDEAL_HEATING_VARIABLE = "Zone Ideal Loads Supply Air Total Heating Energy"
+IDEAL_COOLING_VARIABLE = "Zone Ideal Loads Supply Air Total Cooling Energy"
+HEATING_COIL_VARIABLE = "Heating Coil Heating Energy"
+COOLING_COIL_VARIABLE = "Cooling Coil Total Cooling Energy"
+BASEBOARD_VARIABLE = "Baseboard Total Heating Energy"
+RADIANT_HEATING_VARIABLE = "Zone Radiant HVAC Heating Energy"
+RADIANT_COOLING_VARIABLE = "Zone Radiant HVAC Cooling Energy"
+
+
+def delivery_outputs(object_type: str) -> tuple[tuple[Literal["heating", "cooling"], str], ...]:
+    """The outputs that report the energy an HVAC object delivers, by mode (research R12).
+
+    Heating and cooling coils (air-loop, terminal and zone-equipment coils alike), ideal loads
+    (supply air total, outdoor air and latent load included), baseboards and low-temperature
+    radiant systems. Coil performance sub-objects (`Coil:Cooling:DX:CurveFit:*`) and
+    thermal-storage coils are not coils that report these outputs.
+
+    Args:
+        object_type: The EnergyPlus object type, in any case.
+
+    Returns:
+        (mode, variable) pairs; empty for an object that delivers nothing reduction measures.
+    """
+    t = object_type.casefold()
+    outputs: tuple[tuple[Literal["heating", "cooling"], str], ...] = ()
+    if t == "zonehvac:idealloadsairsystem":
+        outputs = (("heating", IDEAL_HEATING_VARIABLE), ("cooling", IDEAL_COOLING_VARIABLE))
+    elif t.startswith("coil:heating:"):
+        outputs = (("heating", HEATING_COIL_VARIABLE),)
+    elif t.startswith("coil:cooling:") and not t.startswith("coil:cooling:dx:curvefit:") and "thermalstorage" not in t:
+        outputs = (("cooling", COOLING_COIL_VARIABLE),)
+    elif t.startswith("zonehvac:baseboard:"):
+        outputs = (("heating", BASEBOARD_VARIABLE),)
+    elif t.startswith("zonehvac:lowtemperatureradiant:") and not t.endswith(":design"):
+        outputs = (("heating", RADIANT_HEATING_VARIABLE),)
+        if not t.endswith(":electric"):
+            outputs = (("heating", RADIANT_HEATING_VARIABLE), ("cooling", RADIANT_COOLING_VARIABLE))
+    return outputs
 
 
 @dataclass(frozen=True)
@@ -45,6 +97,8 @@ class ModelFacts:
         end_use_fuels: The (end use, fuel) pairs the model meters, with EnergyPlus's meter
             spelling: `("Heating", "NaturalGas")` stands for the meter `Heating:NaturalGas`.
             End uses are `Heating`, `Cooling`, `HeatRejection` and `WaterSystems`.
+        hvac_outputs: (variable, object name) pairs reporting the energy each HVAC object
+            delivers (`delivery_outputs`), in model order.
     """
 
     zones: tuple[str, ...] = ()
@@ -54,6 +108,7 @@ class ModelFacts:
     served_zones: tuple[str, ...] | None = None
     water_use_equipment: tuple[str, ...] = ()
     end_use_fuels: tuple[tuple[str, str], ...] = ()
+    hvac_outputs: tuple[tuple[str, str], ...] = ()
 
     def fuels(self, end_use: str) -> tuple[str, ...]:
         """Return the fuels metered for an end use, sorted and without duplicates.
@@ -171,6 +226,13 @@ def _pumps(facts: ModelFacts) -> tuple[str, ...]:
     return facts.pumps
 
 
+def _delivering(variable: str) -> Callable[[ModelFacts], tuple[str, ...]]:
+    def expected(facts: ModelFacts) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(name for item, name in facts.hvac_outputs if item == variable))
+
+    return expected
+
+
 def _variable(
     item: str, key: str, used_for: str, expected: Callable[[ModelFacts], tuple[str, ...]]
 ) -> ResultRequirement:
@@ -181,9 +243,33 @@ def _meter(item: str, expected: Callable[[ModelFacts], tuple[str, ...]]) -> Resu
     return ResultRequirement(item, "meter", "—", "Hourly", "consumed energy (FR-022), peaks (FR-027)", expected)
 
 
+_DELIVERED = "energy delivered by HVAC equipment (FR-022)"
+_SUPPLY = "supply-air temperature limits (FR-022a), hourly mode of pumps in the comparison (R13)"
+
 RESULTS_REQUIREMENTS: tuple[ResultRequirement, ...] = (
-    _variable("Zone Air System Sensible Heating Energy", "every zone", "delivered heating (FR-022)", _zones),
-    _variable("Zone Air System Sensible Cooling Energy", "every zone", "delivered cooling (FR-022)", _zones),
+    _variable("Zone Air System Sensible Heating Energy", "every zone", _SUPPLY, _zones),
+    _variable("Zone Air System Sensible Cooling Energy", "every zone", _SUPPLY, _zones),
+    _variable(
+        IDEAL_HEATING_VARIABLE, "every ZoneHVAC:IdealLoadsAirSystem", _DELIVERED, _delivering(IDEAL_HEATING_VARIABLE)
+    ),
+    _variable(
+        IDEAL_COOLING_VARIABLE, "every ZoneHVAC:IdealLoadsAirSystem", _DELIVERED, _delivering(IDEAL_COOLING_VARIABLE)
+    ),
+    _variable(HEATING_COIL_VARIABLE, "every heating coil", _DELIVERED, _delivering(HEATING_COIL_VARIABLE)),
+    _variable(COOLING_COIL_VARIABLE, "every cooling coil", _DELIVERED, _delivering(COOLING_COIL_VARIABLE)),
+    _variable(BASEBOARD_VARIABLE, "every ZoneHVAC:Baseboard:*", _DELIVERED, _delivering(BASEBOARD_VARIABLE)),
+    _variable(
+        RADIANT_HEATING_VARIABLE,
+        "every ZoneHVAC:LowTemperatureRadiant:*",
+        _DELIVERED,
+        _delivering(RADIANT_HEATING_VARIABLE),
+    ),
+    _variable(
+        RADIANT_COOLING_VARIABLE,
+        "every hydronic ZoneHVAC:LowTemperatureRadiant:*",
+        _DELIVERED,
+        _delivering(RADIANT_COOLING_VARIABLE),
+    ),
     _variable("Fan Electricity Energy", "every fan", "fan energy and air volume (FR-022a)", _fans),
     _variable("Fan Air Mass Flow Rate", "every fan", "fan energy and air volume (FR-022a)", _fans),
     _variable(

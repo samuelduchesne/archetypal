@@ -80,7 +80,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, Protocol, TypeAlias, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, NamedTuple, Protocol, TypeAlias, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -101,15 +101,19 @@ from archetypal.reduction._sql_tables import GainKind
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
+    from epinterface.sbem.archetype import ZoneGroup
+    from epinterface.sbem.components.schedules import YearComponent
     from typing_extensions import Self
 
     from archetypal.reduction.classify import ClassifiedZone
     from archetypal.reduction.schedules import ScheduleEvaluator
 
 __all__ = [
+    "APPROXIMATE_PATHS",
     "DOMAIN_MODULES",
     "FIELD_OWNERS",
     "AirflowTotals",
+    "ApproximateLedger",
     "EirSums",
     "EnergyTotals",
     "EnvelopeAssignment",
@@ -148,6 +152,19 @@ Fuel: TypeAlias = str
 """An EnergyPlus resource name as its meters report it, for example `Electricity`, `NaturalGas`."""
 
 _SECONDS_PER_HOUR = 3600.0
+_DAYS_PER_YEAR = 365.0
+_UNIT_HEIGHT = 1.0  # m: the storey height the approximate infiltration assumes in every group
+
+APPROXIMATE_PATHS: tuple[str, ...] = (
+    "Envelope.Assemblies",
+    "Envelope.Infiltration",
+    "Envelope.Window",
+    "Operations.DHW",
+    "Operations.HVAC.ConditioningSystems",
+)
+"""The SBEM paths `GroupLedger.approximate_from_group` can only rebuild by floor-area weighting
+(spec 003 research R12): the envelope (surface areas unknown), infiltration (volume unknown), the
+window (window area unknown) and the efficiencies of the systems and hot water (energies unknown)."""
 
 
 # --- profiles -----------------------------------------------------------------------------
@@ -714,6 +731,188 @@ class GroupLedger(_Totals):
                 values[name] = value
         one_copy = cls(members=(record.name,), floor_area=record.floor_area, **cast("dict[str, Any]", values))
         return one_copy if multiplier == 1 else one_copy.scaled(multiplier)
+
+    @classmethod
+    def approximate_from_group(cls, group: ZoneGroup, floor_area: float) -> ApproximateLedger:
+        """Rebuild a ledger from an SBEM zone group's parameters (spec 003, research R12).
+
+        Used to merge the groups of an archetype written to UMI without its reduction. The
+        floor area is the group's share times 1 m²: only ratios between groups matter. Profiles
+        are evaluated over UMI's reference year (non-leap, starting on a Monday).
+
+        - **Exact**, from intensities: gains and their profiles (people, lights and equipment as
+          `electric`), the heating and cooling setpoints of a heated or cooled group (else
+          `unheated_area` or `uncooled_area`), mechanical outdoor air at design occupancy
+          times the ventilation schedule (with its HRV and economiser categories), and hot
+          water (annual volume `FlowRatePerPerson · 365 · PeopleDensity · area` spread over the
+          water-use schedule, temperature rise `WaterSupplyTemperature - WaterTemperatureInlet`),
+          and internal mass (exposed area and capacity per floor area).
+        - **Approximate**, floor-area weighted (`APPROXIMATE_PATHS`): each opaque class's U and
+          capacities taken over an area equal to the floor area; the window likewise, under
+          orientation `S`; infiltration as air changes over a 1 m storey; and each system's
+          efficiency (`SystemCOP · DistributionCOP`) as a rated efficiency weighted by floor area.
+
+        Args:
+            group: The zone group.
+            floor_area: Its floor area, m² (its share times 1 m²).
+
+        Returns:
+            The ledger, whose only member is the group's name, and the paths it approximated.
+
+        Raises:
+            ValueError: The floor area is not positive.
+        """
+        from archetypal.reduction.envelope import (  # noqa: PLC0415 - envelope imports this module
+            ASSEMBLY_TYPES,
+            assembly_capacities,
+            assembly_u_factor,
+        )
+        from archetypal.reduction.schedules import (  # noqa: PLC0415 - imports epinterface, used only here
+            RunPeriodCalendar,
+            calendar_year,
+            year_values,
+        )
+
+        if not floor_area > 0:
+            msg = f"group {group.Name!r}: the floor area must be positive, not {floor_area!r}"
+            raise ValueError(msg)
+        area = float(floor_area)
+        calendar = RunPeriodCalendar(calendar_year(1, 1, 0))
+
+        def profile(year: YearComponent) -> NDArray[np.float64]:
+            return np.asarray(year_values(year, calendar), dtype=np.float64)
+
+        zone = group.Zone
+        space_use = zone.Operations.SpaceUse
+        hvac = zone.Operations.HVAC
+        systems = hvac.ConditioningSystems
+        envelope = zone.Envelope
+        values: dict[str, Any] = {}
+
+        gains: dict[GainKind, GainTotals] = {}
+        people = space_use.Occupancy.PeopleDensity * area
+        for kind, component, installed in (
+            ("people", space_use.Occupancy, people),
+            ("lights", space_use.Lighting, space_use.Lighting.PowerDensity * area),
+            ("electric", space_use.Equipment, space_use.Equipment.PowerDensity * area),
+        ):
+            if component.IsOn:
+                gains[kind] = GainTotals(installed=installed, hourly=installed * profile(component.Schedule))
+        values["gains"] = gains
+
+        thermostat = space_use.Thermostat
+        if systems.Heating is not None:
+            values["heating_setpoint"] = WeightedProfile(weight=area, weighted=area * profile(thermostat.HeatingSchedule))
+        else:
+            values["unheated_area"] = area
+        if systems.Cooling is not None:
+            values["cooling_setpoint"] = WeightedProfile(weight=area, weighted=area * profile(thermostat.CoolingSchedule))
+        else:
+            values["uncooled_area"] = area
+
+        ventilation = hvac.Ventilation
+        if ventilation.Provider in {"Mechanical", "Both"}:
+            design = area * ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * people
+            hourly = design * profile(ventilation.Schedule)
+            volume = float(hourly.sum()) * _SECONDS_PER_HOUR
+            values["outdoor_air"] = OutdoorAirTotals(
+                design_flow=design,
+                hourly=hourly,
+                hrv_weighted={ventilation.HRV: volume},
+                economiser_weighted={ventilation.Economizer: volume},
+            )
+
+        dhw = zone.Operations.DHW
+        if dhw.IsOn:
+            water_use = space_use.WaterUse
+            schedule = profile(water_use.Schedule)
+            annual = water_use.FlowRatePerPerson * _DAYS_PER_YEAR * people
+            total = float(schedule.sum())
+            volume_profile = annual * schedule / total if total > 0 else np.zeros_like(schedule)
+            rise = dhw.WaterSupplyTemperature - dhw.WaterTemperatureInlet
+            values["hot_water"] = HotWaterTotals(volume=volume_profile, heat=volume_profile * rise)
+
+        assemblies = envelope.Assemblies
+        values["envelope"] = {
+            envelope_class: _assembly_totals(assembly_u_factor, assembly_capacities, assembly, envelope_class, area)
+            for envelope_class, slot in ASSEMBLY_TYPES.items()
+            if (assembly := getattr(assemblies, f"{slot}Assembly", None)) is not None
+        }
+        mass, exposed = assemblies.InternalMassAssembly, assemblies.InternalMassExposedAreaPerArea
+        if mass is not None and exposed:
+            split = assembly_capacities(mass)
+            values["internal_mass_area"] = exposed * area
+            values["internal_mass_capacity"] = exposed * area * (split.inner + split.outer)
+
+        window = envelope.Window
+        if window is not None and hasattr(window, "UValue"):
+            values["window_by_orientation"] = {
+                "S": WindowTotals(
+                    area=area,
+                    ua=area * window.UValue,  # pyright: ignore[reportAttributeAccessIssue]
+                    a_shgc=area * window.SHGF,  # pyright: ignore[reportAttributeAccessIssue]
+                    a_vt=area * window.TVis,  # pyright: ignore[reportAttributeAccessIssue]
+                )
+            }
+
+        infiltration = envelope.Infiltration
+        if infiltration.IsOn:
+            flow = infiltration.AirChangesPerHour * area * _UNIT_HEIGHT / _SECONDS_PER_HOUR
+            values["infiltration"] = AirflowTotals(
+                design_flow=flow,
+                constant_weighted=flow * infiltration.ConstantCoefficient,
+                temperature_weighted=flow * infiltration.TemperatureCoefficient,
+                velocity_weighted=flow * infiltration.WindVelocityCoefficient,
+                velocity_squared_weighted=flow * infiltration.WindVelocitySquaredCoefficient,
+            )
+
+        energy: dict[Mode, EnergyTotals] = {}
+        for mode, system in (("heating", systems.Heating), ("cooling", systems.Cooling)):
+            if system is not None:
+                energy[mode] = EnergyTotals(rated_weight=area, rated_weighted=area * system.SystemCOP * system.DistributionCOP)
+        if dhw.IsOn:
+            energy["hot_water"] = EnergyTotals(rated_weight=area, rated_weighted=area * dhw.SystemCOP * dhw.DistributionCOP)
+        values["energy"] = energy
+
+        approximate = [
+            path
+            for path, present in (
+                ("Envelope.Assemblies", bool(values["envelope"])),
+                ("Envelope.Infiltration", infiltration.IsOn),
+                ("Envelope.Window", "window_by_orientation" in values),
+                ("Operations.DHW", dhw.IsOn),
+                ("Operations.HVAC.ConditioningSystems", systems.Heating is not None or systems.Cooling is not None),
+            )
+            if present
+        ]
+        ledger = cls(members=(group.Name,), floor_area=area, **values)
+        return ApproximateLedger(ledger, tuple(approximate))
+
+
+class ApproximateLedger(NamedTuple):
+    """A ledger rebuilt from an SBEM group's parameters, and what it could only approximate (R12)."""
+
+    ledger: GroupLedger
+    """The group's ledger."""
+    approximate: tuple[str, ...]
+    """The SBEM paths rebuilt by floor-area weighting (a subset of `APPROXIMATE_PATHS`)."""
+
+
+def _assembly_totals(
+    u_factor: Callable[[Any, EnvelopeClass], float],
+    capacities: Callable[[Any], Any],
+    assembly: Any,
+    envelope_class: EnvelopeClass,
+    area: float,
+) -> EnvelopeTotals:
+    """An assembly's totals over `area`: floor-area weighting of U and capacities (R12)."""
+    split = capacities(assembly)
+    return EnvelopeTotals(
+        area=area,
+        ua=area * u_factor(assembly, envelope_class),
+        capacity_inner=area * split.inner,
+        capacity_outer=area * split.outer,
+    )
 
 
 # --- domain hooks -------------------------------------------------------------------------

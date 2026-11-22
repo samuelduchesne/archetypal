@@ -757,6 +757,16 @@ Output:Variable,
   Hourly;                    !- Reporting Frequency
 
 Output:Variable,
+  *,                         !- Key Value
+  Zone Ideal Loads Supply Air Total Heating Energy, !- Variable Name
+  Hourly;                    !- Reporting Frequency
+
+Output:Variable,
+  *,                         !- Key Value
+  Zone Ideal Loads Supply Air Total Cooling Energy, !- Variable Name
+  Hourly;                    !- Reporting Frequency
+
+Output:Variable,
   North_Perimeter Supply Inlet, !- Key Value
   System Node Mass Flow Rate, !- Variable Name
   Hourly;                    !- Reporting Frequency

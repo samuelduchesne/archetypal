@@ -220,10 +220,14 @@ def test_thermostat_setpoints_follow_control_type(three: dict[str, ZoneRecord], 
 # --- Hourly results -------------------------------------------------------------------------------
 
 
-def test_delivered_energy_is_one_copy(ten: dict[str, ZoneRecord], ten_sources: SourceData) -> None:
-    raw = _raw_series(ten_sources, "Zone Air System Sensible Heating Energy", "TYPICAL_PERIMETER").sum()
-    assert ten["Typical_Perimeter"].delivered["heating"] == pytest.approx(raw)
+def test_delivered_energy_is_the_equipments_for_one_copy(ten: dict[str, ZoneRecord], ten_sources: SourceData) -> None:
+    # The reheat coil serves every copy of the x10 zone; heating comes only from it.
+    raw = _raw_series(ten_sources, "Heating Coil Heating Energy", "TYPICAL_PERIMETER REHEAT COIL").sum()
+    assert ten["Typical_Perimeter"].delivered["heating"] == pytest.approx(raw / 10)
+    assert ten["Typical_Perimeter"].delivered["cooling"] > 0.0
     assert ten["Attic"].delivered == {"heating": 0.0, "cooling": 0.0}
+    # A return plenum's transferred air is no delivery.
+    assert ten["G_Plenum"].delivered == {"heating": 0.0, "cooling": 0.0}
     assert ten["G_Plenum"].plenum
     assert not ten["G_Core"].plenum
 

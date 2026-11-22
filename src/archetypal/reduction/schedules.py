@@ -376,7 +376,7 @@ def project_holidays(
     if hourly.shape != (calendar.hours,):
         msg = f"the profile has shape {hourly.shape}; the {calendar.year} calendar needs ({calendar.hours},)"
         raise ValueError(msg)
-    by_day = hourly.reshape(-1, 24)
+    by_day = hourly.reshape(-1, 24)  # pyright: ignore[reportUnknownMemberType]
     holiday = _holiday_mask(calendar)
     slots = calendar.day_months * 7 + calendar.day_weekdays
     ordinary = ~holiday
@@ -387,18 +387,16 @@ def project_holidays(
     present = counts > 0
     days[present] = sums[present] / counts[present, None]
     if not present.all():  # a weekday that is a holiday every time it occurs in a month
-        inclusive = project(hourly, calendar).reshape(12 * 7, 24)
+        inclusive = project(hourly, calendar).reshape(12 * 7, 24)  # pyright: ignore[reportUnknownMemberType]
         days[~present] = inclusive[~present]
     holidays: HolidayDays = {}
     for month in sorted({int(m) for m in calendar.day_months[holiday]}):
         chosen = holiday & (calendar.day_months == month)
         holidays[month] = by_day[chosen].mean(axis=0)
-    return days.reshape(12, 7, 24), holidays
+    return days.reshape(12, 7, 24), holidays  # pyright: ignore[reportUnknownMemberType]
 
 
-def expand(
-    days: RepresentativeDays, calendar: RunPeriodCalendar, *, holidays: HolidayDays | None = None
-) -> Profile:
+def expand(days: RepresentativeDays, calendar: RunPeriodCalendar, *, holidays: HolidayDays | None = None) -> Profile:
     """Lay representative days out on a calendar, each day taking its month and weekday's day.
 
     Args:
@@ -417,7 +415,7 @@ def expand(
 
 
 def _apply_holidays(by_day: npt.NDArray[np.float64], calendar: RunPeriodCalendar, holidays: HolidayDays) -> None:
-    for index in np.flatnonzero(_holiday_mask(calendar)):
+    for index in np.flatnonzero(_holiday_mask(calendar)):  # pyright: ignore[reportUnknownMemberType]
         month = int(calendar.day_months[index])
         if month in holidays:
             by_day[index] = holidays[month]
@@ -510,22 +508,24 @@ def to_year_component(
         ValueError: If `days` has the wrong shape, or a `"Fraction"` value lies outside [0, 1]
             by more than float round-off.
     """
-    array = _checked_values(np.asarray(days, dtype=np.float64), name, _default_limits(category) if limits is None else limits)
+    array = _checked_values(
+        np.asarray(days, dtype=np.float64), name, _default_limits(category) if limits is None else limits
+    )
     if array.shape != (12, 7, 24):
         msg = f"{name}: representative days have shape {array.shape}, not (12, 7, 24)"
         raise ValueError(msg)
     kind = _default_limits(category) if limits is None else limits
 
-    def special(values: object, what: str) -> tuple[float, ...] | None:
-        if values is None:
+    def special(day_values: object, what: str) -> tuple[float, ...] | None:
+        if day_values is None:
             return None
-        hours = np.asarray(values, dtype=np.float64)
+        hours = np.asarray(day_values, dtype=np.float64)
         if hours.shape != (24,):
             msg = f"{name}: a {what} day has shape {hours.shape}, not (24,)"
             raise ValueError(msg)
         return tuple(float(v) for v in _checked_values(hours, name, kind))
 
-    holiday_keys = {month: special(values, "holiday") for month, values in (holidays or {}).items()}
+    holiday_keys = {month: special(day_values, "holiday") for month, day_values in (holidays or {}).items()}
     summer = special(summer_design_day, "summer design")
     winter = special(winter_design_day, "winter design")
 
@@ -650,9 +650,9 @@ def schedule_compact(schedule: YearComponent, *, name: str | None = None) -> str
                 label += " Holiday"
             fields.append(f"For: {label}")
             fields.extend(_until_fields(days[month, weekday]))
-        for slot, values in slots.items():
+        for slot, slot_values in slots.items():
             fields.append(f"For: {slot}")
-            fields.extend(_until_fields(values))
+            fields.extend(_until_fields(slot_values))
     lines = [
         "Schedule:Compact,",
         f"  {object_name},  !- Name",

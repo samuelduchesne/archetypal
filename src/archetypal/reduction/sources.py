@@ -35,7 +35,7 @@ from idfkit.versioned import as_version
 
 from archetypal.errors import MissingResults, ModelResultsMismatch, UnsupportedEnergyPlusVersion
 from archetypal.reduction._sql_tables import database_path, read_simulations, read_zones
-from archetypal.reduction.requirements import RESULTS_REQUIREMENTS, ModelFacts, check_results
+from archetypal.reduction.requirements import RESULTS_REQUIREMENTS, ModelFacts, check_results, delivery_outputs
 from archetypal.reduction.schedules import WEEKDAYS, RunPeriodCalendar
 
 if TYPE_CHECKING:
@@ -233,6 +233,16 @@ def _inlet_nodes(doc: IDFDocumentSince22_1) -> tuple[str, ...]:
     return tuple(dict.fromkeys(nodes))
 
 
+def _hvac_outputs(doc: IDFDocumentSince22_1) -> tuple[tuple[str, str], ...]:
+    """(variable, object name) pairs reporting the energy each HVAC object delivers (R12)."""
+    pairs: list[tuple[str, str]] = []
+    for object_type, collection in doc.objects_by_type():
+        outputs = delivery_outputs(object_type)
+        if outputs:
+            pairs.extend((variable, obj.name) for obj in collection for _, variable in outputs)
+    return tuple(pairs)
+
+
 def _served_zones(doc: IDFDocumentSince22_1) -> tuple[str, ...]:
     served = {connections.zone_name.casefold() for connections in doc["ZoneHVAC:EquipmentConnections"]}
     return tuple(zone.name for zone in doc.zones if zone.name.casefold() in served)
@@ -256,6 +266,7 @@ def model_facts(doc: IDFDocumentSince22_1, fuels: tuple[tuple[str, str], ...]) -
         served_zones=_served_zones(doc),
         water_use_equipment=tuple(equipment.name for equipment in doc.water_use_equipments),
         end_use_fuels=fuels,
+        hvac_outputs=_hvac_outputs(doc),
     )
 
 

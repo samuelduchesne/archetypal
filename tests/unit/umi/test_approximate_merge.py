@@ -1,0 +1,183 @@
+"""The approximate merge of an archetype without its reduction (spec 003 T040, research R12).
+
+`GroupLedger.approximate_from_group(group, floor_area)` rebuilds a group's ledger from its SBEM
+parameters, the floor area being the group's share times 1 m². Gains and their profiles,
+setpoints, outdoor air and hot water rebuild exactly from intensities; the envelope, the
+efficiencies, infiltration and the window need surface areas or energies the archetype does not
+hold, so they are floor-area weighted and listed as approximate. `approximate_merge` merges the
+rebuilt ledgers with 002's grouping to core and perimeter.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+import pytest
+from epinterface.sbem.archetype import Archetype, ZoneGroup
+
+from archetypal.errors import InputError
+from archetypal.reduction.ledger import APPROXIMATE_PATHS, GroupLedger
+from archetypal.reduction.schedules import RunPeriodCalendar, calendar_year, year_values
+from archetypal.umi import read_umi
+from archetypal.umi.report import LossKind
+from archetypal.umi.write import approximate_merge
+
+if TYPE_CHECKING:
+    from epinterface.sbem.components.zones import ZoneComponent
+
+B2 = Path(__file__).parents[2] / "fixtures" / "umi" / "BostonTemplateLibrary_2.json"
+CALENDAR = RunPeriodCalendar(calendar_year(1, 1, 0))
+
+
+@pytest.fixture(scope="module")
+def office() -> ZoneComponent:
+    return read_umi(B2).archetypes[0].Groups[1].Zone
+
+
+def replace(model: Any, path: str, value: object) -> Any:
+    """Return a copy of a pydantic model with the field at a dotted path replaced."""
+    head, _, rest = path.partition(".")
+    if not rest:
+        return model.model_copy(update={head: value})
+    return model.model_copy(update={head: replace(getattr(model, head), rest, value)})
+
+
+def group(zone: ZoneComponent, name: str, share: float | None, exposure: str | None) -> ZoneGroup:
+    return ZoneGroup.model_validate({"Name": name, "Zone": zone, "FloorAreaShare": share, "Exposure": exposure})
+
+
+# --- Rebuilding one group's ledger ----------------------------------------------------------
+
+
+def test_exact_parts_rebuild_from_intensities(office: ZoneComponent) -> None:
+    space_use = office.Operations.SpaceUse
+    rebuilt = GroupLedger.approximate_from_group(group(office, "perimeter", 0.4, "perimeter"), 0.4)
+    ledger = rebuilt.ledger
+    assert ledger.members == ("perimeter",)
+    assert ledger.floor_area == 0.4
+    people = ledger.gains["people"]
+    assert people.installed == pytest.approx(space_use.Occupancy.PeopleDensity * 0.4)
+    np.testing.assert_allclose(
+        people.hourly, people.installed * year_values(space_use.Occupancy.Schedule, CALENDAR), rtol=1e-12
+    )
+    assert ledger.gains["lights"].installed == pytest.approx(space_use.Lighting.PowerDensity * 0.4)
+    assert ledger.gains["electric"].installed == pytest.approx(space_use.Equipment.PowerDensity * 0.4)
+    heating = ledger.heating_setpoint
+    assert heating.weight == 0.4
+    np.testing.assert_allclose(heating.weighted / heating.weight, year_values(space_use.Thermostat.HeatingSchedule, CALENDAR))
+    ventilation = office.Operations.HVAC.Ventilation
+    design = 0.4 * (ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * space_use.Occupancy.PeopleDensity)
+    assert ledger.outdoor_air.design_flow == pytest.approx(design)
+    np.testing.assert_allclose(ledger.outdoor_air.hourly, design * year_values(ventilation.Schedule, CALENDAR))
+    annual = space_use.WaterUse.FlowRatePerPerson * 365 * space_use.Occupancy.PeopleDensity * 0.4
+    assert float(ledger.hot_water.volume.sum()) == pytest.approx(annual)
+    dhw = office.Operations.DHW
+    assert ledger.hot_water.mean_rise == pytest.approx(dhw.WaterSupplyTemperature - dhw.WaterTemperatureInlet)
+
+
+def test_parts_needing_report_data_are_listed_as_approximate(office: ZoneComponent) -> None:
+    rebuilt = GroupLedger.approximate_from_group(group(office, "perimeter", 0.4, "perimeter"), 0.4)
+    assert set(rebuilt.approximate) == set(APPROXIMATE_PATHS)
+    ledger = rebuilt.ledger
+    assert ledger.envelope["exterior_wall"].area == 0.4
+    assert ledger.window_by_orientation  # floor-area weighted window
+    assert ledger.infiltration.design_flow > 0
+    assert ledger.energy["heating"].rated_efficiency is not None
+
+
+def test_floor_area_must_be_positive(office: ZoneComponent) -> None:
+    with pytest.raises(ValueError, match="floor area"):
+        GroupLedger.approximate_from_group(group(office, "perimeter", None, "perimeter"), 0.0)
+
+
+def test_ledgers_of_groups_add(office: ZoneComponent) -> None:
+    a = GroupLedger.approximate_from_group(group(office, "a", 0.3, "perimeter"), 0.3).ledger
+    b = GroupLedger.approximate_from_group(group(office, "b", 0.2, "perimeter"), 0.2).ledger
+    total = a + b
+    assert total.members == ("a", "b")
+    assert total.gains["lights"].installed == pytest.approx(office.Operations.SpaceUse.Lighting.PowerDensity * 0.5)
+
+
+# --- Merging an archetype -------------------------------------------------------------------------
+
+
+def three_groups(office: ZoneComponent) -> Archetype:
+    bright = replace(office, "Operations.SpaceUse.Lighting.PowerDensity", 20.0)
+    bright = replace(bright, "Envelope.Window.UValue", 1.5)
+    bright = replace(bright, "Name", "Bright office")
+    return Archetype(
+        Name="three groups",
+        Groups=[
+            group(office, "perimeter office", 0.3, "perimeter"),
+            group(bright, "perimeter bright", 0.2, "perimeter"),
+            group(office, "core office", 0.5, "core"),
+        ],
+    )
+
+
+def test_merge_weights_intensities_by_floor_area(office: ZoneComponent) -> None:
+    merged = approximate_merge(three_groups(office))
+    by_exposure = {g.Exposure: g for g in merged.archetype.Groups}
+    assert set(by_exposure) == {"core", "perimeter"}
+    perimeter = by_exposure["perimeter"]
+    assert perimeter.FloorAreaShare == pytest.approx(0.5)
+    lighting = perimeter.Zone.Operations.SpaceUse.Lighting
+    density = office.Operations.SpaceUse.Lighting.PowerDensity
+    assert lighting.PowerDensity == pytest.approx((0.3 * density + 0.2 * 20.0) / 0.5)
+    # The schedule is the same in both groups, so the merged schedule reproduces it.
+    np.testing.assert_allclose(
+        year_values(lighting.Schedule, CALENDAR),
+        year_values(office.Operations.SpaceUse.Lighting.Schedule, CALENDAR),
+        atol=1e-12,
+    )
+    window = perimeter.Zone.Envelope.Window
+    assert window is not None
+    assert window.UValue == pytest.approx((0.3 * office.Envelope.Window.UValue + 0.2 * 1.5) / 0.5)  # pyright: ignore[reportOptionalMemberAccess]
+    # The core group has one member: it is kept as it is.
+    assert by_exposure["core"].Zone == office
+
+
+def test_merge_reports_merged_groups_and_approximate_parameters(office: ZoneComponent) -> None:
+    merged = approximate_merge(three_groups(office))
+    kinds = {(loss.kind, loss.location) for loss in merged.losses}
+    merged_losses = [loss for loss in merged.losses if loss.kind is LossKind.MERGED]
+    assert len(merged_losses) == 1
+    assert merged_losses[0].value == ["perimeter bright", "perimeter office"]
+    assert merged_losses[0].rule == "layout.merged"
+    assert (LossKind.APPROXIMATE, "perimeter.Envelope.Window") in kinds
+    # Groups that agree on a parameter merge it exactly: no approximate loss for it.
+    assert (LossKind.APPROXIMATE, "perimeter.Envelope.Assemblies") not in kinds
+    assert all(loss.subject == "three groups" for loss in merged.losses)
+
+
+def test_merged_archetype_validates(office: ZoneComponent) -> None:
+    merged = approximate_merge(three_groups(office))
+    Archetype.model_validate(merged.archetype.model_dump())
+
+
+def test_core_and_perimeter_archetype_is_unchanged(office: ZoneComponent) -> None:
+    archetype = read_umi(B2).archetypes[0]
+    merged = approximate_merge(archetype)
+    assert merged.archetype == archetype
+    assert merged.losses == ()
+
+
+def test_groups_without_exposure_merge_into_one(office: ZoneComponent) -> None:
+    other = replace(office, "Operations.SpaceUse.Occupancy.PeopleDensity", 0.1)
+    archetype = Archetype(
+        Name="no exposure",
+        Groups=[group(office, "a", 0.25, None), group(other, "b", 0.75, None)],
+    )
+    merged = approximate_merge(archetype)
+    (only,) = merged.archetype.Groups
+    density = only.Zone.Operations.SpaceUse.Occupancy.PeopleDensity
+    assert density == pytest.approx(0.25 * office.Operations.SpaceUse.Occupancy.PeopleDensity + 0.75 * 0.1)
+
+
+def test_more_than_two_groups_with_unset_shares_is_refused(office: ZoneComponent) -> None:
+    groups = [group(office, name, None, exposure) for name, exposure in (("a", "core"), ("b", "perimeter"), ("c", None))]
+    archetype = Archetype.model_construct(Name="unweighted", Groups=groups)
+    with pytest.raises(InputError, match="unweighted"):
+        approximate_merge(archetype)

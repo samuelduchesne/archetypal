@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from epinterface.sbem.archetype import ARCHETYPE_SCHEMA_VERSION
+from epinterface.sbem.archetype import Archetype as SbemArchetype
 from hypothesis import given
 from hypothesis import strategies as st
 from pydantic import BaseModel
@@ -17,6 +19,11 @@ from pydantic import BaseModel
 from archetypal import io
 from archetypal.errors import InputError, ReductionError
 from archetypal.io import EncodedProfile
+from archetypal.reduction.grouping import Group as ZoneGroupLedger
+from archetypal.reduction.ledger import EnvelopeTotals, GroupLedger
+from archetypal.reduction.options import Layout
+from archetypal.reduction.schedules import RunPeriodCalendar
+from archetypal.reduction.to_sbem import BuildingFacts, to_archetype
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -179,3 +186,49 @@ def test_float_repr_round_trip(values: list[float]) -> None:
     assert json.loads(text)["values"] == values
     for v in values:
         assert repr(v) in text
+
+
+# --- the SBEM fork's archetype files (UP-2 save/load helpers, T087) ---------------------------------
+
+
+def _sbem_archetype() -> SbemArchetype:
+    def totals(area: float, u: float) -> EnvelopeTotals:
+        return EnvelopeTotals(area=area, ua=area * u, capacity_inner=1e5 * area, capacity_outer=1e5 * area)
+
+    ledger = GroupLedger(
+        members=("Zone 1",),
+        floor_area=100.0,
+        envelope={
+            "exterior_wall": totals(120.0, 0.4),
+            "roof": totals(100.0, 0.2),
+            "ground_floor": totals(100.0, 0.3),
+            "floor_ceiling": totals(50.0, 1.5),
+        },
+    )
+    facts = BuildingFacts(calendar=RunPeriodCalendar(year=2023), storey_ratio=1.0)
+    groups = [ZoneGroupLedger(key=("office",), ledger=ledger)]
+    return to_archetype(groups, Layout.SPACE_USE, facts, name="tiny").archetype
+
+
+def test_an_sbem_archetype_is_written_with_the_forks_helper(tmp_path: Path) -> None:
+    archetype = _sbem_archetype()
+
+    archetype_path, _ = io.write(archetype, _report(), tmp_path, "tiny")
+    again = io.write_model(archetype, tmp_path / "again.sbem.json")
+
+    text = archetype_path.read_text(encoding="utf-8")
+    assert text == archetype.to_json()
+    assert again.read_bytes() == archetype_path.read_bytes()
+    assert json.loads(text)["SchemaVersion"] == ARCHETYPE_SCHEMA_VERSION
+    assert io.read_model(SbemArchetype, archetype_path) == archetype
+    assert io.read(SbemArchetype, Report, archetype_path)[0] == SbemArchetype.load(archetype_path)
+
+
+def test_an_sbem_archetype_of_an_unknown_schema_version_is_refused(tmp_path: Path) -> None:
+    path = tmp_path / "future.sbem.json"
+    data = json.loads(_sbem_archetype().to_json())
+    data["SchemaVersion"] = "9.0"
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(ReductionError, match=r"9\.0"):
+        io.read_model(SbemArchetype, path)

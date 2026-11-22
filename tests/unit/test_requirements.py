@@ -7,10 +7,19 @@ import shutil
 import sqlite3
 from pathlib import Path
 
+from idfkit import load_idf
 from idfkit.simulation import SQLResult
+from idfkit.versioned import as_version
 
 from archetypal.errors import MissingResults
-from archetypal.reduction.requirements import RESULTS_REQUIREMENTS, ModelFacts, ResultRequirement, check_results
+from archetypal.reduction.requirements import (
+    RESULTS_REQUIREMENTS,
+    ModelFacts,
+    ResultRequirement,
+    check_results,
+    delivery_outputs,
+)
+from archetypal.reduction.sources import end_use_fuels, model_facts
 
 ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = ROOT / "specs" / "002-reduce-to-sbem" / "contracts" / "results-requirements.md"
@@ -233,3 +242,61 @@ def test_fixture_with_outputs_removed_names_each_one(tmp_path: Path) -> None:
         missing: tuple[ResultRequirement, ...] = check_results(sql, facts)
     assert tuple(r.item for r in missing) == removed
     assert [r.idf_text for r in missing] == [f"Output:Variable,*,{name},Hourly;" for name in removed]
+
+
+# --- Energy delivered by HVAC equipment (R12) ---------------------------------------------------
+
+
+def test_delivery_outputs_by_object_type() -> None:
+    assert delivery_outputs("ZoneHVAC:IdealLoadsAirSystem") == (
+        ("heating", "Zone Ideal Loads Supply Air Total Heating Energy"),
+        ("cooling", "Zone Ideal Loads Supply Air Total Cooling Energy"),
+    )
+    assert delivery_outputs("Coil:Heating:Water") == (("heating", "Heating Coil Heating Energy"),)
+    assert delivery_outputs("COIL:HEATING:DX:SINGLESPEED") == (("heating", "Heating Coil Heating Energy"),)
+    assert delivery_outputs("Coil:Cooling:DX:SingleSpeed") == (("cooling", "Cooling Coil Total Cooling Energy"),)
+    assert delivery_outputs("Coil:Cooling:DX:CurveFit:Performance") == ()
+    assert delivery_outputs("ZoneHVAC:Baseboard:Convective:Electric") == (
+        ("heating", "Baseboard Total Heating Energy"),
+    )
+    assert delivery_outputs("ZoneHVAC:LowTemperatureRadiant:Electric") == (
+        ("heating", "Zone Radiant HVAC Heating Energy"),
+    )
+    assert [v for _, v in delivery_outputs("ZoneHVAC:LowTemperatureRadiant:VariableFlow")] == [
+        "Zone Radiant HVAC Heating Energy",
+        "Zone Radiant HVAC Cooling Energy",
+    ]
+    assert delivery_outputs("ZoneHVAC:LowTemperatureRadiant:VariableFlow:Design") == ()
+    assert delivery_outputs("Fan:OnOff") == ()
+
+
+def test_delivery_items_apply_only_to_the_equipment_present(tmp_path: Path) -> None:
+    by_item = {r.item: r for r in RESULTS_REQUIREMENTS}
+    facts = ModelFacts(
+        zones=("Core",),
+        hvac_outputs=(
+            ("Heating Coil Heating Energy", "Core Reheat Coil"),
+            ("Heating Coil Heating Energy", "PTHP Coil"),
+            ("Cooling Coil Total Cooling Energy", "VAV Cooling Coil"),
+        ),
+    )
+    assert by_item["Heating Coil Heating Energy"].expected(facts) == ("Core Reheat Coil", "PTHP Coil")
+    assert by_item["Cooling Coil Total Cooling Energy"].expected(facts) == ("VAV Cooling Coil",)
+    for item in (
+        "Zone Ideal Loads Supply Air Total Heating Energy",
+        "Baseboard Total Heating Energy",
+        "Zone Radiant HVAC Cooling Energy",
+    ):
+        assert not by_item[item].applies_to(facts)
+    entries = [e for e in _complete_entries(facts) if e[1] != "PTHP COIL"]
+    assert _check(tmp_path, entries, facts) == ("Heating Coil Heating Energy",)
+
+
+def test_fixture_results_meet_every_requirement_of_their_models() -> None:
+    for name in ("three_zone", "ten_zone_multipliers", "bar_building"):
+        sql_path = _fixture_sql(f"{name}.sql")
+        doc = as_version(load_idf(FIXTURES / f"{name}.idf"), since="22.1")
+        with SQLResult(sql_path) as sql:
+            facts = model_facts(doc, end_use_fuels(sql) or ())
+            assert facts.hvac_outputs, name
+            assert check_results(sql, facts) == (), name

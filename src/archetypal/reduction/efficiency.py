@@ -6,10 +6,13 @@ EnergyPlus meters consumption by end use and fuel for the whole building (`Heati
 `Cooling:<fuel>`, `WaterSystems:<fuel>`), while delivery is known per zone. Each hour's
 consumption of a mode is attributed to the conditioned zones in proportion to that hour's
 delivered energy in the same mode, counting every copy of a multiplied zone
-(`multiplier · d_z,h`). Delivery is `Zone Air System Sensible Heating/Cooling Energy` (reported
-for one copy, research R2) and, for hot water, the heat its volume needs above mains
-temperature (`HotWaterRecord.volume · (target - mains) · rho·c`, unless the caller passes the hot
-water module's own heat profile).
+(`multiplier · d_z,h`). Delivery is the energy the zone's HVAC equipment delivered, outdoor-air
+and latent loads included (`delivery.delivered_energy`, per copy, research R12): its own coils,
+terminals, baseboards and ideal loads, and its share of its air loop's coils by inlet flow. That
+is what the archetype's ideal loads meet, so consumption ÷ delivery is the efficiency of the
+equipment alone. For hot water, delivery is the heat its volume needs above mains temperature
+(`HotWaterRecord.volume · (target - mains) · rho·c`, unless the caller passes the hot water
+module's own heat profile).
 
 - **Standby.** Consumption in hours without delivery in that mode (standby, pilot lights) is
   not attributed hour by hour. It is reported as the building's total
@@ -24,7 +27,7 @@ water module's own heat profile).
   between the modes by annual delivery.
 - **Fans are not folded** (FR-022, R19): their energy is the `fans` module's `FanTotals`. Before
   UP-8, a conversion that must fold them into `DistributionCOP` adds `FanTotals.energy` itself.
-- **Only conditioned zones** take part. A return plenum reports delivered energy (its
+- **Only conditioned zones** take part. A return plenum reports a zone-air load (its
   `Zone Air System` outputs), but it is excluded from the archetype, so it must not take a share.
 - **Rated efficiency** (`rated_efficiencies`) comes from the tabular *Equipment Summary*: the
   zone's own zone-equipment coils (supplemental heaters excluded), else the plant serving the
@@ -94,8 +97,6 @@ __all__ = [
 WATER_VOLUMETRIC_HEAT = 1000.0 * 4180.0
 """rho·c of water, J/(m³·K): EnergyPlus's `CPHW` (4180 J/(kg·K)) at 1000 kg/m³."""
 
-HEATING_VARIABLE = "Zone Air System Sensible Heating Energy"
-COOLING_VARIABLE = "Zone Air System Sensible Cooling Energy"
 OUTDOOR_VARIABLE = "Site Outdoor Air Drybulb Temperature"
 MAINS_VARIABLE = "Site Mains Water Temperature"
 _HOURLY = "Hourly"
@@ -641,8 +642,6 @@ def building_energy(
     conditioned = [zone for zone in zones if zone.conditioned]
     meters = _meters(results)
     requests: list[tuple[str, str]] = [(OUTDOOR_VARIABLE, _ENVIRONMENT), (MAINS_VARIABLE, _ENVIRONMENT)]
-    for zone in conditioned:
-        requests += [(HEATING_VARIABLE, zone.zone.name), (COOLING_VARIABLE, zone.zone.name)]
     requests += [(meter, "") for pairs in meters.values() for meter, _ in pairs]
     series = read_hourly(results, requests)
     hours = len(series.get((OUTDOOR_VARIABLE.upper(), _ENVIRONMENT.upper()), ())) or sources.run_period.calendar.hours
@@ -652,11 +651,18 @@ def building_energy(
         return series.get((name.upper(), key.upper()), zeros)
 
     mains = get(MAINS_VARIABLE, _ENVIRONMENT)
-    delivered: dict[Mode, dict[str, Profile]] = {"heating": {}, "cooling": {}}
-    for zone in conditioned:
-        name = zone.zone.name
-        delivered["heating"][name] = get(HEATING_VARIABLE, name)
-        delivered["cooling"][name] = get(COOLING_VARIABLE, name)
+    # Imported here: `delivery` builds on this module's readers and on `fans`, which imports them.
+    from archetypal.reduction.delivery import delivered_energy  # noqa: PLC0415
+
+    equipment = delivered_energy(
+        sources,
+        {zone.zone.name: zone.zone.multiplier for zone in conditioned},
+        {zone.zone.name: zone.zone.floor_area for zone in conditioned},
+    )
+    delivered: dict[Mode, dict[str, Profile]] = {
+        "heating": dict(equipment.zones["heating"]),
+        "cooling": dict(equipment.zones["cooling"]),
+    }
     consumed: dict[Mode, dict[Fuel, Profile]] = {}
     for end_use, mode in _PRIMARY.items():
         for meter, fuel in meters.get(end_use, []):

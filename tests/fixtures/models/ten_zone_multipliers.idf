@@ -4110,6 +4110,16 @@ Output:Variable,
   Hourly;                    !- Reporting Frequency
 
 Output:Variable,
+  *,                         !- Key Value
+  Cooling Coil Total Cooling Energy, !- Variable Name
+  Hourly;                    !- Reporting Frequency
+
+Output:Variable,
+  *,                         !- Key Value
+  Heating Coil Heating Energy, !- Variable Name
+  Hourly;                    !- Reporting Frequency
+
+Output:Variable,
   G_Perimeter Supply Inlet,  !- Key Value
   System Node Mass Flow Rate, !- Variable Name
   Hourly;                    !- Reporting Frequency

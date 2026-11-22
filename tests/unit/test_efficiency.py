@@ -286,3 +286,28 @@ def test_fixture_boiler_heating_has_a_small_slope_and_delivered_over_consumed(
     energy = hook.zones["Typical_Perimeter"]["heating"]
     a, _, _ = fit_eir(energy.eir_sums)
     assert a == pytest.approx(sum(energy.consumed_by_fuel.values()) / energy.delivered, rel=1e-9)
+
+
+@pytest.mark.parametrize(
+    ("name", "heating", "cooling"),
+    [
+        # Gas-fired PTAC coils (efficiency 0.8) and DX cooling.
+        ("three_zone", (0.79, 0.81), (2.5, 4.5)),
+        # Gas boiler (0.85) reheat with top-floor heat pumps; air-cooled chiller and DX.
+        ("ten_zone_multipliers", (0.8, 0.95), (2.0, 3.5)),
+        # Ideal loads metered as district energy: delivered equals consumed.
+        ("bar_building", (0.999, 1.001), (0.999, 1.001)),
+    ],
+)
+def test_fixture_delivered_over_consumed_is_physically_plausible(
+    name: str, heating: tuple[float, float], cooling: tuple[float, float]
+) -> None:
+    sources = load_sources(MODELS / f"{name}.idf", MODELS / f"{name}.sql")
+    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
+    zones = classify(build_inventory(sources, evaluate), evaluate)
+    hook = efficiency_hook(sources, zones, evaluate)
+    total = sum((GroupLedger.from_zone(z, evaluate, hooks=[hook]) for z in zones if z.conditioned), GroupLedger())
+    bounds: tuple[tuple[Mode, tuple[float, float]], ...] = (("heating", heating), ("cooling", cooling))
+    for mode, (low, high) in bounds:
+        energy = total.energy[mode]
+        assert low <= energy.delivered / sum(energy.consumed_by_fuel.values()) <= high, mode

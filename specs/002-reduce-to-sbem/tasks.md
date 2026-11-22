@@ -255,7 +255,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   group per (space use, exposure); groups below the threshold merge into the most similar
   group of the same exposure, smallest first, ties broken by key; a small group with nothing
   to merge into is kept; pre-threshold groups are kept at the finest key (FR-008, FR-011).
-- [ ] T039 [P] [US1] Test conversion in `tests/unit/test_to_sbem.py`: every derivation rule of
+- [X] T039 [P] [US1] Test conversion in `tests/unit/test_to_sbem.py`: every derivation rule of
   data-model.md produces its SBEM field from a synthetic ledger; the archetype validates as the
   fork's multi-group model; every set leaf field has a `parameters[]` entry with its rule id;
   the number of storeys is right for `ten_zone_multipliers` (one typical floor × 10) and
@@ -338,7 +338,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   loop with the similarity distance of data-model.md (gain densities, annual gain hours,
   setpoint means, outdoor air per area, hot water per area, each scaled by the building-wide
   value), merges recorded (FR-008, FR-011).
-- [ ] T057 [US1] Implement `src/archetypal/reduction/to_sbem.py`: one function per SBEM
+- [X] T057 [US1] Implement `src/archetypal/reduction/to_sbem.py`: one function per SBEM
   component following the derivation table of data-model.md, each returning its value and rule
   id; until UP-8 is released, fans are folded into `DistributionCOP` and the fan end use and the
   efficiency slope are recorded as not represented (R12, R19); until UP-2's extra fields are
@@ -510,7 +510,7 @@ released (constitution I). Each task is independent of the others.
   `ThermalSystemComponent` or the zone's conditioning, a fan end use equal to specific fan
   power × hourly supply air volume, and an energy input ratio linear in outdoor temperature;
   tag the fork, open it upstream, and update `[tool.uv.sources]`.
-- [ ] T085 After T084, write specific fan power, supply-air temperature limits and the
+- [X] T085 After T084, write specific fan power, supply-air temperature limits and the
   efficiency slope in `src/archetypal/reduction/to_sbem.py` (rules `fans.energy_per_volume`,
   `fans.effective_supply_delta`, `efficiency.eir_linear`), stop folding fans into
   `DistributionCOP`, remove those `not_represented` entries, and update
@@ -519,7 +519,7 @@ released (constitution I). Each task is independent of the others.
   ratios, infiltration schedule, numeric heat-recovery effectiveness (sensible and latent),
   holiday and design-day slots in `WeekComponent`, save and load helpers with a schema
   version), one topic branch each; tag the fork and open each upstream.
-- [ ] T087 After T086, for each field released, write it in
+- [X] T087 After T086, for each field released, write it in
   `src/archetypal/reduction/to_sbem.py`, add holiday and design-day blocks to
   `schedule_compact` in `src/archetypal/reduction/schedules.py`, switch `io.py` to the
   fork's save and load helpers, and remove the matching `not_represented` entries and tests.

@@ -35,6 +35,8 @@ from idfkit import new_document, save_idf, validate_document
 from idfkit.simulation import simulate
 from idfkit.versioned import IDFDocumentV24_2
 
+from archetypal.reduction.requirements import delivery_outputs
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping, Sequence
 
@@ -829,6 +831,7 @@ def add_zone(m: Model, name: str, multiplier: int = 1, *, part_of_total_area: bo
 def add_outputs(m: Model, inlet_nodes: Sequence[str], meters: Sequence[str], *, fans: bool, hot_water: bool) -> None:
     """The R2 outputs (contracts/results-requirements.md), hourly, and the SQLite output.
 
+    Call it once the HVAC is in the model: the delivery outputs follow the equipment present.
     Items that do not apply to a model (fans, hot water) are not requested, as the contract
     allows, so EnergyPlus does not warn about outputs it cannot generate.
     """
@@ -842,6 +845,10 @@ def add_outputs(m: Model, inlet_nodes: Sequence[str], meters: Sequence[str], *, 
         variables += ["Fan Electricity Energy", "Fan Air Mass Flow Rate"]
     if hot_water:
         variables += ["Site Mains Water Temperature", "Water Use Equipment Hot Water Volume"]
+    # Energy delivered by the HVAC equipment the model holds (research R12).
+    for object_type, collection in m.doc.objects_by_type():
+        if len(collection):
+            variables += [v for _, v in delivery_outputs(object_type) if v not in variables]
     for variable in variables:
         m.add("Output:Variable", key_value="*", variable_name=variable, reporting_frequency="Hourly")
     for node in inlet_nodes:

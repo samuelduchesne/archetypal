@@ -23,7 +23,10 @@ fan's flow without weighting), while `Zone Air System Sensible Heating/Cooling E
 one copy. Fan energy and volume are therefore divided by the zone's multiplier here, and
 `GroupLedger.from_zone` multiplies once.
 
-Per zone, an hour is a heating hour when heating delivery is positive and at least the cooling
+Here "delivery" is the zone air's sensible load (`Zone Air System Sensible Heating/Cooling
+Energy`), not the equipment delivery of `efficiency` (R12): the supply air temperature difference
+acts on the zone air, while the outdoor-air load is met before the air reaches the zone. Per
+zone, an hour is a heating hour when heating delivery is positive and at least the cooling
 delivery, a cooling hour when cooling delivery is larger. `volume_in_mode` and
 `delivered_in_mode` sum those hours; `volume_without_demand` sums hours with neither delivery
 nor mechanical outdoor air.
@@ -54,17 +57,11 @@ from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 
-from archetypal.reduction.efficiency import (
-    COOLING_VARIABLE,
-    HEATING_VARIABLE,
-    equipment_table,
-    read_hourly,
-    zone_equipment,
-)
+from archetypal.reduction.efficiency import equipment_table, read_hourly, zone_equipment
 from archetypal.reduction.ledger import FanTotals, Mode
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
     import numpy.typing as npt
     from idfkit.versioned import IDFDocumentSince22_1
@@ -75,14 +72,17 @@ if TYPE_CHECKING:
 
 __all__ = [
     "AIR_SPECIFIC_HEAT",
+    "AirLoops",
     "BuildingFans",
     "FanAttribution",
     "FanSeries",
+    "air_loops",
     "attribute_fans",
     "building_fans",
     "effective_supply_delta",
     "fans_hook",
     "ledger_fields",
+    "loop_shares",
     "specific_fan_power",
     "standard_air_density",
 ]
@@ -96,6 +96,9 @@ _SECONDS_PER_HOUR = 3600.0
 _ENERGY_VARIABLE = "Fan Electricity Energy"
 _FLOW_VARIABLE = "Fan Air Mass Flow Rate"
 _NODE_VARIABLE = "System Node Mass Flow Rate"
+# The zone air's sensible load: what the supply air temperature difference acts on (R19).
+HEATING_VARIABLE = "Zone Air System Sensible Heating Energy"
+COOLING_VARIABLE = "Zone Air System Sensible Cooling Energy"
 _AirMode = Literal["heating", "cooling"]
 _Array: TypeAlias = "npt.NDArray[np.float64]"
 _Bool: TypeAlias = "npt.NDArray[np.bool_]"
@@ -186,20 +189,42 @@ class FanAttribution:
 # --- attribution ---------------------------------------------------------------------------------
 
 
-def _loop_shares(data: BuildingFans, served: Sequence[str], hours: int) -> _Array:
-    """Each served zone's share (every copy) of an air-loop fan, hour by hour."""
+def loop_shares(
+    inlet_flow: Mapping[str, Profile], weights: Mapping[str, float], served: Sequence[str], hours: int
+) -> _Array:
+    """Each served zone's share (every copy) of an air loop's flow, hour by hour (R19).
+
+    Shares follow the hour's mass flow through each zone's air-distribution-unit inlet nodes.
+    An hour without inlet flow is split by the zones' annual inlet flow, or by `weights`
+    (multiplier times floor area) when no zone has any, or equally.
+
+    Args:
+        inlet_flow: Mass flow through each zone's inlet nodes, kg/s, every copy, by zone name.
+        weights: The fallback weight of each zone, by zone name.
+        served: The zones the loop serves.
+        hours: The number of hours.
+
+    Returns:
+        A (zone, hour) array whose columns sum to 1.
+    """
     flows = np.zeros((len(served), hours))
     for i, zone in enumerate(served):
-        if zone in data.inlet_flow:
-            flows[i] = data.inlet_flow[zone]
+        if zone in inlet_flow:
+            flows[i] = inlet_flow[zone]
     total = flows.sum(axis=0)
     annual = flows.sum(axis=1)
     if float(annual.sum()) <= 0.0:
-        annual = np.array([data.multipliers[z] * data.floor_area.get(z, 0.0) for z in served], dtype=np.float64)
+        annual = np.array([weights.get(z, 0.0) for z in served], dtype=np.float64)
     if float(annual.sum()) <= 0.0:
         annual = np.ones(len(served))
     fallback = np.zeros((len(served), hours)) + (annual / annual.sum())[:, None]
     return np.divide(flows, total, out=fallback, where=total > 0.0)
+
+
+def _loop_shares(data: BuildingFans, served: Sequence[str], hours: int) -> _Array:
+    """Each served zone's share (every copy) of an air-loop fan, hour by hour."""
+    weights = {z: data.multipliers[z] * data.floor_area.get(z, 0.0) for z in served}
+    return loop_shares(data.inlet_flow, weights, served, hours)
 
 
 def _zone_totals(data: BuildingFans, name: str, energy: _Array, volume: _Array) -> FanTotals:
@@ -370,6 +395,43 @@ def _adu_nodes(
     return adu_nodes
 
 
+@dataclass(frozen=True)
+class AirLoops:
+    """Which zones each air loop serves, and through which inlet nodes (R19).
+
+    Attributes:
+        served: The zones each loop serves (model spelling, sorted), by case-folded loop name.
+            A zone fed by an air distribution unit but on no loop's return path is given to
+            the only loop when there is one.
+        inlet_nodes: Each zone's inlet nodes fed by an air distribution unit, by zone name.
+    """
+
+    served: Mapping[str, tuple[str, ...]]
+    inlet_nodes: Mapping[str, tuple[str, ...]]
+
+
+def air_loops(doc: IDFDocumentSince22_1, zone_names: Iterable[str]) -> AirLoops:
+    """Find the zones each air loop serves and their air-distribution-unit inlet nodes.
+
+    Args:
+        doc: The model.
+        zone_names: The zones that may be served (model spelling).
+
+    Returns:
+        The loops' zones and the zones' inlet nodes.
+    """
+    model_names = {name.casefold(): name for name in zone_names}
+    node_lists = _node_lists(doc)
+    adu_nodes = _adu_nodes(doc, model_names, node_lists)
+    loops = _loop_zones(doc, node_lists)
+    assigned = {zone for served in loops.values() for zone in served}
+    unassigned = {name.casefold() for name in adu_nodes} - assigned
+    if unassigned and len(loops) == 1:
+        next(iter(loops.values())).update(unassigned)
+    served = {loop: tuple(sorted(model_names[z] for z in zones if z in model_names)) for loop, zones in loops.items()}
+    return AirLoops(served=served, inlet_nodes=adu_nodes)
+
+
 def _fan_zones(sources: SourceData, model_names: Mapping[str, str]) -> dict[str, str]:
     """The zone of each zone-equipment and air-terminal fan, by case-folded fan name."""
     fan_zone: dict[str, str] = {}
@@ -396,15 +458,8 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
     doc = sources.model
     results = sources.results
     model_names = {zone.zone.name.casefold(): zone.zone.name for zone in zones}
-    node_lists = _node_lists(doc)
-
-    adu_nodes = _adu_nodes(doc, model_names, node_lists)
-
-    loops = _loop_zones(doc, node_lists)
-    assigned = {zone for served in loops.values() for zone in served}
-    unassigned = {name.casefold() for name in adu_nodes} - assigned
-    if unassigned and len(loops) == 1:
-        next(iter(loops.values())).update(unassigned)
+    topology = air_loops(doc, model_names.values())
+    adu_nodes = topology.inlet_nodes
 
     fan_zone = _fan_zones(sources, model_names)
     fan_loop = {
@@ -426,7 +481,7 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
     fans: list[FanSeries] = []
     for fan in fan_names:
         loop = fan_loop.get(fan.casefold(), "")
-        served = tuple(sorted(model_names[z] for z in loops.get(loop, set()) if z in model_names))
+        served = topology.served.get(loop, ())
         fans.append(
             FanSeries(
                 name=fan,

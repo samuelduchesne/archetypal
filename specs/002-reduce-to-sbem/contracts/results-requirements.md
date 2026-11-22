@@ -17,8 +17,14 @@ asserts they agree.
 
 | Item | Key | Frequency | Used for |
 |---|---|---|---|
-| `Zone Air System Sensible Heating Energy` | every zone | Hourly | delivered heating (FR-022) |
-| `Zone Air System Sensible Cooling Energy` | every zone | Hourly | delivered cooling (FR-022) |
+| `Zone Air System Sensible Heating Energy` | every zone | Hourly | supply-air temperature limits (FR-022a), hourly mode of pumps in the comparison (R13) |
+| `Zone Air System Sensible Cooling Energy` | every zone | Hourly | supply-air temperature limits (FR-022a), hourly mode of pumps in the comparison (R13) |
+| `Zone Ideal Loads Supply Air Total Heating Energy`, `Zone Ideal Loads Supply Air Total Cooling Energy` | every `ZoneHVAC:IdealLoadsAirSystem` | Hourly | energy delivered by HVAC equipment (FR-022) |
+| `Heating Coil Heating Energy` | every heating coil | Hourly | energy delivered by HVAC equipment (FR-022) |
+| `Cooling Coil Total Cooling Energy` | every cooling coil | Hourly | energy delivered by HVAC equipment (FR-022) |
+| `Baseboard Total Heating Energy` | every `ZoneHVAC:Baseboard:*` | Hourly | energy delivered by HVAC equipment (FR-022) |
+| `Zone Radiant HVAC Heating Energy` | every `ZoneHVAC:LowTemperatureRadiant:*` | Hourly | energy delivered by HVAC equipment (FR-022) |
+| `Zone Radiant HVAC Cooling Energy` | every hydronic `ZoneHVAC:LowTemperatureRadiant:*` | Hourly | energy delivered by HVAC equipment (FR-022) |
 | `Fan Electricity Energy`, `Fan Air Mass Flow Rate` | every fan | Hourly | fan energy and air volume (FR-022a) |
 | `System Node Mass Flow Rate` | each zone's air inlet nodes | Hourly | attributing air-loop fans to zones (FR-022a) |
 | `Site Outdoor Air Drybulb Temperature` | Environment | Hourly | efficiency's dependence on outdoor temperature (FR-022) |
@@ -28,7 +34,10 @@ asserts they agree.
 | Meters `Heating:<fuel>`, `Cooling:<fuel>`, `Fans:Electricity`, `Pumps:Electricity`, `HeatRejection:<fuel>`, `WaterSystems:<fuel>` | — | Hourly | consumed energy (FR-022), peaks (FR-027) |
 
 An item that does not apply to the model is not required. For example, a model with no
-`WaterUse:Equipment` needs no hot-water outputs.
+`WaterUse:Equipment` needs no hot-water outputs, and a model without baseboards needs no
+`Baseboard Total Heating Energy`. "Every heating coil" means every `Coil:Heating:*` object
+and "every cooling coil" every `Coil:Cooling:*` object, except the `Coil:Cooling:DX:CurveFit:*`
+performance objects and thermal-storage coils (`requirements.delivery_outputs`).
 
 ## Tables read (written by the settings above)
 

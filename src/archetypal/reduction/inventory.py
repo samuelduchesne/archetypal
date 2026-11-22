@@ -6,7 +6,8 @@ Every figure EnergyPlus computes comes from the results (research R1):
   the typed rows of `_sql_tables`;
 - U-factors with films, SHGC and visible transmittance from the tabular *Envelope Summary*;
 - installed gains and design infiltration from the `Nominal*` tables;
-- delivered energy, mechanical outdoor air and hot-water volume from the hourly outputs of R2.
+- delivered energy, mechanical outdoor air and hot-water volume from the hourly outputs of R2
+  (delivered energy is the HVAC equipment's, from the `delivery` module, research R12).
 
 The model, read through idfkit's typed accessors (R18), supplies only what the results do not
 hold: infiltration coefficients, thermostat controls, design outdoor-air rates, `Space` types,
@@ -16,8 +17,8 @@ hold: infiltration coefficients, thermostat controls, design outdoor-air rates, 
 zone; `GroupLedger.from_zone` multiplies once. Two hourly outputs already include the zone's
 multipliers in EnergyPlus, and are divided by `ZoneRecord.multiplier` here so that they too
 describe one copy: `Zone Mechanical Ventilation Standard Density Volume Flow Rate` and
-`Water Use Equipment Hot Water Volume` of equipment with a zone. `Zone Air System Sensible
-Heating/Cooling Energy` is reported for one copy and is kept as it is.
+`Water Use Equipment Hot Water Volume` of equipment with a zone. Equipment delivery also
+covers every copy; `delivery.delivered_energy` divides it by the multiplier.
 
 Domestic hot water follows research R11: equipment with a zone belongs to that zone; equipment
 without one is allocated to zones in proportion to their occupant-hours (Σ people * schedule,
@@ -45,6 +46,7 @@ from archetypal.reduction._sql_tables import (
     read_surfaces,
     read_zones,
 )
+from archetypal.reduction.delivery import delivered_energy
 from archetypal.reduction.schedules import ScheduleEvaluator
 
 if TYPE_CHECKING:
@@ -109,8 +111,6 @@ _R_OUTSIDE = 0.04
 # Default of DesignSpecification:OutdoorAir's Outdoor Air Flow per Person (m³/s per person).
 _DEFAULT_OA_PER_PERSON = 0.00944
 
-_HEATING_VARIABLE = "Zone Air System Sensible Heating Energy"
-_COOLING_VARIABLE = "Zone Air System Sensible Cooling Energy"
 _OUTDOOR_AIR_VARIABLE = "Zone Mechanical Ventilation Standard Density Volume Flow Rate"
 _HOT_WATER_VARIABLE = "Water Use Equipment Hot Water Volume"
 _HOURLY = "Hourly"
@@ -386,7 +386,8 @@ class ZoneRecord:
         outdoor_air_per_person: Design outdoor air per person, m³/s; 0 without one.
         thermostat: The zone's thermostat, or `None`.
         hot_water: Hot-water use attributed to the zone (R11).
-        delivered: Run-period sensible heating and cooling delivered to one copy, J.
+        delivered: Run-period heating and cooling delivered to one copy by the zone's HVAC
+            equipment (its own, and its share of its air loop's coils), J (R12).
         space_type: The type of the zone's spaces when every one declares the same type.
         space_types: Each of the zone's declared spaces' types, sorted by space name.
         plenum: The zone is an `AirLoopHVAC:ReturnPlenum` or `AirLoopHVAC:SupplyPlenum`.
@@ -894,7 +895,7 @@ def _hourly_getter(sources: SourceData, zone_rows: Sequence[ZoneRow]) -> Callabl
     """Read every hourly series the inventory needs in one scan; a series not reported reads as zeros."""
     requests: list[tuple[str, str]] = []
     for row in zone_rows:
-        requests += [(_HEATING_VARIABLE, row.name), (_COOLING_VARIABLE, row.name), (_OUTDOOR_AIR_VARIABLE, row.name)]
+        requests += [(_OUTDOOR_AIR_VARIABLE, row.name)]
     requests += [(_HOT_WATER_VARIABLE, item.name) for item in sources.model.water_use_equipments]
     series = _series(sources.results, requests)
     length = next((len(profile) for profile in series.values()), sources.run_period.calendar.hours)
@@ -942,6 +943,11 @@ def build_inventory(sources: SourceData, evaluate: Callable[[str], Profile] | No
     plenums = _plenums(doc)
     get = _hourly_getter(sources, zone_rows)
     hot_water = _hot_water(sources, zone_rows, gains, get, evaluate)
+    delivery = delivered_energy(
+        sources,
+        {names[row.index]: row.multiplier * row.list_multiplier for row in zone_rows},
+        {names[row.index]: row.floor_area for row in zone_rows},
+    )
 
     records: list[ZoneRecord] = []
     for row in zone_rows:
@@ -967,10 +973,7 @@ def build_inventory(sources: SourceData, evaluate: Callable[[str], Profile] | No
                 outdoor_air_per_person=per_person,
                 thermostat=thermostats.get(key),
                 hot_water=tuple(hot_water.get(row.index, ())),
-                delivered={
-                    "heating": float(get(_HEATING_VARIABLE, row.name).sum()),
-                    "cooling": float(get(_COOLING_VARIABLE, row.name).sum()),
-                },
+                delivered=delivery.annual(name),
                 space_type=_agreed(types) if types else None,
                 space_types=types,
                 plenum=key in plenums,

@@ -631,8 +631,10 @@ def test_schedule_compact_writes_holiday_and_design_day_blocks(tmp_path: Path) -
     assert hourly[:24].tolist() == [0.25] * 24
     idf = tmp_path / "compact.idf"
     (compact,) = load_idf(idf).schedule_compacts
-    assert evaluate_at(compact, datetime(cal.year, 7, 15, 14), day_type="summer") == 1.0
-    assert evaluate_at(compact, datetime(cal.year, 1, 15, 14), day_type="winter") == 0.0
+    summer_noon = datetime(cal.year, 7, 15, 14)  # noqa: DTZ001 - schedules are in local time
+    winter_noon = datetime(cal.year, 1, 15, 14)  # noqa: DTZ001
+    assert evaluate_at(compact, summer_noon, day_type="summer") == 1.0
+    assert evaluate_at(compact, winter_noon, day_type="winter") == 0.0
 
 
 def test_schedule_compact_without_slots_is_unchanged() -> None:

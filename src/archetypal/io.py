@@ -15,7 +15,11 @@ Both are written with the same encoding, so equal inputs give byte-identical fil
 - profiles as `EncodedProfile`: base64 of little-endian float64 values, with their length.
 
 The functions take any pydantic model, so they serve the SBEM fork's archetype model as well
-as archetypal's report.
+as archetypal's report. An SBEM fork `Archetype` is written and read with the fork's own helpers
+(`Archetype.to_json` and `Archetype.from_json`, research R14; UP-2): its file records the fork's
+`SchemaVersion`, and reading checks that version before the rest of the file. `to_json` is
+deterministic too (keys in model order, two-space indent, shortest round-trip floats, a final
+newline), so two writes of the same archetype are byte-identical.
 """
 
 from __future__ import annotations
@@ -24,9 +28,10 @@ import base64
 import json
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TypeVar
+from typing import TYPE_CHECKING, Literal, TypeVar, cast
 
 import numpy as np
+from epinterface.sbem.archetype import Archetype, ArchetypeSchemaVersionError
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from .errors import InputError, ReductionError
@@ -137,6 +142,12 @@ def dumps(model: BaseModel) -> str:
     return text + "\n"
 
 
+def _text(model: BaseModel) -> str:
+    """The file text of a model: the fork's `Archetype.to_json` for an archetype, else `dumps`."""
+    text = dumps(model)  # refuses non-finite floats, which `to_json` would write as null
+    return model.to_json() if isinstance(model, Archetype) else text
+
+
 def _refuse_existing(path: Path, overwrite: bool) -> None:
     if not overwrite and path.exists():
         raise InputError(path, "already exists; pass overwrite=True to replace it")
@@ -158,7 +169,7 @@ def write_model(model: BaseModel, path: str | os.PathLike[str], *, overwrite: bo
     """
     target = Path(path)
     _refuse_existing(target, overwrite)
-    text = dumps(model)
+    text = _text(model)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(text.encode("utf-8"))
     return target
@@ -203,7 +214,7 @@ def write(
     report_path = folder / f"{name}{REPORT_SUFFIX}"
     for path in (archetype_path, report_path):
         _refuse_existing(path, overwrite)
-    archetype_text, report_text = dumps(archetype), dumps(report)
+    archetype_text, report_text = _text(archetype), _text(report)
     folder.mkdir(parents=True, exist_ok=True)
     archetype_path.write_bytes(archetype_text.encode("utf-8"))
     report_path.write_bytes(report_text.encode("utf-8"))
@@ -219,8 +230,18 @@ def read_model(model_type: type[ModelT], path: str | os.PathLike[str]) -> ModelT
 
     Returns:
         The validated model.
+
+    Raises:
+        ReductionError: If an SBEM archetype file records a schema version the fork cannot read.
     """
-    return model_type.model_validate_json(Path(path).read_bytes())
+    data = Path(path).read_bytes()
+    if issubclass(model_type, Archetype):
+        try:
+            archetype = model_type.from_json(data)
+        except ArchetypeSchemaVersionError as exc:
+            raise ReductionError(path, str(exc)) from exc
+        return cast("ModelT", archetype)
+    return model_type.model_validate_json(data)
 
 
 def report_path_for(archetype_path: str | os.PathLike[str]) -> Path:

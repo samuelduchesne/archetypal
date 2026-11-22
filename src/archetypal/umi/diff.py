@@ -30,6 +30,7 @@ from pydantic import BaseModel
 
 from archetypal.umi import dialects
 from archetypal.umi._format import (
+    BuildingTemplate,
     DaySchedule,
     FormatModel,
     LibraryComponent,
@@ -69,7 +70,10 @@ class Difference:
             schedules, the largest hourly difference relative to the largest hourly magnitude;
             `None` for other values.
         subject: The building template (UMI) or archetype the difference belongs to; `""` for
-            a component no template uses.
+            a component no template uses. A template renamed on reading is named as renamed.
+        via: The pointers of the reference fields through which the value was reached, from
+            the template down (`/BuildingTemplates/0/Perimeter`, `/Zones/0/Loads`, …); empty for
+            SBEM paths. A loss at one of them explains the difference.
     """
 
     location: str
@@ -78,6 +82,7 @@ class Difference:
     result: JsonValue
     relative: float | None
     subject: str = ""
+    via: tuple[str, ...] = ()
 
     def exceeds(self, rel_tol: float) -> bool:
         """Whether the difference is larger than `rel_tol` (always, for a non-numeric one)."""
@@ -247,24 +252,23 @@ class _UmiComparer:
 
     _SCHEDULE_PARTS: Final = "Parts"
 
-    def __init__(self, original: LibraryIndex, result: LibraryIndex, subject: str) -> None:
+    def __init__(self, original: LibraryIndex) -> None:
         self.original = original
-        self.result = result
-        self.subject = subject
         self.found: list[Difference] = []
+        self.subject = ""
+        self._via: list[str] = []
         self._seen: set[tuple[str, str, int, int]] = set()
-        self._keys: set[tuple[str, str, str, str]] = set()
+        self._keys: set[tuple[str, str, str, str, tuple[str, ...]]] = set()
         self._hourly: dict[int, tuple[float, ...] | str] = {}
 
-    def add(
-        self, location: str, relevance: Relevance, original: object, result: object, relative: float | None, who: str
-    ) -> None:
+    def add(self, location: str, relevance: Relevance, original: object, result: object, relative: float | None) -> None:
         a, b = _json(original), _json(result)
-        key = (who, location, repr(a), repr(b))
+        via = tuple(self._via)
+        key = (self.subject, location, repr(a), repr(b), via)
         if key in self._keys:
             return
         self._keys.add(key)
-        self.found.append(Difference(location, relevance, a, b, relative, who))
+        self.found.append(Difference(location, relevance, a, b, relative, self.subject, via))
 
     def hourly(self, year: YearSchedule) -> tuple[float, ...] | str:
         key = id(year)
@@ -281,72 +285,79 @@ class _UmiComparer:
         except KeyError:
             return fallback
 
-    def compare(self, a: FormatModel, b: FormatModel, pointer: str, who: str) -> None:
+    def compare(self, a: FormatModel, b: FormatModel, pointer: str) -> None:
         """Compare two components of the same place in a template, field by field."""
-        key = (who, pointer, id(a), id(b))
+        key = (self.subject, pointer, id(a), id(b))
         if key in self._seen:
             return
         self._seen.add(key)
         model = type(a)
         if not isinstance(b, model) and not isinstance(a, type(b)):
-            self.add(pointer, Relevance.SIMULATION, type(a).__name__, type(b).__name__, None, who)
+            self.add(pointer, Relevance.SIMULATION, type(a).__name__, type(b).__name__, None)
             return
         for name, field in model.model_fields.items():
             key_name = field.alias or name
             where = f"{pointer}/{_escape(key_name)}"
             if isinstance(a, YearSchedule) and name == "parts":
-                self.schedule(a, cast("YearSchedule", b), where, who)
+                self.schedule(a, cast("YearSchedule", b), where)
                 continue
-            self.value(model, key_name, getattr(a, name), getattr(b, name, None), where, who)
+            self.value(model, key_name, getattr(a, name), getattr(b, name, None), where)
 
-    def value(self, model: type[FormatModel], key: str, a: object, b: object, where: str, who: str) -> None:
+    def value(self, model: type[FormatModel], key: str, a: object, b: object, where: str) -> None:
         relevance = _umi_relevance(model, key)
-        if isinstance(a, YearSchedule) and isinstance(b, YearSchedule):
-            # A schedule is located at the field that uses it, so a difference names its use.
-            self.compare(a, b, where, who)
-            return
         if isinstance(a, FormatModel) and isinstance(b, FormatModel):
-            self.compare(a, b, self.pointer(a, where), who)
+            self._via.append(where)
+            try:
+                self.compare(a, b, self.pointer(a, where))
+            finally:
+                self._via.pop()
             return
         if isinstance(a, FormatModel) or isinstance(b, FormatModel):
-            self.add(where, relevance, a, b, None, who)
+            self.add(where, relevance, a, b, None)
             return
         if isinstance(a, tuple) and isinstance(b, tuple):
             first, second = cast("tuple[object, ...]", a), cast("tuple[object, ...]", b)
             if any(isinstance(item, FormatModel) for item in (*first, *second)):
                 if len(first) != len(second):
-                    self.add(where, relevance, first, second, None, who)
+                    self.add(where, relevance, first, second, None)
                     return
                 for position, (x, y) in enumerate(zip(first, second, strict=True)):
-                    self.value(model, key, x, y, f"{where}/{position}", who)
+                    self.value(model, key, x, y, f"{where}/{position}")
                 return
-        self.scalar(where, relevance, a, b, who)
+        self.scalar(where, relevance, a, b)
 
-    def scalar(self, where: str, relevance: Relevance, a: object, b: object, who: str) -> None:
+    def scalar(self, where: str, relevance: Relevance, a: object, b: object) -> None:
         if _is_number(a) and _is_number(b):
             relative = _relative(float(cast("float", a)), float(cast("float", b)))
             if relative != 0.0:
-                self.add(where, relevance, a, b, relative, who)
+                self.add(where, relevance, a, b, relative)
             return
         if isinstance(a, tuple | list) and isinstance(b, tuple | list):
             first, second = cast("Sequence[object]", a), cast("Sequence[object]", b)
             if len(first) == len(second) and all(_is_number(x) and _is_number(y) for x, y in zip(first, second)):
-                relatives = [_relative(float(cast("float", x)), float(cast("float", y))) for x, y in zip(first, second)]
+                pairs = zip(first, second, strict=True)
+                relatives = [_relative(float(cast("float", x)), float(cast("float", y))) for x, y in pairs]
                 if all(r == 0.0 for r in relatives):
                     return
                 worst = None if None in relatives else max(cast("list[float]", relatives))
-                self.add(where, relevance, a, b, worst, who)
+                self.add(where, relevance, a, b, worst)
                 return
         if _json(a) != _json(b):
-            self.add(where, relevance, a, b, None, who)
+            self.add(where, relevance, a, b, None)
 
-    def schedule(self, a: YearSchedule, b: YearSchedule, where: str, who: str) -> None:
+    def schedule(self, a: YearSchedule, b: YearSchedule, where: str) -> None:
         """Compare two year schedules by their hourly values over the reference year."""
         relevance = _umi_relevance(YearSchedule, self._SCHEDULE_PARTS)
         first, second = self.hourly(a), self.hourly(b)
         if isinstance(first, str) or isinstance(second, str):
             if first != second:
-                self.add(where, relevance, first if isinstance(first, str) else a.name, second if isinstance(second, str) else b.name, None, who)
+                self.add(
+                    where,
+                    relevance,
+                    first if isinstance(first, str) else a.name,
+                    second if isinstance(second, str) else b.name,
+                    None,
+                )
             return
         scale = max(max(map(abs, first), default=0.0), max(map(abs, second), default=0.0))
         worst, hour = 0.0, -1
@@ -356,14 +367,12 @@ class _UmiComparer:
                 worst, hour = gap, index
         if hour < 0:
             return
-        relative = worst / scale if scale > 0 else None
         self.add(
             where,
             relevance,
             {"hour": hour, "value": first[hour]},
             {"hour": hour, "value": second[hour]},
-            relative,
-            who,
+            worst / scale if scale > 0 else None,
         )
 
 
@@ -373,15 +382,37 @@ def _load(path: str | os.PathLike[str]) -> LibraryIndex:
     return LibraryIndex(resolution.library, raw.document)
 
 
+def _match_templates(
+    originals: Sequence[BuildingTemplate], results: Sequence[BuildingTemplate]
+) -> list[BuildingTemplate | None]:
+    """Match each original template with a result template: same name first, then same place.
+
+    A template whose name an earlier template already has (renamed ` #2` on reading) is matched
+    with the unmatched result template in its place.
+    """
+    free = list(range(len(results)))
+    matched: list[BuildingTemplate | None] = [None] * len(originals)
+    for index, template in enumerate(originals):
+        found = next((i for i in free if results[i].name == template.name), None)
+        if found is not None:
+            free.remove(found)
+            matched[index] = results[found]
+    for index in range(len(originals)):
+        if matched[index] is None and index in free:
+            free.remove(index)
+            matched[index] = results[index]
+    return matched
+
+
 def diff_umi(original: str | os.PathLike[str], result: str | os.PathLike[str], *, rel_tol: float = 1e-4) -> UmiDiff:
     """Compare two UMI libraries field by field (research R16).
 
-    Building templates are matched by name, and their components through the template: the
-    `Perimeter` of a template is compared with the `Perimeter` of the template of the same name,
-    and so on down to materials. Year schedules are compared by their hourly values over the
-    reference year. Components that no template of the original uses are matched by type and
-    name. A template, or an unused component, with no counterpart is one difference whose other
-    value is `None`.
+    Building templates are matched by name (a repeated name, which reading renames ` #2`, by
+    place), and their components through the template: the `Perimeter` of a template is
+    compared with the `Perimeter` of its match, and so on down to materials. Year schedules
+    are compared by their hourly values over the reference year. Components that no template
+    of the original uses are matched by type and name. A template, or an unused component,
+    with no counterpart is one difference whose other value is `None`.
 
     Args:
         original: The original library.
@@ -396,19 +427,23 @@ def diff_umi(original: str | os.PathLike[str], result: str | os.PathLike[str], *
             references).
     """
     first, second = _load(original), _load(result)
-    comparer = _UmiComparer(first, second, "")
-    results = {template.name: template for template in second.library.building_templates}
-    names = {template.name for template in first.library.building_templates}
-    for template in first.library.building_templates:
+    comparer = _UmiComparer(first)
+    originals, results = first.library.building_templates, second.library.building_templates
+    matches = _match_templates(originals, results)
+    for template, other in zip(originals, matches, strict=True):
         pointer = first.pointer(template)
-        other = results.get(template.name)
         if other is None:
-            comparer.add(pointer, Relevance.SIMULATION, template.name, None, None, template.name or "")
+            comparer.subject = template.name or ""
+            comparer.add(pointer, Relevance.SIMULATION, template.name, None, None)
             continue
-        comparer.compare(template, other, pointer, template.name or "")
-    for template in second.library.building_templates:
-        if template.name not in names:
-            comparer.add("/BuildingTemplates/-", Relevance.SIMULATION, None, template.name, None, template.name or "")
+        comparer.subject = other.name or ""
+        comparer.compare(template, other, pointer)
+    used = {id(other) for other in matches if other is not None}
+    for template in results:
+        if id(template) not in used:
+            comparer.subject = template.name or ""
+            comparer.add("/BuildingTemplates/-", Relevance.SIMULATION, None, template.name, None)
+    comparer.subject = ""
     _unused(first, second, comparer)
     return UmiDiff(differences=tuple(comparer.found), rel_tol=rel_tol)
 
@@ -424,9 +459,9 @@ def _unused(first: LibraryIndex, second: LibraryIndex, comparer: _UmiComparer) -
             continue
         other = by_name.get((type(item), item.name))
         if other is None:
-            comparer.add(pointer, Relevance.DESCRIPTIVE, item.name, None, None, "")
+            comparer.add(pointer, Relevance.DESCRIPTIVE, item.name, None, None)
         else:
-            comparer.compare(item, other, pointer, "")
+            comparer.compare(item, other, pointer)
 
 
 # --- SBEM ------------------------------------------------------------------------------------------

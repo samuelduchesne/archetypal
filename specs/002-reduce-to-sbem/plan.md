@@ -194,7 +194,8 @@ src/archetypal/
 tests/
 ├── conftest.py              # markers, 120 s session budget hook, hypothesis profiles
 ├── fixtures/
-│   ├── models/              # three_zone.idf, ten_zone_multipliers.idf (+ .sql results, R2 outputs only)
+│   ├── models/              # three_zone, ten_zone_multipliers, ten_zone_explicit, bar_building
+│   │                        #   (.idf + .sql results, R2 outputs only)
 │   └── regenerate.py        # rebuild fixture results (needs EnergyPlus; not run in the unit tier)
 ├── unit/                    # default tier: one module per source module, plus property tests
 ├── integration/             # @pytest.mark.energyplus: single-run path, epinterface builds the archetype

@@ -8,8 +8,8 @@
 
 **Input**: Roadmap entry 002 (roadmap 1.2.0): "Turn a detailed, multizone EnergyPlus model (and
 the results of simulating it) into one SBEM archetype made of zone groups (by space use and
-exposure), describing what is conserved and why." Governed by constitution 1.3.0 (Principles
-II, IV, V) and roadmap decisions C-02, C-03, C-04, C-11, C-12.
+exposure), describing what is conserved and why." Governed by constitution 1.5.0 (Principles
+I, II, IV, V, VI) and roadmap 1.8.0 decisions C-02, C-03, C-04, C-11, C-12, C-17, C-18.
 
 ## Why this exists
 

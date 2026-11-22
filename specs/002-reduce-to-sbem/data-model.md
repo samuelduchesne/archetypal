@@ -153,7 +153,8 @@ The total types:
 - **`HotWaterTotals`**: `volume: Profile` and `heat: Profile` (Σ volume × temperature rise),
   from which the mean rise follows.
 - **`EnergyTotals`**: `delivered` and `consumed_by_fuel: dict[Fuel, float]`, plus
-  `distribution_by_fuel` (pumps and heat rejection folded per R12), `unattributed`
+  `distribution_by_fuel` (pumps and heat rejection folded per R12, and fans until UP-8 per
+  R19), `unattributed`
   (FR-022 standby), `rated_efficiency: float | None` (used only when `delivered == 0`) and
   `eir_sums`, the additive sums R12's constrained fit of the outdoor-temperature slope needs.
 - **`FanTotals`** (FR-022a, R19): `energy`, `volume` (standard density), and, per mode,

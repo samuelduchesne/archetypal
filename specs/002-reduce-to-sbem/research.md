@@ -163,7 +163,9 @@ be claimed as supported.
 
 **Decision.**
 
-1. **User mapping.** A `dict[str, str]` from zone name to space-use label, or a callable.
+1. **User mapping.** A mapping from zone name to space-use label (`Mapping[str, str]`). A
+   callable was rejected: it cannot be written to the report, so the reduction could not be
+   reproduced.
 2. **Declared space types.** `Space.space_type` from EnergyPlus 9.6+. A zone takes its spaces'
    type when all agree; mixed spaces fall through to tier 3 and the report says so.
 3. **Signature.** For each zone, build a canonical signature of everything that drives its
@@ -664,7 +666,7 @@ was rejected (roadmap C-17).
    - `getattr` on idfkit objects.
 4. **Following references** (a thermostat's setpoint object, a schedule name of unknown type):
    look the name up in typed collections.
-   - `_schedules.py` builds one typed index
+   - `schedules.py` builds one typed index
      `dict[str, AnySchedule]` from the per-type accessors, where
      `AnySchedule = ScheduleCompact | ScheduleYear | ScheduleConstant | ScheduleFile | …`.
    - Thermostats dispatch on `control_n_object_type`, a `Literal`, with `match`, so pyright

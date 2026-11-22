@@ -185,12 +185,20 @@ def _expected_heating_share_of_pumps(path: Path) -> float:
     return to_heating / sum(pumps)
 
 
-def test_pumps_are_added_to_heating_and_cooling_by_hourly_delivered_mode(ten_zone: ComparisonResult) -> None:
+@pytest.fixture(scope="module")
+def heating_share() -> float:
+    """`_expected_heating_share_of_pumps(DETAILED)`, read once for the tests that need it."""
+    return _expected_heating_share_of_pumps(DETAILED)
+
+
+def test_pumps_are_added_to_heating_and_cooling_by_hourly_delivered_mode(
+    ten_zone: ComparisonResult, heating_share: float
+) -> None:
     uses = _end_uses(DETAILED)
     heating = sum(v for (use, _), v in uses.items() if use == "Heating")
     cooling = sum(v for (use, _), v in uses.items() if use == "Cooling")
     pumps = uses["Pumps", "Electricity"]
-    share = _expected_heating_share_of_pumps(DETAILED)
+    share = heating_share
     assert 0 < share < 1
     with_heating = ten_zone.row("Heating, with pumps and heat rejection").detailed
     with_cooling = ten_zone.row("Cooling, with pumps and heat rejection").detailed
@@ -202,7 +210,7 @@ def test_pumps_are_added_to_heating_and_cooling_by_hourly_delivered_mode(ten_zon
 
 
 def test_pump_split_agrees_with_the_reduction_attribution(
-    ten_zone: ComparisonResult,
+    heating_share: float,
     detailed: Callable[[str], tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]],
 ) -> None:
     """R13 splits pumps on the same equipment-delivered energy as R12's efficiency attribution."""
@@ -222,7 +230,7 @@ def test_pump_split_agrees_with_the_reduction_attribution(
     reduction_share = (float((pumps * hourly).sum()) + idle * annual_heat / (annual_heat + annual_cool)) / float(
         pumps.sum()
     )
-    assert reduction_share == pytest.approx(_expected_heating_share_of_pumps(DETAILED), rel=1e-6)
+    assert reduction_share == pytest.approx(heating_share, rel=1e-6)
 
 
 def test_without_distribution_the_combined_rows_sum_every_fuel(bar_lights: ComparisonResult) -> None:

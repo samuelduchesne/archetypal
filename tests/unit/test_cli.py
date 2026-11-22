@@ -312,7 +312,9 @@ def test_translate_refuses_to_overwrite_without_force(tmp_path: Path) -> None:
 
 
 def test_compare_prints_the_table_and_writes_json(tmp_path: Path) -> None:
-    detailed, archetype = MODELS / "ten_zone_multipliers.sql", MODELS / "ten_zone_explicit.sql"
+    # Small two-week results: the command, not the comparison (tests/unit/test_comparison.py), is tested here.
+    comparison = Path(__file__).resolve().parents[1] / "fixtures" / "comparison"
+    detailed, archetype = comparison / "base.sql", comparison / "lights.sql"
     target = tmp_path / "comparison.json"
     code, out, err = run("compare", detailed, archetype, "--json", target)
     assert code == 0, err

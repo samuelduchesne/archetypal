@@ -745,7 +745,8 @@ class GroupLedger(_Totals):
         - **Exact**, from intensities: gains and their profiles (people, lights and equipment as
           `electric`), the heating and cooling setpoints of a heated or cooled group (else
           `unheated_area` or `uncooled_area`), mechanical outdoor air at design occupancy
-          times the ventilation schedule (with its HRV and economiser categories), and hot
+          times the ventilation schedule (with its HRV and economiser categories and, with heat
+          recovery, its sensible effectiveness weighted by outdoor-air volume), and hot
           water (annual volume `FlowRatePerPerson · 365 · PeopleDensity · area` spread over the
           water-use schedule, temperature rise `WaterSupplyTemperature - WaterTemperatureInlet`),
           and internal mass (exposed area and capacity per floor area).
@@ -857,11 +858,15 @@ def _exact_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
         design = area * ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * people
         hourly = design * profile(ventilation.Schedule)
         volume = float(hourly.sum()) * _SECONDS_PER_HOUR
+        # Heat-recovery effectiveness is weighted by outdoor-air volume, as `airflow` does (R9):
+        # the effectiveness the group simulates with (its field, else epinterface's constant).
+        recovering = ventilation.HRV != "NoHRV"
         values["outdoor_air"] = OutdoorAirTotals(
             design_flow=design,
             hourly=hourly,
             hrv_weighted={ventilation.HRV: volume},
             economiser_weighted={ventilation.Economizer: volume},
+            effectiveness_weighted=volume * ventilation.sensible_heat_recovery_effectiveness if recovering else 0.0,
         )
 
     dhw = zone.Operations.DHW

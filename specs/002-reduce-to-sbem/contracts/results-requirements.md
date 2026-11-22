@@ -17,14 +17,14 @@ asserts they agree.
 
 | Item | Key | Frequency | Used for |
 |---|---|---|---|
-| `Zone Air System Sensible Heating Energy` | every zone | Hourly | supply-air temperature limits (FR-022a), hourly mode of pumps in the comparison (R13) |
-| `Zone Air System Sensible Cooling Energy` | every zone | Hourly | supply-air temperature limits (FR-022a), hourly mode of pumps in the comparison (R13) |
-| `Zone Ideal Loads Supply Air Total Heating Energy`, `Zone Ideal Loads Supply Air Total Cooling Energy` | every `ZoneHVAC:IdealLoadsAirSystem` | Hourly | energy delivered by HVAC equipment (FR-022) |
-| `Heating Coil Heating Energy` | every heating coil | Hourly | energy delivered by HVAC equipment (FR-022) |
-| `Cooling Coil Total Cooling Energy` | every cooling coil | Hourly | energy delivered by HVAC equipment (FR-022) |
-| `Baseboard Total Heating Energy` | every `ZoneHVAC:Baseboard:*` | Hourly | energy delivered by HVAC equipment (FR-022) |
-| `Zone Radiant HVAC Heating Energy` | every `ZoneHVAC:LowTemperatureRadiant:*` | Hourly | energy delivered by HVAC equipment (FR-022) |
-| `Zone Radiant HVAC Cooling Energy` | every hydronic `ZoneHVAC:LowTemperatureRadiant:*` | Hourly | energy delivered by HVAC equipment (FR-022) |
+| `Zone Air System Sensible Heating Energy` | every zone | Hourly | supply-air temperature limits (FR-022a) |
+| `Zone Air System Sensible Cooling Energy` | every zone | Hourly | supply-air temperature limits (FR-022a) |
+| `Zone Ideal Loads Supply Air Total Heating Energy`, `Zone Ideal Loads Supply Air Total Cooling Energy` | every `ZoneHVAC:IdealLoadsAirSystem` | Hourly | energy delivered by HVAC equipment (FR-022), hourly mode of pumps in the comparison (R13) |
+| `Heating Coil Heating Energy` | every heating coil | Hourly | energy delivered by HVAC equipment (FR-022), hourly mode of pumps in the comparison (R13) |
+| `Cooling Coil Total Cooling Energy` | every cooling coil | Hourly | energy delivered by HVAC equipment (FR-022), hourly mode of pumps in the comparison (R13) |
+| `Baseboard Total Heating Energy` | every `ZoneHVAC:Baseboard:*` | Hourly | energy delivered by HVAC equipment (FR-022), hourly mode of pumps in the comparison (R13) |
+| `Zone Radiant HVAC Heating Energy` | every `ZoneHVAC:LowTemperatureRadiant:*` | Hourly | energy delivered by HVAC equipment (FR-022), hourly mode of pumps in the comparison (R13) |
+| `Zone Radiant HVAC Cooling Energy` | every hydronic `ZoneHVAC:LowTemperatureRadiant:*` | Hourly | energy delivered by HVAC equipment (FR-022), hourly mode of pumps in the comparison (R13) |
 | `Fan Electricity Energy`, `Fan Air Mass Flow Rate` | every fan | Hourly | fan energy and air volume (FR-022a) |
 | `System Node Mass Flow Rate` | each zone's air inlet nodes | Hourly | attributing air-loop fans to zones (FR-022a) |
 | `Site Outdoor Air Drybulb Temperature` | Environment | Hourly | efficiency's dependence on outdoor temperature (FR-022) |

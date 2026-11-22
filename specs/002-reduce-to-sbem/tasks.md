@@ -486,12 +486,12 @@ IV). Depends on US1–US3.
 - [ ] T081 Write `verification/report.py`: `--fetch` downloads and checks the set; tabulates
   SC-001–SC-008 per building and for the set; writes the evidence page used by the docs; fixes
   and records the benchmark machine (spec, Assumptions).
-- [ ] T082 Write `tests/reference/test_reference_set.py` (`@pytest.mark.reference`): reduce
+- [X] T082 Write `tests/reference/test_reference_set.py` (`@pytest.mark.reference`): reduce
   every building at every layout without error and account for every zone (SC-006); conserved
   totals within 0.1 % (SC-005); direct and merged layouts within 0.1 % (SC-007); simulate
   detailed and archetype and assert SC-001–SC-003; compare with the v2 baseline at
   core/perimeter (SC-004).
-- [ ] T083 [P] Write `tests/reference/test_performance.py` (`@pytest.mark.reference`): the
+- [X] T083 [P] Write `tests/reference/test_performance.py` (`@pytest.mark.reference`): the
   largest reference building reduces in under 10 s excluding simulation and evaluates its
   schedules in at most 7 s (R5); the set reduces at least 10 times faster than v2 (SC-008).
   If the schedule budget fails, file the faster evaluation under UP-5 before falling back to

@@ -82,7 +82,7 @@ import warnings
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import tomllib  # pyright: ignore[reportMissingTypeStubs]  # Python 3.11+
 
@@ -593,7 +593,7 @@ def flatten(model: object, prefix: str = "") -> dict[str, float]:
                 continue
             out.update(flatten(getattr(model, name), f"{prefix}{name}."))
     elif isinstance(model, dict):
-        for key, value in model.items():  # pyright: ignore[reportUnknownVariableType]
+        for key, value in cast("dict[str, object]", model).items():
             out.update(flatten(value, f"{prefix}{key}."))
     elif isinstance(model, np.ndarray):
         out[prefix.rstrip(".")] = float(np.sum(model))  # pyright: ignore[reportUnknownArgumentType]
@@ -797,7 +797,7 @@ def shoebox(archetype: Any) -> Any:
     if area is None:
         msg = f"archetype {archetype.Name!r} has no conditioned floor area to draw a shoebox from"
         raise ValueError(msg)
-    facade = geometry.FacadeAreaPerFloorArea or {}
+    facade: dict[str, float] = geometry.FacadeAreaPerFloorArea or {}
     north, east = facade.get("N", 0.0), facade.get("E", 0.0)
     footprint = area / storeys
     width = math.sqrt(footprint * north / east) if north > 0 and east > 0 else math.sqrt(footprint)
@@ -877,8 +877,8 @@ def simulate_archetype(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=Warning)  # pandas' performance warnings in epinterface
             series = model.standard_results_postprocess(sql, ep_version_major=doc.version[0])
+            energy = cast("Any", series.loc["Energy", "End Uses"])  # pyright: ignore[reportUnknownMemberType]
         area = float(model.total_conditioned_area)
-        energy = series.loc["Energy", "End Uses"]  # pyright: ignore[reportUnknownMemberType]
         end_uses = {str(m): float(energy.loc[m].sum()) * area for m in energy.index.get_level_values(0).unique()}  # pyright: ignore[reportUnknownMemberType, reportUnknownArgumentType, reportUnknownVariableType]
         systems = model.Zone.Operations.HVAC.ConditioningSystems
         fuels = {
@@ -905,7 +905,9 @@ def simulate_archetype(
                     values = sql.get_timeseries(info.name, "*", "Hourly", environment="annual").values
                     delivered += np.asarray(values, dtype=float)
             eir = system.energy_input_ratio(t_out) if system is not None else np.ones_like(t_out)
-            peaks[mode] = float(np.max(delivered * eir, initial=0.0)) / 3600.0  # J per hour -> W
+            peaks[mode] = (
+                float(np.asarray(delivered * eir, dtype=np.float64).max(initial=0.0)) / 3600.0
+            )  # J per hour -> W
     finally:
         sql.close()
     return ArchetypeRun(
@@ -962,6 +964,11 @@ def consumed_run(archetype_raw: Any, run: ArchetypeRun, detailed_run: Any) -> An
     )
 
 
+def _dict(value: object) -> dict[str, Any]:
+    """`value` when it is a dict, else an empty one (for optional parts of a results record)."""
+    return cast("dict[str, Any]", value) if isinstance(value, dict) else {}
+
+
 def _row_dict(row: Any) -> dict[str, Any]:
     return {f.name: getattr(row, f.name) for f in dataclasses.fields(row)}
 
@@ -977,7 +984,7 @@ def compare_runs(detailed_sql: Path, run: ArchetypeRun, epw: Path) -> dict[str, 
 
     raw = compare(detailed_sql, run.sql, weather=epw)  # refuses incomparable runs (FR-028)
     targets = AcceptanceTargets()
-    runs = []
+    runs: list[Any] = []
     for path in (detailed_sql, run.sql):
         sql = SQLResult(path)
         try:
@@ -1123,7 +1130,7 @@ def run_v2(
     """SC-004 and SC-008 inputs from v2: its timing, and its template simulated and compared."""
     out: dict[str, Any] = {
         "status": v2_record.get("status"),
-        "reduce_s": (v2_record.get("times_s") or {}).get("total_excluding_simulation"),
+        "reduce_s": _dict(v2_record.get("times_s")).get("total_excluding_simulation"),
     }
     template = v2_record.get("template")
     if v2_record.get("status") != "ok" or not template:
@@ -1164,7 +1171,7 @@ def summarise(records: Sequence[Mapping[str, Any]], machine_info: Mapping[str, A
     v2_errors: list[float] = []
     for r in records:
         v3 = r["layouts"].get(SC004_LAYOUT, {}).get("sc", {}).get("mare")
-        v2 = (r.get("v2") or {}).get("sc", {}).get("mare")
+        v2 = _dict(_dict(r.get("v2")).get("sc")).get("mare")
         if v3 is not None and v2 is not None:
             v3_errors.append(v3)
             v2_errors.append(v2)
@@ -1210,7 +1217,7 @@ def summarise(records: Sequence[Mapping[str, Any]], machine_info: Mapping[str, A
         pairs = [
             (r["layouts"][DEFAULT_LAYOUT]["reduce_s"], r["v2"]["reduce_s"])
             for r in timed
-            if (r.get("v2") or {}).get("reduce_s") is not None
+            if _dict(r.get("v2")).get("reduce_s") is not None
         ]
         if pairs:
             v3_total, v2_total = math.fsum(p[0] for p in pairs), math.fsum(p[1] for p in pairs)
@@ -1462,7 +1469,7 @@ def render_results(payload: Mapping[str, Any]) -> str:
     ]
     for r in payload["buildings"]:
         d = r["layouts"].get(DEFAULT_LAYOUT, {})
-        rows = (d.get("comparison") or {}).get("rows", [])
+        rows: list[dict[str, Any]] = _dict(d.get("comparison")).get("rows", [])
         sc = d.get("sc", {})
         checks = all(
             e.get(k, {}).get("passed", k == "sc007") for e in r["layouts"].values() for k in ("sc005", "sc006", "sc007")

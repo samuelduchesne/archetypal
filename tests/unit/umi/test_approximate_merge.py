@@ -23,6 +23,7 @@ from idfkit.thermal import calculate_u_value
 from archetypal.errors import InputError
 from archetypal.reduction.ledger import APPROXIMATE_PATHS, GroupLedger
 from archetypal.reduction.schedules import RunPeriodCalendar, calendar_year, year_values
+from archetypal.reduction.to_sbem import ventilation
 from archetypal.umi import read_umi
 from archetypal.umi.report import LossKind
 from archetypal.umi.write import approximate_merge
@@ -158,6 +159,32 @@ def test_merge_weights_intensities_by_floor_area(office: ZoneComponent) -> None:
     assert window.UValue == pytest.approx((0.3 * office_u + 0.2 * 1.5) / 0.5)
     # The core group has one member: it is kept as it is.
     assert by_exposure["core"].Zone == office
+
+
+def test_rebuilt_ledgers_weight_heat_recovery_effectiveness_by_outdoor_air_volume(office: ZoneComponent) -> None:
+    """Summed rebuilt ledgers give the outdoor-air-volume-weighted sensible effectiveness (R9, FR-019)."""
+    path = "Operations.HVAC.Ventilation"
+    low = replace(office, f"{path}.HRV", "Sensible")
+    low = replace(low, f"{path}.SensibleHeatRecoveryEffectiveness", 0.6)
+    high = replace(low, f"{path}.SensibleHeatRecoveryEffectiveness", 0.9)
+    high = replace(high, f"{path}.FreshAirPerFloorArea", 3 * office.Operations.HVAC.Ventilation.FreshAirPerFloorArea)
+    high = replace(high, "Name", "High recovery office")
+    groups = [group(low, "perimeter low", 0.3, "perimeter"), group(high, "perimeter high", 0.2, "perimeter")]
+    volumes = []
+    for g in groups:
+        outdoor_air = GroupLedger.approximate_from_group(g, cast("float", g.FloorAreaShare)).ledger.outdoor_air
+        volumes.append(outdoor_air.hrv_weighted["Sensible"])
+        effectiveness = g.Zone.Operations.HVAC.Ventilation.SensibleHeatRecoveryEffectiveness
+        assert outdoor_air.effectiveness_weighted == pytest.approx(volumes[-1] * effectiveness)
+    assert volumes[0] != pytest.approx(volumes[1] * 0.3 / 0.2)  # the volumes are not proportional to area
+    total = sum(
+        (GroupLedger.approximate_from_group(g, cast("float", g.FloorAreaShare)).ledger for g in groups), GroupLedger()
+    )
+    expected = (volumes[0] * 0.6 + volumes[1] * 0.9) / (volumes[0] + volumes[1])
+    # The merged ledger derives the volume-weighted effectiveness with 002's `ventilation` rule.
+    result = ventilation(total, CALENDAR, name="merged").value.SensibleHeatRecoveryEffectiveness
+    assert result == pytest.approx(expected)
+    assert result != pytest.approx(0.9)  # not the largest member's value
 
 
 def test_merge_reports_merged_groups_and_approximate_parameters(office: ZoneComponent) -> None:

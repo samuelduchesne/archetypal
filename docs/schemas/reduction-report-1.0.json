@@ -207,7 +207,7 @@
     },
     "EnergyTotals": {
       "additionalProperties": false,
-      "description": "Delivered and consumed energy of one mode (R12, FR-022).\n\nAttributes:\n    delivered: \u03a3 delivered energy, J.\n    consumed_by_fuel: \u03a3 consumed energy of the primary meters per fuel, J.\n    distribution_by_fuel: \u03a3 pump and heat-rejection energy folded into this mode (and fans\n        until UP-8, R19) per fuel, J.\n    unattributed: Consumption in hours without delivery (standby, pilot) per fuel, J.\n    rated_weight: \u03a3 weight of the rated efficiencies (for example rated capacity).\n    rated_weighted: \u03a3 weight \u00b7 rated efficiency, from *Equipment Summary*.\n    eir_sums: The sums of the energy-input-ratio fit.",
+      "description": "Delivered and consumed energy of one mode (R12, FR-022).\n\nAttributes:\n    delivered: \u03a3 delivered energy, J.\n    consumed_by_fuel: \u03a3 consumed energy of the primary meters per fuel, J.\n    distribution_by_fuel: \u03a3 pump and heat-rejection energy folded into this mode per fuel, J.\n        Fans are not folded here: their energy is in `FanTotals` and is written as\n        `SpecificFanPower` (R19).\n    unattributed: Consumption in hours without delivery (standby, pilot) per fuel, J.\n    rated_weight: \u03a3 weight of the rated efficiencies (for example rated capacity).\n    rated_weighted: \u03a3 weight \u00b7 rated efficiency, from *Equipment Summary*.\n    eir_sums: The sums of the energy-input-ratio fit.",
       "properties": {
         "delivered": {
           "default": 0.0,

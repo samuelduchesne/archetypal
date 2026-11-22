@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 import archetypal
-from archetypal._removed import MIGRATION_GUIDE_URL, REMOVED, anchor
+from archetypal._removed import MIGRATION_GUIDE_URL, REMOVED, row_anchor
 from archetypal.errors import RemovedInArchetypal3Error
 
 SRC = Path(archetypal.__file__).resolve().parent
@@ -47,7 +47,7 @@ def _forget(module: str) -> None:
 
 
 def _guide_section(v2_path: str) -> str:
-    return f"{MIGRATION_GUIDE_URL}#{anchor(v2_path)}"
+    return f"{MIGRATION_GUIDE_URL}#{row_anchor(v2_path)}"
 
 
 def test_the_spec_names_are_removed() -> None:

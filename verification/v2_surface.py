@@ -5,8 +5,12 @@ research R7, data-model.md V2Surface), never in the archetypal 3 development env
 
 ```console
 $ uv venv -p 3.11 /tmp/v2 && uv pip install -p /tmp/v2/bin/python "archetypal==2.18.10"
-$ /tmp/v2/bin/python verification/v2_surface.py tests/data/v2_surface.json
+$ ENERGYPLUS_VERSION=24-2-0 /tmp/v2/bin/python -I verification/v2_surface.py tests/data/v2_surface.json
 ```
+
+2.18.10 is the last archetypal 2 release on PyPI (the spec's 2.18.11 was never published).
+archetypal 2's command-line module asks for an installed EnergyPlus when imported; set
+`ENERGYPLUS_VERSION` to the installed release (dash-separated) so that it finds it.
 
 The surface holds:
 
@@ -36,8 +40,12 @@ import sys
 import tempfile
 from importlib.metadata import version
 from pathlib import Path
-from types import ModuleType
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+import click
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 PACKAGE = "archetypal"
 
@@ -71,11 +79,10 @@ def _defined_names(tree: ast.Module) -> set[str]:
 def public_names(module: ModuleType) -> list[str]:
     """Return the public names a module defines or lists in `__all__`."""
     source = Path(module.__file__ or "")
-    defined = _defined_names(ast.parse(source.read_text(encoding="utf-8"))) if source.is_file() else set()
-    listed = set(getattr(module, "__all__", ()))
-    public = {n for n in defined if not n.startswith("_")} | {
-        n for n in listed if not n.startswith("_") or n.endswith("__")
-    }
+    defined: set[str] = _defined_names(ast.parse(source.read_text(encoding="utf-8"))) if source.is_file() else set()
+    listed: set[str] = {str(name) for name in getattr(module, "__all__", ())}
+    public = {n for n in defined if not n.startswith("_")}
+    public |= {n for n in listed if not n.startswith("_") or n.endswith("__")}
     return sorted(public - {"__all__"})
 
 
@@ -99,15 +106,14 @@ def _option_label(param: Any) -> str:
 
 def click_surface(group: Any) -> tuple[list[str], list[str]]:
     """Return the commands and options of a click group."""
-    import click
-
     commands: list[str] = []
     options: list[str] = []
 
     def add_options(prefix: str, command: Any) -> None:
-        for param in command.params:
-            if isinstance(param, click.Option) and "--help" not in param.opts:
-                options.append(f"{prefix} {_option_label(param)}")
+        params: list[Any] = command.params
+        options.extend(
+            f"{prefix} {_option_label(p)}" for p in params if isinstance(p, click.Option) and "--help" not in p.opts
+        )
 
     add_options(PACKAGE, group)
     for name in sorted(group.commands):
@@ -133,7 +139,7 @@ def surface() -> dict[str, Any]:
 
 def main() -> None:
     """Write the surface to the path given on the command line."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description="Write the public surface of archetypal 2 as JSON.")
     parser.add_argument("output", type=Path, help="where to write the JSON file")
     output = parser.parse_args().output.resolve()
     with tempfile.TemporaryDirectory() as scratch:

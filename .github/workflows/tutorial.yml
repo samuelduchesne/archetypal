@@ -1,0 +1,130 @@
+name: Tutorial
+
+# Spec 001 (FR-001, SC-001, edge case "unsupported Python"): on every v3 tag and weekly, install
+# the tag from git into a clean environment, exactly as docs/how-to/install.md says, and run the
+# `archetypal` commands of the tutorial's `console` blocks. On Python 3.13 the install must be
+# refused, naming the supported range.
+
+on:
+  push:
+    tags:
+      - "v3.*"
+  schedule:
+    # Weekly, Wednesdays 04:43 UTC, against the latest v3 tag.
+    - cron: "43 4 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  REPOSITORY: https://github.com/${{ github.repository }}
+  TUTORIAL: docs/tutorials/first-umi-library.md
+
+jobs:
+  tutorial:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out every tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Choose the tag
+        id: tag
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="$(git tag --list 'v3.*' --sort=-v:refname | head -n 1)"
+          fi
+          if [ -z "${tag}" ]; then
+            echo "No v3 tag yet: nothing to check"
+          else
+            git checkout --quiet "${tag}"
+          fi
+          echo "name=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        if: ${{ steps.tag.outputs.name != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install the tag into a clean environment
+        if: ${{ steps.tag.outputs.name != '' }}
+        run: |
+          # The epinterface fork revision the tag pins under [tool.uv.sources] (docs/how-to/install.md).
+          revision="$(sed -E -n 's/^epinterface = .*(rev|tag) = "([^"]*)".*/\2/p' pyproject.toml)"
+          python -m venv "${RUNNER_TEMP}/clean"
+          if [ -f "${RUNNER_TEMP}/clean/Scripts/python.exe" ]; then
+            bin="${RUNNER_TEMP}/clean/Scripts"
+          else
+            bin="${RUNNER_TEMP}/clean/bin"
+          fi
+          requirements=("archetypal @ git+${REPOSITORY}@${{ steps.tag.outputs.name }}")
+          if [ -n "${revision}" ]; then
+            requirements=("epinterface @ git+https://github.com/samuelduchesne/epinterface@${revision}" "${requirements[@]}")
+          fi
+          "${bin}/python" -m pip install --upgrade pip
+          "${bin}/python" -m pip install "${requirements[@]}"
+          # pytest only drives the console-block runner; archetypal comes from the clean install.
+          "${bin}/python" -m pip install pytest pytest-timeout
+          echo "${bin}" >> "${GITHUB_PATH}"
+
+      - name: Run the tutorial's commands
+        if: ${{ steps.tag.outputs.name != '' }}
+        run: |
+          if [ ! -f "${TUTORIAL}" ]; then
+            echo "::error::${TUTORIAL} is missing at ${{ steps.tag.outputs.name }}"
+            exit 1
+          fi
+          # Run from outside the checkout so that `import archetypal` cannot pick up src/.
+          cd "${RUNNER_TEMP}"
+          python -m pytest "${GITHUB_WORKSPACE}/tests/docs/test_console_examples.py" \
+            --rootdir "${GITHUB_WORKSPACE}" --noconftest -p no:cacheprovider \
+            -k "test_console_example and tutorials" -o addopts="" -v
+
+  unsupported-python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out every tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Choose the tag
+        id: tag
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "name=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "name=$(git tag --list 'v3.*' --sort=-v:refname | head -n 1)" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Set up Python 3.13
+        if: ${{ steps.tag.outputs.name != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Check that the install is refused with the supported range
+        if: ${{ steps.tag.outputs.name != '' }}
+        run: |
+          python -m venv "${RUNNER_TEMP}/clean"
+          if "${RUNNER_TEMP}/clean/bin/python" -m pip install "archetypal @ git+${REPOSITORY}@${{ steps.tag.outputs.name }}" > pip.log 2>&1; then
+            cat pip.log
+            echo "::error::archetypal installed on Python 3.13; it must be refused"
+            exit 1
+          fi
+          cat pip.log
+          grep -q "requires a different Python" pip.log
+          grep -q "<3.13,>=3.10" pip.log

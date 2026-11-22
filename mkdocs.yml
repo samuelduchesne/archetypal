@@ -11,9 +11,24 @@ copyright: Maintained by <a href="https://samuelduchesne.com">samuelduchesne</a>
 # their first page, never empty. Each section starts with its index.md (navigation.indexes).
 nav:
   - Home: index.md
+  - How-to guides:
+      - how-to/index.md
+      - how-to/install.md
+      - how-to/migrate-from-v2.md
   - Reference:
       - reference/index.md
+      - reference/removed.md
       - Changelog: reference/changelog.md
+  - Explanation:
+      - explanation/index.md
+      - explanation/stack.md
+# Generates the removed-capability tables of the migration guide and reference (spec 001, R7).
+hooks:
+  - docs/hooks/removed.py
+# The hook and the examples' pytest configuration live beside the pages but are not pages.
+exclude_docs: |
+  /hooks/
+  /conftest.py
 watch:
   - CHANGELOG.md
   - src/archetypal

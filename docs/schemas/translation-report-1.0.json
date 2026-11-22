@@ -1,0 +1,246 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "Loss": {
+      "additionalProperties": false,
+      "description": "One piece of information the target does not represent.\n\nAttributes:\n    kind: What kind of loss.\n    subject: The template or archetype; `\"\"` for the whole library.\n    location: A JSON pointer into the UMI file on the UMI side; on the SBEM side a dotted\n        field path prefixed by the group (`perimeter.Operations.HVAC.Ventilation.DCV`) or\n        `archetype.`.\n    value: The value not represented.\n    replacement: What replaced it, if anything.\n    rule: The rule of `CORRESPONDENCE`, or a library-level rule (`LIBRARY_RULES`).\n    reason: Why it was lost, in one sentence.\n    upstream: The upstream item that closes the gap, when the gap is upstream.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/LossKind"
+        },
+        "subject": {
+          "title": "Subject",
+          "type": "string"
+        },
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "replacement": {
+          "$ref": "#/$defs/JsonValue",
+          "default": null
+        },
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "upstream": {
+          "anyOf": [
+            {
+              "pattern": "^UP-\\d+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Upstream"
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "location",
+        "value",
+        "replacement",
+        "rule",
+        "reason",
+        "upstream"
+      ],
+      "title": "Loss",
+      "type": "object"
+    },
+    "LossKind": {
+      "description": "What kind of information a translation lost.",
+      "enum": [
+        "lost",
+        "approximate",
+        "merged",
+        "copied",
+        "share_dropped",
+        "renamed",
+        "unused",
+        "skipped_template"
+      ],
+      "title": "LossKind",
+      "type": "string"
+    },
+    "Note": {
+      "additionalProperties": false,
+      "description": "One assumption or default that loses nothing.\n\nAttributes:\n    kind: What kind of note.\n    subject: The template or archetype; `\"\"` for the whole library.\n    location: Where, as for `Loss.location`.\n    value: The value assumed or defaulted.\n    rule: The rule that made the assumption, for example `format.basilisk_default`.\n    reason: Why, in one sentence.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/NoteKind"
+        },
+        "subject": {
+          "title": "Subject",
+          "type": "string"
+        },
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "rule": {
+          "title": "Rule",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "location",
+        "value",
+        "rule",
+        "reason"
+      ],
+      "title": "Note",
+      "type": "object"
+    },
+    "NoteKind": {
+      "description": "What kind of assumption a translation made.",
+      "enum": [
+        "defaulted",
+        "assumed",
+        "unknown_key"
+      ],
+      "title": "NoteKind",
+      "type": "string"
+    },
+    "SourceInfo": {
+      "additionalProperties": false,
+      "description": "What was translated, and by which versions.\n\nAttributes:\n    path: The library read or written, or `None` when there is no file.\n    sha256: The SHA-256 of the library read, or `None` when writing.\n    dialect: The UMI dialect read, or `None` when writing.\n    archetypal: The version of archetypal.\n    epinterface: The version of epinterface.",
+      "properties": {
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "dialect": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dialect"
+        },
+        "archetypal": {
+          "title": "Archetypal",
+          "type": "string"
+        },
+        "epinterface": {
+          "title": "Epinterface",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "sha256",
+        "dialect",
+        "archetypal",
+        "epinterface"
+      ],
+      "title": "SourceInfo",
+      "type": "object"
+    }
+  },
+  "$id": "https://samuelduchesne.github.io/archetypal/schemas/translation-report-1.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Everything a translation lost, and every assumption it made.\n\nLosses and notes are kept sorted by subject, then location, whatever order they are given in.\nThe summary is derived from the losses.\n\nAttributes:\n    schema_version: The file format's version, `\"1.0\"`.\n    direction: Which way the translation went.\n    source: What was translated, and by which versions.\n    subjects: The templates read or archetypes written, in order.\n    losses: What the target does not represent.\n    notes: Assumptions and defaults that lose nothing.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "direction": {
+      "enum": [
+        "umi_to_sbem",
+        "sbem_to_umi"
+      ],
+      "title": "Direction",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/SourceInfo"
+    },
+    "subjects": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Subjects",
+      "type": "array"
+    },
+    "losses": {
+      "items": {
+        "$ref": "#/$defs/Loss"
+      },
+      "title": "Losses",
+      "type": "array"
+    },
+    "notes": {
+      "items": {
+        "$ref": "#/$defs/Note"
+      },
+      "title": "Notes",
+      "type": "array"
+    },
+    "summary": {
+      "description": "`\"Nothing was lost.\"` when there are no losses, else the losses counted by kind.",
+      "readOnly": true,
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "direction",
+    "source",
+    "subjects",
+    "losses",
+    "notes",
+    "summary"
+  ],
+  "title": "TranslationReport",
+  "type": "object"
+}

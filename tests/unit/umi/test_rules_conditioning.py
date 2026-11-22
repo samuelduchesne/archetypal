@@ -578,3 +578,37 @@ def test_conditioning_round_trip() -> None:
         "cooling_limit_type",
     ):
         assert getattr(back, field) == getattr(original, field), field
+
+
+def test_sbem_only_system_fields_are_lost_unless_at_their_default() -> None:
+    """A temperature-dependent COP, supply-air limits and fan power have no UMI field (SC-006)."""
+    heating = system("Heating").model_copy(update={"EIRTemperatureSlope": 0.01, "EIRReferenceTemperature": 5.0})
+    base = hvac(heating=heating, cooling=system("Cooling"))
+    systems = base.ConditioningSystems.model_copy(
+        update={"MaximumHeatingSupplyAirTemperature": 45.0, "SpecificFanPower": 1200.0}
+    )
+    context = writing()
+    conditioning_to_umi(
+        base.model_copy(update={"ConditioningSystems": systems}), thermostat(), schedule=write_schedule, context=context
+    )
+    lost = {loss.location.split("ConditioningSystems.")[-1]: loss for loss in context.losses}
+    assert {"Heating.EIRTemperatureSlope", "Heating.EIRReferenceTemperature"} <= set(lost)
+    assert {"MaximumHeatingSupplyAirTemperature", "SpecificFanPower"} <= set(lost)
+    assert "MinimumCoolingSupplyAirTemperature" not in lost
+    assert "Cooling.EIRTemperatureSlope" not in lost
+    assert lost["SpecificFanPower"].value == 1200.0
+    assert lost["SpecificFanPower"].replacement is None
+
+
+def test_an_autosized_limit_changes_the_limit_type_and_says_so() -> None:
+    base = hvac(heating=system("Heating"), cooling=system("Cooling"))
+    systems = base.ConditioningSystems.model_copy(
+        update={"HeatingLimitType": "LimitCapacity", "MaxHeatingCapacityPerFloorArea": None}
+    )
+    context = writing()
+    written = conditioning_to_umi(
+        base.model_copy(update={"ConditioningSystems": systems}), thermostat(), schedule=write_schedule, context=context
+    )
+    assert written.heating_limit_type is IdealSystemLimit.NoLimit
+    [kind] = [loss for loss in context.losses if loss.location.endswith("ConditioningSystems.HeatingLimitType")]
+    assert (kind.value, kind.replacement) == ("LimitCapacity", "NoLimit")

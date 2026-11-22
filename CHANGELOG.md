@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial project scaffold generated from [project-kit-cookiecutter](https://github.com/samuelduchesne/project-kit-cookiecutter).
+- Reduction of a detailed EnergyPlus model to an SBEM archetype (`archetypal.reduction`), with a comparison of the archetype's results against the source model (`archetypal.comparison`).
+- Translation between SBEM archetypes and UMI template libraries, every written library checked with UMI's own code (Basilisk) in CI.
 
 ### Removed
 

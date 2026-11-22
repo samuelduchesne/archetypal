@@ -17,6 +17,7 @@ import json
 import re
 import sys
 from collections import Counter
+from dataclasses import dataclass, field
 from enum import Enum
 from importlib import metadata
 from pathlib import Path
@@ -26,7 +27,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    JsonValue,  # noqa: TC002 - pydantic resolves annotations at run time
+    JsonValue,
     computed_field,
     field_validator,
     model_validator,
@@ -58,6 +59,7 @@ __all__ = [
     "SCHEMA_PATH",
     "SCHEMA_VERSION",
     "Direction",
+    "Findings",
     "Loss",
     "LossKind",
     "Note",
@@ -343,6 +345,51 @@ class TranslationReport(_Frozen):
     def from_json(cls, text: str | bytes) -> TranslationReport:
         """Read a report written by `to_json`."""
         return cls.model_validate_json(text)
+
+
+@dataclass
+class Findings:
+    """The losses and notes a translation step collects, before they go into a `TranslationReport`.
+
+    Attributes:
+        losses: What the target does not represent.
+        notes: Assumptions and defaults that lose nothing.
+    """
+
+    losses: list[Loss] = field(default_factory=list[Loss])
+    notes: list[Note] = field(default_factory=list[Note])
+
+    def lose(
+        self,
+        kind: LossKind,
+        subject: str,
+        location: str,
+        value: JsonValue,
+        rule_id: str,
+        reason: str,
+        *,
+        replacement: JsonValue = None,
+        upstream: str | None = None,
+    ) -> None:
+        """Record a loss."""
+        self.losses.append(
+            Loss(
+                kind=kind,
+                subject=subject,
+                location=location,
+                value=value,
+                replacement=replacement,
+                rule=rule_id,
+                reason=reason,
+                upstream=upstream,
+            )
+        )
+
+    def assume(self, subject: str, location: str, value: JsonValue, rule_id: str, reason: str) -> None:
+        """Record that a value the source lacks was filled by a stated rule."""
+        self.notes.append(
+            Note(kind=NoteKind.ASSUMED, subject=subject, location=location, value=value, rule=rule_id, reason=reason)
+        )
 
 
 def report_json_schema() -> dict[str, Any]:

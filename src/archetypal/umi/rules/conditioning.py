@@ -48,7 +48,7 @@ from archetypal.reduction.schedules import to_year_component
 from archetypal.umi._format import EconomizerType, FuelType, HeatRecoveryType, ZoneConditioning
 from archetypal.umi.correspondence import rule
 from archetypal.umi.report import NoteKind
-from archetypal.umi.rules.loads import (
+from archetypal.umi.rules._common import (
     RuleContext,
     ScheduleToSbem,
     all_values_equal,

@@ -16,7 +16,7 @@
   role, each with the UMI name.
 
 Functions take the `subject`, the `location` of the schedule (JSON pointer when reading, SBEM
-field path when writing) and a `Findings` that collects losses and notes.
+field path when writing) and a `Findings` (`archetypal.umi.report`) that collects losses and notes.
 """
 
 from __future__ import annotations
@@ -31,17 +31,18 @@ from epinterface.sbem.components.schedules import (
     YearComponent,
 )
 
-from archetypal.reduction.schedules import MONTHS, WEEKDAYS, RunPeriodCalendar, calendar_year, project
+from archetypal.reduction.schedules import MONTHS, WEEKDAYS, project
 from archetypal.umi._format import DaySchedule, WeekSchedule, YearSchedule, YearSchedulePart
 from archetypal.umi.correspondence import declare_rule, rule
 from archetypal.umi.report import LossKind
+from archetypal.umi.rules._common import REFERENCE_CALENDAR
 
 if TYPE_CHECKING:
     import numpy as np
     from epinterface.sbem.components.schedules import YearScheduleCategory
     from pydantic import JsonValue
 
-    from archetypal.umi.rules.materials import Findings
+    from archetypal.umi.report import Findings
 
 __all__ = [
     "MONTHS",
@@ -57,9 +58,6 @@ __all__ = [
     "year_to_sbem",
     "year_to_umi",
 ]
-
-REFERENCE_CALENDAR = RunPeriodCalendar(year=calendar_year(1, 1, 0))
-"""The reference year of UMI schedules: non-leap, starting on Monday, without holidays."""
 
 SPECIAL_DAYS: tuple[tuple[str, int], ...] = (
     ("Holiday", 6),

@@ -17,6 +17,7 @@ from archetypal.umi._format import DomesticHotWaterFuelType, DomesticHotWaterSet
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind
 from archetypal.umi.rules import hotwater as module
+from archetypal.umi.rules._common import annual_values, constant_year_schedule
 from archetypal.umi.rules.hotwater import (
     DHW_FUELS,
     dhw_to_sbem,
@@ -27,7 +28,6 @@ from archetypal.umi.rules.hotwater import (
     fuel_to_umi,
     range_problems,
 )
-from archetypal.umi.rules.loads import annual_values, constant_year_schedule
 
 from .test_rules_loads import reading, sbem_schedule, writing
 

@@ -30,7 +30,7 @@ from epinterface.sbem.components.envelope import InfiltrationComponent
 from archetypal.errors import Problem
 from archetypal.umi._format import ZoneVentilation
 from archetypal.umi.correspondence import rule
-from archetypal.umi.rules.loads import (
+from archetypal.umi.rules._common import (
     RuleContext,
     ScheduleToSbem,
     ScheduleToUmi,

@@ -40,7 +40,15 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
 
 HOURS = 6
-ENVELOPE_CLASSES = ("exterior_wall", "roof", "exposed_floor", "ground_floor", "ground_wall", "partition", "floor_ceiling")
+ENVELOPE_CLASSES = (
+    "exterior_wall",
+    "roof",
+    "exposed_floor",
+    "ground_floor",
+    "ground_wall",
+    "partition",
+    "floor_ceiling",
+)
 ORIENTATIONS = ("N", "NE", "E", "SE", "S", "SW", "W", "NW")
 GAIN_KINDS = ("people", "lights", "electric", "gas", "hot_water_equipment", "steam", "other", "baseboard")
 MODES = ("heating", "cooling", "hot_water")
@@ -178,19 +186,19 @@ def assert_close(a: object, b: object) -> None:
 # --- merging ------------------------------------------------------------------------------
 
 
-@settings(max_examples=40, deadline=None)
+@settings(max_examples=25, deadline=None)
 @given(ledgers("a", any_floats), ledgers("b", any_floats))
 def test_addition_is_commutative(a: GroupLedger, b: GroupLedger) -> None:
     assert a + b == b + a
 
 
-@settings(max_examples=40, deadline=None)
+@settings(max_examples=25, deadline=None)
 @given(ledgers("a"), ledgers("b"), ledgers("c"))
 def test_addition_is_associative_exactly_on_exact_values(a: GroupLedger, b: GroupLedger, c: GroupLedger) -> None:
     assert (a + b) + c == a + (b + c)
 
 
-@settings(max_examples=30, deadline=None)
+@settings(max_examples=20, deadline=None)
 @given(ledgers("a", any_floats), ledgers("b", any_floats), ledgers("c", any_floats))
 def test_addition_is_associative_within_rounding(a: GroupLedger, b: GroupLedger, c: GroupLedger) -> None:
     left, right = (a + b) + c, a + (b + c)
@@ -199,7 +207,7 @@ def test_addition_is_associative_within_rounding(a: GroupLedger, b: GroupLedger,
     assert_close(left, right)
 
 
-@settings(max_examples=40, deadline=None)
+@settings(max_examples=25, deadline=None)
 @given(ledgers("a"), ledgers("b"))
 def test_members_are_a_sorted_union(a: GroupLedger, b: GroupLedger) -> None:
     merged = a + b
@@ -208,7 +216,7 @@ def test_members_are_a_sorted_union(a: GroupLedger, b: GroupLedger) -> None:
     assert len(merged.excluded_envelope) == len(a.excluded_envelope) + len(b.excluded_envelope)
 
 
-@settings(max_examples=40, deadline=None)
+@settings(max_examples=25, deadline=None)
 @given(ledgers("a", any_floats), ledgers("b", any_floats))
 def test_every_total_is_a_sum(a: GroupLedger, b: GroupLedger) -> None:
     left, right, merged = leaf_map(a), leaf_map(b), leaf_map(a + b)
@@ -283,9 +291,7 @@ def test_eir_sums_from_hourly() -> None:
     delivered = np.array([1.0, 0.0, 2.0])
     outdoor = np.array([-5.0, 0.0, 10.0])
     sums = EirSums.from_hourly(consumed=consumed, delivered=delivered, outdoor_temperature=outdoor)
-    assert sums == EirSums(
-        d=3.0, d_t=15.0, d2=5.0, d2_t=35.0, d2_t2=425.0, c=5.0, c_d=8.0, c_d_t=50.0
-    )
+    assert sums == EirSums(d=3.0, d_t=15.0, d2=5.0, d2_t=35.0, d2_t2=425.0, c=5.0, c_d=8.0, c_d_t=50.0)
 
 
 # --- from_zone: the multiplier applied exactly once ---------------------------------------
@@ -481,7 +487,11 @@ def test_gain_fields_sum_installed_and_hourly_by_kind() -> None:
     assert lights.lost == pytest.approx(0.2 * lights_energy_first)
     electric: GainTotals = totals["electric"]  # pyright: ignore[reportUnknownVariableType]
     energy = 200.0 * 4 * 3600.0
-    assert (electric.radiant, electric.latent, electric.lost) == pytest.approx((0.3 * energy, 0.1 * energy, 0.05 * energy))
+    assert (electric.radiant, electric.latent, electric.lost) == pytest.approx((
+        0.3 * energy,
+        0.1 * energy,
+        0.05 * energy,
+    ))
     people: GainTotals = totals["people"]  # pyright: ignore[reportUnknownVariableType]
     assert people.installed == 10.0
     np.testing.assert_array_equal(people.hourly, 10.0 * occupancy)

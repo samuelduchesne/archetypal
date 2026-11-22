@@ -31,8 +31,7 @@ from epinterface.sbem.components.systems import DHWComponent
 from archetypal.errors import Problem
 from archetypal.umi._format import DomesticHotWaterFuelType, DomesticHotWaterSettings
 from archetypal.umi.correspondence import rule
-from archetypal.umi.rules.conditioning import cop_to_umi, system_cop
-from archetypal.umi.rules.loads import (
+from archetypal.umi.rules._common import (
     RuleContext,
     ScheduleToSbem,
     ScheduleToUmi,
@@ -40,6 +39,7 @@ from archetypal.umi.rules.loads import (
     identity_to_sbem,
     identity_to_umi,
 )
+from archetypal.umi.rules.conditioning import cop_to_umi, system_cop
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

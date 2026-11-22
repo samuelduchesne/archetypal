@@ -15,9 +15,8 @@ from hypothesis import strategies as st
 from archetypal.reduction.schedules import expand, representative_days, to_year_component
 from archetypal.umi._format import DaySchedule, WeekSchedule, YearSchedule, YearSchedulePart
 from archetypal.umi.correspondence import get_rule
-from archetypal.umi.report import LossKind, NoteKind
+from archetypal.umi.report import Findings, LossKind, NoteKind
 from archetypal.umi.rules import schedules
-from archetypal.umi.rules.materials import Findings
 from archetypal.umi.rules.schedules import (
     REFERENCE_CALENDAR,
     day_to_sbem,

@@ -20,13 +20,15 @@ from archetypal.umi._format import DimmingType, YearSchedule, ZoneDefinition, Zo
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import Loss, LossKind, Note, NoteKind
 from archetypal.umi.rules import loads
-from archetypal.umi.rules.loads import (
-    METABOLIC_RATE,
+from archetypal.umi.rules._common import (
     REFERENCE_CALENDAR,
     RuleContext,
     all_values_equal,
     annual_values,
     constant_year_schedule,
+)
+from archetypal.umi.rules.loads import (
+    METABOLIC_RATE,
     internal_mass_to_sbem,
     internal_mass_to_umi,
     loads_to_sbem,

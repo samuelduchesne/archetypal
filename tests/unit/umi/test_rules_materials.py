@@ -12,14 +12,13 @@ from hypothesis import strategies as st
 
 from archetypal.umi._format import MaterialLayer, OpaqueConstruction, OpaqueMaterial, ZoneConstructions
 from archetypal.umi.correspondence import get_rule
-from archetypal.umi.report import LossKind, NoteKind
+from archetypal.umi.report import Findings, LossKind, NoteKind
 from archetypal.umi.rules import materials
 from archetypal.umi.rules.materials import (
     FILLED_SLOTS,
     ROUGHNESS,
     SBEM_MATERIAL_TYPES,
     SET_SLOTS,
-    Findings,
     assemblies_to_sbem,
     assemblies_to_umi,
     carbon_per_kg,

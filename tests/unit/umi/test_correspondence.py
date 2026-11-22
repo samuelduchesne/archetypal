@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import pkgutil
 import re
 import typing
 from collections import Counter
@@ -211,20 +212,27 @@ def test_mappings_for_returns_the_rule_rows_in_order() -> None:
 # --- the registry ---------------------------------------------------------------------------------
 
 
-def _rule_modules_missing() -> list[str]:
-    rules = importlib.import_module("archetypal.umi.rules")
-    present = {module.name for module in __import__("pkgutil").iter_modules(rules.__path__)}
-    return sorted(set(RULE_MODULES.values()) - present)
-
-
-@pytest.mark.xfail(
-    bool(_rule_modules_missing()),
-    reason=f"rules not yet written: {', '.join(_rule_modules_missing())}",
-    strict=False,
-)
 def test_registered_rules_equal_table_rules() -> None:
     """data-model.md: the set of `rule` values equals the set of registered rules."""
     assert set(registered_rules()) == rule_ids()
+
+
+def test_every_owning_module_is_a_public_rules_module() -> None:
+    """The registry's auto-import loads every module `RULE_MODULES` names; `_common` owns no prefix."""
+    rules = importlib.import_module("archetypal.umi.rules")
+    public = {module.name for module in pkgutil.iter_modules(rules.__path__) if not module.name.startswith("_")}
+    assert set(RULE_MODULES.values()) == public
+    assert "_common" not in RULE_MODULES.values()
+
+
+def test_shared_module_registers_no_rule() -> None:
+    functions = [
+        function
+        for registered in registered_rules().values()
+        for function in (registered.to_sbem, registered.to_umi)
+        if function is not None
+    ]
+    assert all(function.__module__ != "archetypal.umi.rules._common" for function in functions)
 
 
 def test_registered_rules_live_in_their_owning_module() -> None:

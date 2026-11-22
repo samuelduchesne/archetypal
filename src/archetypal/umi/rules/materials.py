@@ -17,13 +17,12 @@ type its category does not name, a vegetation layer, and cost or carbon given pe
 
 Every function takes the `subject` (template or archetype), the `location` of the component
 translated (a JSON pointer when reading, an SBEM field path when writing) and a `Findings` that
-collects losses and notes. The upstream gaps of these classes (life-cycle fields, adiabatic
+collects losses and notes (`archetypal.umi.report.Findings`). The upstream gaps of these classes (life-cycle fields, adiabatic
 flags) are declared rules: their rows are reported from `CORRESPONDENCE`.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import TYPE_CHECKING, cast, get_args
 
@@ -42,12 +41,11 @@ from epinterface.sbem.components.materials import (
 from archetypal.errors import Problem
 from archetypal.umi._format import MaterialLayer, OpaqueConstruction, OpaqueMaterial, ZoneConstructions
 from archetypal.umi.correspondence import declare_rule, rule
-from archetypal.umi.report import Loss, LossKind, Note, NoteKind
+from archetypal.umi.report import Findings, LossKind
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from pydantic import JsonValue
 
 __all__ = [
     "FILLED_SLOTS",
@@ -55,7 +53,6 @@ __all__ = [
     "SBEM_MATERIAL_TYPES",
     "SET_SLOTS",
     "SLOT_SURFACE_TYPES",
-    "Findings",
     "assemblies_to_sbem",
     "assemblies_to_umi",
     "carbon_per_kg",
@@ -122,51 +119,6 @@ _PER_VOLUME = "m3"
 
 for _upstream in ("material.environmental", "construction.environmental", "construction.adiabatic"):
     declare_rule(_upstream)
-
-
-@dataclass
-class Findings:
-    """The losses and notes a translation step collects.
-
-    Attributes:
-        losses: What the target does not represent.
-        notes: Assumptions and defaults that lose nothing.
-    """
-
-    losses: list[Loss] = field(default_factory=list[Loss])
-    notes: list[Note] = field(default_factory=list[Note])
-
-    def lose(
-        self,
-        kind: LossKind,
-        subject: str,
-        location: str,
-        value: JsonValue,
-        rule_id: str,
-        reason: str,
-        *,
-        replacement: JsonValue = None,
-        upstream: str | None = None,
-    ) -> None:
-        """Record a loss."""
-        self.losses.append(
-            Loss(
-                kind=kind,
-                subject=subject,
-                location=location,
-                value=value,
-                replacement=replacement,
-                rule=rule_id,
-                reason=reason,
-                upstream=upstream,
-            )
-        )
-
-    def assume(self, subject: str, location: str, value: JsonValue, rule_id: str, reason: str) -> None:
-        """Record that a value the source lacks was filled by a stated rule."""
-        self.notes.append(
-            Note(kind=NoteKind.ASSUMED, subject=subject, location=location, value=value, rule=rule_id, reason=reason)
-        )
 
 
 def _pointer(location: str, key: str) -> str:

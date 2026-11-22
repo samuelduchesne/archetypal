@@ -538,77 +538,53 @@ would no longer be plain SBEM that epinterface can read without archetypal.
 
 ## R15 — Project structure, tooling and lint rules
 
-**Decision.** Adopt the **project-kit-cookiecutter** Python template (commit `73646700cea8`),
-linked with cruft. These are the template answers:
+**Decision.** Decided once for the whole project by spec 001's plan (roadmap C-19), which this
+plan follows:
 
-| Question | Answer | Why |
-|---|---|---|
-| `layout` | `src` | Published package; tests run against the installed package. |
-| `minimum_python_version` | `3.10` | Constitution VI. |
-| `development_python_version` | `3.12` | Highest version epinterface allows. |
-| `type_checker` | `pyright` (strict) | Constitution VI; idfkit is pyright-strict clean. |
-| `include_py_typed`, `include_github_actions`, `codecov`, `deptry`, `changelog`, `mkdocs` | yes | Typed public library, CI, dependency hygiene, Keep a Changelog, Diátaxis docs site. |
-| `publish_to_pypi` | yes | v3 ships to PyPI once upstream epinterface has released what it uses (roadmap UP-3, C-18). The publish workflow stays in place, unused; until then each milestone is a git tag (`v3.0.0aN`). |
-| `dockerfile`, `devcontainer`, `dvc` | no | Library, no deployment; no large data tracked in git. |
-| `agent_instructions` / `agent_profile` | `claude` / `full` | Matches how the project is developed. |
-| `open_source_license` | MIT | Unchanged from v2. |
+- the project is generated with `/project-kit:new-project`, carried onto the `v3` branch and
+  linked with cruft (001 research R1);
+- `v2.x` and `v3` branches, milestones as GitHub pre-releases, publish job skipped until UP-3
+  (001 R2);
+- ruff with `D`, `NPY` and `PL`; strict pyright with unknown types as errors; Python 3.10–3.12
+  (001 R3, R9);
+- agents load `/idfkit:developing-with-idfkit` before writing code that imports idfkit, and
+  write docs pages with `/project-kit:diataxis` (001 R4, R5).
 
-These edits follow generation and are visible in the cruft diff:
+**What 002 adds** to that foundation:
 
-- `requires-python = ">=3.10,<3.13"` and classifiers trimmed to 3.10–3.12;
-- the tox `envlist` and CI matrix trimmed to 3.10–3.12;
-- added test markers and the time budget (R16);
-- added ruff rules (below).
+- `[tool.idfkit.check]` and the `pygrep` hook banning untyped idfkit lookups (R18);
+- the `energyplus` and `reference` markers' uses: the integration job and `reference.yml`;
+- the CI jobs against the SBEM fork's development branch and upstream epinterface (roadmap
+  C-14);
+- `verification/` for the reference set (R16).
 
-**Ruff.** The template's rule set is kept as is: YTT, S, DTZ, LOG, PIE, PT, RET, TC, PTH, B, A,
-C4, T10, SIM, I, C90, E, W, F, PGH, UP, RUF, TRY, PERF, FURB. Line length is 120, with preview
-formatting and `future-annotations`. Added:
-
-- **`D` with `convention = "google"`:** every public object documented (constitution VI). Off
-  in `tests/`.
-- **`NPY`:** numpy-specific correctness.
-- **`PL` (pylint) with `max-args = 8`:** keeps function signatures in check on a domain with
-  many parameters.
-
-**Rationale.** It is the standard the user asked for. The additions serve constitution VI and
-the numerical core.
-
-**Where v3 lives.** The v2 tree (flat `archetypal/`, poetry, vendored `geomeppy`) and v3's
-`src/archetypal/` cannot share a branch. v3 is developed on a `v3` integration branch cut from
-`main`. Its first commit applies the template and removes the v2 tree, which stays on `v2.x`
-(spec 001, FR-020). Whichever of 001 and 002 is implemented first performs this step; the other
-reuses it.
+**Rationale.** Tooling is shared; a reduction plan is the wrong place to decide a lint rule.
+This entry keeps its number so earlier references stay valid.
 
 ## R16 — Tests and the two-minute rule
 
-**Decision.** There are three tiers, selected by pytest markers registered in `pyproject.toml`
-(pytest `strict = true` rejects unknown markers).
+**Decision.** The three tiers, their markers and the two-minute budget are spec 001's (001
+research R3). For 002 they mean:
 
-| Tier | Marker | Needs | Runs | Budget |
-|---|---|---|---|---|
-| Unit | none (default) | Python only: small IDF fixtures and recorded SQLite results committed under `tests/fixtures/` | every push, all Python versions | **≤ 120 s wall-clock for the whole tier**; ≤ 5 s per test |
-| Integration | `energyplus` | EnergyPlus 24.2 | every PR, one Python version | ≤ 10 min |
-| Reference | `reference` | EnergyPlus 24.2, DOE prototypes, v2 in a separate env | weekly, manual dispatch, and before a release | none (SC-001–SC-008 evidence) |
+| Tier | Marker | What 002 puts there |
+|---|---|---|
+| Unit | none | Every module of `reduction/` and `comparison/`, on small fixtures and synthetic ledgers |
+| Integration | `energyplus` | The single-run path (FR-002) and epinterface building the archetype (FR-003) |
+| Reference | `reference` | SC-001–SC-008 on the reference set, with v2's baseline |
 
-The 120 s budget is enforced, not just hoped for:
+These keep 002's unit tests fast:
 
-- `pytest-timeout` sets 5 s per unit test.
-- A `conftest.py` hook (`pytest_sessionfinish`) fails the session when the default selection
-  exceeds 120 s.
-- `--durations=15` is always reported, so the slowest tests are visible in CI.
-
-These keep the unit tier fast:
-
-- Fixtures are tiny: a three-zone and a ten-zone model with zone multipliers, a plenum and DHW.
-  Their SQLite results are cut down to the R2 outputs, a few MB each. They are regenerated by
+- Fixtures are tiny: a three-zone and a ten-zone model with zone multipliers, a plenum and DHW,
+  the same building drawn floor by floor, and a bar building. Their SQLite results are cut
+  down to the R2 outputs, a few MB each. They are regenerated by
   `tests/fixtures/regenerate.py` (EnergyPlus needed) and committed.
-- Property-based tests (`hypothesis`) cover order invariance (FR-007), merging equal to direct
-  reduction (FR-010) and conservation (SC-005) on synthetic zone ledgers with no I/O. They use
-  a `ci` profile capped at 50 examples and a 500 ms deadline.
+- Property-based tests (`hypothesis`, 001's `ci` profile) cover order invariance (FR-007),
+  merging equal to direct reduction (FR-010) and conservation (SC-005) on synthetic zone
+  ledgers with no I/O.
 - No unit test runs EnergyPlus, downloads anything or evaluates a full-size model.
 
-**Rationale.** It meets the user's general rule, keeps physics checks fast enough to run on
-every push, and reserves the slow evidence for its own workflow.
+**Rationale.** Physics checks fast enough to run on every push; the slow evidence has its own
+workflow.
 
 ## R17 — Dependencies (constitution III)
 

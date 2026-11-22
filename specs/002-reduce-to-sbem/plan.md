@@ -162,7 +162,7 @@ specs/002-reduce-to-sbem/
 src/archetypal/
 ├── __init__.py              # public re-exports: reduce, merge, compare, Layout, ReductionOptions, errors
 ├── py.typed
-├── errors.py                # ArchetypalError → ReductionError (NoConditionedZones, MissingResults,
+├── errors.py                # 001's hierarchy (001 R8), extended: ReductionError (NoConditionedZones, MissingResults,
 │                            #   ModelResultsMismatch, UnsupportedEnergyPlusVersion), NotComparableError
 ├── io.py                    # write/read <name>.sbem.json and <name>.report.json (deterministic JSON)
 ├── reduction/
@@ -213,49 +213,36 @@ docs/
 ```
 
 **Structure decision.** This is a single library in src layout, generated from the
-project-kit-cookiecutter template and linked with cruft (R15). The `reduction` and
+project-kit-cookiecutter template by `/project-kit:new-project` and linked with cruft (spec
+001, research R1). The `reduction` and
 `comparison` subpackages keep the public surface small; the internal modules mirror the
 spec's requirement groups, so each FR has one home. `verification/` sits outside the package
-because it is project evidence, not library code. The v2 tree moves to `v2.x` (R15); spec 001
-owns that move and the command line.
+because it is project evidence, not library code. The v2 tree moves to `v2.x`; spec 001 owns that
+move, the shared tooling and the command line.
 
-### Tooling configuration (from the template, with the R15 edits)
+### Tooling configuration
 
-- **`pyproject.toml`:**
-  - hatchling build;
-  - `requires-python = ">=3.10,<3.13"`;
-  - `[tool.pyright] typeCheckingMode = "strict"`, `pythonVersion = "3.10"`;
-  - `[tool.ruff]`: `target-version = "py310"`, `line-length = 120`, `fix = true`, preview
-    format;
-  - lint `select` = the template's set plus `D`, `NPY`, `PL`;
-  - `pydocstyle.convention = "google"`, `pylint.max-args = 8`, `future-annotations = true`;
-  - per-file ignores: `tests/*` → `S101`, `D`, `PLR2004`.
-- **`[tool.pyright]`:** strict, plus `reportUnknownMemberType`, `reportUnknownVariableType`
-  and `reportUnknownArgumentType` set to `"error"` (R18).
+The project, its layout and its shared tooling come from spec 001's plan (roadmap C-19; 001
+research R1–R5, R9): generated with `/project-kit:new-project`, strict pyright with unknown
+types as errors, ruff with docstrings, three test tiers with a two-minute unit budget, CI on
+Linux, macOS and Windows, milestones as pre-releases that skip the publish job. Agents load
+`/idfkit:developing-with-idfkit` before writing code that imports idfkit, and write docs pages
+with `/project-kit:diataxis`.
+
+002 adds (R15, R16, R18):
+
 - **`[tool.idfkit.check]`:** `paths = ["src"]`, `since = "22.1"`, `extend-select = ["C004"]`,
-  `fail-on = "warning"`. This runs `idfkit check` in `make check` and as a local pre-commit
-  hook (R18).
-- **`.pre-commit-config.yaml`:** in addition to the template's hooks, a `pygrep` hook bans
-  `get_collection`, `.collections`, `objects_by_type`, `get_referenced_object`,
-  `schedules_dict` and `get_zone_surfaces` under `src/`.
-- **`[tool.pytest.ini_options]`:**
-  - `strict = true`, `testpaths = ["tests"]`;
-  - `markers = ["energyplus: needs EnergyPlus 24.2", "reference: reference-set evidence (slow)"]`;
-  - `addopts = "-m 'not energyplus and not reference' --durations=15"`;
-  - `timeout = 5`. The integration and reference tiers override the timeout per marker in
-    `conftest.py`.
-- **CI** (`.github/workflows/main.yml`, from the template):
-  - `quality` job: `make check` (lock, pre-commit with ruff, pyright, deptry);
-  - unit tests on 3.10, 3.11 and 3.12;
-  - `check-docs` job.
-  - Added: an `integration` job (EnergyPlus 24.2, Python 3.12, `-m energyplus`) on PRs, and
-    `reference.yml` (weekly and `workflow_dispatch`).
-  - Releases (roadmap C-18): the template's publish workflow is kept but not run. 002 ends in
-    milestone M1, a git tag `v3.0.0aN` cut once 001–003 are verified; the reference workflow
-    runs on that tag.
-  - Extra jobs (C-14): unit tests against the SBEM fork's development branch, required; and
-    a weekly job against upstream epinterface's `main`, allowed to fail but reported, which
-    shows how far upstream and the fork have drifted.
+  `fail-on = "warning"`, run by `make check` and a local pre-commit hook.
+- **`.pre-commit-config.yaml`:** a `pygrep` hook banning `get_collection`, `.collections`,
+  `objects_by_type`, `get_referenced_object`, `schedules_dict` and `get_zone_surfaces` under
+  `src/`.
+- **CI:**
+  - an `integration` job (EnergyPlus 24.2, Python 3.12, `-m energyplus`) on pull requests;
+  - `reference.yml` (weekly, `workflow_dispatch` and milestone tags), running
+    `-m reference`;
+  - unit tests against the SBEM fork's development branch, required, and a weekly job against
+    upstream epinterface's `main`, allowed to fail but reported (roadmap C-14).
+- **Releases** (roadmap C-18): 002 ends in milestone M1, cut once 001–003 are verified.
 
 ## Complexity Tracking
 

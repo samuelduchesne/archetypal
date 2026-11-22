@@ -1,6 +1,21 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.8.0 → 1.9.0
+Bump rationale: MINOR — new decision C-19 on how archetypal 3 is built: the project is
+generated with project-kit's new-project skill and kept current with its upgrade skill;
+documentation is written with its diataxis skill; code that imports idfkit is written after
+loading idfkit's developing-with-idfkit skill. Spec 001's plan owns the project-wide tooling
+that spec 002's plan had decided.
+
+Changes this revision:
+  - Added C-19: project scaffolding, documentation authoring and agent skills
+  - 001: governed also by C-19; its foundation is implemented before 002 and 003 code
+
+Specs affected: 001, 002 (tooling now cited from 001), 003
+Open questions added/resolved: none
+
+Previous revision (1.8.0):
 Version change: 1.7.0 → 1.8.0
 Bump rationale: MINOR — archetypal 3 is developed as an unpublished package (constitution
 1.5.0, VI) and taken as far as it can go before its first PyPI release. Release groups become
@@ -325,6 +340,19 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   - *Fork drift:* the longer this period, the further the fork moves from upstream (C-17). The
     weekly job against upstream measures it; topic branches stay small and rebased.
 
+- **C-19 — How archetypal 3 is built** *(constitution VI)*:
+  - *Scaffolding:* the project is generated with project-kit's `new-project` skill from the
+    project-kit-cookiecutter Python template, linked with cruft, and kept current with its
+    `upgrade-project` skill. Generated files change only through a template upgrade or an edit
+    recorded in spec 001's plan.
+  - *Documentation:* every page is written or revised with project-kit's `diataxis` skill,
+    which drafts through its editor agent.
+  - *Code that imports idfkit* is written after loading idfkit's `developing-with-idfkit`
+    skill, which loads the reference for the idfkit version installed in the project.
+  - *Where it is recorded:* the project's `CLAUDE.md` and the header of every `tasks.md`.
+  - Project-wide tooling (layout, type checking, lint rules, test tiers, CI) is decided once,
+    in spec 001's plan; other plans cite it.
+
 ## Upstream Prerequisites
 
 Not archetypal specs. Pull requests to other repositories that archetypal specs depend on.
@@ -403,13 +431,15 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
 - **Scope (out):** reduction and translation behaviour themselves (002, 003).
 - **Depends on:** UP-1 (in the fork, C-17); UP-3 for the PyPI release that delivers its
   outcome
-- **Governed by:** C-01, C-07, C-08, C-09
+- **Governed by:** C-01, C-07, C-08, C-09, C-19
 - **Notes:** Not a milestone on its own (C-10): it is tagged together with 002 and 003 as M1.
   Until the first PyPI release (C-18), its installation page and migration guide describe
   installing archetypal 3 from git, with the fork of epinterface (C-17), and say why.
   Written after 002 and 003: its public surface and command line describe what those specs
   deliver, so writing it first would mean guessing at them. The `reduce` command keeps its v2
-  name and form and defaults to a UMI library (spec FR-012).
+  name and form and defaults to a UMI library (spec FR-012). Its foundation (generated project,
+  branches, shared tooling, docs site) is implemented first, before any 002 or 003 code; its
+  command line and migration guide come last (plan R13).
 - **Spec dir:** specs/001-foundation-migration/
 
 ### 002 — Reduce a detailed EnergyPlus model to an SBEM archetype  [status: specced]
@@ -560,4 +590,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.8.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
+**Version**: 1.9.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

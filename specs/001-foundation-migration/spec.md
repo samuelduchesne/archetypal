@@ -9,8 +9,8 @@
 **Input**: Roadmap entry 001 (roadmap 1.2.2): "What a user gets when they install archetypal 3:
 a small package built on epinterface and idfkit, with v2's general EnergyPlus toolkit removed,
 a documentation site organised by Diátaxis, and a guide for v2 users." Governed by constitution
-1.3.0 (purpose, Principles I, III, V, VI) and roadmap decisions C-01, C-04, C-06, C-07, C-08,
-C-09, C-10.
+1.5.0 (purpose, Principles I, III, V, VI) and roadmap 1.9.0 decisions C-01, C-04, C-06, C-07,
+C-08, C-09, C-10, C-17, C-18, C-19.
 
 ## Why this exists
 

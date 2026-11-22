@@ -1,6 +1,18 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.4.0 → 1.5.0
+Bump rationale: MINOR — Principle VI materially expanded: archetypal 3 is developed as an
+unpublished package, taken as far as it can go before its first PyPI release, which waits for
+upstream epinterface (roadmap UP-3). Milestones are git tags with pre-release versions, and
+the stability promise of semantic versioning starts at the first PyPI release.
+
+Modified principles:
+  - VI. A Dependable Public Library: new bullet on the unpublished period
+Templates requiring updates: none
+Follow-up: roadmap C-10 and C-18; spec 002's API contract; spec 001's v2 support dates.
+
+Previous revision (1.4.0):
 Version change: 1.3.0 → 1.4.0
 Bump rationale: MINOR — Principle I's upstream rule materially expanded: a change epinterface
 cannot take in time may be carried in a maintained fork that archetypal depends on in its
@@ -138,8 +150,15 @@ design by inertia.
 - The project uses uv for environments and builds, Keep a Changelog for `CHANGELOG.md`, and
   semantic versioning.
 - A breaking change to the public API requires a MAJOR release and a migration note.
+- Until its first release on PyPI, archetypal 3 is unpublished. Its milestones are git tags
+  with pre-release versions (`3.0.0a1`, `3.0.0a2`, …), installable from git, and each is
+  verified as a release would be. The public API becomes stable under semantic versioning at
+  the first PyPI release; before it, a breaking change needs a changelog entry, not a MAJOR
+  release.
 
 *Rationale:* archetypal is a dependency of other tools; they must be able to trust its contract.
+Promising that contract before anyone can install the package from PyPI would only freeze
+design mistakes that the unpublished period exists to find.
 Documentation that lags the code breaks that trust as surely as a bug does.
 
 ## Scope
@@ -182,4 +201,4 @@ request that edits this file, states the reason, and bumps the version:
 Reviewers verify compliance with this constitution on every pull request. Any exception MUST be
 justified in the relevant plan and recorded there.
 
-**Version**: 1.4.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
+**Version**: 1.5.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

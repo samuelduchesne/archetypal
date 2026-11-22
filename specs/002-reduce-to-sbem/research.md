@@ -541,7 +541,7 @@ linked with cruft. These are the template answers:
 | `development_python_version` | `3.12` | Highest version epinterface allows. |
 | `type_checker` | `pyright` (strict) | Constitution VI; idfkit is pyright-strict clean. |
 | `include_py_typed`, `include_github_actions`, `codecov`, `deptry`, `changelog`, `mkdocs` | yes | Typed public library, CI, dependency hygiene, Keep a Changelog, Diátaxis docs site. |
-| `publish_to_pypi` | yes | v3 ships to PyPI, once upstream epinterface has released what it uses (roadmap UP-3). The publish workflow stays in place but no release is cut before then. |
+| `publish_to_pypi` | yes | v3 ships to PyPI once upstream epinterface has released what it uses (roadmap UP-3, C-18). The publish workflow stays in place, unused; until then each milestone is a git tag (`v3.0.0aN`). |
 | `dockerfile`, `devcontainer`, `dvc` | no | Library, no deployment; no large data tracked in git. |
 | `agent_instructions` / `agent_profile` | `claude` / `full` | Matches how the project is developed. |
 | `open_source_license` | MIT | Unchanged from v2. |

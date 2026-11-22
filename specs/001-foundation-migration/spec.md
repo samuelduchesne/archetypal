@@ -50,7 +50,9 @@ This spec is not a release on its own: v3.0 ships only when 001, 002 and 003 are
 - Q: In what form are the reduction and loss reports written? → A: One structured,
   machine-readable file per report, plus a short human-readable summary printed by the command.
 - Q: For how long after v3.0 does the v2.x line receive security fixes? → A: 12 months after
-  v3.0 or until v3.1 ships (restoring TABULA), whichever is later.
+  v3.0 or until v3.1 ships (restoring TABULA), whichever is later. *(Revised 2026-11-22: v3.0 is
+  the first PyPI release and "v3.1" is the PyPI release that first includes TABULA, spec 004;
+  roadmap C-18.)*
 - Q: How is it checked that a v2 user can follow the migration guide? → A: No user study:
   migration is developed without user feedback. The guide is checked by running its examples
   (SC-004) and by the coverage check against v2 (SC-003); the moderated test is removed.
@@ -250,8 +252,9 @@ page belongs to exactly one Diátaxis kind.
   at least, that reduction results differ from v2's because the method was rewritten (spec
   002), and where to find the evidence that v3 is more correct (spec 002, success criteria).
 - **FR-020**: v2 MUST remain installable by pinning `archetypal<3`, MUST be maintained on a
-  `v2.x` branch that receives security fixes only, for 12 months after v3.0 or until v3.1
-  (which restores TABULA, spec 004) is released, whichever is later. The guide MUST state that
+  `v2.x` branch that receives security fixes only, for 12 months after v3.0 (the first PyPI
+  release of archetypal 3) or until TABULA support (spec 004) is released on PyPI, whichever
+  is later. The guide MUST state that
   policy and its end date (C-08).
 - **FR-021**: Before v3.0 is released, a final v2 release MUST announce v3 and link to the
   migration guide in its documentation and its release notes, so that v2 users learn of the
@@ -318,9 +321,12 @@ page belongs to exactly one Diátaxis kind.
 
 ## Assumptions
 
-- epinterface is published on the public package index and uses idfkit rather than
-  archetypal or eppy before v3.0 is released (UP-1, UP-3). Without UP-3 no v3 release can
-  ship, because a published package cannot depend on a git repository.
+- epinterface uses idfkit rather than archetypal or eppy (UP-1). Until upstream epinterface
+  releases that change, archetypal 3 depends on a maintained fork through a git source
+  (roadmap C-17) and is unpublished: its milestones are git tags (roadmap C-18), and the
+  installation page and migration guide describe installing from git. v3.0, the first release
+  on the public package index, waits for upstream's release (UP-3), because a published
+  package cannot depend on a git repository.
 - The supported Python versions are bounded by epinterface (3.10 to 3.12) and widen when it
   does (C-07).
 - "Duplicates idfkit" is judged against idfkit's capabilities at the time of v3.0; if idfkit

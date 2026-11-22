@@ -248,6 +248,9 @@ owns that move and the command line.
   - `check-docs` job.
   - Added: an `integration` job (EnergyPlus 24.2, Python 3.12, `-m energyplus`) on PRs, and
     `reference.yml` (weekly and `workflow_dispatch`).
+  - Releases (roadmap C-18): the template's publish workflow is kept but not run. 002 ends in
+    milestone M1, a git tag `v3.0.0aN` cut once 001–003 are verified; the reference workflow
+    runs on that tag.
   - Extra jobs (C-14): unit tests against the SBEM fork's development branch, required; and
     a weekly job against upstream epinterface's `main`, allowed to fail but reported, which
     shows how far upstream and the fork have drifted.

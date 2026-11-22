@@ -92,6 +92,8 @@ for error messages, for the outputs added in the single run, and for
 
 ## Stability
 
-These names are public from v3.0 under semantic versioning (constitution VI). Everything else
+These names are public. They become stable under semantic versioning at the first PyPI
+release (constitution 1.5.0, VI; roadmap C-18). Until then they may change between milestone
+tags, with each change recorded in the changelog. Everything else
 in `archetypal.reduction.*` is private: modules not re-exported are prefixed or listed as
 internal in the API reference.

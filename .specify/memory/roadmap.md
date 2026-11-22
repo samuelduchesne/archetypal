@@ -1,6 +1,24 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.7.0 → 1.8.0
+Bump rationale: MINOR — archetypal 3 is developed as an unpublished package (constitution
+1.5.0, VI) and taken as far as it can go before its first PyPI release. Release groups become
+milestones (git tags); new decision C-18 fixes when the first PyPI release happens; C-10
+applies to that release.
+
+Changes this revision:
+  - "v3.0 / v3.1 / v3.2" release groups → milestones M1, M2, M3, each a git tag
+    (`v3.0.0aN`) verified like a release
+  - C-10: the first PyPI release, not a milestone, must not regress v2's core workflow
+  - Added C-18: publish as soon as UP-3 is met and the latest milestone is verified, whatever
+    milestone that is; later specs never hold it back
+  - 001: installation page and migration guide describe installing from git until then
+
+Specs affected: 001, 002, 003 (release wording); 004–007 (now milestones M2, M3)
+Open questions added/resolved: none
+
+Previous revision (1.7.0):
 Version change: 1.6.0 → 1.7.0
 Bump rationale: MINOR — C-17 amended: the fork is not published on PyPI. Publishing is
 reserved for after upstream epinterface accepts our pull requests. archetypal depends on the
@@ -208,9 +226,11 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
 - **C-09 — Documentation:** user-facing documentation follows Diátaxis and is updated in the
   same pull request as the behaviour it describes. *Constitution VI.*
 - **C-10 — No release regresses v2's core capability:** v2's core workflow is "reduce a
-  detailed EnergyPlus model and get a UMI template library". v3.0 ships only when 001, 002 and
-  003 are all implemented, so a v3.0 user can still do that (reduce to SBEM, then write UMI
-  JSON). The spec numbers order the writing, not separate releases.
+  detailed EnergyPlus model and get a UMI template library". The first PyPI release (v3.0,
+  C-18) ships only when 001, 002 and 003 are all implemented and verified, so a v3.0 user can
+  still do that (reduce to SBEM, then write UMI JSON). The spec numbers order the writing, not
+  separate releases.
+  ~~Revision 1.7.0: v3.0 was the first milestone and the first release at once.~~
 - **C-11 — Zone groups and layouts** *(resolves Q6)*: reduction groups the detailed model's
   zones by **space use** and by **exposure** (perimeter or core), so a hospital keeps operating
   rooms, patient rooms and corridors apart. This is the default layout. Merging groups follows
@@ -289,6 +309,22 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   second SBEM), and would not remove the `archetypal==2.18.10` pin, which makes upstream
   uninstallable next to archetypal 3 anyway.
 
+- **C-18 — Unpublished until upstream allows, then publish without delay**
+  *(constitution VI)*: archetypal 3 is taken as far as it can go before its first PyPI
+  release, which cannot happen before UP-3.
+  - *Milestones:* M1 (001–003), M2 (004–005), M3 (006–007). Each ends with a git tag with the
+    next pre-release version (`v3.0.0a1`, …), its specs verified, its documentation built and
+    its changelog section written, exactly as for a release. Users can install a tag from git.
+  - *Publish point:* the first PyPI release, v3.0.0, is cut as soon as UP-3 is met and the
+    latest milestone is verified, whatever milestone that is. Specs not yet finished never
+    hold it back; they follow as minor releases.
+  - *Before it:* the public API may change between milestones (each change in the changelog);
+    the publish workflow from the project template stays in place, with no job run; v2 users
+    stay on the `v2.x` line (C-08) and are invited to try milestone tags from git, which is the
+    only outside feedback before publishing.
+  - *Fork drift:* the longer this period, the further the fork moves from upstream (C-17). The
+    weekly job against upstream measures it; topic branches stay small and rebased.
+
 ## Upstream Prerequisites
 
 Not archetypal specs. Pull requests to other repositories that archetypal specs depend on.
@@ -350,7 +386,7 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
 
 ## Planned Specs
 
-### v3.0 — the narrowest useful release
+### M1 — the narrowest useful milestone (first PyPI release at the earliest, C-10, C-18)
 
 ### 001 — archetypal 3 foundation and migration from v2  [status: specced]
 
@@ -368,7 +404,9 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
 - **Depends on:** UP-1 (in the fork, C-17); UP-3 for the PyPI release that delivers its
   outcome
 - **Governed by:** C-01, C-07, C-08, C-09
-- **Notes:** Not a release on its own (C-10): it ships together with 002 and 003 as v3.0.
+- **Notes:** Not a milestone on its own (C-10): it is tagged together with 002 and 003 as M1.
+  Until the first PyPI release (C-18), its installation page and migration guide describe
+  installing archetypal 3 from git, with the fork of epinterface (C-17), and say why.
   Written after 002 and 003: its public surface and command line describe what those specs
   deliver, so writing it first would mean guessing at them. The `reduce` command keeps its v2
   name and form and defaults to a UMI library (spec FR-012).
@@ -422,7 +460,7 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
 - **Notes:** The field mapping done for this spec also decides what UP-2 must add to
   epinterface (C-13).
 
-### v3.1 — create from published sources
+### M2 — create from published sources
 
 ### 004 — Archetypes from TABULA/EPISCOPE  [status: planned]
 
@@ -448,7 +486,7 @@ but are no longer a dependency of any spec. The idfkit items are unchanged.
 - **Notes:** Whether this is "read the tables" or "reduce the prototypes" is open and belongs
   to this spec.
 
-### v3.2 — apply
+### M3 — apply
 
 ### 006 — Rules for assigning archetypes to buildings  [status: planned]
 
@@ -522,4 +560,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.7.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22
+**Version**: 1.8.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

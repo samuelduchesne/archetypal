@@ -50,6 +50,7 @@ if TYPE_CHECKING:
     from archetypal.umi.report import Direction
 
 __all__ = [
+    "ALWAYS_ON",
     "REFERENCE_CALENDAR",
     "RuleContext",
     "ScheduleToSbem",
@@ -60,9 +61,14 @@ __all__ = [
     "identity_to_sbem",
     "identity_to_umi",
     "json_value",
+    "optional_schedule_to_sbem",
+    "optional_schedule_to_umi",
     "report_upstream",
     "upstream_defaults",
 ]
+
+ALWAYS_ON = "Always on"
+"""The name of the schedule written where SBEM has none (availability, mechanical ventilation)."""
 
 REFERENCE_CALENDAR = RunPeriodCalendar(calendar_year(1, 1, 0))
 """The reference year of UMI schedules (research R7): non-leap, starting on a Monday."""
@@ -288,3 +294,66 @@ def all_values_equal(year: YearSchedule, value: float) -> bool:
             if day is None or any(hour != value for hour in day.values):
                 return False
     return bool(year.parts)
+
+
+def optional_schedule_to_sbem(  # noqa: PLR0913 - one argument per part of the field
+    year: YearSchedule | None,
+    key: str,
+    role: YearScheduleCategory,
+    *,
+    schedule: ScheduleToSbem,
+    context: RuleContext,
+    rule_id: str,
+    limits: Collection[str] = ("Fraction",),
+) -> YearComponent | None:
+    """Read a UMI schedule into an optional SBEM schedule whose `None` means always on (UP-9).
+
+    An always-on schedule (every value 1), or none, gives `None`. A schedule whose type limits
+    SBEM refuses for the field is lost, `None` kept.
+
+    Args:
+        year: The UMI schedule, or `None`.
+        key: Its UMI key, for the report.
+        role: The SBEM year's `Type`.
+        schedule: The schedule converter.
+        context: The reading context of the component holding it.
+        rule_id: The rule reporting a loss.
+        limits: The type limits SBEM accepts for the field.
+    """
+    if year is None or all_values_equal(year, 1.0):
+        return None
+    component = schedule(year, role, context.location(key))
+    if component.schedule_type_limits not in limits:
+        context.lose(
+            key,
+            json_value(year),
+            replacement=ALWAYS_ON,
+            rule=rule_id,
+            reason=f"SBEM needs a schedule of type {' or '.join(limits)} here, not {component.schedule_type_limits}; "
+            "it applies at every hour, as an always-on schedule",
+        )
+        return None
+    return component
+
+
+def optional_schedule_to_umi(
+    year: YearComponent | None, key: str, *, schedule: ScheduleToUmi, context: RuleContext, rule_id: str
+) -> YearSchedule:
+    """Write an optional SBEM schedule (UP-9); `None` (always on) is an always-on UMI schedule, noted.
+
+    Args:
+        year: The SBEM schedule, or `None`.
+        key: Its SBEM key, for the report.
+        schedule: The schedule converter.
+        context: The writing context of the component holding it.
+        rule_id: The rule noting an always-on schedule.
+    """
+    if year is not None:
+        return schedule(year, context.location(key))
+    context.note(
+        key,
+        ALWAYS_ON,
+        rule=rule_id,
+        reason="SBEM's None applies at every hour, so an always-on schedule is written",
+    )
+    return constant_year_schedule(ALWAYS_ON, 1.0)

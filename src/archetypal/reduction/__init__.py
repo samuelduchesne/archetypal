@@ -49,10 +49,11 @@ from archetypal.reduction import hotwater as _hotwater
 from archetypal.reduction import thermostats as _thermostats
 from archetypal.reduction.airflow import AirflowHook
 from archetypal.reduction.classify import ClassifiedZone, classify
+from archetypal.reduction.delivery import delivery_requests
 from archetypal.reduction.envelope import EnvelopeHook
 from archetypal.reduction.features import NotRepresented, find_unsupported
 from archetypal.reduction.grouping import Group, Grouping, group, group_zones
-from archetypal.reduction.inventory import build_inventory
+from archetypal.reduction.inventory import build_inventory, inventory_requests
 from archetypal.reduction.ledger import EnvelopeAssignment, GroupLedger, gain_fields
 from archetypal.reduction.options import Layout, ReductionOptions
 from archetypal.reduction.report import (
@@ -271,7 +272,26 @@ def _model_name(sources: SourceData) -> str:
     return sources.model_path.stem if sources.model_path is not None else "archetype"
 
 
+def _read_hourly_series(sources: SourceData) -> None:
+    """Read every hourly series the steps of `reduce` read, in one scan of `ReportData`.
+
+    Each step reads its own series as it needs them; `_ReadOnceSQLResult` then finds them read.
+    The scan, not the rows read, is most of the cost of a read in a large results file, so one
+    read instead of one per step takes seconds off a large model. Results given as an
+    `SQLResult` keep no series, so they are read step by step as before.
+    """
+    if not isinstance(sources.results, _ReadOnceSQLResult):
+        return
+    zone_names = [zone.name for zone in sources.model.zones]
+    requests = inventory_requests(sources, zone_names)
+    requests += delivery_requests(sources.model, zone_names)
+    requests += _efficiency.energy_requests(sources.results)
+    requests += _fans.fan_requests(sources, zone_names)
+    _efficiency.read_hourly(sources.results, requests)
+
+
 def _reduce(sources: SourceData, options: ReductionOptions) -> Reduction:
+    _read_hourly_series(sources)
     evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
     zones = classify(
         build_inventory(sources, evaluate),

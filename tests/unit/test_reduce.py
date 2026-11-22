@@ -170,6 +170,23 @@ def test_two_reductions_are_byte_identical(reduced: Callable[..., Reduction], tm
     assert [p.read_bytes() for p in a] == [p.read_bytes() for p in b]
 
 
+def test_hourly_series_are_read_in_one_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Each read scans all of ReportData, which is most of a read's cost in a large results file.
+    model, results = _paths("three_zone")
+    reads: list[int] = []
+    read = SQLResult.get_timeseries_many
+
+    def counted(self: SQLResult, series: Any, environment: Any = None) -> Any:
+        specs = list(series)
+        reads.append(len(specs))
+        return read(self, specs, environment)
+
+    monkeypatch.setattr(SQLResult, "get_timeseries_many", counted)
+    reduce(model, results)
+    assert len(reads) == 1
+    assert reads[0] > 0
+
+
 def test_open_results_and_a_document_give_the_same_reduction(reduced: Callable[..., Reduction]) -> None:
     model, results = _paths("bar_building")
     sql = SQLResult(results)

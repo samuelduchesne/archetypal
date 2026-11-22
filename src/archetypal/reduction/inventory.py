@@ -76,6 +76,7 @@ __all__ = [
     "ThermostatRecord",
     "ZoneRecord",
     "build_inventory",
+    "inventory_requests",
     "surface_class",
 ]
 
@@ -956,13 +957,16 @@ def _conditioned(
     return frozenset(found)
 
 
+def inventory_requests(sources: SourceData, zone_names: Iterable[str]) -> list[tuple[str, str]]:
+    """The hourly series `build_inventory` reads itself, besides `delivered_energy`'s, for the zones `zone_names`."""
+    requests = [(_OUTDOOR_AIR_VARIABLE, name) for name in zone_names]
+    requests += [(_HOT_WATER_VARIABLE, item.name) for item in sources.model.water_use_equipments]
+    return requests
+
+
 def _hourly_getter(sources: SourceData, zone_rows: Sequence[ZoneRow]) -> Callable[[str, str], Profile]:
     """Read every hourly series the inventory needs in one scan; a series not reported reads as zeros."""
-    requests: list[tuple[str, str]] = []
-    for row in zone_rows:
-        requests += [(_OUTDOOR_AIR_VARIABLE, row.name)]
-    requests += [(_HOT_WATER_VARIABLE, item.name) for item in sources.model.water_use_equipments]
-    series = _series(sources.results, requests)
+    series = _series(sources.results, inventory_requests(sources, [row.name for row in zone_rows]))
     length = next((len(profile) for profile in series.values()), sources.run_period.calendar.hours)
     zeros = np.zeros(length, dtype=np.float64)
     zeros.flags.writeable = False

@@ -84,6 +84,7 @@ __all__ = [
     "attribute_fans",
     "building_fans",
     "effective_supply_delta",
+    "fan_requests",
     "fans_hook",
     "ledger_fields",
     "loop_shares",
@@ -521,6 +522,21 @@ def _fan_zones(sources: SourceData, model_names: Mapping[str, str]) -> dict[str,
     return fan_zone
 
 
+def fan_requests(sources: SourceData, zone_names: Iterable[str]) -> list[tuple[str, str]]:
+    """The hourly series `building_fans` reads for the zones `zone_names` (model spelling)."""
+    names = list(zone_names)
+    return _requests(sources.facts.fans, air_loops(sources.model, names), names)
+
+
+def _requests(fan_names: Iterable[str], topology: AirLoops, zone_names: Iterable[str]) -> list[tuple[str, str]]:
+    requests = [(variable, fan) for fan in fan_names for variable in (_ENERGY_VARIABLE, _FLOW_VARIABLE)]
+    requests += [
+        (_NODE_VARIABLE, node) for nodes in topology.inlet_nodes.values() for node in nodes
+    ]  # every loop's too
+    requests += [(variable, zone) for zone in zone_names for variable in (HEATING_VARIABLE, COOLING_VARIABLE)]
+    return requests
+
+
 def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> BuildingFans:
     """Read the hourly data of the fan attribution.
 
@@ -544,10 +560,7 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
     }
 
     fan_names = sources.facts.fans
-    requests = [(variable, fan) for fan in fan_names for variable in (_ENERGY_VARIABLE, _FLOW_VARIABLE)]
-    requests += [(_NODE_VARIABLE, node) for nodes in adu_nodes.values() for node in nodes]  # every loop's too
-    requests += [(variable, zone.zone.name) for zone in zones for variable in (HEATING_VARIABLE, COOLING_VARIABLE)]
-    series = read_hourly(results, requests)
+    series = read_hourly(results, _requests(fan_names, topology, model_names.values()))
     hours = next((len(profile) for profile in series.values()), sources.run_period.calendar.hours)
     zeros = np.zeros(hours)
 

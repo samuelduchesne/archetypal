@@ -37,15 +37,16 @@ from archetypal.reduction.fans import air_loops, loop_shares
 from archetypal.reduction.requirements import delivery_outputs
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Mapping
+    from collections.abc import Callable, Iterable, Iterator, Mapping
 
     import numpy.typing as npt
     from idfkit.versioned import IDFDocumentSince22_1
 
+    from archetypal.reduction.fans import AirLoops
     from archetypal.reduction.schedules import Profile
     from archetypal.reduction.sources import SourceData
 
-__all__ = ["Delivery", "EquipmentOutputs", "Output", "delivered_energy", "equipment_outputs"]
+__all__ = ["Delivery", "EquipmentOutputs", "Output", "delivered_energy", "delivery_requests", "equipment_outputs"]
 
 AirMode = Literal["heating", "cooling"]
 Output = tuple[AirMode, str, str]
@@ -187,6 +188,18 @@ def _split(
             totals[mode][name] += shares[i] * energy
 
 
+def delivery_requests(doc: IDFDocumentSince22_1, zone_names: Iterable[str]) -> list[tuple[str, str]]:
+    """The hourly series `delivered_energy` reads for the zones `zone_names` (model spelling)."""
+    return _requests(equipment_outputs(doc), air_loops(doc, zone_names))
+
+
+def _requests(outputs: EquipmentOutputs, topology: AirLoops) -> list[tuple[str, str]]:
+    requests = [(variable, key) for found in outputs.zones.values() for _, variable, key in found]
+    requests += [(variable, key) for found in outputs.loops.values() for _, variable, key in found]
+    requests += [(_NODE_VARIABLE, node) for nodes in topology.inlet_nodes.values() for node in nodes]
+    return requests
+
+
 def delivered_energy(
     sources: SourceData, multipliers: Mapping[str, int], floor_area: Mapping[str, float] | None = None
 ) -> Delivery:
@@ -206,10 +219,7 @@ def delivered_energy(
     names = {name.casefold(): name for name in multipliers}
     outputs = equipment_outputs(doc)
     topology = air_loops(doc, names.values())
-    requests = [(variable, key) for found in outputs.zones.values() for _, variable, key in found]
-    requests += [(variable, key) for found in outputs.loops.values() for _, variable, key in found]
-    requests += [(_NODE_VARIABLE, node) for nodes in topology.inlet_nodes.values() for node in nodes]
-    series = read_hourly(sources.results, requests)
+    series = read_hourly(sources.results, _requests(outputs, topology))
     hours = next((len(profile) for profile in series.values()), sources.run_period.calendar.hours)
     zeros = np.zeros(hours)
 

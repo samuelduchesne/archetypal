@@ -88,6 +88,7 @@ __all__ = [
     "attribute_energy",
     "building_energy",
     "efficiency_hook",
+    "energy_requests",
     "equipment_table",
     "fit_eir",
     "ledger_fields",
@@ -139,6 +140,17 @@ def read_hourly(results: SQLResult, requests: Iterable[tuple[str, str]]) -> dict
         return {}
     found = results.get_timeseries_many([(name, key or "*", _HOURLY) for name, key in wanted])
     return {item: np.asarray(series.values, dtype=np.float64) for item, series in zip(wanted, found, strict=True)}
+
+
+def energy_requests(results: SQLResult) -> list[tuple[str, str]]:
+    """The hourly series `building_energy` reads itself, besides `delivered_energy`'s."""
+    return _energy_requests(_meters(results))
+
+
+def _energy_requests(meters: Mapping[str, Sequence[tuple[str, str]]]) -> list[tuple[str, str]]:
+    requests: list[tuple[str, str]] = [(OUTDOOR_VARIABLE, _ENVIRONMENT), (MAINS_VARIABLE, _ENVIRONMENT)]
+    requests += [(meter, "") for pairs in meters.values() for meter, _ in pairs]
+    return requests
 
 
 def _meters(results: SQLResult) -> dict[str, list[tuple[str, str]]]:
@@ -654,9 +666,7 @@ def building_energy(
     results = sources.results
     conditioned = [zone for zone in zones if zone.conditioned]
     meters = _meters(results)
-    requests: list[tuple[str, str]] = [(OUTDOOR_VARIABLE, _ENVIRONMENT), (MAINS_VARIABLE, _ENVIRONMENT)]
-    requests += [(meter, "") for pairs in meters.values() for meter, _ in pairs]
-    series = read_hourly(results, requests)
+    series = read_hourly(results, _energy_requests(meters))
     hours = len(series.get((OUTDOOR_VARIABLE.upper(), _ENVIRONMENT.upper()), ())) or sources.run_period.calendar.hours
     zeros = np.zeros(hours)
 

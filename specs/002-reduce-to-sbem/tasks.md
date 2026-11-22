@@ -260,18 +260,18 @@ accounts for every zone (spec US1, SC-005, SC-006).
   fork's multi-group model; every set leaf field has a `parameters[]` entry with its rule id;
   the number of storeys is right for `ten_zone_multipliers` (one typical floor × 10) and
   `three_zone` (R6, FR-024).
-- [ ] T040 [P] [US1] Test the report in `tests/unit/test_report.py`: invariants 1–7 of
+- [X] T040 [P] [US1] Test the report in `tests/unit/test_report.py`: invariants 1–7 of
   `contracts/reduction-report.md` on the fixture reductions, and the published JSON Schema
   validates the written file.
-- [ ] T041 [P] [US1] Write the conservation suite `tests/unit/test_conservation.py` (quickstart
+- [X] T041 [P] [US1] Write the conservation suite `tests/unit/test_conservation.py` (quickstart
   scenario 5): every total of FR-014–FR-019, FR-021, FR-022 and FR-022a matches the detailed
   model within 0.1 %, and exactly where the detailed total is 0, on synthetic ledgers
   (hypothesis) and on the fixtures.
-- [ ] T042 [P] [US1] Write the end-to-end tests `tests/unit/test_reduce.py`: acceptance
+- [X] T042 [P] [US1] Write the end-to-end tests `tests/unit/test_reduce.py`: acceptance
   scenarios 1, 2 and 4 of US1 (shares sum to 100 %, every zone in one group or excluded with
   a reason; operating rooms and corridors apart; two runs byte-identical); each FR-029 refusal
   writes no file; quickstart scenarios 2 and 3.
-- [ ] T043 [P] [US1] Write `tests/unit/test_multipliers.py`: acceptance scenario 3 of US1,
+- [X] T043 [P] [US1] Write `tests/unit/test_multipliers.py`: acceptance scenario 3 of US1,
   comparing `ten_zone_multipliers` with `ten_zone_explicit`: groups, floor areas and every
   FR-014–FR-021 total within 0.1 %; FR-022 and FR-022a values compared only within the
   difference of the two simulations.
@@ -352,16 +352,16 @@ accounts for every zone (spec US1, SC-005, SC-006).
   "1.0"`, the `building` block, `not_represented[]` gathered from the folding modules and
   `features.find_unsupported`, ledgers serialised with base64 profiles, and
   `report_json_schema()` returning the published JSON Schema.
-- [ ] T059 [US1] Implement `reduce()` and `Reduction` in `src/archetypal/reduction/__init__.py`
+- [X] T059 [US1] Implement `reduce()` and `Reduction` in `src/archetypal/reduction/__init__.py`
   with the signature of `contracts/python-api.md`: load and validate sources, inventory,
   classify, group, build ledgers, convert, build the report; raise before keeping any work
   (FR-029); `Reduction.write(directory, name, *, overwrite=False)` and `Reduction.read(...)`
   through `io.py`; export `RESULTS_REQUIREMENTS`.
-- [ ] T060 [US1] Implement the single run for `reduce(..., simulate=True)` in
+- [X] T060 [US1] Implement the single run for `reduce(..., simulate=True)` in
   `src/archetypal/reduction/requirements.py`: copy the model, add the missing outputs from
   `RESULTS_REQUIREMENTS`, run once with `idfkit.simulation.simulate(...,
   cache=SimulationCache())`, require `weather` (FR-002).
-- [ ] T061 [US1] Re-export `reduce`, `Layout`, `ReductionOptions` and the errors from
+- [X] T061 [US1] Re-export `reduce`, `Layout`, `ReductionOptions` and the errors from
   `src/archetypal/__init__.py`, export `Reduction`, `RESULTS_REQUIREMENTS` and
   `schedule_compact` from `src/archetypal/reduction/__init__.py`, and mark every other module
   of `archetypal.reduction` private

@@ -306,6 +306,11 @@ def test_ventilation_peak_per_area_and_dominant_categories() -> None:
     assert vent.FreshAirPerPerson == 0.0
     rebuilt = vent.FreshAirPerFloorArea * 1000.0 * year_values(vent.Schedule, CAL)
     np.testing.assert_allclose(_monthly(rebuilt), _monthly(ledger.outdoor_air.hourly), rtol=1e-12)
+    # UP-9: the mechanical outdoor air follows the hourly profile through MechVentSchedule.
+    assert vent.MechVentSchedule is not None
+    assert vent.MechVentSchedule.schedule_type_limits == "Fraction"
+    mechanical = vent.FreshAirPerFloorArea * 1000.0 * year_values(vent.MechVentSchedule, CAL)
+    np.testing.assert_allclose(_monthly(mechanical), _monthly(ledger.outdoor_air.hourly), rtol=1e-12)
     assert (vent.Provider, vent.HRV, vent.Economizer, vent.DCV) == (
         "Mechanical",
         "Sensible",
@@ -315,9 +320,10 @@ def test_ventilation_peak_per_area_and_dominant_categories() -> None:
     assert vent.SensibleHeatRecoveryEffectiveness == pytest.approx(0.75)
     rules = {leaf.path: leaf.rule for leaf in derived.leaves}
     assert rules["HRV"] == rules["SensibleHeatRecoveryEffectiveness"] == "airflow.dominant_category"
+    assert rules["MechVentSchedule"] == "schedule.normalised"
     features = {e.feature for e in derived.not_represented}
     assert "Heat recovery categories other than Sensible" in features
-    assert "Hourly profile of mechanical outdoor air" in features
+    assert "Hourly profile of mechanical outdoor air" not in features
 
 
 def test_hot_water_volume_per_person_and_mains_plus_rise() -> None:

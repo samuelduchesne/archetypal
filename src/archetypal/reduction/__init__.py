@@ -77,9 +77,10 @@ from archetypal.reduction.to_sbem import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
 
-    from idfkit.simulation import EnergyPlusConfig
+    from idfkit.simulation import EnergyPlusConfig, TimeSeriesResult
+    from idfkit.simulation.parsers.sql import Environment, SeriesSpec
     from idfkit.versioned import AnyIDFDocument
 
     from archetypal.reduction.ledger import Fuel, ZoneHook
@@ -172,17 +173,62 @@ def reduce(
         ReductionError: `simulate` is true without `weather`, the run fails, or the archetype
             does not validate.
     """
-    sources = _load(model, results, weather=weather, simulate=simulate, energyplus=energyplus)
+    opened = _open(results)
     try:
-        return _reduce(sources, options)
+        sources = _load(model, opened, weather=weather, simulate=simulate, energyplus=energyplus)
+        try:
+            return _reduce(sources, options)
+        finally:
+            if sources.results is not opened and sources.results is not results:
+                sources.results.close()
     finally:
-        if not isinstance(results, SQLResult):
-            sources.results.close()
+        if opened is not None and opened is not results:
+            opened.close()
+
+
+class _ReadOnceSQLResult(SQLResult):
+    """Results that read each time series once per reduction.
+
+    Several modules read the same series (delivered energy, inlet-node flows); EnergyPlus does
+    not index `ReportData`, so each read parses every row again. Series are immutable, so they
+    are kept by their request and environment.
+    """
+
+    def __init__(self, db_path: str | os.PathLike[str]) -> None:
+        super().__init__(Path(db_path))
+        self._series: dict[tuple[object, ...], TimeSeriesResult] = {}
+
+    def get_timeseries_many(
+        self, series: Iterable[SeriesSpec], environment: Environment | None = None
+    ) -> list[TimeSeriesResult]:
+        """Return the series as `SQLResult.get_timeseries_many` does, reading each only once."""
+        specs = list(series)
+        keys = [(*_spec_key(spec), environment) for spec in specs]
+        unread = {key: spec for key, spec in zip(keys, specs, strict=True) if key not in self._series}
+        if unread:
+            read = super().get_timeseries_many(list(unread.values()), environment)
+            self._series.update(zip(unread, read, strict=True))
+        return [self._series[key] for key in keys]
+
+
+def _spec_key(spec: SeriesSpec) -> tuple[str, str, str | None]:
+    if isinstance(spec, str):
+        return (spec.casefold(), "*", None)
+    if isinstance(spec, tuple):
+        frequency = spec[2] if len(spec) > 2 else None  # noqa: PLR2004 - (name, key, frequency)
+        return (spec[0].casefold(), spec[1].casefold(), None if frequency is None else frequency.casefold())
+    return (spec.name.casefold(), spec.key_value.casefold(), spec.frequency.casefold())
+
+
+def _open(results: str | os.PathLike[str] | SQLResult | None) -> SQLResult | None:
+    if isinstance(results, (str, os.PathLike)):
+        return _ReadOnceSQLResult(results)
+    return results
 
 
 def _load(
     model: str | os.PathLike[str] | AnyIDFDocument,
-    results: str | os.PathLike[str] | SQLResult | None,
+    results: SQLResult | None,
     *,
     weather: str | os.PathLike[str] | None,
     simulate: bool,
@@ -209,7 +255,7 @@ def _load(
 
     narrowed = as_version(document, since="22.1")
     sql_path = run_once(narrowed, model_facts(narrowed, ()), weather, energyplus=energyplus, subject=subject)
-    return load_sources(model, sql_path, weather=weather)
+    return load_sources(model, _ReadOnceSQLResult(sql_path), weather=weather)
 
 
 def _model_name(sources: SourceData) -> str:

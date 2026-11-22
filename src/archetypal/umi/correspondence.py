@@ -183,17 +183,31 @@ _VENTILATION = "Operations.HVAC.Ventilation"
 _SPACE_USE = "Operations.SpaceUse"
 _ASSEMBLIES = "Envelope.Assemblies"
 _WINDOW = "GlazingConstructionSimpleComponent"
+_LAYERED = "GlazingConstructionLayeredComponent"
+_GLASS = "GlazingMaterialComponent"
+_GAS = "GasMaterialComponent"
+_STRUCTURE = "archetype.Structure"
+_ADVANCED = f"{_STRUCTURE}.AdvancedModel"
+_SYSTEMS_OF_STRUCTURE = f"{_ADVANCED}.ConstructionSystems"
+_WINDOW_SETTINGS = "Envelope.WindowSettings"
 _METADATA_HOLDERS = (
+    "archetype",
     _MAT,
+    _GLASS,
+    _GAS,
     "ConstructionAssemblyComponent",
     _WINDOW,
+    _LAYERED,
     "ZoneOperationsComponent",
     "ZoneSpaceUseComponent",
     "ZoneHVACComponent",
     "DHWComponent",
     "InfiltrationComponent",
     "EnvelopeAssemblyComponent",
+    "WindowSettingsComponent",
+    _STRUCTURE,
 )
+_SCHEDULE_HOLDERS = ("DayComponent", "WeekComponent", "YearComponent")
 
 
 def _rows(
@@ -226,8 +240,11 @@ def _row(
     return FieldMapping(umi_class, key, relevance, paths, rule_id, status, upstream, note)
 
 
-_UP9 = "SBEM has no such field yet; UP-9 adds it"
-_STRUCTURE_NOTE = f"Structural model for UMI's life-cycle module. {_UP9} (a structure component at building level)."
+_STRUCTURE_NOTE = "Structural model for UMI's life-cycle module: the archetype's StructureComponent (UP-9), field by field."
+_UP9_NOT_ADDED = (
+    "UP-9 does not add it: a shoebox has no interior windows and the builder models no airflow network, so it "
+    "is lost on reading unless at Basilisk's default, which writing gives"
+)
 
 CORRESPONDENCE: tuple[FieldMapping, ...] = (
     # --- LibraryComponent: fields of every component -------------------------------------------
@@ -239,8 +256,13 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
             "archetype.Name",
             "Name",
             f"{_MAT}.Name",
+            f"{_GLASS}.Name",
+            f"{_GAS}.Name",
             "ConstructionAssemblyComponent.Name",
             f"{_WINDOW}.Name",
+            f"{_LAYERED}.Name",
+            f"{_WINDOW_SETTINGS}.Name",
+            f"{_STRUCTURE}.Name",
             "YearComponent.Name",
             "WeekComponent.Name",
             "DayComponent.Name",
@@ -257,28 +279,26 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         tuple(f"{holder}.Category" for holder in _METADATA_HOLDERS),
         "names.metadata",
         E,
-        "The receiving component's Category. Templates and schedules have none: lost there (UP-9).",
-        upstream="UP-9",
+        "The receiving component's Category (a template's: the archetype's, UP-9). Basilisk fixes the "
+        "category of schedules and gas materials: see their rows.",
     ),
     _row(
         "LibraryComponent",
         "Comments",
         D,
-        tuple(f"{holder}.Comment" for holder in _METADATA_HOLDERS),
+        tuple(f"{holder}.Comment" for holder in (*_METADATA_HOLDERS, *_SCHEDULE_HOLDERS)),
         "names.metadata",
         E,
-        "The receiving component's Comment. Templates and schedules have none: lost there (UP-9).",
-        upstream="UP-9",
+        "The receiving component's Comment (a template's and a schedule's included, UP-9).",
     ),
     _row(
         "LibraryComponent",
         "DataSource",
         D,
-        tuple(f"{holder}.DataSource" for holder in _METADATA_HOLDERS),
+        tuple(f"{holder}.DataSource" for holder in (*_METADATA_HOLDERS, *_SCHEDULE_HOLDERS)),
         "names.metadata",
         E,
-        "The receiving component's DataSource. Templates and schedules have none: lost there (UP-9).",
-        upstream="UP-9",
+        "The receiving component's DataSource (a template's and a schedule's included, UP-9).",
     ),
     # --- Library: the 17 collections --------------------------------------------------------------
     *_rows(
@@ -314,64 +334,77 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         "MaterialBase",
         "Conductivity",
         S,
-        (f"{_MAT}.Conductivity",),
+        (f"{_MAT}.Conductivity", f"{_GLASS}.Conductivity"),
         "material.properties",
         E,
-        "Same quantity (W/m-K). For glazing and gas materials it enters window.simple_from_layers.",
+        "Same quantity (W/m-K). SBEM gases have none (EnergyPlus knows each gas's): lost there unless 0.",
     ),
     _row(
         "MaterialBase",
         "Density",
         S,
-        (f"{_MAT}.Density",),
+        (f"{_MAT}.Density", f"{_GLASS}.Density"),
         "material.properties",
         E,
-        "Same quantity (kg/m3).",
+        "Same quantity (kg/m3). SBEM gases have none: lost there unless 0.",
     ),
     _row(
         "MaterialBase",
         "Cost",
         L,
-        (f"{_MAT}.Cost", f"{_MAT}.RateUnit"),
+        (f"{_MAT}.Cost", f"{_MAT}.RateUnit", f"{_GLASS}.Cost", f"{_GLASS}.RateUnit", f"{_GAS}.Cost"),
         "material.cost_per_m3",
         C,
-        'Cost per m3, with RateUnit = "m3"; conserves cost per unit volume.',
+        'Cost per m3, with RateUnit = "m3" (glazing: "kg", cost / density); conserves cost per unit volume. '
+        "SBEM gases have no density: their cost is lost unless 0.",
     ),
     _row(
         "MaterialBase",
         "EmbodiedCarbon",
         L,
-        (f"{_MAT}.EmbodiedCarbon", f"{_MAT}.RateUnit"),
+        (f"{_MAT}.EmbodiedCarbon", f"{_MAT}.RateUnit", f"{_GLASS}.EmbodiedCarbon", f"{_GAS}.EmbodiedCarbon"),
         "material.carbon_per_m3",
         C,
         "C_m3 = C_kg x density, inverse C_kg = C_m3 / density (refused for density 0); conserves "
-        "embodied carbon per unit volume.",
+        'embodied carbon per unit volume. Glazing and gas materials keep it per kg (RateUnit = "kg").',
     ),
-    *_rows(
-        "MaterialBase",
-        (
-            "EmbodiedEnergy",
-            "SubstitutionRatePattern",
-            "SubstitutionTimestep",
-            "TransportCarbon",
-            "TransportDistance",
-            "TransportEnergy",
-        ),
-        L,
-        "material.environmental",
-        U,
-        f"Life-cycle field of a material. {_UP9} (environmental fields on materials).",
-        upstream="UP-9",
+    *(
+        _row(
+            "MaterialBase",
+            key,
+            L,
+            (f"{_MAT}.{key}", f"{_GLASS}.{key}", f"{_GAS}.{key}"),
+            "material.environmental",
+            C,
+            "The material's life-cycle field (UP-9), per unit of RateUnit like EmbodiedCarbon: per m3 = per kg x "
+            'density for opaque materials (lost for density 0), per kg (RateUnit = "kg") for glazing and gas.',
+        )
+        for key in ("EmbodiedEnergy", "TransportCarbon", "TransportEnergy")
+    ),
+    *(
+        _row(
+            "MaterialBase",
+            key,
+            L,
+            (f"{_MAT}.{key}", f"{_GLASS}.{key}", f"{_GAS}.{key}"),
+            "material.environmental",
+            E,
+            "The material's life-cycle field (UP-9); same quantity.",
+        )
+        for key in ("SubstitutionRatePattern", "SubstitutionTimestep", "TransportDistance")
     ),
     # --- OpaqueMaterial ---------------------------------------------------------------------------
-    *_rows(
-        "OpaqueMaterial",
-        ("DesignStrength", "ModulusOfElasticity", "MoistureDiffusionResistance"),
-        L,
-        "material.environmental",
-        U,
-        f"Structural or hygrothermal property used by UMI's life-cycle module only. {_UP9}.",
-        upstream="UP-9",
+    *(
+        _row(
+            "OpaqueMaterial",
+            key,
+            L,
+            (f"{_MAT}.{key}",),
+            "material.environmental",
+            E,
+            "Structural or hygrothermal property of the material (UP-9), used by UMI's life-cycle module only.",
+        )
+        for key in ("DesignStrength", "ModulusOfElasticity", "MoistureDiffusionResistance")
     ),
     _row(
         "OpaqueMaterial",
@@ -396,9 +429,18 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         "Thermal emittance and thermal absorptance are the same quantity (Kirchhoff's law).",
     ),
     # --- GlazingMaterial and GasMaterial ----------------------------------------------------------
-    *_rows(
-        "GlazingMaterial",
-        (
+    *(
+        _row(
+            "GlazingMaterial",
+            key,
+            S,
+            (f"{_GLASS}.{key}",),
+            "window.layers",
+            E,
+            "Same property of the pane's GlazingMaterialComponent (UP-9's layered windows). A simple SBEM "
+            "window is written as one equivalent layer (approximate).",
+        )
+        for key in (
             "DirtFactor",
             "IREmissivityBack",
             "IREmissivityFront",
@@ -409,35 +451,26 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
             "VisibleReflectanceBack",
             "VisibleReflectanceFront",
             "VisibleTransmittance",
-        ),
-        S,
-        "window.equivalent_layer",
-        U,
-        "Per-layer glazing property. SBEM windows are simple glazing: on reading the layers give U, "
-        "SHGC and VT (window.simple_from_layers) and the property is lost; on writing it comes from "
-        "the equivalent layer of the simple window. UP-9 adds layered windows.",
-        upstream="UP-9",
+        )
     ),
     _row(
         "GasMaterial",
         "Category",
         D,
-        (),
-        "window.equivalent_layer",
-        U,
-        "Category of a gas layer; SBEM windows have no gas layers until UP-9's layered windows.",
-        upstream="UP-9",
+        (f"{_GAS}.Category",),
+        "window.layers",
+        E,
+        'Basilisk fixes it to "Gases": read as an unset category, written as "Gases".',
     ),
     _row(
         "GasMaterial",
         "Type",
         S,
-        (),
-        "window.equivalent_layer",
-        U,
-        "Gas of a gas layer; it enters U, SHGC and VT through window.simple_from_layers and is lost "
-        "until UP-9's layered windows.",
-        upstream="UP-9",
+        (f"{_GAS}.GasType",),
+        "window.layers",
+        E,
+        "The cavity's gas (Air, Argon, Krypton, Xenon), from Type or else the material's name; another gas "
+        "gives simple glazing (approximate, as for WindowConstruction.Layers).",
     ),
     # --- Layers, constructions and construction sets ----------------------------------------------
     _row(
@@ -467,26 +500,37 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         E,
         "Layers in order, outside first; the list position becomes LayerOrder.",
     ),
-    *_rows(
-        "ConstructionBase",
-        ("AssemblyCarbon", "AssemblyCost", "AssemblyEnergy", "DisassemblyCarbon", "DisassemblyEnergy"),
-        L,
-        "construction.environmental",
-        U,
-        f"Life-cycle field of a construction. {_UP9} (environmental fields on assemblies).",
-        upstream="UP-9",
+    *(
+        _row(
+            "ConstructionBase",
+            key,
+            L,
+            ("ConstructionAssemblyComponent." + key, f"{_LAYERED}.{key}", f"{_STRUCTURE}.{key}"),
+            "construction.environmental",
+            E,
+            "The assembly's life-cycle field (UP-9), per m2 of assembly; same quantity.",
+        )
+        for key in ("AssemblyCarbon", "AssemblyCost", "AssemblyEnergy", "DisassemblyCarbon", "DisassemblyEnergy")
     ),
     _row(
         "WindowConstruction",
         "Layers",
         S,
-        (f"{_WINDOW}.UValue", f"{_WINDOW}.SHGF", f"{_WINDOW}.TVis"),
-        "window.simple_from_layers",
-        C,
-        "U, SHGC and VT of the layers computed by idfkit.thermal (approximate); the layers "
-        "themselves are lost until UP-9's layered windows.",
-        upstream="UP-9",
+        (
+            f"{_LAYERED}.Layers",
+            "GlazingLayerComponent.Thickness",
+            "GlazingLayerComponent.GlazingMaterial",
+            "GasLayerComponent.Thickness",
+            "GasLayerComponent.GasMaterial",
+        ),
+        "window.layers",
+        E,
+        "The panes and cavities, outside first, as UP-9's layered window. Layers the fork cannot hold (more "
+        "than 4 panes, panes and gases not alternating, an unknown gas) give simple glazing whose U, SHGC "
+        "and VT idfkit.thermal computes (approximate); a simple SBEM window is written as the one glazing "
+        "layer EnergyPlus's simple window model derives from it (approximate, a bridge until UP-10).",
     ),
+
     *(
         _row(
             "ZoneConstructions",
@@ -506,87 +550,111 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
             ("Slab", "FloorCeilingAssembly"),
         )
     ),
-    *_rows(
-        "ZoneConstructions",
-        ("IsFacadeAdiabatic", "IsGroundAdiabatic", "IsPartitionAdiabatic", "IsRoofAdiabatic", "IsSlabAdiabatic"),
-        S,
-        "construction.adiabatic",
-        U,
-        f"Adiabatic boundary flag of an assembly. {_UP9} (adiabatic flags per assembly).",
-        upstream="UP-9",
+    *(
+        _row(
+            "ZoneConstructions",
+            key,
+            S,
+            (f"{_ASSEMBLIES}.{key}",),
+            "construction.adiabatic",
+            E,
+            "The same adiabatic flag of the envelope assemblies (UP-9).",
+        )
+        for key in ("IsFacadeAdiabatic", "IsGroundAdiabatic", "IsPartitionAdiabatic", "IsRoofAdiabatic", "IsSlabAdiabatic")
     ),
     # --- Structure (life cycle) -------------------------------------------------------------------
-    *_rows(
-        "StructureInformation",
-        ("AdvancedModel", "MassRatios", "UseAdvancedModel"),
-        L,
-        "structure.upstream",
-        U,
-        _STRUCTURE_NOTE,
-        upstream="UP-9",
+    *(
+        _row("StructureInformation", key, L, (f"{_STRUCTURE}.{key}",), "structure.component", E, _STRUCTURE_NOTE)
+        for key in ("AdvancedModel", "MassRatios", "UseAdvancedModel")
     ),
-    *_rows(
+    *(
+        _row("MassRatios", key, L, (f"{_STRUCTURE}.MassRatios.{key}",), "structure.component", E, _STRUCTURE_NOTE)
+        for key in ("HighLoadRatio", "NormalRatio")
+    ),
+    _row(
         "MassRatios",
-        ("HighLoadRatio", "Material", "NormalRatio"),
+        "Material",
         L,
-        "structure.upstream",
-        U,
-        _STRUCTURE_NOTE,
-        upstream="UP-9",
+        (f"{_STRUCTURE}.MassRatios.Material",),
+        "structure.component",
+        C,
+        f"{_STRUCTURE_NOTE} The opaque material, translated by the material rules.",
     ),
-    *_rows(
-        "AdvancedStructuralModel",
-        ("ColumnWallSpacing", "ConstructionSystems", "FoundationSoilSettings", "LoadingSettings"),
-        L,
-        "structure.upstream",
-        U,
-        _STRUCTURE_NOTE,
-        upstream="UP-9",
+    *(
+        _row("AdvancedStructuralModel", key, L, (f"{_ADVANCED}.{key}",), "structure.component", E, _STRUCTURE_NOTE)
+        for key in ("ColumnWallSpacing", "ConstructionSystems", "FoundationSoilSettings", "LoadingSettings")
     ),
-    *_rows(
-        "ColumnWallSpacingSettings",
-        ("PrimarySpan", "SecondarySpan"),
-        L,
-        "structure.upstream",
-        U,
-        _STRUCTURE_NOTE,
-        upstream="UP-9",
+    *(
+        _row(
+            "ColumnWallSpacingSettings",
+            key,
+            L,
+            (f"{_ADVANCED}.ColumnWallSpacing.{key}",),
+            "structure.component",
+            E,
+            _STRUCTURE_NOTE,
+        )
+        for key in ("PrimarySpan", "SecondarySpan")
     ),
-    *_rows(
+    _row(
         "ConstructionSystem",
-        ("Material", "ConstructionSystemType"),
+        "Material",
         L,
-        "structure.upstream",
-        U,
-        _STRUCTURE_NOTE,
-        upstream="UP-9",
+        tuple(
+            f"{_SYSTEMS_OF_STRUCTURE}.{slot}.Material"
+            for slot in ("Beams", "Columns", "Floors", "Foundations", "LateralSystem")
+        ),
+        "structure.component",
+        C,
+        f"{_STRUCTURE_NOTE} The opaque material, translated by the material rules.",
     ),
-    *_rows(
-        "ConstructionSystemSettings",
-        ("Beams", "Columns", "Floors", "Foundations", "LateralSystem"),
+    _row(
+        "ConstructionSystem",
+        "ConstructionSystemType",
         L,
-        "structure.upstream",
-        U,
-        _STRUCTURE_NOTE,
-        upstream="UP-9",
+        tuple(
+            f"{_SYSTEMS_OF_STRUCTURE}.{slot}.ConstructionSystemType"
+            for slot in ("Beams", "Columns", "Floors", "Foundations", "LateralSystem")
+        ),
+        "structure.component",
+        E,
+        f"{_STRUCTURE_NOTE} Types map by name.",
     ),
-    *_rows(
-        "FoundationSoilSettings",
-        ("FoundationSoilPreset", "FoundationSoilValue"),
-        L,
-        "structure.upstream",
-        U,
-        _STRUCTURE_NOTE,
-        upstream="UP-9",
+    *(
+        _row(
+            "ConstructionSystemSettings",
+            key,
+            L,
+            (f"{_SYSTEMS_OF_STRUCTURE}.{key}",),
+            "structure.component",
+            E,
+            _STRUCTURE_NOTE,
+        )
+        for key in ("Beams", "Columns", "Floors", "Foundations", "LateralSystem")
     ),
-    *_rows(
-        "LoadingSettings",
-        ("LiveLoadingPreset", "LiveLoadingValue"),
-        L,
-        "structure.upstream",
-        U,
-        _STRUCTURE_NOTE,
-        upstream="UP-9",
+    *(
+        _row(
+            "FoundationSoilSettings",
+            key,
+            L,
+            (f"{_ADVANCED}.FoundationSoilSettings.{key}",),
+            "structure.component",
+            E,
+            _STRUCTURE_NOTE,
+        )
+        for key in ("FoundationSoilPreset", "FoundationSoilValue")
+    ),
+    *(
+        _row(
+            "LoadingSettings",
+            key,
+            L,
+            (f"{_ADVANCED}.LoadingSettings.{key}",),
+            "structure.component",
+            E,
+            _STRUCTURE_NOTE,
+        )
+        for key in ("LiveLoadingPreset", "LiveLoadingValue")
     ),
     # --- Schedules --------------------------------------------------------------------------------
     *(
@@ -594,11 +662,11 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
             cls,
             "Category",
             D,
-            (),
+            (f"{cls.replace('Schedule', 'Component')}.Category",),
             "schedule.metadata",
-            U,
-            f"Category of a schedule. {_UP9} (metadata on schedules).",
-            upstream="UP-9",
+            E,
+            f'Basilisk fixes it to "{cls.removesuffix("Schedule")}": read as an unset category (UP-9\'s schedule '
+            "metadata), written as the fixed one; another SBEM category is lost on writing.",
         )
         for cls in ("DaySchedule", "WeekSchedule", "YearSchedule")
     ),
@@ -749,36 +817,53 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         E,
         "The natural-ventilation schedule.",
     ),
-    *_rows(
+    _row(
         "ZoneVentilation",
-        (
-            "Afn",
+        "Afn",
+        S,
+        (),
+        "vent.natural_limits",
+        U,
+        f"Airflow-network switch. {_UP9_NOT_ADDED}.",
+        upstream="UP-9",
+    ),
+    *(
+        _row(
+            "ZoneVentilation",
+            key,
+            S,
+            (f"{_VENTILATION}.{key}",),
+            "vent.natural_limits",
+            E,
+            "The same natural-ventilation limit or switch (UP-9). A minimum outdoor temperature not below the "
+            "maximum, which SBEM refuses, is lost and SBEM's band kept.",
+        )
+        for key in (
             "IsBuoyancyOn",
             "IsWindOn",
             "NatVentMaxRelHumidity",
             "NatVentMaxOutdoorAirTemp",
             "NatVentMinOutdoorAirTemp",
             "NatVentZoneTempSetpoint",
-        ),
-        S,
-        "vent.natural_limits",
-        U,
-        f"Natural-ventilation limit or switch (SBEM fixes the limits). {_UP9}.",
-        upstream="UP-9",
+        )
     ),
-    *_rows(
-        "ZoneVentilation",
-        (
+    *(
+        _row(
+            "ZoneVentilation",
+            key,
+            S,
+            (f"{_VENTILATION}.{key}",),
+            "vent.scheduled",
+            E,
+            "The same scheduled-ventilation field (UP-9). An always-on schedule is SBEM's None (constant); "
+            "a Temperature schedule, which SBEM refuses, is lost.",
+        )
+        for key in (
             "IsScheduledVentilationOn",
             "ScheduledVentilationAch",
             "ScheduledVentilationSchedule",
             "ScheduledVentilationSetpoint",
-        ),
-        S,
-        "vent.scheduled",
-        U,
-        f"Scheduled ventilation. {_UP9}.",
-        upstream="UP-9",
+        )
     ),
     # --- ZoneConditioning -------------------------------------------------------------------------
     _row(
@@ -899,40 +984,58 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         "Heat-recovery effectiveness; SBEM fixes it by HRV type. UP-2 adds it.",
         upstream="UP-2",
     ),
-    *_rows(
-        "ZoneConditioning",
-        ("HeatingSchedule", "CoolingSchedule"),
-        S,
-        "conditioning.availability",
-        U,
-        f"Heating or cooling availability schedule; lost unless every value is 1. {_UP9}.",
-        upstream="UP-9",
+    *(
+        _row(
+            "ZoneConditioning",
+            key,
+            S,
+            (f"{_SYSTEMS}.{key.replace('Schedule', 'AvailabilitySchedule')}",),
+            "conditioning.availability",
+            E,
+            "The heating or cooling availability schedule (UP-9). An always-on schedule is SBEM's None "
+            "(always available); a schedule without Fraction limits, which SBEM refuses, is lost.",
+        )
+        for key in ("HeatingSchedule", "CoolingSchedule")
     ),
     _row(
         "ZoneConditioning",
         "MechVentSchedule",
         S,
-        (),
+        (f"{_VENTILATION}.MechVentSchedule",),
         "conditioning.mech_vent_schedule",
-        U,
-        f"Mechanical outdoor-air schedule. {_UP9}.",
-        upstream="UP-9",
+        E,
+        "The mechanical outdoor-air schedule (UP-9). An always-on schedule is SBEM's None (constant); a "
+        "schedule without Fraction limits, which SBEM refuses, is lost.",
     ),
-    *_rows(
-        "ZoneConditioning",
-        (
-            "HeatingLimitType",
-            "CoolingLimitType",
-            "MaxHeatFlow",
-            "MaxCoolFlow",
-            "MaxHeatingCapacity",
-            "MaxCoolingCapacity",
-        ),
-        S,
-        "conditioning.limits",
-        U,
-        f"Ideal-loads limit (SBEM always autosizes). {_UP9}.",
-        upstream="UP-9",
+    *(
+        _row(
+            "ZoneConditioning",
+            key,
+            S,
+            (f"{_SYSTEMS}.{key}",),
+            "conditioning.limits",
+            E,
+            "The same ideal-loads limit type (UP-9). On writing, a flow or capacity it names that SBEM autosizes "
+            "(None) has no UMI value: it is dropped from the type, and lost.",
+        )
+        for key in ("HeatingLimitType", "CoolingLimitType")
+    ),
+    *(
+        _row(
+            "ZoneConditioning",
+            key,
+            S,
+            (f"{_SYSTEMS}.{target}",),
+            "conditioning.limits",
+            E,
+            f"Same quantity per floor area ({unit}, UP-9); SBEM's None (autosized) is written as Basilisk's default.",
+        )
+        for key, target, unit in (
+            ("MaxHeatFlow", "MaxHeatingFlowPerFloorArea", "m3/s-m2"),
+            ("MaxCoolFlow", "MaxCoolingFlowPerFloorArea", "m3/s-m2"),
+            ("MaxHeatingCapacity", "MaxHeatingCapacityPerFloorArea", "W/m2"),
+            ("MaxCoolingCapacity", "MaxCoolingCapacityPerFloorArea", "W/m2"),
+        )
     ),
     # --- ZoneLoads --------------------------------------------------------------------------------
     _row(
@@ -1006,11 +1109,10 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         "ZoneLoads",
         "IlluminanceTarget",
         S,
-        (),
+        (f"{_SPACE_USE}.Lighting.IlluminanceTarget",),
         "loads.daylighting",
-        U,
-        f"Daylighting illuminance target. {_UP9} (daylighting parameters).",
-        upstream="UP-9",
+        E,
+        "Same quantity (lux, UP-9's daylighting); a target of 0 or less, which SBEM refuses, is lost.",
     ),
     # --- ZoneDefinition ---------------------------------------------------------------------------
     _row(
@@ -1076,14 +1178,18 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         E,
         "Same quantity (m2 per m2 of floor); 0 means no internal mass.",
     ),
-    *_rows(
-        "ZoneDefinition",
-        ("DaylightMeshResolution", "DaylightWorkplaneHeight"),
-        S,
-        "loads.daylighting",
-        U,
-        f"Daylighting parameter. {_UP9} (daylighting parameters).",
-        upstream="UP-9",
+    *(
+        _row(
+            "ZoneDefinition",
+            key,
+            S,
+            (f"{_SPACE_USE}.Lighting.{key}",),
+            "loads.daylighting",
+            E,
+            "Same quantity (m, UP-9's daylighting), held by the zone's lighting. SBEM's mesh resolution None "
+            "(no illuminance map) is written as Basilisk's default.",
+        )
+        for key in ("DaylightMeshResolution", "DaylightWorkplaneHeight")
     ),
     # --- WindowSettings ---------------------------------------------------------------------------
     _row(
@@ -1095,20 +1201,35 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         E,
         "Each group's window. On writing the perimeter window is used; a different core window is lost.",
     ),
+    *(
+        _row(
+            "WindowSettings",
+            key,
+            S,
+            (f"{_WINDOW_SETTINGS}.{key}",),
+            "window.settings",
+            E,
+            "The same field of each group's WindowSettingsComponent (UP-9). On writing the perimeter group's "
+            "settings are used; different settings of another group are lost. An always-on availability "
+            "schedule is SBEM's None.",
+        )
+        for key in (
+            "IsShadingSystemOn",
+            "OperableArea",
+            "ShadingSystemAvailabilitySchedule",
+            "ShadingSystemSetpoint",
+            "ShadingSystemTransmittance",
+            "ShadingSystemType",
+        )
+    ),
     *_rows(
         "WindowSettings",
         (
             "AfnDischargeC",
             "AfnTempSetpoint",
             "AfnWindowAvailability",
-            "IsShadingSystemOn",
             "IsVirtualPartition",
             "IsZoneMixingOn",
-            "OperableArea",
-            "ShadingSystemAvailabilitySchedule",
-            "ShadingSystemSetpoint",
-            "ShadingSystemTransmittance",
-            "ShadingSystemType",
             "Type",
             "ZoneMixingAvailabilitySchedule",
             "ZoneMixingDeltaTemperature",
@@ -1117,8 +1238,7 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         S,
         "window.settings",
         U,
-        f"Window operation, shading, zone mixing or airflow-network setting. {_UP9} (a "
-        "window-settings component at building level).",
+        f"Interior-window, zone-mixing or airflow-network setting. {_UP9_NOT_ADDED}.",
         upstream="UP-9",
     ),
     # --- BuildingTemplate -------------------------------------------------------------------------
@@ -1147,9 +1267,8 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         ("Envelope.Window",),
         "window.placement",
         E,
-        "The template's window settings: their construction becomes each group's window; the "
-        "other settings are lost until UP-9.",
-        upstream="UP-9",
+        "The template's window settings: their construction becomes each group's window, the other "
+        "settings each group's WindowSettings (window.settings).",
     ),
     _row(
         "BuildingTemplate",
@@ -1165,31 +1284,35 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         "BuildingTemplate",
         "PartitionRatio",
         S,
-        (),
+        (f"{_ASSEMBLIES}.PartitionAreaPerFloorArea",),
         "building.partition_ratio",
-        U,
-        f"Partition area per floor area. {_UP9}.",
-        upstream="UP-9",
+        C,
+        "Partition wall area (one face) per floor area; SBEM's internal partitions (UP-9) count both faces, "
+        "as EnergyPlus internal mass does: A = 2 x ratio in every group. Conserves the partition wall area. "
+        "On writing the perimeter group's is used; a different one of another group is lost.",
     ),
-    _row("BuildingTemplate", "Structure", L, (), "structure.upstream", U, _STRUCTURE_NOTE, upstream="UP-9"),
+    _row("BuildingTemplate", "Structure", L, (_STRUCTURE,), "structure.component", E, _STRUCTURE_NOTE),
     _row(
         "BuildingTemplate",
         "Lifespan",
         L,
-        (),
+        ("archetype.Lifespan",),
         "building.metadata",
-        U,
-        f"Building lifespan for the life-cycle module. {_UP9} (archetype-level metadata).",
-        upstream="UP-9",
+        E,
+        "Building lifespan for the life-cycle module (years; UP-9's archetype metadata).",
     ),
-    *_rows(
-        "BuildingTemplate",
-        ("YearFrom", "YearTo", "Country", "ClimateZone", "Authors", "AuthorEmails", "Version"),
-        D,
-        "building.metadata",
-        U,
-        f"Descriptive field of the template. {_UP9} (archetype-level metadata).",
-        upstream="UP-9",
+    *(
+        _row(
+            "BuildingTemplate",
+            key,
+            D,
+            (f"archetype.{key}",),
+            "building.metadata",
+            E,
+            "The same descriptive field of the archetype (UP-9's archetype metadata). A YearFrom after "
+            "YearTo, which SBEM refuses, loses YearTo.",
+        )
+        for key in ("YearFrom", "YearTo", "Country", "ClimateZone", "Authors", "AuthorEmails", "Version")
     ),
 )
 """One row per serialised Basilisk field, in Basilisk class order within each group."""

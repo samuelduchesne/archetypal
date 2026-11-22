@@ -49,7 +49,7 @@ dev = [
 
 [tool.uv.sources]
 # SBEM fork of epinterface, pinned to a pushed commit until the fork is tagged.
-epinterface = { git = "https://github.com/samuelduchesne/epinterface", rev = "d1283ca1865c69a7117239143e1c66b94eef7834" }
+epinterface = { git = "https://github.com/samuelduchesne/epinterface", rev = "dee8d343eb9aaceb8ae43819ab95232b94fae63a" }
 
 [build-system]
 requires = ["hatchling"]

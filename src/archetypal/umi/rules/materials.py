@@ -15,10 +15,16 @@ SBEM to UMI (writing) inverts each rule and lists as lost what UMI cannot hold: 
 differs from the one it would be filled from, a non-zero temperature coefficient, a material
 type its category does not name, a vegetation layer, and cost or carbon given per m² or m.
 
+Life-cycle fields (UP-9): a material's embodied energy and transport carbon and energy are per
+unit of `RateUnit`, like its embodied carbon, so per m³ = per kg x density (`material.environmental`);
+its transport distance, substitution pattern and timestep and an opaque material's structural and
+hygrothermal properties are copied. An assembly's assembly and disassembly fields are copied
+(`construction.environmental`), and so are a construction set's adiabatic flags
+(`construction.adiabatic`). A negative value, which SBEM refuses, is lost.
+
 Every function takes the `subject` (template or archetype), the `location` of the component
 translated (a JSON pointer when reading, an SBEM field path when writing) and a `Findings` that
-collects losses and notes (`archetypal.umi.report.Findings`). The upstream gaps of these classes (life-cycle fields, adiabatic
-flags) are declared rules: their rows are reported from `CORRESPONDENCE`.
+collects losses and notes (`archetypal.umi.report.Findings`).
 """
 
 from __future__ import annotations
@@ -38,34 +44,52 @@ from epinterface.sbem.components.materials import (
 )
 
 from archetypal.errors import Problem
-from archetypal.umi._format import MaterialLayer, OpaqueConstruction, OpaqueMaterial, ZoneConstructions
-from archetypal.umi.correspondence import declare_rule, rule
+from archetypal.umi._format import (
+    ConstructionBase,
+    MaterialBase,
+    MaterialLayer,
+    OpaqueConstruction,
+    OpaqueMaterial,
+    ZoneConstructions,
+)
+from archetypal.umi.correspondence import rule
 from archetypal.umi.report import LossKind
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from epinterface.sbem.components.materials import (
+        AssemblyLifeCycleMixin,
         ConstructionComponentSurfaceType,
+        MaterialLifeCycleMixin,
     )
 
     from archetypal.umi.report import Findings
 
 
 __all__ = [
+    "ADIABATIC_FLAGS",
+    "ASSEMBLY_LIFE_CYCLE",
     "FILLED_SLOTS",
+    "MATERIAL_LIFE_CYCLE",
     "ROUGHNESS",
     "SBEM_MATERIAL_TYPES",
     "SET_SLOTS",
     "SLOT_SURFACE_TYPES",
+    "adiabatic_to_sbem",
+    "adiabatic_to_umi",
     "assemblies_to_sbem",
     "assemblies_to_umi",
+    "assembly_life_cycle_to_sbem",
+    "assembly_life_cycle_to_umi",
     "carbon_per_kg",
     "carbon_per_m3",
     "construction_to_sbem",
     "construction_to_umi",
     "cost_from_sbem",
     "cost_per_m3",
+    "life_cycle_to_sbem",
+    "life_cycle_to_umi",
     "material_problems",
     "material_to_sbem",
     "material_to_umi",
@@ -121,9 +145,42 @@ _UMI_SLOT_FIELDS: Mapping[str, str] = MappingProxyType({
 _ROUGHNESS_BY_LOWER: dict[str, MaterialRoughness] = {keyword.lower(): keyword for keyword in ROUGHNESS}
 _TYPE_BY_LOWER: dict[str, ConstructionMaterialType] = {kind.lower(): kind for kind in SBEM_MATERIAL_TYPES}
 _PER_VOLUME = "m3"
+_PER_MASS = "kg"
 
-for _upstream in ("material.environmental", "construction.environmental", "construction.adiabatic"):
-    declare_rule(_upstream)
+MATERIAL_LIFE_CYCLE: Mapping[str, str] = MappingProxyType({
+    "EmbodiedEnergy": "embodied_energy",
+    "TransportCarbon": "transport_carbon",
+    "TransportEnergy": "transport_energy",
+    "TransportDistance": "transport_distance",
+    "SubstitutionRatePattern": "substitution_rate_pattern",
+    "SubstitutionTimestep": "substitution_timestep",
+})
+"""A material's life-cycle fields (UP-9): SBEM key → UMI field name; the keys are the same in both."""
+
+_PER_UNIT: frozenset[str] = frozenset({"EmbodiedEnergy", "TransportCarbon", "TransportEnergy"})
+_OPAQUE_LIFE_CYCLE: Mapping[str, str] = MappingProxyType({
+    "MoistureDiffusionResistance": "moisture_diffusion_resistance",
+    "DesignStrength": "design_strength",
+    "ModulusOfElasticity": "modulus_of_elasticity",
+})
+
+ASSEMBLY_LIFE_CYCLE: Mapping[str, str] = MappingProxyType({
+    "AssemblyCarbon": "assembly_carbon",
+    "AssemblyCost": "assembly_cost",
+    "AssemblyEnergy": "assembly_energy",
+    "DisassemblyCarbon": "disassembly_carbon",
+    "DisassemblyEnergy": "disassembly_energy",
+})
+"""An assembly's life-cycle fields (UP-9): SBEM key → UMI field name; the keys are the same in both."""
+
+ADIABATIC_FLAGS: Mapping[str, str] = MappingProxyType({
+    "IsFacadeAdiabatic": "is_facade_adiabatic",
+    "IsGroundAdiabatic": "is_ground_adiabatic",
+    "IsPartitionAdiabatic": "is_partition_adiabatic",
+    "IsRoofAdiabatic": "is_roof_adiabatic",
+    "IsSlabAdiabatic": "is_slab_adiabatic",
+})
+"""The adiabatic flags of a construction set (UP-9): key → UMI field name; SBEM uses the same keys."""
 
 
 def _pointer(location: str, key: str) -> str:
@@ -201,6 +258,179 @@ def cost_from_sbem(cost: float | None, rate_unit: str | None, density: float) ->
     if rate_unit == "kg":
         return cost * density
     return None
+
+
+# --- Life-cycle fields (UP-9) ----------------------------------------------------------------
+
+
+def _default(model: type[MaterialBase | ConstructionBase], name: str) -> object:
+    return model.model_fields[name].get_default(call_default_factory=True)
+
+
+def _negative(value: object) -> bool:
+    if isinstance(value, tuple):
+        return any(_negative(item) for item in cast("tuple[object, ...]", value))
+    return isinstance(value, (int, float)) and value < 0
+
+
+@rule("material.environmental", to="sbem")
+def life_cycle_to_sbem(
+    material: MaterialBase, subject: str, location: str, findings: Findings, *, per_volume: bool = True
+) -> dict[str, object]:
+    """Return the SBEM life-cycle fields of a UMI material (UP-9).
+
+    UMI gives embodied energy and transport carbon and energy per kg. With `per_volume` (opaque
+    materials, `RateUnit = "m3"`) they are multiplied by the density, and lost for a material of
+    density 0; otherwise (glazing and gas, `RateUnit = "kg"`) they are copied. The other fields
+    are copied, and an opaque material's structural and hygrothermal properties too. A negative
+    value, which SBEM refuses, is lost.
+
+    Args:
+        material: The UMI material.
+        subject: The template being read.
+        location: The material's JSON pointer.
+        findings: Collects the losses.
+        per_volume: Give per-unit quantities per m³ rather than per kg.
+
+    Returns:
+        The SBEM fields by name.
+    """
+    fields: dict[str, object] = {}
+    names = dict(MATERIAL_LIFE_CYCLE)
+    if isinstance(material, OpaqueMaterial):
+        names.update(_OPAQUE_LIFE_CYCLE)
+    for key, name in names.items():
+        value: object = getattr(material, name)
+        if value is None:
+            continue
+        if _negative(value):
+            findings.lose(
+                LossKind.LOST,
+                subject,
+                _pointer(location, key),
+                cast("float", value) if not isinstance(value, tuple) else list(cast("tuple[float, ...]", value)),
+                "material.environmental",
+                f"SBEM's {key} cannot be negative.",
+            )
+            continue
+        if key in _PER_UNIT and per_volume:
+            number = cast("float", value)
+            if material.density == 0.0 and number != 0.0:
+                findings.lose(
+                    LossKind.LOST,
+                    subject,
+                    _pointer(location, key),
+                    number,
+                    "material.environmental",
+                    f"SBEM holds {key} per m3, and a material of density 0 has none per m3.",
+                    replacement=0.0,
+                )
+            value = number * material.density
+        fields[key] = list(cast("tuple[float, ...]", value)) if isinstance(value, tuple) else value
+    return fields
+
+
+@rule("material.environmental", to="umi")
+def life_cycle_to_umi(
+    component: MaterialLifeCycleMixin,
+    rate_unit: str | None,
+    density: float | None,
+    subject: str,
+    location: str,
+    findings: Findings,
+) -> dict[str, object]:
+    """Return the UMI life-cycle fields of an SBEM material (UP-9), per kg.
+
+    Unset fields take Basilisk's defaults. Per-unit quantities are divided by the density when
+    `rate_unit` is per m³ (or unset), copied when it is per kg, and lost when it is per m² or m,
+    which needs a thickness, or the density is 0.
+
+    Args:
+        component: The SBEM material (opaque, glazing or gas).
+        rate_unit: Its `RateUnit`.
+        density: Its density, kg/m³ (`None` for a gas).
+        subject: The archetype being written.
+        location: The material's SBEM field path.
+        findings: Collects the losses.
+
+    Returns:
+        The UMI fields by Basilisk key.
+    """
+    fields: dict[str, object] = {}
+    names = dict(MATERIAL_LIFE_CYCLE)
+    if hasattr(component, "DesignStrength"):
+        names.update(_OPAQUE_LIFE_CYCLE)
+    for key in names:
+        value: object = getattr(component, key)
+        if value is None:
+            continue
+        if key in _PER_UNIT and rate_unit != _PER_MASS:
+            number = cast("float", value)
+            if rate_unit not in (None, _PER_VOLUME) or (not density and number != 0.0):
+                why = (
+                    f"a {key} per {rate_unit} needs a thickness the material lacks"
+                    if rate_unit not in (None, _PER_VOLUME)
+                    else f"a {key} per m3 cannot be given per kg without a density"
+                )
+                findings.lose(
+                    LossKind.LOST,
+                    subject,
+                    _path(location, key),
+                    number,
+                    "material.environmental",
+                    f"UMI holds {key} per kg; {why}.",
+                    replacement=0.0,
+                )
+                continue
+            value = number / density if density else 0.0
+        fields[key] = value
+    return fields
+
+
+@rule("construction.environmental", to="sbem")
+def assembly_life_cycle_to_sbem(construction: ConstructionBase) -> dict[str, float]:
+    """Return the SBEM life-cycle fields of a UMI construction or structure (UP-9): copied.
+
+    Negative values, which SBEM refuses, are left out; `assembly_life_cycle_losses` lists them.
+    """
+    return {
+        key: value for key, name in ASSEMBLY_LIFE_CYCLE.items() if (value := getattr(construction, name)) >= 0
+    }
+
+
+def assembly_life_cycle_losses(
+    construction: ConstructionBase, subject: str, location: str, findings: Findings
+) -> None:
+    """List the negative life-cycle fields of a UMI construction, which SBEM refuses, as lost."""
+    for key, name in ASSEMBLY_LIFE_CYCLE.items():
+        value: float = getattr(construction, name)
+        if value < 0:
+            findings.lose(
+                LossKind.LOST,
+                subject,
+                _pointer(location, key),
+                value,
+                "construction.environmental",
+                f"SBEM's {key} cannot be negative.",
+            )
+
+
+@rule("construction.environmental", to="umi")
+def assembly_life_cycle_to_umi(component: AssemblyLifeCycleMixin) -> dict[str, float]:
+    """Return the UMI life-cycle fields of an SBEM assembly (UP-9); unset fields are left to Basilisk's 0."""
+    return {key: value for key in ASSEMBLY_LIFE_CYCLE if (value := getattr(component, key)) is not None}
+
+
+@rule("construction.adiabatic", to="sbem")
+def adiabatic_to_sbem(constructions: ZoneConstructions) -> dict[str, bool]:
+    """Return SBEM's adiabatic flags of a UMI construction set (UP-9): copied."""
+    return {key: getattr(constructions, name) for key, name in ADIABATIC_FLAGS.items()}
+
+
+@rule("construction.adiabatic", to="umi")
+def adiabatic_to_umi(envelope: EnvelopeAssemblyComponent) -> dict[str, bool]:
+    """Return UMI's adiabatic flags of SBEM's envelope assemblies (UP-9): copied."""
+    return {key: getattr(envelope, key) for key in ADIABATIC_FLAGS}
 
 
 # --- Materials ----------------------------------------------------------------------------
@@ -303,6 +533,7 @@ def material_to_sbem(
         Cost=cost_per_m3(material.cost),
         EmbodiedCarbon=carbon,
         RateUnit=_PER_VOLUME,
+        **life_cycle_to_sbem(material, subject, location, findings),  # pyright: ignore[reportArgumentType]
     )
 
 
@@ -391,10 +622,10 @@ def material_to_umi(
             _path(location, "Life"),
             component.Life,
             "material.environmental",
-            "UMI's life-cycle fields of a material have no SBEM counterpart yet.",
-            upstream="UP-9",
+            "UMI materials have no life; their substitution timestep and pattern describe replacement.",
         )
     cost, carbon = _environmental_to_umi(component, subject, location, findings)
+    life_cycle = life_cycle_to_umi(component, component.RateUnit, component.Density, subject, location, findings)
     return OpaqueMaterial.model_validate({
         "Name": component.Name,
         "Category": category,
@@ -409,6 +640,7 @@ def material_to_umi(
         "VisibleAbsorptance": component.VisibleAbsorptance,
         "Cost": cost,
         "EmbodiedCarbon": carbon,
+        **life_cycle,
     })
 
 
@@ -448,6 +680,7 @@ def construction_to_sbem(
         layers.append(
             ConstructionLayerComponent(Thickness=layer.thickness, LayerOrder=order, ConstructionMaterial=material)
         )
+    assembly_life_cycle_losses(construction, subject, location, findings)
     return ConstructionAssemblyComponent(
         Name=construction.name or "",
         Category=construction.category,
@@ -455,6 +688,7 @@ def construction_to_sbem(
         DataSource=construction.data_source,
         Layers=layers,
         Type=surface_type,
+        **assembly_life_cycle_to_sbem(construction),
     )
 
 
@@ -497,6 +731,7 @@ def construction_to_umi(
         "Comments": assembly.Comment,
         "DataSource": assembly.DataSource,
         "Layers": layers,
+        **assembly_life_cycle_to_umi(assembly),
     })
 
 
@@ -512,6 +747,7 @@ def assemblies_to_sbem(
     *,
     internal_mass: ConstructionAssemblyComponent | None = None,
     internal_mass_exposed: float | None = None,
+    partition_area: float = 0.0,
 ) -> EnvelopeAssemblyComponent:
     """Translate a UMI construction set to SBEM's envelope assemblies.
 
@@ -526,6 +762,8 @@ def assemblies_to_sbem(
         findings: Collects the notes and the materials' losses.
         internal_mass: The zone's internal-mass assembly, if any.
         internal_mass_exposed: Its exposed area per floor area.
+        partition_area: The internal partitions' area per floor area (UP-9), from the
+            template's `PartitionRatio` (`building.partition_ratio`).
 
     Returns:
         The envelope assemblies, named as the set.
@@ -562,6 +800,8 @@ def assemblies_to_sbem(
         DataSource=constructions.data_source,
         InternalMassAssembly=internal_mass,
         InternalMassExposedAreaPerArea=internal_mass_exposed,
+        PartitionAreaPerFloorArea=partition_area,
+        **adiabatic_to_sbem(constructions),
         **slots,  # pyright: ignore[reportArgumentType]
     )
 
@@ -583,7 +823,8 @@ def assemblies_to_umi(
         location: The assemblies' SBEM field path.
         findings: Collects the losses: each slot of `FILLED_SLOTS` that differs from the slot
             it would be filled from, and the constructions' losses. Internal mass belongs to the
-            zone (`mass.internal`) and is not translated here.
+            zone (`mass.internal`) and internal partitions to the template
+            (`building.partition_ratio`); neither is translated here.
 
     Returns:
         The construction set, named as the assemblies.
@@ -615,5 +856,6 @@ def assemblies_to_umi(
         "Category": envelope.Category if envelope.Category is not None else "Uncategorized",
         "Comments": envelope.Comment,
         "DataSource": envelope.DataSource,
+        **adiabatic_to_umi(envelope),
         **slots,
     })

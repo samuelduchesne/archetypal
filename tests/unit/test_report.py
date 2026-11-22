@@ -523,7 +523,15 @@ def test_schema_command_without_option_prints_help(capsys: pytest.CaptureFixture
 # --- real reductions (once reduce exists) ----------------------------------------------------------
 
 
-@pytest.mark.parametrize("fixture", ["three_zone", "ten_zone_multipliers", "ten_zone_explicit", "bar_building"])
+# Reducing the 37-zone explicit model takes about 6 s, over the unit tier's 5 s default; the
+# reduction is cached for the session, so later tests that use it are fast.
+SLOW = pytest.mark.timeout(30)
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    ["three_zone", "ten_zone_multipliers", pytest.param("ten_zone_explicit", marks=SLOW), "bar_building"],
+)
 def test_fixture_reductions_hold_every_invariant(
     fixture: str, tmp_path: Path, reduced: Callable[[str], Reduction], detailed: Callable[[str], Any]
 ) -> None:

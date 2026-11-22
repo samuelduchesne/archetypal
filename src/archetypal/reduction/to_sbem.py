@@ -18,6 +18,7 @@ the groups into the fork's `Archetype`, validates it, and returns the archetype 
 | `Window`, `Geometry.WindowToWallRatio` | `window`, `geometry` | `window.area_weighted` |
 | `Infiltration` | `infiltration` | `airflow.mean_per_exterior_area` |
 | `Ventilation.FreshAirPerFloorArea`, `FreshAirPerPerson`, `Provider`, `DCV` | `ventilation` | `airflow.peak_per_area` |
+| `Ventilation.MechVentSchedule` (UP-9) | `ventilation` | `schedule.normalised` |
 | `Ventilation.HRV`, `Economizer`, `*HeatRecoveryEffectiveness` | `ventilation` | `airflow.dominant_category` |
 | `WaterUse` | `water_use` | `dhw.volume_per_person` |
 | `DHW` temperatures | `dhw` | `dhw.mains_plus_rise` |
@@ -983,6 +984,10 @@ def infiltration(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str)
 def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -> Derived[VentilationComponent]:
     """`VentilationComponent`: peak flow per area and `project(hourly / peak)` (`airflow.peak_per_area`, FR-019).
 
+    The projected fraction is the mechanical outdoor air's schedule (UP-9's `MechVentSchedule`),
+    so peak · schedule reproduces the hourly profile; it is also the `Schedule` of natural
+    ventilation, which the provider `Mechanical` leaves unused.
+
     HRV and economiser take the category serving the most outdoor-air volume, and the sensible
     effectiveness its volume-weighted mean over the volume with heat recovery (UP-2's numeric
     field; rule `airflow.dominant_category`). DCV is `NoDCV`: the hourly profile already holds
@@ -999,7 +1004,6 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
     oa = ledger.outdoor_air
     hourly = _profile(oa.hourly, calendar)
     peak = float(hourly.max()) if hourly.size else 0.0
-    volume = float(hourly.sum()) * _SECONDS_PER_HOUR
     lost: list[NotRepresented] = []
     schedule = _schedule(_ratio(hourly, peak), calendar, name=f"{name} ventilation", category="Window")
     if peak <= 0:
@@ -1021,11 +1025,15 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
     extra: dict[str, object] = {}
     if hrv != "NoHRV" and recovered > 0:
         extra["SensibleHeatRecoveryEffectiveness"] = min(max(oa.effectiveness_weighted / recovered, 0.0), 1.0)
+    mechanical = _schedule(
+        _ratio(hourly, peak), calendar, name=f"{name} mechanical ventilation", category="Window", limits="Fraction"
+    )
     value = VentilationComponent.model_validate({
         "Name": f"{name} ventilation",
         "FreshAirPerFloorArea": peak / ledger.floor_area,
         "FreshAirPerPerson": 0.0,
         "Schedule": schedule,
+        "MechVentSchedule": mechanical,
         "Provider": "Mechanical",
         "HRV": hrv,
         "Economizer": economiser,
@@ -1033,20 +1041,6 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
         **extra,
     })
     path = "Zone.Operations.HVAC.Ventilation"
-    lost.append(
-        _entry(
-            ledger,
-            name,
-            "Hourly profile of mechanical outdoor air",
-            "The pinned SBEM fork supplies FreshAirPerFloorArea at every hour; its Ventilation "
-            "Schedule drives natural ventilation only (a mechanical-ventilation schedule is UP-9). "
-            "Magnitude: the outdoor-air volume the constant peak adds over the year.",
-            magnitude=peak * calendar.hours * _SECONDS_PER_HOUR - volume,
-            unit="m3",
-            folded_into=f"{path}.Schedule",
-            source="airflow",
-        )
-    )
     for feature, weighted, chosen, slot in (
         ("Heat recovery", oa.hrv_weighted, hrv, "HRV"),
         ("Economiser", oa.economiser_weighted, economiser, "Economizer"),
@@ -1078,6 +1072,7 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
         )
     rules = {
         "Schedule": "schedule.normalised",
+        "MechVentSchedule": "schedule.normalised",
         "HRV": "airflow.dominant_category",
         "Economizer": "airflow.dominant_category",
         "SensibleHeatRecoveryEffectiveness": "airflow.dominant_category",

@@ -1,0 +1,745 @@
+# Reference set for spec 002 (reduce to SBEM): the buildings on which reduction is verified.
+#
+# 49 buildings: the 16 DOE/PNNL commercial prototypes (ANSI/ASHRAE/IES 90.1-2022 edition) in
+# a hot (2A, Tampa), a mixed (4A, New York) and a cold (6A, Rochester, MN) climate zone, plus
+# the DOE residential single-family prototype (2024 IECC, climate zone 4A, gas furnace, slab
+# foundation). Commercial and residential models come from https://www.energycodes.gov
+# (prototype building models page); weather files are the TMY3 files each prototype names,
+# from the EnergyPlus weather mirror (same WMO stations, current file names).
+#
+# Each building is one member of a zip archive. `report.py --fetch` downloads every archive
+# and weather zip into a cache folder, checks the archive's SHA-256, extracts the member and
+# checks its SHA-256. Models are never committed: this file is the mechanism.
+#
+# Notes:
+# - The energycodes.gov firewall rejects requests whose User-Agent is curl's or Python
+#   urllib's default ("Request Rejected", HTTP 404). Fetch with an explicit, honest client
+#   name (`user_agent` below).
+# - The prototypes are published for EnergyPlus 22.1 (commercial) and 23.1 (residential),
+#   not 24.x. The reference set runs on EnergyPlus 24.2 (research R3): migrate each model
+#   with idfkit (`idfkit.migration.migrate`) first, which needs EnergyPlus's transition
+#   programs (PreProcess/IDFVersionUpdater) for 22.1->23.1->23.2->24.1->24.2.
+# - Hashes were computed on 2026-11-22 from the URLs below. If PNNL republishes an archive,
+#   its hash changes and the fetch fails loudly; update the entry deliberately.
+
+schema_version = 1
+user_agent = "archetypal-verification"
+energyplus_version = "24.2"
+
+[[archive]]
+id = "ASHRAE901_OfficeSmall_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_OfficeSmall_STD2022.zip"
+sha256 = "e56843b3a07d3dd3b0a847f1582fbeb6f75da00f04af6221056601d17d26d832"
+size = 4194695
+
+[[archive]]
+id = "ASHRAE901_OfficeMedium_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_OfficeMedium_STD2022.zip"
+sha256 = "793e351553a5e8a476ec8c1a4831495eef45657e81d22d309f43e4adfdca831d"
+size = 6075197
+
+[[archive]]
+id = "ASHRAE901_OfficeLarge_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_OfficeLarge_STD2022.zip"
+sha256 = "a7fde86c35c2587be282033d21ff1394eedbaf5c1745bbc52eaa33ba768efd8f"
+size = 7997603
+
+[[archive]]
+id = "ASHRAE901_RetailStandalone_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_RetailStandalone_STD2022.zip"
+sha256 = "ca81f45dc05294f10f337af111540dcaedbadd59c1a76f89e9bac1431327e688"
+size = 4072159
+
+[[archive]]
+id = "ASHRAE901_RetailStripmall_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_RetailStripmall_STD2022.zip"
+sha256 = "762371a9269c780b578d5ece57772edca1329e8004aea2aac8711c81bda55ef6"
+size = 5196472
+
+[[archive]]
+id = "ASHRAE901_SchoolPrimary_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_SchoolPrimary_STD2022.zip"
+sha256 = "c30e68381873e0a22ad56cb0c5eb27004686ce7a35b141c2e2adde7c596cf390"
+size = 9390290
+
+[[archive]]
+id = "ASHRAE901_SchoolSecondary_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_SchoolSecondary_STD2022.zip"
+sha256 = "2cf0baa69d4bb0cbd6cd4babcbb7907e0a668eec161cda64c736138356e7eb6e"
+size = 13949198
+
+[[archive]]
+id = "ASHRAE901_OutPatientHealthCare_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_OutPatientHealthCare_STD2022.zip"
+sha256 = "4ff7b262b3172d1d258e4b41655b2dea69522f0e9f11746a33983f602f0ff00e"
+size = 21956783
+
+[[archive]]
+id = "ASHRAE901_Hospital_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_Hospital_STD2022.zip"
+sha256 = "7fb068ed096087731636132f6f7a998e458012b19583abb2c1ac84eaeff346a9"
+size = 12768937
+
+[[archive]]
+id = "ASHRAE901_HotelSmall_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_HotelSmall_STD2022.zip"
+sha256 = "88b96a739611c2bce5f4c3ddf87b5c14d46214c2bc33fe31817fe28012625882"
+size = 13706319
+
+[[archive]]
+id = "ASHRAE901_HotelLarge_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_HotelLarge_STD2022.zip"
+sha256 = "c68a9fa063189a656fdd78028d3343d4ce83917f9e45f42a816ca46956b4266e"
+size = 8018623
+
+[[archive]]
+id = "ASHRAE901_Warehouse_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_Warehouse_STD2022.zip"
+sha256 = "9f4faf29a555d90643d1a18710f71fcdca90672f79262c905c301fda55c7773e"
+size = 3794993
+
+[[archive]]
+id = "ASHRAE901_RestaurantFastFood_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_RestaurantFastFood_STD2022.zip"
+sha256 = "0c2108ac0f88030d2397fd349d82e9c3c3fe261a8420e4ac6e8396e9c79f1ca3"
+size = 3486783
+
+[[archive]]
+id = "ASHRAE901_RestaurantSitDown_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_RestaurantSitDown_STD2022.zip"
+sha256 = "1a2decd9d4efdc54b48cd4503fa417ede8cf8989453d8f420235541ece9e3c04"
+size = 3523318
+
+[[archive]]
+id = "ASHRAE901_ApartmentMidRise_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_ApartmentMidRise_STD2022.zip"
+sha256 = "2a704f1b6da2a9f9888d9250a472a6c15baff13ae6fe818ee0be6e279634b575"
+size = 8187939
+
+[[archive]]
+id = "ASHRAE901_ApartmentHighRise_STD2022"
+url = "https://www.energycodes.gov/sites/default/files/2023-10/ASHRAE901_ApartmentHighRise_STD2022.zip"
+sha256 = "6d51a21995a0c1d58e4a1a825afea7cae54542f3c339f59cbc638757fd699105"
+size = 8616248
+
+[[archive]]
+id = "resstd_CZ4A_IECC_2024"
+url = "https://www.energycodes.gov/sites/default/files/2024-12/resstd_CZ4A_IECC_2024.zip"
+sha256 = "ac445b683f6695cd01bc6a9af30cd5692227411ba96d78f086e41d0b6e7ec9c2"
+size = 4815542
+
+[[weather]]
+climate_zone = "2A"
+climate = "hot"
+url = "https://energyplus-weather.s3.amazonaws.com/north_and_central_america_wmo_region_4/USA/FL/USA_FL_MacDill.AFB.747880_TMY3/USA_FL_MacDill.AFB.747880_TMY3.zip"
+sha256 = "68b9880631b6b4662f26312e52a4c4e47128be2b762526d020ca25871828a50c"
+size = 225179
+member = "USA_FL_MacDill.AFB.747880_TMY3.epw"
+member_sha256 = "a9713373e075a813b535980d8a733da85d3cf112a7099722311489abca62fa8b"
+
+[[weather]]
+climate_zone = "4A"
+climate = "mixed"
+url = "https://energyplus-weather.s3.amazonaws.com/north_and_central_america_wmo_region_4/USA/NY/USA_NY_New.York-J.F.Kennedy.Intl.AP.744860_TMY3/USA_NY_New.York-J.F.Kennedy.Intl.AP.744860_TMY3.zip"
+sha256 = "aff50549ff8a9bdfd59cf50319bb6ac4121957ec3fbd428e16185e788415b06c"
+size = 220149
+member = "USA_NY_New.York-J.F.Kennedy.Intl.AP.744860_TMY3.epw"
+member_sha256 = "02c84581d781ec76f56072932cdc0fa07f916c49e475331360135bee7a138dd2"
+
+[[weather]]
+climate_zone = "6A"
+climate = "cold"
+url = "https://energyplus-weather.s3.amazonaws.com/north_and_central_america_wmo_region_4/USA/MN/USA_MN_Rochester.Intl.AP.726440_TMY3/USA_MN_Rochester.Intl.AP.726440_TMY3.zip"
+sha256 = "95664aebbd0a8d7ad8d59e9ef170b2ea4ab8ebc076e91d8a5aa9c6b6b36b522f"
+size = 224016
+member = "USA_MN_Rochester.Intl.AP.726440_TMY3.epw"
+member_sha256 = "01ad6c0ac75b7cef1fcf4fbe15c1e1ade42d46ecfaa0430390d2edda91cd18fe"
+
+[[building]]
+id = "OfficeSmall-2A"
+building_type = "OfficeSmall"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_OfficeSmall_STD2022"
+member = "ASHRAE901_OfficeSmall_STD2022_Tampa.idf"
+sha256 = "72391c528833bf8b55c33bc03ed2612679616b78f2d5da3eaae24e6054a1a2ee"
+size = 308177
+energyplus_version = "22.1"
+
+[[building]]
+id = "OfficeSmall-4A"
+building_type = "OfficeSmall"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_OfficeSmall_STD2022"
+member = "ASHRAE901_OfficeSmall_STD2022_NewYork.idf"
+sha256 = "fbb6ca4e052588c9047bd277a0c8b93d25e1dd0a55cd1a7cc4acd0f591b02c88"
+size = 308492
+energyplus_version = "22.1"
+
+[[building]]
+id = "OfficeSmall-6A"
+building_type = "OfficeSmall"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_OfficeSmall_STD2022"
+member = "ASHRAE901_OfficeSmall_STD2022_Rochester.idf"
+sha256 = "c53b8fac8accdf8b09cfd83ea71f6ea44a1209b0e1ecad2ec2619873e5241efb"
+size = 308401
+energyplus_version = "22.1"
+
+[[building]]
+id = "OfficeMedium-2A"
+building_type = "OfficeMedium"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_OfficeMedium_STD2022"
+member = "ASHRAE901_OfficeMedium_STD2022_Tampa.idf"
+sha256 = "8451332b062fdbdf3a6d399388a5eeece98f94490c254b0ace833e7d2a985bb9"
+size = 523039
+energyplus_version = "22.1"
+
+[[building]]
+id = "OfficeMedium-4A"
+building_type = "OfficeMedium"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_OfficeMedium_STD2022"
+member = "ASHRAE901_OfficeMedium_STD2022_NewYork.idf"
+sha256 = "57cb99600f0cd751664bab4eb0e78a9c33c9c4cde746ac03a7292ade221900f8"
+size = 523726
+energyplus_version = "22.1"
+
+[[building]]
+id = "OfficeMedium-6A"
+building_type = "OfficeMedium"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_OfficeMedium_STD2022"
+member = "ASHRAE901_OfficeMedium_STD2022_Rochester.idf"
+sha256 = "fe5a5b94cfb7b0a1044d95767d173c29d67f95384039bc96547a86d9ebb484af"
+size = 523622
+energyplus_version = "22.1"
+
+[[building]]
+id = "OfficeLarge-2A"
+building_type = "OfficeLarge"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_OfficeLarge_STD2022"
+member = "ASHRAE901_OfficeLarge_STD2022_Tampa.idf"
+sha256 = "4a9e0e92b04f472963fd9c766583a3bf4058f358d21749782e087402a2fb19b9"
+size = 947563
+energyplus_version = "22.1"
+
+[[building]]
+id = "OfficeLarge-4A"
+building_type = "OfficeLarge"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_OfficeLarge_STD2022"
+member = "ASHRAE901_OfficeLarge_STD2022_NewYork.idf"
+sha256 = "fc980c8918b48bc2eb6ae77b740235736282f5b95fbf7a920727c96db3867f02"
+size = 947427
+energyplus_version = "22.1"
+
+[[building]]
+id = "OfficeLarge-6A"
+building_type = "OfficeLarge"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_OfficeLarge_STD2022"
+member = "ASHRAE901_OfficeLarge_STD2022_Rochester.idf"
+sha256 = "b08f5a8f5e94ac39210aee89e50d20df4cf3fc8a147be453bb1c64f62eb306a7"
+size = 947347
+energyplus_version = "22.1"
+
+[[building]]
+id = "RetailStandalone-2A"
+building_type = "RetailStandalone"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_RetailStandalone_STD2022"
+member = "ASHRAE901_RetailStandalone_STD2022_Tampa.idf"
+sha256 = "11a92e8064f57ac848e7fa71f23a1a91d3fe0abd6e6da91cd401f73a9d3fba3e"
+size = 304765
+energyplus_version = "22.1"
+
+[[building]]
+id = "RetailStandalone-4A"
+building_type = "RetailStandalone"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_RetailStandalone_STD2022"
+member = "ASHRAE901_RetailStandalone_STD2022_NewYork.idf"
+sha256 = "748bb0065196ded26b5c2246d59b6cdae95286870234db14f872f2b5627a36d7"
+size = 304975
+energyplus_version = "22.1"
+
+[[building]]
+id = "RetailStandalone-6A"
+building_type = "RetailStandalone"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_RetailStandalone_STD2022"
+member = "ASHRAE901_RetailStandalone_STD2022_Rochester.idf"
+sha256 = "626dc87e56a08c62eda00562ff98116e0795c054ee08776f7fae1be0945a9e34"
+size = 298397
+energyplus_version = "22.1"
+
+[[building]]
+id = "RetailStripmall-2A"
+building_type = "RetailStripmall"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_RetailStripmall_STD2022"
+member = "ASHRAE901_RetailStripmall_STD2022_Tampa.idf"
+sha256 = "790a6d5f714c26cd56eb40b4604fd273f29396e384668f11e4cf58eccaf1399e"
+size = 564305
+energyplus_version = "22.1"
+
+[[building]]
+id = "RetailStripmall-4A"
+building_type = "RetailStripmall"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_RetailStripmall_STD2022"
+member = "ASHRAE901_RetailStripmall_STD2022_NewYork.idf"
+sha256 = "7e120e4ba78c8417221f90550f1fef64d2d8fc7c86d41b320cacb813876adc61"
+size = 564889
+energyplus_version = "22.1"
+
+[[building]]
+id = "RetailStripmall-6A"
+building_type = "RetailStripmall"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_RetailStripmall_STD2022"
+member = "ASHRAE901_RetailStripmall_STD2022_Rochester.idf"
+sha256 = "f11614ed7edc24bd0e7e8ad11dbabc84e56ec3d760be87a864ea34b38fc2e12b"
+size = 564819
+energyplus_version = "22.1"
+
+[[building]]
+id = "SchoolPrimary-2A"
+building_type = "SchoolPrimary"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_SchoolPrimary_STD2022"
+member = "ASHRAE901_SchoolPrimary_STD2022_Tampa.idf"
+sha256 = "fc8bd4a3af62a40c04e7416a92d1100f6691632c95a5e7aec1eea80c0c582dcb"
+size = 960858
+energyplus_version = "22.1"
+
+[[building]]
+id = "SchoolPrimary-4A"
+building_type = "SchoolPrimary"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_SchoolPrimary_STD2022"
+member = "ASHRAE901_SchoolPrimary_STD2022_NewYork.idf"
+sha256 = "fb95c021296a3fd85f60bd5add8bd3071c59db3fc8b05fd86c0cd4b63419b02f"
+size = 961041
+energyplus_version = "22.1"
+
+[[building]]
+id = "SchoolPrimary-6A"
+building_type = "SchoolPrimary"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_SchoolPrimary_STD2022"
+member = "ASHRAE901_SchoolPrimary_STD2022_Rochester.idf"
+sha256 = "b8acb2cffeaecde2c65e5dfb3030b7a2c5ac155679c1b6174e6df0502a168474"
+size = 961592
+energyplus_version = "22.1"
+
+[[building]]
+id = "SchoolSecondary-2A"
+building_type = "SchoolSecondary"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_SchoolSecondary_STD2022"
+member = "ASHRAE901_SchoolSecondary_STD2022_Tampa.idf"
+sha256 = "9874f424bf08c05c4ecd156929301e39e2adbaa35ca5e482313e3c2aaeaaf0b3"
+size = 1698469
+energyplus_version = "22.1"
+
+[[building]]
+id = "SchoolSecondary-4A"
+building_type = "SchoolSecondary"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_SchoolSecondary_STD2022"
+member = "ASHRAE901_SchoolSecondary_STD2022_NewYork.idf"
+sha256 = "273a8ed885cd06bc4dcee1dae1f0d492a72c05bad6d46911d671d52192cbad6f"
+size = 1698508
+energyplus_version = "22.1"
+
+[[building]]
+id = "SchoolSecondary-6A"
+building_type = "SchoolSecondary"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_SchoolSecondary_STD2022"
+member = "ASHRAE901_SchoolSecondary_STD2022_Rochester.idf"
+sha256 = "776eb7a4914c7cfeba77db0a063f069d05cb06a3aeea4b605c5e4cc615a30878"
+size = 1696581
+energyplus_version = "22.1"
+
+[[building]]
+id = "OutPatientHealthCare-2A"
+building_type = "OutPatientHealthCare"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_OutPatientHealthCare_STD2022"
+member = "ASHRAE901_OutPatientHealthCare_STD2022_Tampa.idf"
+sha256 = "984ac1ae2f0f8cadd7c172500c4f9784be0f4f543c403375d8ade6c395f7bfef"
+size = 2681011
+energyplus_version = "22.1"
+
+[[building]]
+id = "OutPatientHealthCare-4A"
+building_type = "OutPatientHealthCare"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_OutPatientHealthCare_STD2022"
+member = "ASHRAE901_OutPatientHealthCare_STD2022_NewYork.idf"
+sha256 = "fea5496d88dfe211f5a4868581e09decf97fa2d46e71ac1d865da02d1e90fce3"
+size = 2681296
+energyplus_version = "22.1"
+
+[[building]]
+id = "OutPatientHealthCare-6A"
+building_type = "OutPatientHealthCare"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_OutPatientHealthCare_STD2022"
+member = "ASHRAE901_OutPatientHealthCare_STD2022_Rochester.idf"
+sha256 = "c11b1ffd06e5fac3a1a68b0c0bc229f695dc89eb4d3c7a932a551497e2441105"
+size = 2682726
+energyplus_version = "22.1"
+
+[[building]]
+id = "Hospital-2A"
+building_type = "Hospital"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_Hospital_STD2022"
+member = "ASHRAE901_Hospital_STD2022_Tampa.idf"
+sha256 = "3fbfa52947b4cd24bf1b3d094891560dd3dd3d1c2cd689e9ca477a311caf954c"
+size = 1626154
+energyplus_version = "22.1"
+
+[[building]]
+id = "Hospital-4A"
+building_type = "Hospital"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_Hospital_STD2022"
+member = "ASHRAE901_Hospital_STD2022_NewYork.idf"
+sha256 = "65d1a03d259ef640bbde55e31c275e7321e427c08df7637588435754ea524999"
+size = 1626254
+energyplus_version = "22.1"
+
+[[building]]
+id = "Hospital-6A"
+building_type = "Hospital"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_Hospital_STD2022"
+member = "ASHRAE901_Hospital_STD2022_Rochester.idf"
+sha256 = "174fc0eff570803f3fd1bf729694b82fb3d9595931c71a24ad1b6fb18dd49de9"
+size = 1626919
+energyplus_version = "22.1"
+
+[[building]]
+id = "HotelSmall-2A"
+building_type = "HotelSmall"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_HotelSmall_STD2022"
+member = "ASHRAE901_HotelSmall_STD2022_Tampa.idf"
+sha256 = "1f32fc3a6a7e373f879916ed5d4f2354aecfbc032ff94cec5ab0ce76a6767d3f"
+size = 1564689
+energyplus_version = "22.1"
+
+[[building]]
+id = "HotelSmall-4A"
+building_type = "HotelSmall"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_HotelSmall_STD2022"
+member = "ASHRAE901_HotelSmall_STD2022_NewYork.idf"
+sha256 = "c38fcebc0afa700607ca385290b4aee998c531d9b2b1b6b6a1e6755a56003221"
+size = 1564048
+energyplus_version = "22.1"
+
+[[building]]
+id = "HotelSmall-6A"
+building_type = "HotelSmall"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_HotelSmall_STD2022"
+member = "ASHRAE901_HotelSmall_STD2022_Rochester.idf"
+sha256 = "986dd207e673a63a2202905deb180117a4b7535a0beae4b4d0f400a6d2646584"
+size = 1563874
+energyplus_version = "22.1"
+
+[[building]]
+id = "HotelLarge-2A"
+building_type = "HotelLarge"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_HotelLarge_STD2022"
+member = "ASHRAE901_HotelLarge_STD2022_Tampa.idf"
+sha256 = "51df7a93f713ef0a4959220b86a4134ce64fa3d7bd60421da25204651025f680"
+size = 901171
+energyplus_version = "22.1"
+
+[[building]]
+id = "HotelLarge-4A"
+building_type = "HotelLarge"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_HotelLarge_STD2022"
+member = "ASHRAE901_HotelLarge_STD2022_NewYork.idf"
+sha256 = "35aa301367229542819e0191e561b57d8d68dbbba3adea8e4d8bc5a44262d8c1"
+size = 901250
+energyplus_version = "22.1"
+
+[[building]]
+id = "HotelLarge-6A"
+building_type = "HotelLarge"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_HotelLarge_STD2022"
+member = "ASHRAE901_HotelLarge_STD2022_Rochester.idf"
+sha256 = "22baf841e55d9f56e6d0db09af046b9cb0bad6b18bce47944772768147fa92cf"
+size = 901118
+energyplus_version = "22.1"
+
+[[building]]
+id = "Warehouse-2A"
+building_type = "Warehouse"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_Warehouse_STD2022"
+member = "ASHRAE901_Warehouse_STD2022_Tampa.idf"
+sha256 = "89bae233fd2710febb596025356c6a597a815d3e263cbed4793c060a8a491c06"
+size = 256685
+energyplus_version = "22.1"
+
+[[building]]
+id = "Warehouse-4A"
+building_type = "Warehouse"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_Warehouse_STD2022"
+member = "ASHRAE901_Warehouse_STD2022_NewYork.idf"
+sha256 = "4d322ea3dada5c9d3311dd7f4356093b8dc655d0b82dcc48728a68e0504da80b"
+size = 256845
+energyplus_version = "22.1"
+
+[[building]]
+id = "Warehouse-6A"
+building_type = "Warehouse"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_Warehouse_STD2022"
+member = "ASHRAE901_Warehouse_STD2022_Rochester.idf"
+sha256 = "cdb418c2be005c8662caa37d0249f6c053667b7f3c42262ae4ef9ab2b3cd9956"
+size = 226950
+energyplus_version = "22.1"
+
+[[building]]
+id = "RestaurantFastFood-2A"
+building_type = "RestaurantFastFood"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_RestaurantFastFood_STD2022"
+member = "ASHRAE901_RestaurantFastFood_STD2022_Tampa.idf"
+sha256 = "171fbdaea0d0410f92cce9e198800905a3a6f00f06220c148fc7a1365ec4071d"
+size = 217006
+energyplus_version = "22.1"
+
+[[building]]
+id = "RestaurantFastFood-4A"
+building_type = "RestaurantFastFood"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_RestaurantFastFood_STD2022"
+member = "ASHRAE901_RestaurantFastFood_STD2022_NewYork.idf"
+sha256 = "9ad097fe4739fcd52ec7cda020db3d22a75c9315f8411eabad520e0a4813d755"
+size = 217196
+energyplus_version = "22.1"
+
+[[building]]
+id = "RestaurantFastFood-6A"
+building_type = "RestaurantFastFood"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_RestaurantFastFood_STD2022"
+member = "ASHRAE901_RestaurantFastFood_STD2022_Rochester.idf"
+sha256 = "602f62a439fd11cf3eeffceb0914eb13df26fb452aab98dbb0c100f5de2d7286"
+size = 217100
+energyplus_version = "22.1"
+
+[[building]]
+id = "RestaurantSitDown-2A"
+building_type = "RestaurantSitDown"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_RestaurantSitDown_STD2022"
+member = "ASHRAE901_RestaurantSitDown_STD2022_Tampa.idf"
+sha256 = "fb164cc7f9b279e67ccae9f62f7e89c16024db1417bc7406b64972561b4e209b"
+size = 221733
+energyplus_version = "22.1"
+
+[[building]]
+id = "RestaurantSitDown-4A"
+building_type = "RestaurantSitDown"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_RestaurantSitDown_STD2022"
+member = "ASHRAE901_RestaurantSitDown_STD2022_NewYork.idf"
+sha256 = "bdd6b33c2d0b6d8b32d290fd21a8547ed534ab8d24edbdaa97f52fa91609c084"
+size = 221930
+energyplus_version = "22.1"
+
+[[building]]
+id = "RestaurantSitDown-6A"
+building_type = "RestaurantSitDown"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_RestaurantSitDown_STD2022"
+member = "ASHRAE901_RestaurantSitDown_STD2022_Rochester.idf"
+sha256 = "4e9d10a9e028436fc2a6ed91f9b2441e65dde55093ce1ce567a19685f11f4bb7"
+size = 221845
+energyplus_version = "22.1"
+
+[[building]]
+id = "ApartmentMidRise-2A"
+building_type = "ApartmentMidRise"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_ApartmentMidRise_STD2022"
+member = "ASHRAE901_ApartmentMidRise_STD2022_Tampa.idf"
+sha256 = "c60633ff3f6c8b67e5eb47c60596e49c501a47a7c2146c7522f23e427330233f"
+size = 1061133
+energyplus_version = "22.1"
+
+[[building]]
+id = "ApartmentMidRise-4A"
+building_type = "ApartmentMidRise"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_ApartmentMidRise_STD2022"
+member = "ASHRAE901_ApartmentMidRise_STD2022_NewYork.idf"
+sha256 = "d997e869975a64f715681029a3f4cbf1e59cfb9d4e43e90ffe45c63ee68ccb1d"
+size = 1060880
+energyplus_version = "22.1"
+
+[[building]]
+id = "ApartmentMidRise-6A"
+building_type = "ApartmentMidRise"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_ApartmentMidRise_STD2022"
+member = "ASHRAE901_ApartmentMidRise_STD2022_Rochester.idf"
+sha256 = "2803a04ee72d1e853ff6cc77d83b91bcc53de4be531f9cdcf8a3fe01a4c1f48d"
+size = 1060746
+energyplus_version = "22.1"
+
+[[building]]
+id = "ApartmentHighRise-2A"
+building_type = "ApartmentHighRise"
+sector = "commercial"
+climate_zone = "2A"
+climate = "hot"
+archive = "ASHRAE901_ApartmentHighRise_STD2022"
+member = "ASHRAE901_ApartmentHighRise_STD2022_Tampa.idf"
+sha256 = "9fac9293ddcc06ad8af948013825a3ede63fed959da4186711ede4bfcf2185be"
+size = 1057415
+energyplus_version = "22.1"
+
+[[building]]
+id = "ApartmentHighRise-4A"
+building_type = "ApartmentHighRise"
+sector = "commercial"
+climate_zone = "4A"
+climate = "mixed"
+archive = "ASHRAE901_ApartmentHighRise_STD2022"
+member = "ASHRAE901_ApartmentHighRise_STD2022_NewYork.idf"
+sha256 = "6af3502a148024beee833342e31733bc755b882d0a620d7c173b6c436693c75c"
+size = 1057155
+energyplus_version = "22.1"
+
+[[building]]
+id = "ApartmentHighRise-6A"
+building_type = "ApartmentHighRise"
+sector = "commercial"
+climate_zone = "6A"
+climate = "cold"
+archive = "ASHRAE901_ApartmentHighRise_STD2022"
+member = "ASHRAE901_ApartmentHighRise_STD2022_Rochester.idf"
+sha256 = "960a2d946d70d2c433bfe495f11f9504d84f259cd5ca65f658d72a249129d87b"
+size = 1057024
+energyplus_version = "22.1"
+
+[[building]]
+id = "SingleFamily-4A"
+building_type = "SingleFamily"
+sector = "residential"
+climate_zone = "4A"
+climate = "mixed"
+archive = "resstd_CZ4A_IECC_2024"
+member = "US+SF+CZ4A+gasfurnace+slab+IECC_2024.idf"
+sha256 = "f8fd51378c7b2aa3e72aab7c694c8411e51cfa7e556512948981062312769f5b"
+size = 269086
+energyplus_version = "23.1"
+

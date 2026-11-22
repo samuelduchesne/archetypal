@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- archetypal now depends on `epinterface` (`>=1.5.0,<1.6`) from the SBEM fork (https://github.com/samuelduchesne/epinterface), pinned to commit `d1283ca1865c69a7117239143e1c66b94eef7834`. Beyond upstream, the fork carries the HVAC fields of UP-8 (specific fan power, supply-air limits, a temperature-dependent EIR) and UP-2's extra fields (sensible and latent heat-recovery effectiveness, an infiltration schedule, holiday and design-day week slots, window-to-wall ratios by orientation), under archetype schema version 1.1, which still reads 1.0 files. The pin will be replaced by a fork tag (`v1.5.0.post1`) once the maintainer tags it.
+- archetypal now depends on `epinterface` (`>=1.5.0,<1.6`) from the SBEM fork (https://github.com/samuelduchesne/epinterface), pinned to commit `dee8d343eb9aaceb8ae43819ab95232b94fae63a`. Beyond upstream, the fork carries the HVAC fields of UP-8 (specific fan power, supply-air limits, a temperature-dependent EIR), UP-2's extra fields (sensible and latent heat-recovery effectiveness, an infiltration schedule, holiday and design-day week slots, window-to-wall ratios by orientation) and UP-9's fields (natural-ventilation limits, scheduled ventilation, a mechanical ventilation schedule, ideal-loads limits, heating and cooling availability schedules, adiabatic assemblies, internal partitions, daylighting, layered glazing, window settings, archetype metadata, a structure component, life-cycle fields on materials and assemblies, schedule metadata), under archetype schema version 1.2, which still reads 1.0 and 1.1 files. The pin will be replaced by a fork tag (`v1.5.0.post1`) once the maintainer tags it.
 
 ### Removed
 

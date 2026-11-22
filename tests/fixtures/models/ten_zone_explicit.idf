@@ -15392,8 +15392,8 @@ SizingPeriod:DesignDay,
   ASHRAEClearSky,            !- Solar Model Indicator
   ,                          !- Beam Solar Day Schedule Name
   ,                          !- Diffuse Solar Day Schedule Name
-  ,                          !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub
-  ,                          !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud
+  ,                          !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub 
+  ,                          !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud 
   0;                         !- Sky Clearness
 
 SizingPeriod:DesignDay,
@@ -15420,8 +15420,8 @@ SizingPeriod:DesignDay,
   ASHRAETau,                 !- Solar Model Indicator
   ,                          !- Beam Solar Day Schedule Name
   ,                          !- Diffuse Solar Day Schedule Name
-  0.455,                     !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub
-  2.05;                      !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud
+  0.455,                     !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub 
+  2.05;                      !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud 
 
 ThermostatSetpoint:DualSetpoint,
   Office Dual Setpoint,      !- Name

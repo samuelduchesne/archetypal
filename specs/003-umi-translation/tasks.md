@@ -146,7 +146,7 @@ the correspondence table and every conversion rule in both directions, and the l
   `UmiValidationError` derive from `InputError`; `UmiValidationError.problems` is a
   `list[Problem]`, each with `pointer` (a JSON pointer), `template` (`str | None`), `rule` and
   `message`; the error's message lists every problem; its subject is the library path.
-- [ ] T011 [P] Test the private format model in `tests/unit/umi/test_format.py`: one frozen
+- [X] T011 [P] Test the private format model in `tests/unit/umi/test_format.py`: one frozen
   model per Basilisk Core class listed in data-model.md, plus `UmiLibrary`; snake_case fields
   with Basilisk's keys as aliases; an absent key takes Basilisk's effective default and is
   recorded as defaulted; enums are `IntEnum`s with Basilisk's values (`FuelType` 0–13,
@@ -154,7 +154,7 @@ the correspondence table and every conversion rule in both directions, and the l
   `WindowType`, `DomesticHotWaterFuelType`); every class and key of
   `tests/data/basilisk_fields.json` has a model field; nothing in `_format` is exported from
   `archetypal.umi`.
-- [ ] T012 [P] Test references in `tests/unit/umi/test_refs.py` (research R1): the pre-scan
+- [X] T012 [P] Test references in `tests/unit/umi/test_refs.py` (research R1): the pre-scan
   rejects, each as a format problem with its JSON pointer, a duplicate `$id`, an `$id` that
   is not the first key, a non-string `$ref`, extra keys beside `$ref`, a dangling `$ref` and
   a forward `$ref`; resolution returns objects, never `None`; window settings defined inline
@@ -236,7 +236,7 @@ the correspondence table and every conversion rule in both directions, and the l
   template-level field of R6's table is lost with `upstream: "UP-9"`; the naming rules of
   data-model.md ("Names of components without a one-to-one counterpart") hold in both
   directions.
-- [ ] T023 [P] Port the harness's checks 1 and 4 and the orphan check to Python in
+- [X] T023 [P] Port the harness's checks 1 and 4 and the orphan check to Python in
   `tests/umi/basilisk_rules.py`, and test it in `tests/unit/umi/test_basilisk_rules.py`: B2,
   ND and UZ pass; `dangling_ref.json` and `forward_ref.json` fail check 1;
   `duplicate_names.json` fails check 4.
@@ -246,11 +246,11 @@ the correspondence table and every conversion rule in both directions, and the l
 - [X] T024 [P] Extend `src/archetypal/errors.py` (001 research R8): `Problem` (frozen
   dataclass: `pointer`, `template`, `rule`, `message`), `UmiFormatError(InputError)` and
   `UmiValidationError(InputError)` with `.problems: list[Problem]`, with Google docstrings.
-- [ ] T025 [P] Implement `src/archetypal/umi/_format.py` (R1): the frozen pydantic v2 models
+- [X] T025 [P] Implement `src/archetypal/umi/_format.py` (R1): the frozen pydantic v2 models
   of data-model.md ("Private format model") with aliases, Basilisk's effective defaults (its
   `[DefaultValue]`, else its initialiser), a record of defaulted fields, and the `IntEnum`s.
   Mark the module private (`__all__ = []`, a docstring stating roadmap C-02).
-- [ ] T026 Implement `src/archetypal/umi/_refs.py` (R1, R13): the pre-scan over the raw JSON
+- [X] T026 Implement `src/archetypal/umi/_refs.py` (R1, R13): the pre-scan over the raw JSON
   in file order, resolution into the models of T025, and the writer's id assignment.
 - [X] T027 [P] Implement `src/archetypal/umi/correspondence.py` (R5): `Relevance`,
   `MappingStatus`, `FieldMapping` as in data-model.md, the `@rule(id)` registry (each rule

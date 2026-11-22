@@ -108,7 +108,8 @@ Read the model itself (through idfkit's typed accessors, R18) only for what the 
 | Output | Frequency | Used by |
 |---|---|---|
 | Tabular `AllSummary` (Envelope Summary, Annual Building Utility Performance, Input Verification) | — | R1, FR-027 |
-| `Zone Air System Sensible Heating Energy`, `Zone Air System Sensible Cooling Energy` (per zone) | Hourly | FR-022 delivered energy, hour by hour for R12's attribution and temperature dependence |
+| `Zone Air System Sensible Heating Energy`, `Zone Air System Sensible Cooling Energy` (per zone) | Hourly | FR-022a zone-air sensible load for the supply temperature limits (R19); R13's hourly mode split |
+| Energy delivered by HVAC equipment: `Zone Ideal Loads Supply Air Total Heating/Cooling Energy`, `Heating Coil Heating Energy`, `Cooling Coil Total Cooling Energy`, `Baseboard Total Heating Energy`, `Zone Radiant HVAC Heating/Cooling Energy` (per object present) | Hourly | FR-022 delivered energy, hour by hour for R12's attribution and temperature dependence |
 | `Fan Electricity Energy` and `Fan Air Mass Flow Rate` (per fan) | Hourly | FR-022a fan energy and air volume (R19) |
 | `System Node Mass Flow Rate` (each zone's air inlet nodes) | Hourly | FR-022a: attributing an air loop's fans to the zones it serves (R19) |
 | `Site Outdoor Air Drybulb Temperature` | Hourly | FR-022 temperature dependence (R12) |
@@ -396,8 +397,21 @@ v2 defect behind #390, where building-level DHW was multiplied into every zone.
 
 **Decision.**
 
-- **Inputs.** Delivered heating and cooling per zone come from R2's hourly outputs. Consumed
-  energy by fuel and mode comes from the hourly end-use meters.
+- **Inputs.** Consumed energy by fuel and mode comes from the hourly end-use meters.
+- **Delivered energy** is the energy the HVAC equipment hands over, not the zone air's
+  sensible load (`Zone Air System Sensible Heating/Cooling Energy`, which leaves out the
+  outdoor-air load the equipment also meets, and the latent load):
+  - zone equipment delivers to its zone: ideal loads (`Zone Ideal Loads Supply Air Total
+    Heating/Cooling Energy`), baseboards, low-temperature radiant systems, and the coils of
+    zone units (PTAC, PTHP, fan coil, ...) and of terminals (reheat), supplemental heaters
+    included (`Heating Coil Heating Energy`, `Cooling Coil Total Cooling Energy`);
+  - an air loop's coils (branches, outdoor air system, unitary systems) are split among the
+    zones it serves by each hour's inlet-node mass flow, as fans are (R19);
+  - EnergyPlus reports equipment outputs for every copy of a multiplied zone; they are
+    divided by the multiplier;
+  - heat recovery is no delivery: it lowers the coils' load, and SBEM models it separately;
+  - equipment of other kinds (beams, evaporative coolers, cooling panels, high-temperature
+    radiant heaters, ventilated slabs) is not measured and is listed by `delivery`.
 - **Attribution.** Each hour's consumed energy is attributed to zones in proportion to that
   hour's delivered energy in the same mode (heating-mode meters to heating delivery, cooling
   to cooling). Hours with consumption but no delivery (standby, pilot lights) are summed and
@@ -433,7 +447,10 @@ v2 defect behind #390, where building-level DHW was multiplied into every zone.
   coil, from the tabular *Equipment Summary*.
 
 **Rationale.** Energy is conserved by fuel, which is what FR-022 states, and every fold is
-named. A constant seasonal COP is exact on the year but misplaces consumption in time: a heat
+named. The archetype's ideal loads condition their outdoor air, so the efficiency that turns
+their delivery into consumption must be measured against the same delivery: against the
+zone-air sensible load, a gas boiler came out at an "efficiency" of 0.35 on the fixtures; against
+equipment delivery it is 0.86–0.89, the boiler's 0.85 plus nothing lost in distribution. A constant seasonal COP is exact on the year but misplaces consumption in time: a heat
 pump's consumption is highest in the coldest hours, which is also where peak demand (SC-003)
 is measured. The linear energy input ratio is the simplest form that captures this, and the
 constraint keeps the annual total exact.
@@ -471,6 +488,9 @@ Numbered after R18 so earlier references stay valid; it extends R12.
     added to the heating setpoint (subtracted from the cooling setpoint).
   - With the same delivered energy, the archetype then moves the same air volume, so it
     reproduces the fan energy.
+  - Here "delivered" is the zone air's sensible load (`Zone Air System Sensible
+    Heating/Cooling Energy`), not R12's equipment delivery: the supply temperature difference
+    acts on the zone air, after the outdoor-air load has been met.
 - **What is still lost.** Air moved when there is neither a load nor outdoor-air demand (a
   constant-volume fan recirculating) has no counterpart in ideal loads. The report gives the
   share of detailed air volume in such hours, and the comparison gives the volume ratio, so a

@@ -42,6 +42,9 @@ Regenerate with `uv run python tests/fixtures/regenerate.py` (EnergyPlus 24.2 ne
   `Water Use Equipment Hot Water Volume` of a `WaterUse:Equipment` with a zone include
   `Multiplier × ListMultiplier`. `Zone Air System Sensible Heating/Cooling Energy` does
   not: it is for one copy of the zone. (Checked by comparing the two ten-zone fixtures.)
+  HVAC equipment outputs (`Heating Coil Heating Energy` of a terminal's reheat coil, and, in
+  a one-off run with a zone multiplier of 2, a PTAC's coils and `Zone Ideal Loads Supply Air
+  Total Heating/Cooling Energy`) cover every copy: the equipment meets all copies' load.
 - Return plenums report non-zero `Zone Air System Sensible Heating/Cooling Energy` (the
   return air passing through them), although they have no thermostat or equipment.
 - Envelope areas, floor areas and hot-water volume agree between `ten_zone_multipliers`

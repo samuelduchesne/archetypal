@@ -68,7 +68,7 @@ One per EnergyPlus zone, as EnergyPlus counts it.
 | `outdoor_air` | `Profile` | R2 hourly output |
 | `thermostat` | `ThermostatRecord \| None` | Model: `doc.zone_control_thermostats`, dispatched on the `Literal` `control_n_object_type` (R10, R18) |
 | `hot_water` | `tuple[HotWaterRecord, ...]` | Model and R2 outputs, after R11 allocation |
-| `delivered` | `dict[Mode, float]` | R2 run-period outputs |
+| `delivered` | `dict[Mode, float]` | Run-period energy delivered by the zone's HVAC equipment (its own, and its share of its air loop's coils), outdoor-air and latent loads included, one copy (R12) |
 | `space_type` | `str \| None` | `doc.spaces`: `Space.space_type` when all of the zone's spaces agree |
 
 Supporting records:
@@ -156,13 +156,13 @@ The total types:
   value is `weighted / weight`.
 - **`HotWaterTotals`**: `volume: Profile` and `heat: Profile` (Σ volume × temperature rise),
   from which the mean rise follows.
-- **`EnergyTotals`**: `delivered` and `consumed_by_fuel: dict[Fuel, float]`, plus
+- **`EnergyTotals`**: `delivered` (equipment delivery, R12) and `consumed_by_fuel: dict[Fuel, float]`, plus
   `distribution_by_fuel` (pumps and heat rejection folded per R12, and fans until UP-8 per
   R19), `unattributed`
   (FR-022 standby), `rated_efficiency: float | None` (used only when `delivered == 0`) and
   `eir_sums`, the additive sums R12's constrained fit of the outdoor-temperature slope needs.
 - **`FanTotals`** (FR-022a, R19): `energy`, `volume` (standard density), and, per mode,
-  `volume_in_mode` and `delivered_in_mode` for the effective supply temperature difference,
+  `volume_in_mode` and `delivered_in_mode` (the zone-air sensible load) for the effective supply temperature difference,
   plus `volume_without_demand` (air moved with neither load nor outdoor-air demand).
 
 **Operations.**

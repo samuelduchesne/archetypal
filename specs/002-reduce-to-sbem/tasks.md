@@ -121,7 +121,7 @@ models and results, schedules, deterministic files and test fixtures.
   `UnsupportedEnergyPlusVersion`; model and results with different zone names raise
   `ModelResultsMismatch` naming the difference; model and results versions must agree;
   SHA-256 of model, results and weather are recorded.
-- [ ] T017 [P] Test schedules in `tests/unit/test_schedules.py`: the run-period calendar
+- [X] T017 [P] Test schedules in `tests/unit/test_schedules.py`: the run-period calendar
   starts on the `RunPeriod` start weekday and marks `RunPeriodControl:SpecialDays`;
   evaluation is memoised by name; projection onto month × weekday conserves each month's
   energy exactly and is linear (projecting a weighted sum equals the weighted sum of
@@ -171,7 +171,7 @@ models and results, schedules, deterministic files and test fixtures.
   results with `SQLResult`; validation in the order of data-model.md (version, results
   requirements, zone names, then conditioned zones later in classify); SHA-256 of each file
   (research R3, R18).
-- [ ] T026 Implement `src/archetypal/reduction/schedules.py`: the `Profile` alias (float64
+- [X] T026 Implement `src/archetypal/reduction/schedules.py`: the `Profile` alias (float64
   array, 8760 or 8784 values); a typed `AnySchedule` index built from the per-type accessors
   (`doc.schedule_compacts`, `doc.schedule_years`, `doc.schedule_constants`,
   `doc.schedule_files`, …); evaluation through `idfkit.schedules.values` at hourly resolution

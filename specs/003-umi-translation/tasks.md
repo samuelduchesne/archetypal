@@ -135,7 +135,7 @@ the correspondence table and every conversion rule in both directions, and the l
   are unset (`sbem/builder.py:913-914`). Merge into the fork's `main`, include it in the next
   fork tag (with 002's T009–T010 if not yet tagged), update `[tool.uv.sources]`, and open it
   upstream.
-- [ ] T009 [P] Draft the idfkit issue for UP-10 (an `equivalent_glazing_layer(u, shgc, vt)`
+- [X] T009 [P] Draft the idfkit issue for UP-10 (an `equivalent_glazing_layer(u, shgc, vt)`
   in `idfkit.thermal`, from the Engineering Reference "Window Calculation Module: Simple
   Window Model") in `specs/003-umi-translation/upstream/idfkit-issues.md`, for the user to
   file.

@@ -95,7 +95,7 @@ models and results, schedules, deterministic files and test fixtures.
 - [ ] T010 Tag the fork (`vX.Y.Z.post1`), set `[tool.uv.sources]` in `pyproject.toml` to that
   tag and the `epinterface` lower bound to X, run `uv lock`, and record the tag in
   `CHANGELOG.md`.
-- [ ] T011 [P] Draft the idfkit issues for UP-6 (`Schedule:Year` fields parsed as `'1.0'`,
+- [X] T011 [P] Draft the idfkit issues for UP-6 (`Schedule:Year` fields parsed as `'1.0'`,
   typed `start_month: int` not honoured) and UP-7 (typed readers for the static SQLite
   tables) in `specs/002-reduce-to-sbem/upstream/idfkit-issues.md`, for the user to file.
 

@@ -214,10 +214,10 @@ accounts for every zone (spec US1, SC-005, SC-006).
 
 ### Tests for User Story 1 (write first, see them fail)
 
-- [ ] T029 [P] [US1] Test inventory in `tests/unit/test_inventory.py`: one `ZoneRecord` per
+- [X] T029 [P] [US1] Test inventory in `tests/unit/test_inventory.py`: one `ZoneRecord` per
   zone of the fixture; `multiplier` = `Zones.Multiplier × Zones.ListMultiplier`; floor areas
   are one copy; `space_type` set only when all the zone's spaces agree.
-- [ ] T030 [P] [US1] Test classification in `tests/unit/test_classify.py`: exposure is
+- [X] T030 [P] [US1] Test classification in `tests/unit/test_classify.py`: exposure is
   perimeter only for an outdoor wall (60°–120° tilt) or a window, never for a roof, exposed
   floor or ground contact (FR-006); conditioned, attic, basement and excluded roles follow R8;
   space use follows the three tiers of FR-007 and records its source; a hypothesis property
@@ -282,16 +282,16 @@ accounts for every zone (spec US1, SC-005, SC-006).
 
 ### Implementation for User Story 1
 
-- [ ] T045 [US1] Implement `src/archetypal/reduction/inventory.py`: `ZoneRecord` (with `min_z`),
+- [X] T045 [US1] Implement `src/archetypal/reduction/inventory.py`: `ZoneRecord` (with `min_z`),
   `SurfaceRecord`, `GainRecord`, `AirflowRecord`, `ThermostatRecord`, `HotWaterRecord` with
   the fields and sources of data-model.md (ZoneRecord); built from `_sql_tables` rows, the
   tabular Envelope Summary (U with films, SHGC, VT) and the typed model (`doc.spaces`,
   `doc.zone_control_thermostats`, `doc.water_use_equipments`). No multiplier is applied here.
-- [ ] T046 [US1] Implement exposure and roles in `src/archetypal/reduction/classify.py`:
+- [X] T046 [US1] Implement exposure and roles in `src/archetypal/reduction/classify.py`:
   `ClassifiedZone`; exposure per R7; conditioned per R8 (thermostat setpoint enabling a mode at
   any hour, or non-zero delivered energy); attic and basement per R8's geometric rules;
   `NoConditionedZones` when no zone is conditioned.
-- [ ] T047 [US1] Implement space use in `src/archetypal/reduction/classify.py`: user mapping,
+- [X] T047 [US1] Implement space use in `src/archetypal/reduction/classify.py`: user mapping,
   then `Space.space_type`, then the signature of R4 (gain densities to 6 significant figures,
   schedule digests of values rounded to 6 decimals, setpoint digests, outdoor air per area and
   per person); label `use:<smallest zone name>`; zones sorted by name first;

@@ -194,7 +194,7 @@ the correspondence table and every conversion rule in both directions, and the l
   `AnyNumber` with a note; one UMI schedule in several roles gives one SBEM year per role,
   all with the UMI name; holiday and design-day slots that differ from the days they replace
   are lost on writing.
-- [ ] T017 [P] Test the window rules in `tests/unit/umi/test_rules_windows.py` (R8):
+- [X] T017 [P] Test the window rules in `tests/unit/umi/test_rules_windows.py` (R8):
   `window.simple_from_layers` on every window construction of B2 and UZ equals
   `idfkit.thermal.calculate_u_value`, `calculate_shgc` and `calculate_visible_transmittance`
   on the same layers; per-layer properties are listed as lost and U, SHGC, VT as approximate;
@@ -267,17 +267,17 @@ the correspondence table and every conversion rule in both directions, and the l
 - [X] T030 [P] Implement `src/archetypal/umi/rules/schedules.py` (R7): `schedule.months`,
   `schedule.type` and day and week copying, calling 002's
   `archetypal.reduction.schedules` for evaluation and projection (no second evaluator).
-- [ ] T031 [P] Implement `src/archetypal/umi/_bridges.py`: `equivalent_glazing_layer(u, shgc,
+- [X] T031 [P] Implement `src/archetypal/umi/_bridges.py`: `equivalent_glazing_layer(u, shgc,
   vt)` returning thickness, conductivity, solar and visible transmittance and reflectances by
   the Engineering Reference's simple window model, with a docstring stating its removal
   condition: "delete when idfkit releases UP-10 (T072)".
-- [ ] T032 After T031, write `verification/umi/simple_glazing.py`: for a grid of 12 (U, SHGC,
+- [X] T032 After T031, write `verification/umi/simple_glazing.py`: for a grid of 12 (U, SHGC,
   VT) cases spanning single to triple glazing, build one-window models with idfkit, one with
   `WindowMaterial:SimpleGlazingSystem` and one with the bridge's layer, run EnergyPlus 24.2
   through `idfkit.simulation`, read U, SHGC and VT from the Envelope Summary fenestration
   table, and write inputs, layers and results to
   `tests/data/umi/simple_glazing_energyplus.json`. Commit the file.
-- [ ] T033 Implement `src/archetypal/umi/rules/windows.py` (R8): `window.simple_from_layers`
+- [X] T033 Implement `src/archetypal/umi/rules/windows.py` (R8): `window.simple_from_layers`
   (an in-memory idfkit `Construction` with `WindowMaterial:Glazing` and `WindowMaterial:Gas`
   through typed constructors only, no `get_collection`; then `idfkit.thermal`) and
   `window.equivalent_layer` (through `_bridges`), plus window placement.

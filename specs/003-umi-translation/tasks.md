@@ -128,7 +128,7 @@ the correspondence table and every conversion rule in both directions, and the l
 
 ### Upstream prerequisites
 
-- [ ] T008 In the SBEM fork, on topic branch `up-2-unset-shares`, extend UP-2 (research R4):
+- [X] T008 In the SBEM fork, on topic branch `up-2-unset-shares`, extend UP-2 (research R4):
   a zone group's floor-area share may be `None`, meaning "set by the building's geometry";
   the validator accepts either every share set (summing to 1) or every share `None`; the
   shoebox builder takes core and perimeter areas from `w`, `d` and `perim_depth` when shares

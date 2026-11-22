@@ -84,11 +84,11 @@ models and results, schedules, deterministic files and test fixtures.
 
 ### Upstream prerequisites (SBEM fork, roadmap C-17)
 
-- [ ] T008 In the SBEM fork, on topic branch `up-1`, implement UP-1: depend on idfkit instead
+- [X] T008 In the SBEM fork, on topic branch `up-1`, implement UP-1: depend on idfkit instead
   of `archetypal==2.18.10`, make `epinterface.sbem.components` importable without archetypal,
   eppy or a generated Prisma client, and declare PyYAML. Merge it into the fork's `main` and
   open the same change as a pull request upstream.
-- [ ] T009 In the SBEM fork, on topic branch `up-2`, implement UP-2's blocking part: an
+- [X] T009 In the SBEM fork, on topic branch `up-2`, implement UP-2's blocking part: an
   archetype with several zone groups, each a zone definition with its floor-area share, plus
   building-level geometry characteristics and attic and basement assumptions. Merge into the
   fork's `main` and open it upstream.

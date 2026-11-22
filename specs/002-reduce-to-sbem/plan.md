@@ -47,7 +47,7 @@ epinterface; research R15, R17).
 - epinterface, from the maintained fork (roadmap C-17): declared as `epinterface>=X` and
   resolved through `[tool.uv.sources]` to fork commit dee8d34 until the maintainer cuts a fork
   tag; SBEM data model with UP-1, UP-2, UP-8 and UP-9;
-- idfkit `>=1.3.0rc2,<2` until 1.3.0 is released (model I/O, schedule evaluation, SQLite and tabular results, single
+- idfkit `>=1.3.0,<2` (model I/O, schedule evaluation, SQLite and tabular results, single
   simulation run), used through its typed interface only (R18);
 - numpy;
 - pydantic v2 (research R17).

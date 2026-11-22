@@ -47,7 +47,7 @@ epinterface; C-07, R9).
 
 **Primary Dependencies**:
 - epinterface, from the SBEM fork (C-17), through `[tool.uv.sources]`;
-- idfkit `>=1.3.0rc2,<2` (until 1.3.0 is released), used through its typed interface (spec 002, R18);
+- idfkit `>=1.3.0,<2`, used through its typed interface (spec 002, R18);
 - click `>=8.1,<9` for the command line (R6);
 - pydantic v2 and numpy (spec 002).
 

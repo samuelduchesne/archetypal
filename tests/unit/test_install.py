@@ -76,7 +76,7 @@ def test_data_files_keeps_only_data() -> None:
 
 
 def test_default_install_has_no_duplicates() -> None:
-    # idfkit is pinned as >=1.3.0rc2 (1.3.0 is not released): the explicit pre-release pin lets uv pick it.
+    # idfkit is pinned as >=1.3.0,<2.
     result = _run_uv("pip", "compile", "pyproject.toml", "--python-version", "3.12", "--no-header", "--quiet", cwd=ROOT)
     found = resolved_packages(result.stdout) & {_normalize(name) for name in FORBIDDEN}
     assert not found, f"the default install contains {sorted(found)}"

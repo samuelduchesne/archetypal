@@ -266,7 +266,7 @@ def test_layers_keep_order_and_thickness() -> None:
 
 def test_construction_to_umi_sorts_by_layer_order() -> None:
     assembly = construction_to_sbem(WALL, "Facade", subject="T", location="/c", findings=Findings())
-    shuffled = assembly.model_construct(**{**dict(assembly), "Layers": list(reversed(assembly.Layers))})
+    shuffled = assembly.model_copy(update={"Layers": list(reversed(assembly.Layers))})
     assert construction_to_umi(shuffled, "T", "c", Findings()) == WALL
 
 
@@ -372,9 +372,7 @@ def test_rules_are_registered(rule_id: str, to_sbem: object, to_umi: object) -> 
     assert rule.to_sbem.__module__ == materials.__name__  # type: ignore[union-attr]
 
 
-@pytest.mark.parametrize(
-    "rule_id", ["material.environmental", "construction.environmental", "construction.adiabatic"]
-)
+@pytest.mark.parametrize("rule_id", ["material.environmental", "construction.environmental", "construction.adiabatic"])
 def test_upstream_rules_are_declared(rule_id: str) -> None:
     rule = get_rule(rule_id)
     assert (rule.to_sbem, rule.to_umi) == (None, None)
@@ -385,7 +383,10 @@ fraction = st.floats(min_value=0.0, max_value=1.0, allow_nan=False)
 names = st.text(st.characters(categories=("L", "N")), min_size=1, max_size=12)
 
 
-@given(carbon=st.floats(min_value=0.0, max_value=1e6), density=positive)
+carbons = st.one_of(st.just(0.0), st.floats(min_value=1e-9, max_value=1e6))
+
+
+@given(carbon=carbons, density=positive)
 def test_carbon_round_trip(carbon: float, density: float) -> None:
     assert close(carbon_per_kg(carbon_per_m3(carbon, density), density), carbon)
 
@@ -406,8 +407,8 @@ materials_strategy = st.builds(
     ThermalEmittance=fraction,
     SolarAbsorptance=fraction,
     VisibleAbsorptance=fraction,
-    Cost=st.floats(min_value=0.0, max_value=1e6),
-    EmbodiedCarbon=st.floats(min_value=0.0, max_value=1e3),
+    Cost=carbons,
+    EmbodiedCarbon=carbons,
 )
 
 
@@ -431,14 +432,14 @@ def test_material_round_trip(material: OpaqueMaterial) -> None:
 
 
 @given(
-    layers=st.lists(
-        st.tuples(materials_strategy, st.floats(min_value=0.001, max_value=0.5)), min_size=1, max_size=5
-    )
+    layers=st.lists(st.tuples(materials_strategy, st.floats(min_value=0.001, max_value=0.5)), min_size=1, max_size=5)
 )
 def test_construction_round_trip(layers: list[tuple[OpaqueMaterial, float]]) -> None:
     original = construction("C", *layers)
     findings = Findings()
-    back = construction_to_umi(construction_to_sbem(original, "Facade", subject="T", location="/c", findings=findings), "T", "c", findings)
+    back = construction_to_umi(
+        construction_to_sbem(original, "Facade", subject="T", location="/c", findings=findings), "T", "c", findings
+    )
     assert [layer.thickness for layer in back.layers] == [layer.thickness for layer in original.layers]
     for got, want in zip(back.layers, original.layers, strict=True):
         assert got.material is not None

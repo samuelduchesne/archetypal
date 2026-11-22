@@ -62,7 +62,7 @@ class EquivalentGlazingLayer:
 
 
 def _interpolate(u_factor: float, low_u_value: float, high_u_value: float) -> float:
-    """Return EnergyPlus's value for `u_factor` between its low-U and high-U correlations.
+    """Return EnergyPlus's solar transmittance for `u_factor` between its two correlations.
 
     `low_u_value` holds below 3.4 W/m2-K, `high_u_value` above 4.5 W/m2-K, and the value is
     linear in U between them.
@@ -72,6 +72,21 @@ def _interpolate(u_factor: float, low_u_value: float, high_u_value: float) -> fl
     if u_factor < _U_LOW:
         return low_u_value
     return (u_factor - _U_LOW) / (_U_HIGH - _U_LOW) * (high_u_value - low_u_value) + low_u_value
+
+
+def _film(u_factor: float, low_u_value: float, high_u_value: float) -> float:
+    """Return EnergyPlus's summer film resistance for `u_factor` between its two correlations.
+
+    Between 3.4 and 4.5 W/m2-K, EnergyPlus 24.2 computes `f * (low - high) + low`, with
+    `f = (U - 3.4) / 1.1`: not a linear interpolation, so the value leaves the interval
+    between the two correlations and jumps at 4.5 W/m2-K. The bridge reproduces EnergyPlus,
+    since the point is to write the layer EnergyPlus simulates.
+    """
+    if u_factor > _U_HIGH:
+        return high_u_value
+    if u_factor < _U_LOW:
+        return low_u_value
+    return (u_factor - _U_LOW) / (_U_HIGH - _U_LOW) * (low_u_value - high_u_value) + low_u_value
 
 
 def _check(name: str, value: float, *, upper: float, upper_inclusive: bool) -> None:
@@ -88,16 +103,21 @@ def equivalent_glazing_layer(
     """Return the glazing layer EnergyPlus's simple window model builds from U, SHGC and VT.
 
     The steps are those of the EnergyPlus Engineering Reference, "Window Calculation Module",
-    section "Simple Window Model", in EnergyPlus's order:
+    section "Simple Window Model", as EnergyPlus 24.2 implements them
+    (`MaterialGlass::SetupSimpleWindowGlazingSystem`), in its order:
 
     1. inside and outside film resistances as functions of U, and the layer's resistance as
        `1/U` minus both;
     2. thickness and conductivity from the layer's resistance;
     3. solar transmittance from SHGC and U, interpolating between the low-U and high-U
        correlations for 3.4 <= U <= 4.5 W/m2-K;
-    4. solar reflectance (front and back) from the inward-flowing fraction of absorbed solar;
-    5. visible transmittance from VT and visible reflectances from it; without VT the solar
-       values are used, as EnergyPlus does.
+    4. solar reflectance (front and back) from the inward-flowing fraction of absorbed solar,
+       with EnergyPlus's summer film resistances (see `_film` for its 3.4-4.5 W/m2-K range);
+    5. visible transmittance from VT and visible reflectances from it, each reflectance capped
+       at `0.999 - VT`; without VT the solar values are used, as EnergyPlus does.
+
+    The result matches the layer EnergyPlus writes to its `.eio` file for the same
+    `WindowMaterial:SimpleGlazingSystem` (checked by `verification/umi/simple_glazing.py`).
 
     Removal condition: delete when idfkit releases UP-10 (T072).
 
@@ -140,12 +160,12 @@ def equivalent_glazing_layer(
 
     # Step 4: solar reflectance from the inward-flowing fraction.
     delta = shgc - solar_transmittance
-    r_inside_solar = _interpolate(
+    r_inside_solar = _film(
         u_factor,
         1.0 / (199.8208128 * delta**3 - 90.639733 * delta**2 + 19.737055 * delta + 6.766575),
         1.0 / (29.436546 * delta**3 - 21.943415 * delta**2 + 9.945872 * delta + 7.426151),
     )
-    r_outside_solar = _interpolate(
+    r_outside_solar = _film(
         u_factor,
         1.0 / (5.763355 * delta + 20.541528),
         1.0 / (2.225824 * delta + 20.577080),
@@ -160,8 +180,13 @@ def equivalent_glazing_layer(
         front_visible = back_visible = solar_reflectance
     else:
         visible = visible_transmittance
-        back_visible = -0.7409 * visible**3 + 1.6531 * visible**2 - 1.2299 * visible + 0.4547
+        back_visible = -0.7409 * visible**3 + 1.6531 * visible**2 - 1.2299 * visible + 0.4545
         front_visible = -0.0622 * visible**3 + 0.4277 * visible**2 - 0.4169 * visible + 0.2399
+        # EnergyPlus caps each reflectance so that transmittance plus reflectance stays below 1.
+        if visible + back_visible >= 1.0:
+            back_visible = 0.999 - visible
+        if visible + front_visible >= 1.0:
+            front_visible = 0.999 - visible
 
     return EquivalentGlazingLayer(
         thickness=thickness,

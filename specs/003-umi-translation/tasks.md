@@ -229,7 +229,7 @@ the correspondence table and every conversion rule in both directions, and the l
   `Electricity`, `NaturalGas`, `Oil` ↔ SBEM `Electricity`, `NaturalGas`, `FuelOil`; SBEM
   `Propane` and `Steam` written as `NaturalGas` with a loss; `Unset` is a range problem;
   temperatures map exactly.
-- [ ] T022 [P] Test the building rules in `tests/unit/umi/test_rules_building.py` (R4, R11,
+- [X] T022 [P] Test the building rules in `tests/unit/umi/test_rules_building.py` (R4, R11,
   R13): a template gives groups `core` and `perimeter` with every share `None`, equal when
   both reference one zone definition; `wwr.uniform` (one ratio on every orientation on
   reading; facade-area-weighted mean on writing, lost when orientations differ); each
@@ -286,7 +286,7 @@ the correspondence table and every conversion rule in both directions, and the l
   table of data-model.md as one constant.
 - [ ] T036 [P] Implement `src/archetypal/umi/rules/ventilation.py` (R10).
 - [ ] T037 [P] Implement `src/archetypal/umi/rules/hotwater.py` (R10).
-- [ ] T038 [P] Implement `src/archetypal/umi/rules/building.py` (R4, R11, R13): template ↔
+- [X] T038 [P] Implement `src/archetypal/umi/rules/building.py` (R4, R11, R13): template ↔
   archetype groups and shares, `wwr.uniform`, metadata, and the naming rules.
 - [ ] T039 Generate the two reference pages with `/project-kit:diataxis` (reference mode):
   `docs/reference/umi-correspondence.md` built from `CORRESPONDENCE` at docs build time by

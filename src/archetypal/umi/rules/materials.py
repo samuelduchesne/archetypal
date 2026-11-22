@@ -1,0 +1,662 @@
+"""Rules for materials, layers, constructions and construction sets (spec 003, research R11).
+
+UMI to SBEM (reading):
+
+- an opaque material becomes a `ConstructionMaterialComponent`: same properties,
+  `ThermalEmittance` as `ThermalAbsorptance`, `Type` from `Category` when it names one of SBEM's
+  12 types (else `Other`, noted), `TemperatureCoefficientThermalConductivity` set to 0 (noted),
+  cost and embodied carbon per m³ (`RateUnit = "m3"`, `material.carbon_per_m3`);
+- an opaque construction becomes a `ConstructionAssemblyComponent` whose layers keep their order
+  (outside first, `LayerOrder` from 0) and thickness;
+- a construction set fills SBEM's five slots of the same name, and SBEM's five other slots from
+  their nearest UMI counterpart (`FILLED_SLOTS`), each noted.
+
+SBEM to UMI (writing) inverts each rule and lists as lost what UMI cannot hold: a filled slot that
+differs from the one it would be filled from, a non-zero temperature coefficient, a material
+type its category does not name, a vegetation layer, and cost or carbon given per m² or m.
+
+Every function takes the `subject` (template or archetype), the `location` of the component
+translated (a JSON pointer when reading, an SBEM field path when writing) and a `Findings` that
+collects losses and notes. The upstream gaps of these classes (life-cycle fields, adiabatic
+flags) are declared rules: their rows are reported from `CORRESPONDENCE`.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from types import MappingProxyType
+from typing import TYPE_CHECKING, cast, get_args
+
+from epinterface.sbem.components.envelope import (
+    ConstructionAssemblyComponent,
+    ConstructionLayerComponent,
+    EnvelopeAssemblyComponent,
+)
+from epinterface.sbem.components.materials import (
+    ConstructionComponentSurfaceType,
+    ConstructionMaterialComponent,
+    ConstructionMaterialType,
+    MaterialRoughness,
+)
+
+from archetypal.errors import Problem
+from archetypal.umi._format import MaterialLayer, OpaqueConstruction, OpaqueMaterial, ZoneConstructions
+from archetypal.umi.correspondence import declare_rule, rule
+from archetypal.umi.report import Loss, LossKind, Note, NoteKind
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from pydantic import JsonValue
+
+__all__ = [
+    "FILLED_SLOTS",
+    "ROUGHNESS",
+    "SBEM_MATERIAL_TYPES",
+    "SET_SLOTS",
+    "SLOT_SURFACE_TYPES",
+    "Findings",
+    "assemblies_to_sbem",
+    "assemblies_to_umi",
+    "carbon_per_kg",
+    "carbon_per_m3",
+    "construction_to_sbem",
+    "construction_to_umi",
+    "cost_from_sbem",
+    "cost_per_m3",
+    "material_problems",
+    "material_to_sbem",
+    "material_to_umi",
+]
+
+ROUGHNESS: tuple[MaterialRoughness, ...] = get_args(MaterialRoughness)
+"""EnergyPlus's six roughness keywords."""
+
+SBEM_MATERIAL_TYPES: tuple[ConstructionMaterialType, ...] = get_args(ConstructionMaterialType)
+"""SBEM's 12 material types."""
+
+SET_SLOTS: Mapping[str, str] = MappingProxyType({
+    "Facade": "FacadeAssembly",
+    "Roof": "FlatRoofAssembly",
+    "Slab": "FloorCeilingAssembly",
+    "Ground": "GroundSlabAssembly",
+    "Partition": "PartitionAssembly",
+})
+"""The SBEM slot of each UMI construction-set slot."""
+
+FILLED_SLOTS: Mapping[str, str] = MappingProxyType({
+    "AtticRoofAssembly": "Roof",
+    "AtticFloorAssembly": "Slab",
+    "ExternalFloorAssembly": "Slab",
+    "BasementCeilingAssembly": "Slab",
+    "GroundWallAssembly": "Ground",
+})
+"""SBEM slots UMI lacks, and the UMI slot each is filled from on reading (research R11)."""
+
+SLOT_SURFACE_TYPES: Mapping[str, ConstructionComponentSurfaceType] = MappingProxyType({
+    "FacadeAssembly": "Facade",
+    "FlatRoofAssembly": "FlatRoof",
+    "FloorCeilingAssembly": "FloorCeiling",
+    "GroundSlabAssembly": "GroundSlab",
+    "PartitionAssembly": "Partition",
+    "AtticRoofAssembly": "AtticRoof",
+    "AtticFloorAssembly": "AtticFloor",
+    "ExternalFloorAssembly": "ExternalFloor",
+    "BasementCeilingAssembly": "BasementCeiling",
+    "GroundWallAssembly": "GroundWall",
+    "InternalMassAssembly": "InternalMass",
+})
+"""The surface type (`ConstructionAssemblyComponent.Type`) of the assembly in each SBEM slot."""
+
+_UMI_SLOT_FIELDS: Mapping[str, str] = MappingProxyType({
+    "Facade": "facade",
+    "Roof": "roof",
+    "Slab": "slab",
+    "Ground": "ground",
+    "Partition": "partition",
+})
+
+_ROUGHNESS_BY_LOWER: dict[str, MaterialRoughness] = {keyword.lower(): keyword for keyword in ROUGHNESS}
+_TYPE_BY_LOWER: dict[str, ConstructionMaterialType] = {kind.lower(): kind for kind in SBEM_MATERIAL_TYPES}
+_PER_VOLUME = "m3"
+
+for _upstream in ("material.environmental", "construction.environmental", "construction.adiabatic"):
+    declare_rule(_upstream)
+
+
+@dataclass
+class Findings:
+    """The losses and notes a translation step collects.
+
+    Attributes:
+        losses: What the target does not represent.
+        notes: Assumptions and defaults that lose nothing.
+    """
+
+    losses: list[Loss] = field(default_factory=list[Loss])
+    notes: list[Note] = field(default_factory=list[Note])
+
+    def lose(
+        self,
+        kind: LossKind,
+        subject: str,
+        location: str,
+        value: JsonValue,
+        rule_id: str,
+        reason: str,
+        *,
+        replacement: JsonValue = None,
+        upstream: str | None = None,
+    ) -> None:
+        """Record a loss."""
+        self.losses.append(
+            Loss(
+                kind=kind,
+                subject=subject,
+                location=location,
+                value=value,
+                replacement=replacement,
+                rule=rule_id,
+                reason=reason,
+                upstream=upstream,
+            )
+        )
+
+    def assume(self, subject: str, location: str, value: JsonValue, rule_id: str, reason: str) -> None:
+        """Record that a value the source lacks was filled by a stated rule."""
+        self.notes.append(
+            Note(kind=NoteKind.ASSUMED, subject=subject, location=location, value=value, rule=rule_id, reason=reason)
+        )
+
+
+def _pointer(location: str, key: str) -> str:
+    """Append a key to a JSON pointer."""
+    return f"{location}/{key.replace('~', '~0').replace('/', '~1')}"
+
+
+def _path(location: str, key: str) -> str:
+    """Append a field to an SBEM field path."""
+    return f"{location}.{key}" if location else key
+
+
+# --- Environmental fields -----------------------------------------------------------------
+
+
+@rule("material.carbon_per_m3", to="sbem")
+def carbon_per_m3(carbon_per_kg: float, density: float) -> float:
+    """Return embodied carbon per m³ from carbon per kg: `C_m3 = C_kg x density`.
+
+    Args:
+        carbon_per_kg: Embodied carbon, kg CO₂e/kg.
+        density: Density, kg/m³.
+
+    Returns:
+        Embodied carbon, kg CO₂e/m³.
+    """
+    return carbon_per_kg * density
+
+
+@rule("material.carbon_per_m3", to="umi")
+def carbon_per_kg(carbon_per_m3: float, density: float) -> float:
+    """Return embodied carbon per kg from carbon per m³: `C_kg = C_m3 / density`.
+
+    Args:
+        carbon_per_m3: Embodied carbon, kg CO₂e/m³.
+        density: Density, kg/m³.
+
+    Returns:
+        Embodied carbon, kg CO₂e/kg; 0 when there is no carbon, whatever the density.
+
+    Raises:
+        ValueError: The density is 0 and the carbon is not, so carbon per kg is undefined.
+    """
+    if carbon_per_m3 == 0.0:
+        return 0.0
+    if density == 0.0:
+        msg = f"embodied carbon of {carbon_per_m3!r} kg/m3 cannot be given per kg: the density is 0"
+        raise ValueError(msg)
+    return carbon_per_m3 / density
+
+
+@rule("material.cost_per_m3", to="sbem")
+def cost_per_m3(cost: float) -> float:
+    """Return a UMI material's cost as SBEM's cost per m³ (`RateUnit = "m3"`): unchanged."""
+    return cost
+
+
+@rule("material.cost_per_m3", to="umi")
+def cost_from_sbem(cost: float | None, rate_unit: str | None, density: float) -> float | None:
+    """Return an SBEM material's cost per m³, as UMI holds it.
+
+    Args:
+        cost: SBEM's `Cost`, per `rate_unit`; `None` means no cost.
+        rate_unit: SBEM's `RateUnit`; `None` is taken as per m³.
+        density: Density, kg/m³, to convert a cost per kg.
+
+    Returns:
+        Cost per m³, or `None` when the cost is per m² or per m, which needs a thickness the
+        material does not have.
+    """
+    if cost is None:
+        return 0.0
+    if rate_unit in (None, _PER_VOLUME):
+        return cost
+    if rate_unit == "kg":
+        return cost * density
+    return None
+
+
+# --- Materials ----------------------------------------------------------------------------
+
+
+def _roughness(value: str | None) -> MaterialRoughness | None:
+    """Return the EnergyPlus keyword a roughness names (case-insensitive), or `None`."""
+    return None if value is None else _ROUGHNESS_BY_LOWER.get(value.lower())
+
+
+def material_problems(material: OpaqueMaterial, pointer: str, template: str | None) -> list[Problem]:
+    """Return the range problems of an opaque material that this module's rules refuse.
+
+    Args:
+        material: The material.
+        pointer: Its JSON pointer in the library.
+        template: The building template affected, if any.
+
+    Returns:
+        A problem when `Roughness` is not one of EnergyPlus's six keywords; else nothing.
+    """
+    if _roughness(material.roughness) is not None:
+        return []
+    return [
+        Problem(
+            pointer=_pointer(pointer, "Roughness"),
+            template=template,
+            rule="range",
+            message=f"Roughness {material.roughness!r} is not one of {', '.join(ROUGHNESS)}",
+        )
+    ]
+
+
+@rule("material.properties", to="sbem")
+def material_to_sbem(
+    material: OpaqueMaterial, subject: str, location: str, findings: Findings
+) -> ConstructionMaterialComponent:
+    """Translate a UMI opaque material to an SBEM construction material.
+
+    Args:
+        material: The material.
+        subject: The template being read.
+        location: The material's JSON pointer.
+        findings: Collects the notes (type, temperature coefficient) and losses (carbon of a
+            material without density).
+
+    Returns:
+        The SBEM material.
+
+    Raises:
+        ValueError: `Roughness` is not one of the six keywords (`material_problems` reports it
+            beforehand).
+    """
+    roughness = _roughness(material.roughness)
+    if roughness is None:
+        msg = f"{location}: Roughness {material.roughness!r} is not one of {', '.join(ROUGHNESS)}"
+        raise ValueError(msg)
+    kind = _TYPE_BY_LOWER.get(material.category.lower())
+    if kind is None:
+        kind = "Other"
+        findings.assume(
+            subject,
+            _pointer(location, "Category"),
+            material.category,
+            "material.properties",
+            f"SBEM's material Type is Other: Category {material.category!r} names none of SBEM's 12 types.",
+        )
+    findings.assume(
+        subject,
+        _pointer(location, "TemperatureCoefficientThermalConductivity"),
+        0.0,
+        "material.properties",
+        "UMI has no TemperatureCoefficientThermalConductivity; SBEM's is set to 0 (constant conductivity).",
+    )
+    carbon = carbon_per_m3(material.embodied_carbon, material.density)
+    if material.density == 0.0 and material.embodied_carbon != 0.0:
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            _pointer(location, "EmbodiedCarbon"),
+            material.embodied_carbon,
+            "material.carbon_per_m3",
+            "SBEM holds embodied carbon per m3, and a material of density 0 has none per m3.",
+            replacement=0.0,
+        )
+    return ConstructionMaterialComponent(
+        Name=material.name or "",
+        Category=material.category,
+        Comment=material.comments,
+        DataSource=material.data_source,
+        Conductivity=material.conductivity,
+        Density=material.density,
+        Roughness=roughness,
+        SpecificHeat=material.specific_heat,
+        ThermalAbsorptance=material.thermal_emittance,
+        SolarAbsorptance=material.solar_absorptance,
+        VisibleAbsorptance=material.visible_absorptance,
+        TemperatureCoefficientThermalConductivity=0.0,
+        Type=kind,
+        Cost=cost_per_m3(material.cost),
+        EmbodiedCarbon=carbon,
+        RateUnit=_PER_VOLUME,
+    )
+
+
+def _environmental_to_umi(
+    component: ConstructionMaterialComponent, subject: str, location: str, findings: Findings
+) -> tuple[float, float]:
+    """Return UMI's cost and carbon per kg of an SBEM material, listing what cannot be converted."""
+    cost = cost_from_sbem(component.Cost, component.RateUnit, component.Density)
+    if cost is None:
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            _path(location, "Cost"),
+            component.Cost,
+            "material.cost_per_m3",
+            f"UMI holds cost per m3; a cost per {component.RateUnit} needs a thickness the material lacks.",
+            replacement=0.0,
+        )
+        cost = 0.0
+    carbon = component.EmbodiedCarbon or 0.0
+    if component.RateUnit == "kg":
+        per_kg = carbon
+    elif component.RateUnit in (None, _PER_VOLUME):
+        per_kg = carbon_per_kg(carbon, component.Density)
+    else:
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            _path(location, "EmbodiedCarbon"),
+            carbon,
+            "material.carbon_per_m3",
+            f"UMI holds carbon per kg; a carbon per {component.RateUnit} needs a thickness the material lacks.",
+            replacement=0.0,
+        )
+        per_kg = 0.0
+    return cost, per_kg
+
+
+@rule("material.properties", to="umi")
+def material_to_umi(
+    component: ConstructionMaterialComponent, subject: str, location: str, findings: Findings
+) -> OpaqueMaterial:
+    """Translate an SBEM construction material to a UMI opaque material.
+
+    The UMI `Category` is SBEM's `Category`, or the material `Type` when the category is unset,
+    so that reading the material back gives the same type.
+
+    Args:
+        component: The SBEM material.
+        subject: The archetype being written.
+        location: The material's SBEM field path.
+        findings: Collects the losses: a non-zero temperature coefficient, a type its category
+            does not name, the material life (UP-9), cost or carbon per m² or m.
+
+    Returns:
+        The UMI material.
+
+    Raises:
+        ValueError: The material has carbon per m³ and a density of 0.
+    """
+    category = component.Category if component.Category is not None else component.Type
+    if component.Type != "Other" and category.lower() != component.Type.lower():
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            _path(location, "Type"),
+            component.Type,
+            "material.properties",
+            f"UMI has no material type; Category {category!r} does not name it, so it reads back as Other.",
+            replacement="Other",
+        )
+    if component.TemperatureCoefficientThermalConductivity != 0.0:
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            _path(location, "TemperatureCoefficientThermalConductivity"),
+            component.TemperatureCoefficientThermalConductivity,
+            "material.properties",
+            "UMI materials have a constant conductivity.",
+            replacement=0.0,
+        )
+    if component.Life is not None:
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            _path(location, "Life"),
+            component.Life,
+            "material.environmental",
+            "UMI's life-cycle fields of a material have no SBEM counterpart yet.",
+            upstream="UP-9",
+        )
+    cost, carbon = _environmental_to_umi(component, subject, location, findings)
+    return OpaqueMaterial.model_validate({
+        "Name": component.Name,
+        "Category": category,
+        "Comments": component.Comment,
+        "DataSource": component.DataSource,
+        "Conductivity": component.Conductivity,
+        "Density": component.Density,
+        "SpecificHeat": component.SpecificHeat,
+        "Roughness": component.Roughness,
+        "ThermalEmittance": component.ThermalAbsorptance,
+        "SolarAbsorptance": component.SolarAbsorptance,
+        "VisibleAbsorptance": component.VisibleAbsorptance,
+        "Cost": cost,
+        "EmbodiedCarbon": carbon,
+    })
+
+
+# --- Constructions ------------------------------------------------------------------------
+
+
+@rule("construction.layers", to="sbem")
+def construction_to_sbem(
+    construction: OpaqueConstruction,
+    surface_type: ConstructionComponentSurfaceType,
+    subject: str,
+    location: str,
+    findings: Findings,
+) -> ConstructionAssemblyComponent:
+    """Translate a UMI opaque construction to an SBEM assembly, layers in order, outside first.
+
+    Args:
+        construction: The construction.
+        surface_type: Where SBEM uses the assembly (`Facade`, `FlatRoof`, …).
+        subject: The template being read.
+        location: The construction's JSON pointer.
+        findings: Collects the materials' notes and losses.
+
+    Returns:
+        The assembly, named as the construction.
+
+    Raises:
+        ValueError: A layer has no material, or a material's roughness is not a keyword.
+    """
+    layers: list[ConstructionLayerComponent] = []
+    for order, layer in enumerate(construction.layers):
+        where = _pointer(_pointer(location, "Layers"), str(order))
+        if layer.material is None:
+            msg = f"{where}: the layer has no material"
+            raise ValueError(msg)
+        material = material_to_sbem(layer.material, subject, _pointer(where, "Material"), findings)
+        layers.append(
+            ConstructionLayerComponent(Thickness=layer.thickness, LayerOrder=order, ConstructionMaterial=material)
+        )
+    return ConstructionAssemblyComponent(
+        Name=construction.name or "",
+        Category=construction.category,
+        Comment=construction.comments,
+        DataSource=construction.data_source,
+        Layers=layers,
+        Type=surface_type,
+    )
+
+
+@rule("construction.layers", to="umi")
+def construction_to_umi(
+    assembly: ConstructionAssemblyComponent, subject: str, location: str, findings: Findings
+) -> OpaqueConstruction:
+    """Translate an SBEM assembly to a UMI opaque construction, layers sorted by `LayerOrder`.
+
+    Args:
+        assembly: The assembly.
+        subject: The archetype being written.
+        location: The assembly's SBEM field path.
+        findings: Collects the losses: a vegetation layer, and the materials' losses.
+
+    Returns:
+        The construction.
+    """
+    if assembly.VegetationLayer is not None:
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            _path(location, "VegetationLayer"),
+            assembly.VegetationLayer,
+            "construction.layers",
+            "UMI constructions have no vegetation layer.",
+        )
+    layers = [
+        MaterialLayer[OpaqueMaterial](
+            Material=material_to_umi(
+                layer.ConstructionMaterial, subject, _path(location, f"Layers.{index}.ConstructionMaterial"), findings
+            ),
+            Thickness=layer.Thickness,
+        )
+        for index, layer in enumerate(sorted(assembly.Layers, key=lambda layer: layer.LayerOrder))
+    ]
+    return OpaqueConstruction.model_validate({
+        "Name": assembly.Name,
+        "Category": assembly.Category if assembly.Category is not None else "Uncategorized",
+        "Comments": assembly.Comment,
+        "DataSource": assembly.DataSource,
+        "Layers": layers,
+    })
+
+
+# --- Construction sets --------------------------------------------------------------------
+
+
+@rule("construction.sets", to="sbem")
+def assemblies_to_sbem(
+    constructions: ZoneConstructions,
+    subject: str,
+    location: str,
+    findings: Findings,
+    *,
+    internal_mass: ConstructionAssemblyComponent | None = None,
+    internal_mass_exposed: float | None = None,
+) -> EnvelopeAssemblyComponent:
+    """Translate a UMI construction set to SBEM's envelope assemblies.
+
+    The five UMI slots fill the SBEM slots of the same name (`SET_SLOTS`); SBEM's five other
+    slots are filled from their nearest UMI slot (`FILLED_SLOTS`), each noted. Internal mass
+    comes from the zone, not the set (`mass.internal`), and is passed through.
+
+    Args:
+        constructions: The construction set.
+        subject: The template being read.
+        location: The set's JSON pointer.
+        findings: Collects the notes and the materials' losses.
+        internal_mass: The zone's internal-mass assembly, if any.
+        internal_mass_exposed: Its exposed area per floor area.
+
+    Returns:
+        The envelope assemblies, named as the set.
+
+    Raises:
+        ValueError: A slot of the set is empty (validation reports it beforehand).
+    """
+    by_umi_slot: dict[str, OpaqueConstruction] = {}
+    for umi_slot, attribute in _UMI_SLOT_FIELDS.items():
+        construction = cast("OpaqueConstruction | None", getattr(constructions, attribute))
+        if construction is None:
+            msg = f"{location}: the construction set has no {umi_slot} construction"
+            raise ValueError(msg)
+        by_umi_slot[umi_slot] = construction
+    slots: dict[str, ConstructionAssemblyComponent] = {}
+    for umi_slot, sbem_slot in SET_SLOTS.items():
+        slots[sbem_slot] = construction_to_sbem(
+            by_umi_slot[umi_slot], SLOT_SURFACE_TYPES[sbem_slot], subject, _pointer(location, umi_slot), findings
+        )
+    for sbem_slot, umi_slot in FILLED_SLOTS.items():
+        source = slots[SET_SLOTS[umi_slot]]
+        slots[sbem_slot] = source.model_copy(update={"Type": SLOT_SURFACE_TYPES[sbem_slot]})
+        findings.assume(
+            subject,
+            _pointer(location, umi_slot),
+            source.Name,
+            "construction.sets",
+            f"UMI has no {sbem_slot}; it is filled from the {umi_slot} construction.",
+        )
+    return EnvelopeAssemblyComponent(
+        Name=constructions.name or "",
+        Category=constructions.category,
+        Comment=constructions.comments,
+        DataSource=constructions.data_source,
+        InternalMassAssembly=internal_mass,
+        InternalMassExposedAreaPerArea=internal_mass_exposed,
+        **slots,  # pyright: ignore[reportArgumentType]
+    )
+
+
+def _same_assembly(a: ConstructionAssemblyComponent, b: ConstructionAssemblyComponent) -> bool:
+    """Tell whether two assemblies are equal but for the surface type."""
+    return a.model_dump(exclude={"Type"}) == b.model_dump(exclude={"Type"})
+
+
+@rule("construction.sets", to="umi")
+def assemblies_to_umi(
+    envelope: EnvelopeAssemblyComponent, subject: str, location: str, findings: Findings
+) -> ZoneConstructions:
+    """Translate SBEM's envelope assemblies to a UMI construction set.
+
+    Args:
+        envelope: The envelope assemblies.
+        subject: The archetype being written.
+        location: The assemblies' SBEM field path.
+        findings: Collects the losses: each slot of `FILLED_SLOTS` that differs from the slot
+            it would be filled from, and the constructions' losses. Internal mass belongs to the
+            zone (`mass.internal`) and is not translated here.
+
+    Returns:
+        The construction set, named as the assemblies.
+    """
+    for sbem_slot, umi_slot in FILLED_SLOTS.items():
+        filled = cast("ConstructionAssemblyComponent", getattr(envelope, sbem_slot))
+        source = cast("ConstructionAssemblyComponent", getattr(envelope, SET_SLOTS[umi_slot]))
+        if not _same_assembly(filled, source):
+            findings.lose(
+                LossKind.LOST,
+                subject,
+                _path(location, sbem_slot),
+                filled.Name,
+                "construction.sets",
+                f"UMI has no {sbem_slot}; it reads back as the {umi_slot} construction.",
+                replacement=source.Name,
+            )
+    slots: dict[str, OpaqueConstruction] = {
+        umi_slot: construction_to_umi(
+            cast("ConstructionAssemblyComponent", getattr(envelope, sbem_slot)),
+            subject,
+            _path(location, sbem_slot),
+            findings,
+        )
+        for umi_slot, sbem_slot in SET_SLOTS.items()
+    }
+    return ZoneConstructions.model_validate({
+        "Name": envelope.Name,
+        "Category": envelope.Category if envelope.Category is not None else "Uncategorized",
+        "Comments": envelope.Comment,
+        "DataSource": envelope.DataSource,
+        **slots,
+    })

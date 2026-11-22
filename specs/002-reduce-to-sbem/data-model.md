@@ -60,6 +60,7 @@ One per EnergyPlus zone, as EnergyPlus counts it.
 | `name` | `str` | `Zones.ZoneName` |
 | `multiplier` | `int` | `Zones.Multiplier × Zones.ListMultiplier` (FR-012) |
 | `floor_area` | `float` | `Zones.FloorArea` (one copy) |
+| `min_z` | `float` | `Zones.MinimumZ`, for the number of storeys (R6) |
 | `volume` | `float` | `Zones.Volume` |
 | `surfaces` | `tuple[SurfaceRecord, ...]` | `Surfaces` table, with envelope figures from tabular Envelope Summary |
 | `gains` | `tuple[GainRecord, ...]` | `Nominal*` tables |
@@ -211,6 +212,7 @@ identifier for every parameter.
 | Specific fan power (UP-8) | `fans.energy_per_volume` | R19: `energy / volume`; × detailed volume = detailed fan energy |
 | Ideal-loads supply-air temperature limits (UP-8) | `fans.effective_supply_delta` | R19: setpoint ± `delivered_in_mode / (ρ·c_p·volume_in_mode)` |
 | Attic and basement assumptions | `zone.attic`, `zone.basement` | R8 |
+| Number of storeys | `geometry.storeys` | R6: conditioned floor area ÷ floor area of the lowest level, rounded, at least 1 |
 
 **Validation.** The result must validate as epinterface's archetype model (FR-003). A
 validation failure is a bug, raised as `ReductionError` with epinterface's message. It is never
@@ -230,14 +232,16 @@ A pydantic model whose JSON Schema is published (contract:
 | `parameters[]` | (group, SBEM field path, value, rule id) for every parameter |
 | `excluded_zones[]` | name, floor area, role, reason, envelope assignment |
 | `small_group_merges[]` | merged key, into key, share, distance |
-| `not_represented[]` | feature, affected groups, magnitude, the parameter it was folded into (or none) |
+| `not_represented[]` | feature, affected groups, magnitude, the parameter it was folded into (or none); from the folding modules and from R20's `UNSUPPORTED_FEATURES` |
 | `merged_distinctions[]` | for a coarser layout: the space-use or exposure distinctions lost (US2) |
 | `unattributed_energy` | standby and pilot consumption by fuel (FR-022) |
+| `building` | conditioned floor area and the unrounded storey ratio (R6), kept so `merge` needs no model |
 
 ## ComparisonResult (FR-027, FR-028)
 
 | Field | Type |
 |---|---|
 | `rows[]` | `metric` (total site, end use × fuel, peak heating, peak cooling), `detailed`, `archetype`, `difference`, `relative`, `target`, `within_target: bool \| None` (None where the SC-002/SC-003 significance thresholds exclude the metric) |
+| `rows[]` kinds | Every end use of FR-027 appears as reported, pumps and heat rejection included, with `within_target = None` for those two because the archetype has no such end use. Heating and cooling appear twice: as reported, and with pumps and heat rejection added by hourly delivered mode (R13), the row SC-002 judges. |
 | `targets` | `AcceptanceTargets` (defaults: SC-001 5 %, SC-002 10 % above a 5 % share, SC-003 15 % above a 10 % share) |
 | `comparable` | always true on a returned result; otherwise `NotComparableError` lists the differing items |

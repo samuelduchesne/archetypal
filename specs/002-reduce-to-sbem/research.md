@@ -277,6 +277,11 @@ totals exactly and makes merging commute with reducing.
   SBEM has one `wwr`, so per-orientation fields are an UP-2 requirement. Until UP-2 lands, the
   archetype carries the overall ratio and the report carries the orientation split as "not
   represented".
+- **Storeys** (FR-024). The number of storeys is the conditioned floor area divided by the
+  floor area of the lowest level: the conditioned zones whose `Zones.MinimumZ` is within
+  0.1 m of the lowest, multipliers applied. The archetype takes the ratio rounded to the
+  nearest integer (at least 1); the report keeps the unrounded ratio. Dividing areas, rather
+  than counting levels, stays right when one typical floor is drawn with a zone multiplier.
 - **Excluded zones.** An excluded zone's envelope (FR-013) is assigned to the conditioned
   zones it shares interzone surfaces with, in proportion to shared area. The report records
   the assignment.
@@ -704,9 +709,41 @@ was rejected (roadmap C-17).
   (multipliers, input-method normalisation, renames across releases). The typed SQLite
   readers of UP-7 give both properties.
 
+## R20 — Features SBEM cannot express (FR-026)
+
+Numbered after R19 so earlier references stay valid.
+
+**Decision.**
+
+- archetypal keeps an explicit table, `UNSUPPORTED_FEATURES`, of EnergyPlus object types with
+  an effect SBEM cannot hold, each with the parameter its effect is folded into, or none. It
+  starts with:
+  - daylighting (`Daylighting:Controls`, `Daylighting:ReferencePoint`);
+  - window shading (`WindowShadingControl`, `WindowMaterial:Shade`, `WindowMaterial:Blind`);
+  - exterior shading (`Shading:*`);
+  - gains with no SBEM counterpart (`ElectricEquipment:ITE:AirCooled`,
+    `SwimmingPool:Indoor`, `Refrigeration:*`);
+  - exterior lights and equipment (`Exterior:Lights`, `Exterior:FuelEquipment`);
+  - earth tubes, cooling towers serving process loads and `ZoneAirMassFlowConservation`.
+- Each entry is read with a literal key through idfkit's typed interface (R18). Any object
+  found is listed in `not_represented[]` with the zones it affects and, where results give
+  it, its annual energy.
+- Features already handled elsewhere (fans before UP-8, orientation, infiltration schedule,
+  heat-recovery effectiveness, holidays) are recorded by the module that folds them.
+- The table is extended whenever a reference building shows an unlisted feature; the
+  reference tier fails when a building's site energy has an end use the archetype cannot
+  produce and no entry explains it.
+
+**Rationale.** FR-026 forbids silent drops. A table keeps every decision visible and testable,
+and reading each type by literal key respects R18.
+
+**Alternatives considered.** *List every object type in the model and subtract what reduction
+reads.* Rejected: it needs `objects_by_type` or `collections`, which R18 bans, and would flag
+hundreds of irrelevant types (output requests, simulation controls).
+
 ## Spec feedback
 
-Points to raise in `/speckit-analyze` (constitution V: the plan satisfies the spec, it does
+Points raised for `/speckit-analyze` (constitution V: the plan satisfies the spec, it does
 not rewrite it):
 
 - ~~**F-1 — SC-002 and end uses SBEM cannot produce.**~~ **Resolved (2026-11-21).**
@@ -715,7 +752,7 @@ not rewrite it):
   - FR-022a and R19 give SBEM a fan end use through specific fan power (UP-8);
   - SC-002 adds pumps and heat rejection to the heating and cooling they serve;
   - FR-022 and R12 add the dependence of efficiency on outdoor temperature (UP-8).
-- **F-2 — FR-023 says schedules are "expressed as `Schedule:Compact`", but SBEM stores
-  `YearComponent`s.** R5 emits both, and conserves annual totals exactly. Day types beyond
-  weekdays (holidays, design days) need UP-2. The spec could say "expressed in a form
-  convertible to `Schedule:Compact`".
+- ~~**F-2 — FR-023 says schedules are "expressed as `Schedule:Compact`", but SBEM stores
+  `YearComponent`s.**~~ **Resolved (2026-11-22, `/speckit-analyze`).** FR-023 now asks for a
+  form that converts without loss to `Schedule:Compact`, conserves monthly energy (what R5's
+  projection guarantees) and lists the day types the archetype cannot hold until UP-2.

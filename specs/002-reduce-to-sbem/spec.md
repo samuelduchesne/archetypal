@@ -261,10 +261,12 @@ divided by the group's matching basis.
   both be conserved, and merged like FR-022's totals. The air volume the archetype moves MUST
   follow from the same delivered energy and supply-air temperatures as the detailed model, so
   that the archetype's fan energy matches the detailed model's.
-- **FR-023 — Schedules**: every schedule in the archetype MUST be expressed as an EnergyPlus
-  `Schedule:Compact` that keeps the day types present in the source (weekdays, weekends,
-  holidays, design days) and reproduces the conserved hourly profile of FR-015, FR-018,
-  FR-019 and FR-021.
+- **FR-023 — Schedules**: every schedule in the archetype MUST be expressed in a form that
+  converts without loss to an EnergyPlus `Schedule:Compact`, and users MUST be able to obtain
+  that `Schedule:Compact`. Each schedule MUST conserve, month by month, the energy of the
+  hourly profiles of FR-015, FR-018, FR-019 and FR-021, and keep the day types present in the
+  source (weekdays, weekends, holidays, design days) that the archetype can hold. Day types it
+  cannot hold MUST be listed in the report as not represented (FR-026).
 - **FR-024 — Geometry characteristics**: the archetype MUST carry the geometric characteristics
   needed to simulate it: floor-area share of each group, envelope and window areas by
   orientation relative to floor area, and number of storeys. These describe the building;

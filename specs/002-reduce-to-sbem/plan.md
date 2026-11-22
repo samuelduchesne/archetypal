@@ -81,8 +81,8 @@ Internal budget: schedule evaluation ≤ 7 s on the largest model (R5).
 - largest model: the hospital and large-office prototypes, with tens of zones and roughly 150
   schedules.
 
-No item is left as NEEDS CLARIFICATION. Every unknown is resolved in research.md: R1–R19, plus
-spec feedback F-1 (now resolved) and F-2.
+No item is left as NEEDS CLARIFICATION. Every unknown is resolved in research.md: R1–R20, plus
+spec feedback F-1 and F-2 (both resolved).
 
 ## Constitution Check
 
@@ -135,8 +135,8 @@ only v3's PyPI release.
 | UP-7 (new) | idfkit | Typed readers for EnergyPlus's static SQLite tables (`Zones`, `Surfaces`, `Constructions`, `ConstructionLayers`, `Materials`, `Nominal*`), in place of raw `SQLResult.query` rows. | No; bridged by `_sql_tables.py` |
 | UP-8 (new) | epinterface | SBEM energy conversion beyond a constant COP, still on ideal loads: a specific fan power and ideal-loads supply-air temperature limits, with fans reported as their own end use; and a COP that depends on outdoor temperature (R12, R19). | For SC-002's fan target and so 002's release. Reduction is built without it: fans are folded into `DistributionCOP` and reported as not represented until it lands. |
 
-The roadmap is updated with UP-6, UP-7 and UP-8, the broader UP-2 and UP-5 scope, and UP-3 marked
-as met.
+The roadmap is updated with UP-6, UP-7 and UP-8 and the broader UP-2 and UP-5 scope. UP-3 is
+open: it gates only v3's PyPI release (roadmap C-18).
 
 ## Project Structure
 
@@ -145,7 +145,7 @@ as met.
 ```text
 specs/002-reduce-to-sbem/
 ├── plan.md              # This file
-├── research.md          # Phase 0: decisions R1–R19, spec feedback F-1 (resolved), F-2
+├── research.md          # Phase 0: decisions R1–R20, spec feedback F-1 and F-2 (resolved)
 ├── data-model.md        # Phase 1: entities, ledger, derivation rules, pipeline states
 ├── quickstart.md        # Phase 1: validation scenarios
 ├── contracts/
@@ -183,6 +183,7 @@ src/archetypal/
 │   ├── hotwater.py          # FR-021 (R11)
 │   ├── efficiency.py        # FR-022: seasonal COP, outdoor-temperature slope (R12)
 │   ├── fans.py              # FR-022a: specific fan power, supply-air temperatures (R19)
+│   ├── features.py          # FR-026: UNSUPPORTED_FEATURES table, read by literal keys (R20)
 │   ├── to_sbem.py           # ledger → epinterface components (one function per SBEM component)
 │   ├── report.py            # ReductionReport pydantic models, JSON Schema
 │   └── _bridges.py          # temporary upstream bridges (UP-6), each with its removal condition

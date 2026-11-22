@@ -201,9 +201,7 @@ def _add_surface(
         wind_exposure="WindExposed" if exposed else "NoWind",
         view_factor_to_ground="Autocalculate",
         number_of_vertices=len(verts),
-        vertices=[
-            {"vertex_x_coordinate": x, "vertex_y_coordinate": y, "vertex_z_coordinate": z} for x, y, z in verts
-        ],
+        vertices=[{"vertex_x_coordinate": x, "vertex_y_coordinate": y, "vertex_z_coordinate": z} for x, y, z in verts],
     )
 
 
@@ -1198,7 +1196,7 @@ def add_pthp(m: Model, zone: str) -> None:
     _equipment(m, zone, "ZoneHVAC:PackagedTerminalHeatPump", p, inlet=inlet, exhaust=exhaust)
 
 
-def add_vav_system(m: Model, zones: Sequence[str], plenums: dict[str, Sequence[str]]) -> tuple[str, list[str]]:  # noqa: PLR0915
+def add_vav_system(m: Model, zones: Sequence[str], plenums: dict[str, Sequence[str]]) -> tuple[str, list[str]]:
     """A VAV air loop: heat recovery, economiser, chilled-water cooling, supply fan, hot-water reheat.
 
     ``plenums`` maps each return plenum zone to the zones that return through it; the other
@@ -1220,7 +1218,10 @@ def add_vav_system(m: Model, zones: Sequence[str], plenums: dict[str, Sequence[s
     )
     cooling_coil = f"{loop} Cooling Coil"
     # Outdoor-air system: heat recovery (modulated to the mixed-air setpoint), then the
-    # mixer; differential dry-bulb economiser on the controller.
+    # mixer. The differential dry-bulb economiser acts by bypassing the heat exchanger
+    # (MinimumFlowWithBypass): outdoor air stays at the minimum, so the total outdoor air is
+    # the same whether the typical floor is multiplied or drawn ten times, and the heat
+    # exchanger never sees flows far from its nominal flow.
     m.add("OutdoorAir:NodeList", nodes=[{"node_or_nodelist_name": oa_in}])
     m.add(
         "HeatExchanger:AirToAir:SensibleAndLatent",
@@ -1259,12 +1260,12 @@ def add_vav_system(m: Model, zones: Sequence[str], plenums: dict[str, Sequence[s
         minimum_outdoor_air_flow_rate="Autosize",
         maximum_outdoor_air_flow_rate="Autosize",
         economizer_control_type="DifferentialDryBulb",
-        economizer_control_action_type="ModulateFlow",
+        economizer_control_action_type="MinimumFlowWithBypass",
         economizer_maximum_limit_dry_bulb_temperature=23.9,
         lockout_type="NoLockout",
         minimum_limit_type="FixedMinimum",
         minimum_outdoor_air_schedule_name="HVAC Operation",
-        heat_recovery_bypass_control_type="BypassWhenOAFlowGreaterThanMinimum",
+        heat_recovery_bypass_control_type="BypassWhenWithinEconomizerLimits",
     )
     m.add(
         "AirLoopHVAC:ControllerList",
@@ -1345,13 +1346,16 @@ def add_vav_system(m: Model, zones: Sequence[str], plenums: dict[str, Sequence[s
         ],
     )
     m.add("BranchList", f"{loop} Branches", branches=[{"branch_name": f"{loop} Main Branch"}])
-    always = ("Through: 12/31", "For: AllDays", "Until: 24:00")
-    _compact(m, "VAV Supply Air Temperature", "Temperature", (*always, 12.8))
+    # Supply-air temperature reset on outdoor air (warmer supply in winter, when the economiser
+    # cannot add outdoor air); the mixed-air manager puts setpoints on the upstream nodes.
     m.add(
-        "SetpointManager:Scheduled",
-        f"{loop} Supply Air Temperature Manager",
+        "SetpointManager:OutdoorAirReset",
+        f"{loop} Supply Air Temperature Reset",
         control_variable="Temperature",
-        schedule_name="VAV Supply Air Temperature",
+        setpoint_at_outdoor_low_temperature=16.0,
+        outdoor_low_temperature=0.0,
+        setpoint_at_outdoor_high_temperature=12.8,
+        outdoor_high_temperature=15.6,
         setpoint_node_or_nodelist_name=supply,
     )
     m.add(
@@ -1439,9 +1443,10 @@ def add_vav_system(m: Model, zones: Sequence[str], plenums: dict[str, Sequence[s
             outlet_node_name=f"{plenum} Outlet Node",
             nodes=[{"inlet_node_name": f"{z} Return Node"} for z in served],
         )
-        return_components.append(
-            {"component_object_type": "AirLoopHVAC:ReturnPlenum", "component_name": f"{plenum} Return Plenum"}
-        )
+        return_components.append({
+            "component_object_type": "AirLoopHVAC:ReturnPlenum",
+            "component_name": f"{plenum} Return Plenum",
+        })
         mixer_in.append(f"{plenum} Outlet Node")
     mixer_in += [f"{z} Return Node" for z in zones if z not in via_plenum]
     m.add(
@@ -1450,7 +1455,10 @@ def add_vav_system(m: Model, zones: Sequence[str], plenums: dict[str, Sequence[s
         outlet_node_name=f"{loop} Return Path Outlet Node",
         nodes=[{"inlet_node_name": n} for n in mixer_in],
     )
-    return_components.append({"component_object_type": "AirLoopHVAC:ZoneMixer", "component_name": f"{loop} Return Mixer"})
+    return_components.append({
+        "component_object_type": "AirLoopHVAC:ZoneMixer",
+        "component_name": f"{loop} Return Mixer",
+    })
     m.add(
         "AirLoopHVAC:ReturnPath",
         f"{loop} Return Path",
@@ -1607,7 +1615,11 @@ def add_hot_water_loop(m: Model, coils: Sequence[str]) -> None:
         schedule_name="HW Supply Temperature",
         setpoint_node_or_nodelist_name=f"{loop} Supply Outlet",
     )
-    m.add("PlantEquipmentList", "HW Equipment", equipment=[{"equipment_object_type": "Boiler:HotWater", "equipment_name": "Boiler"}])
+    m.add(
+        "PlantEquipmentList",
+        "HW Equipment",
+        equipment=[{"equipment_object_type": "Boiler:HotWater", "equipment_name": "Boiler"}],
+    )
     m.add(
         "PlantEquipmentOperation:HeatingLoad",
         "HW Heating Operation",
@@ -1865,7 +1877,9 @@ def add_service_hot_water(m: Model, uses: Sequence[WaterUse]) -> None:
             ("WaterHeater:Mixed", "Water Heater", "SHW Pump Outlet", f"{loop} Supply Outlet"),
         ],
     )
-    _plant_demand(m, loop, [("WaterUse:Connections", "SHW Connections", "SHW Connections Inlet", "SHW Connections Outlet")])
+    _plant_demand(
+        m, loop, [("WaterUse:Connections", "SHW Connections", "SHW Connections Inlet", "SHW Connections Outlet")]
+    )
     _plant_loop(m, loop, f"{loop} Supply Branch", f"{loop} Supply Outlet", (10.0, 82.0), 0.002)
     m.add(
         "SetpointManager:Scheduled",

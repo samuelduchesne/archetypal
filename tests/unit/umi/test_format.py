@@ -9,7 +9,7 @@ from enum import Enum, IntEnum
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 import archetypal.umi
 from archetypal.umi import _format
@@ -54,7 +54,7 @@ def model_for(basilisk_class: str) -> type[_format.FormatModel]:
     return model
 
 
-def aliases(model: type[BaseModel]) -> set[str]:
+def aliases(model: type[_format.FormatModel]) -> set[str]:
     return {field.alias or name for name, field in model.model_fields.items()}
 
 

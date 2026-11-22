@@ -10,11 +10,13 @@ from typing import TYPE_CHECKING, cast, get_args
 import pytest
 from pydantic import BaseModel
 
-from archetypal.errors import Problem, UmiFormatError
+from archetypal.errors import UmiFormatError
 from archetypal.umi import _format, _refs
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from archetypal.errors import Problem
 
 UMI = Path(__file__).parents[2] / "fixtures" / "umi"
 SAMPLES = {

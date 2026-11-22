@@ -1149,42 +1149,14 @@ Construction,
   Gypsum;                    !- Layer 3
 
 Construction,
-  Basement Wall,             !- Name
-  Concrete 200mm,            !- Outside Layer
-  Wall Insulation;           !- Layer 2
-
-Construction,
   Roof,                      !- Name
   Roof Membrane,             !- Outside Layer
   Roof Insulation,           !- Layer 2
   Metal Decking;             !- Layer 3
 
 Construction,
-  Attic Roof,                !- Name
-  Roof Membrane,             !- Outside Layer
-  Plywood;                   !- Layer 2
-
-Construction,
-  Attic Floor,               !- Name
-  Ceiling Insulation,        !- Outside Layer
-  Gypsum;                    !- Layer 2
-
-Construction,
-  Attic Floor Reversed,      !- Name
-  Gypsum,                    !- Outside Layer
-  Ceiling Insulation;        !- Layer 2
-
-Construction,
   Ground Slab,               !- Name
   Concrete 200mm;            !- Outside Layer
-
-Construction,
-  Interior Slab,             !- Name
-  Concrete 150mm;            !- Outside Layer
-
-Construction,
-  Drop Ceiling,              !- Name
-  Acoustic Tile;             !- Outside Layer
 
 Construction,
   Interior Wall,             !- Name
@@ -1228,7 +1200,7 @@ Curve:Biquadratic,
 
 Curve:Biquadratic,
   Defrost EIR fT,            !- Name
-  0.1528,                    !- Coefficient1 Constant
+  1,                         !- Coefficient1 Constant
   0,                         !- Coefficient2 X
   0,                         !- Coefficient3 X 2
   0,                         !- Coefficient4 Y
@@ -1745,17 +1717,17 @@ Output:Variable,
 
 Output:Variable,
   *,                         !- Key Value
+  Site Outdoor Air Drybulb Temperature, !- Variable Name
+  Hourly;                    !- Reporting Frequency
+
+Output:Variable,
+  *,                         !- Key Value
   Fan Electricity Energy,    !- Variable Name
   Hourly;                    !- Reporting Frequency
 
 Output:Variable,
   *,                         !- Key Value
   Fan Air Mass Flow Rate,    !- Variable Name
-  Hourly;                    !- Reporting Frequency
-
-Output:Variable,
-  *,                         !- Key Value
-  Site Outdoor Air Drybulb Temperature, !- Variable Name
   Hourly;                    !- Reporting Frequency
 
 Output:Variable,
@@ -2189,8 +2161,8 @@ SizingPeriod:DesignDay,
   ASHRAEClearSky,            !- Solar Model Indicator
   ,                          !- Beam Solar Day Schedule Name
   ,                          !- Diffuse Solar Day Schedule Name
-  ,                          !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub 
-  ,                          !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud 
+  ,                          !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub
+  ,                          !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud
   0;                         !- Sky Clearness
 
 SizingPeriod:DesignDay,
@@ -2217,8 +2189,8 @@ SizingPeriod:DesignDay,
   ASHRAETau,                 !- Solar Model Indicator
   ,                          !- Beam Solar Day Schedule Name
   ,                          !- Diffuse Solar Day Schedule Name
-  0.455,                     !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub 
-  2.05;                      !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud 
+  0.455,                     !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub
+  2.05;                      !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud
 
 Space,
   North_Office_Space,        !- Name

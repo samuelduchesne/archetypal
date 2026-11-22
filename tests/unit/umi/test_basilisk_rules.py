@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
+
+from archetypal.umi import _refs
 
 if TYPE_CHECKING:
     from ...umi import basilisk_rules
@@ -21,6 +24,7 @@ else:
     _spec.loader.exec_module(basilisk_rules)
 
 UMI = Path(__file__).parents[2] / "fixtures" / "umi"
+Json = dict[str, object]
 SAMPLES = ["BostonTemplateLibrary_2.json", "BostonTemplateLibrary_nodup.json", "umi_samples_BostonTemplateLibrary.json"]
 
 
@@ -87,43 +91,53 @@ def test_not_json_fails_check_1() -> None:
     assert checks(UMI / "edge" / "legacy.xml") == {1}
 
 
+def objects(value: object) -> list[Json]:
+    assert isinstance(value, list)
+    return cast("list[Json]", value)
+
+
+def shared_zone() -> Json:
+    return basilisk_rules.parse((UMI / "edge" / "shared_zone.json").read_text(encoding="utf-8"))
+
+
 def test_component_reachable_but_not_in_its_collection_fails_check_3() -> None:
     # Basilisk's OrphanedComponents() misses a zone missing from `Zones` (research R15 (b)).
-    text = (UMI / "edge" / "shared_zone.json").read_text(encoding="utf-8")
-    library = basilisk_rules.parse(text)
-    zones = library["Zones"]
-    assert isinstance(zones, list)
-    templates = library["BuildingTemplates"]
-    assert isinstance(templates, list)
-    template = templates[0]
-    assert isinstance(template, dict)
-    template["Core"] = zones.pop()
-    template["Perimeter"] = {"$ref": template["Core"]["$id"]}  # pyright: ignore[reportIndexIssue, reportArgumentType, reportUnknownArgumentType]
+    library = shared_zone()
+    zone = objects(library["Zones"]).pop()
+    template = objects(library["BuildingTemplates"])[0]
+    template["Core"] = zone
+    template["Perimeter"] = {"$ref": zone["$id"]}
     failures = basilisk_rules.check_library(library)
-    assert {f.check for f in failures} == {3}
-    assert "is not in Zones" in failures[0].message
+    assert [f.check for f in failures] == [3]
+    assert failures[0].message == (
+        'ZoneDefinition "Office perimeter" at BuildingTemplates[0].Perimeter is not in Zones'
+    )
 
 
 def test_orphaned_component_fails_check_3() -> None:
     # A year schedule defined inline in a zone's loads and in no collection.
-    text = (UMI / "edge" / "shared_zone.json").read_text(encoding="utf-8")
-    library = basilisk_rules.parse(text)
-    years = library["YearSchedules"]
-    assert isinstance(years, list)
-    year = years[0]
-    assert isinstance(year, dict)
-    loads = library["ZoneLoads"]
-    assert isinstance(loads, list)
-    first = loads[0]
-    assert isinstance(first, dict)
-    library["YearSchedules"] = years[1:]
-    rest = [v for k, v in first.items() if k != "OccupancySchedule"]
-    assert rest
+    library = shared_zone()
+    year = dict(objects(library["YearSchedules"])[0])
+    year["$id"] = "999"
+    year["Name"] = "Inline"
+    objects(library["ZoneLoads"])[0]["OccupancySchedule"] = year
     failures = basilisk_rules.check_library(library)
-    assert 3 in {f.check for f in failures}
-    assert any("OrphanedComponents() lists YearSchedule" in f.message for f in failures)
+    assert {f.check for f in failures} == {3}
+    messages = [f.message for f in failures]
+    assert 'OrphanedComponents() lists YearSchedule "Inline"' in messages
+    assert any(
+        m.startswith('YearSchedule "Inline" at BuildingTemplates[0].') and m.endswith(" is not in YearSchedules")
+        for m in messages
+    )
 
 
 def test_format_matches_the_harness() -> None:
     failure = basilisk_rules.Failure(1, "/X: problem")
     assert str(failure) == "check 1 refs: /X: problem"
+
+
+@pytest.mark.parametrize("name", SAMPLES)
+def test_libraries_written_by_the_format_model_pass(name: str) -> None:
+    text = (UMI / name).read_text(encoding="utf-8-sig")
+    written = _refs.dump_library(_refs.resolve(json.loads(text), name).library)
+    assert basilisk_rules.check_library(json.loads(json.dumps(written))) == []

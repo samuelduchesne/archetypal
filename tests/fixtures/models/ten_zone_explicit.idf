@@ -12469,7 +12469,7 @@ Controller:OutdoorAir,
   Autosize,                  !- Minimum Outdoor Air Flow Rate
   Autosize,                  !- Maximum Outdoor Air Flow Rate
   DifferentialDryBulb,       !- Economizer Control Type
-  ModulateFlow,              !- Economizer Control Action Type
+  MinimumFlowWithBypass,     !- Economizer Control Action Type
   23.9,                      !- Economizer Maximum Limit Dry Bulb Temperature
   ,                          !- Economizer Maximum Limit Enthalpy
   ,                          !- Economizer Maximum Limit Dewpoint Temperature
@@ -12486,7 +12486,7 @@ Controller:OutdoorAir,
   ,                          !- Humidistat Control Zone Name
   ,                          !- High Humidity Outdoor Air Flow Ratio
   ,                          !- Control High Indoor Humidity Based On Outdoor Humidity Ratio
-  BypassWhenOAFlowGreaterThanMinimum; !- Heat Recovery Bypass Control Type
+  BypassWhenWithinEconomizerLimits; !- Heat Recovery Bypass Control Type
 
 Controller:WaterCoil,
   VAV Cooling Coil Controller, !- Name
@@ -14674,14 +14674,6 @@ Schedule:Compact,
   1;                         !- Field 18
 
 Schedule:Compact,
-  VAV Supply Air Temperature, !- Name
-  Temperature,               !- Schedule Type Limits Name
-  Through: 12/31,            !- Field
-  For: AllDays,              !- Field 2
-  Until: 24:00,              !- Field 3
-  12.8;                      !- Field 4
-
-Schedule:Compact,
   CHW Supply Temperature,    !- Name
   Temperature,               !- Schedule Type Limits Name
   Through: 12/31,            !- Field
@@ -14787,10 +14779,13 @@ SetpointManager:MixedAir,
   VAV Supply Outlet Node,    !- Fan Outlet Node Name
   VAV Mixed Air Setpoint Nodes; !- Setpoint Node Or Nodelist Name
 
-SetpointManager:Scheduled,
-  VAV Supply Air Temperature Manager, !- Name
+SetpointManager:OutdoorAirReset,
+  VAV Supply Air Temperature Reset, !- Name
   Temperature,               !- Control Variable
-  VAV Supply Air Temperature, !- Schedule Name
+  16,                        !- Setpoint At Outdoor Low Temperature
+  0,                         !- Outdoor Low Temperature
+  12.8,                      !- Setpoint At Outdoor High Temperature
+  15.6,                      !- Outdoor High Temperature
   VAV Supply Outlet Node;    !- Setpoint Node Or Nodelist Name
 
 SetpointManager:Scheduled,
@@ -15397,8 +15392,8 @@ SizingPeriod:DesignDay,
   ASHRAEClearSky,            !- Solar Model Indicator
   ,                          !- Beam Solar Day Schedule Name
   ,                          !- Diffuse Solar Day Schedule Name
-  ,                          !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub 
-  ,                          !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud 
+  ,                          !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub
+  ,                          !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud
   0;                         !- Sky Clearness
 
 SizingPeriod:DesignDay,
@@ -15425,8 +15420,8 @@ SizingPeriod:DesignDay,
   ASHRAETau,                 !- Solar Model Indicator
   ,                          !- Beam Solar Day Schedule Name
   ,                          !- Diffuse Solar Day Schedule Name
-  0.455,                     !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub 
-  2.05;                      !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud 
+  0.455,                     !- Ashrae Clear Sky Optical Depth For Beam Irradiance Taub
+  2.05;                      !- Ashrae Clear Sky Optical Depth For Diffuse Irradiance Taud
 
 ThermostatSetpoint:DualSetpoint,
   Office Dual Setpoint,      !- Name

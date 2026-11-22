@@ -6,7 +6,7 @@ allocated to zones in proportion to their occupant-hours (R11). This module turn
 into the ledger's `HotWaterTotals`:
 
 - `volume`: Σ hot-water volume per hour, m³ (from `Water Use Equipment Hot Water Volume`);
-- `heat`: Σ volume × temperature rise per hour, m³·K, where the rise is the equipment's hot
+- `heat`: Σ volume · temperature rise per hour, m³·K, where the rise is the equipment's hot
   water temperature minus the mains temperature (`Site Mains Water Temperature`) that hour.
 
 The group's supply temperature is then the annual-mean mains plus the volume-weighted mean rise
@@ -129,7 +129,7 @@ def hot_water_totals(
             (`supply_schedules`); an equipment missing here uses its target temperature schedule.
 
     Returns:
-        The volume and heat (volume × rise) per hour; empty profiles without hot water.
+        The volume and heat (volume · rise) per hour; empty profiles without hot water.
 
     Raises:
         ValueError: If an equipment with volume has no temperature schedule.

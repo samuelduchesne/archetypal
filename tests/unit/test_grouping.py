@@ -8,8 +8,8 @@ building scenario uses the fixture's classified zones with synthetic ledgers.
 from __future__ import annotations
 
 import math
-import random
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -41,9 +41,13 @@ from archetypal.reduction.options import Layout
 from archetypal.reduction.schedules import ScheduleEvaluator
 from archetypal.reduction.sources import load_sources
 
+if TYPE_CHECKING:
+    import random
+
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "tests" / "fixtures" / "models"
 HOURS = 24
+Pairs = list[tuple[ClassifiedZone, GroupLedger]]
 FINEST = Layout.SPACE_USE_EXPOSURE
 
 # --- Synthetic zones and ledgers ------------------------------------------------------------------
@@ -294,20 +298,18 @@ _USES = ("alpha", "beta", "gamma", "delta")
 @st.composite
 def _models(draw: st.DrawFn) -> list[tuple[ClassifiedZone, GroupLedger]]:
     count = draw(st.integers(min_value=1, max_value=12))
-    pairs = []
-    for i in range(count):
-        pairs.append(
-            _pair(
-                f"Z{i:02d}",
-                draw(st.sampled_from(_USES)),
-                draw(st.sampled_from(("perimeter", "core"))),
-                draw(st.floats(min_value=1.0, max_value=1000.0)),
-                lights=draw(st.floats(min_value=0.0, max_value=30.0)),
-                heat=draw(st.floats(min_value=15.0, max_value=23.0)),
-                oa=draw(st.floats(min_value=0.0, max_value=0.01)),
-            )
+    return [
+        _pair(
+            f"Z{i:02d}",
+            draw(st.sampled_from(_USES)),
+            draw(st.sampled_from(("perimeter", "core"))),
+            draw(st.floats(min_value=1.0, max_value=1000.0)),
+            lights=draw(st.floats(min_value=0.0, max_value=30.0)),
+            heat=draw(st.floats(min_value=15.0, max_value=23.0)),
+            oa=draw(st.floats(min_value=0.0, max_value=0.01)),
         )
-    return pairs
+        for i in range(count)
+    ]
 
 
 _LAYOUTS = st.sampled_from(list(Layout))
@@ -319,7 +321,7 @@ def _exposure_of(layout: Layout, key: tuple[str, ...]) -> str | None:
 
 
 @given(_models(), _LAYOUTS, _THRESHOLDS)
-def test_grouping_conserves_members_and_area(pairs: list, layout: Layout, threshold: float) -> None:
+def test_grouping_conserves_members_and_area(pairs: Pairs, layout: Layout, threshold: float) -> None:
     result = group_zones(pairs, layout=layout, threshold=threshold)
     members = [m for g in result.groups for m in g.ledger.members]
     assert sorted(members) == sorted(z.zone.name for z, _ in pairs)
@@ -329,7 +331,7 @@ def test_grouping_conserves_members_and_area(pairs: list, layout: Layout, thresh
 
 
 @given(_models(), _LAYOUTS, _THRESHOLDS)
-def test_no_group_stays_small_while_it_has_an_eligible_partner(pairs: list, layout: Layout, threshold: float) -> None:
+def test_no_group_stays_small_while_it_has_an_eligible_partner(pairs: Pairs, layout: Layout, threshold: float) -> None:
     result = group_zones(pairs, layout=layout, threshold=threshold)
     total = sum(g.ledger.floor_area for g in result.groups)
     for small in result.groups:
@@ -348,7 +350,7 @@ def test_no_group_stays_small_while_it_has_an_eligible_partner(pairs: list, layo
 
 @given(_models(), _LAYOUTS, _THRESHOLDS, st.randoms(use_true_random=False))
 def test_grouping_does_not_depend_on_zone_order(
-    pairs: list, layout: Layout, threshold: float, rng: random.Random
+    pairs: Pairs, layout: Layout, threshold: float, rng: random.Random
 ) -> None:
     shuffled = list(pairs)
     rng.shuffle(shuffled)
@@ -359,7 +361,7 @@ def test_grouping_does_not_depend_on_zone_order(
 
 @given(_models(), _LAYOUTS, _THRESHOLDS)
 def test_pre_threshold_groups_stay_at_the_finest_key_under_every_layout(
-    pairs: list, layout: Layout, threshold: float
+    pairs: Pairs, layout: Layout, threshold: float
 ) -> None:
     result = group_zones(pairs, layout=layout, threshold=threshold)
     assert result.pre_threshold_groups == finest_groups(pairs)
@@ -369,7 +371,7 @@ def test_pre_threshold_groups_stay_at_the_finest_key_under_every_layout(
 
 @given(_models(), _LAYOUTS, _LAYOUTS, _THRESHOLDS)
 def test_grouping_from_pre_threshold_groups_equals_grouping_from_zones(
-    pairs: list, source: Layout, target: Layout, threshold: float
+    pairs: Pairs, source: Layout, target: Layout, threshold: float
 ) -> None:
     """`merge` regroups the report's pre-threshold groups: same result as reducing directly (FR-010)."""
     reduced = group_zones(pairs, layout=source, threshold=threshold)
@@ -379,7 +381,7 @@ def test_grouping_from_pre_threshold_groups_equals_grouping_from_zones(
 
 
 @given(_models(), _LAYOUTS)
-def test_merged_distinctions_cover_every_group(pairs: list, layout: Layout) -> None:
+def test_merged_distinctions_cover_every_group(pairs: Pairs, layout: Layout) -> None:
     result = group_zones(pairs, layout=layout, threshold=0.1)
     if layout is FINEST:
         assert result.merged_distinctions == ()

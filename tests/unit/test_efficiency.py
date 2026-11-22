@@ -83,7 +83,10 @@ def test_every_joule_of_the_meters_is_conserved() -> None:
         for fuel, series in meters.items():
             total = sum(
                 data.multipliers[z]
-                * (result.zones[z][mode].consumed_by_fuel.get(fuel, 0.0) + result.zones[z][mode].unattributed.get(fuel, 0.0))
+                * (
+                    result.zones[z][mode].consumed_by_fuel.get(fuel, 0.0)
+                    + result.zones[z][mode].unattributed.get(fuel, 0.0)
+                )
                 for z in result.zones
             )
             assert total == pytest.approx(float(series.sum()))
@@ -222,7 +225,9 @@ def _meter(sources: SourceData, name: str) -> float:
     return float(np.sum(series.values))
 
 
-def test_fixture_meters_are_conserved_over_conditioned_zones(ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]) -> None:
+def test_fixture_meters_are_conserved_over_conditioned_zones(
+    ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator],
+) -> None:
     sources, zones, evaluate = ten
     hook = efficiency_hook(sources, zones, evaluate)
     ledgers = [GroupLedger.from_zone(z, evaluate, hooks=[hook]) for z in zones if z.conditioned]
@@ -246,7 +251,9 @@ def test_fixture_meters_are_conserved_over_conditioned_zones(ten: tuple[SourceDa
     assert hook(by_name["Attic"], evaluate) == {}
 
 
-def test_fixture_delivered_energy_matches_the_zone_records(ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]) -> None:
+def test_fixture_delivered_energy_matches_the_zone_records(
+    ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator],
+) -> None:
     sources, zones, evaluate = ten
     data = building_energy(sources, zones, evaluate)
     for z in zones:
@@ -255,7 +262,9 @@ def test_fixture_delivered_energy_matches_the_zone_records(ten: tuple[SourceData
     assert data.outdoor_temperature.shape == (8760,)
 
 
-def test_fixture_rated_efficiencies_from_equipment_summary(ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]) -> None:
+def test_fixture_rated_efficiencies_from_equipment_summary(
+    ten: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator],
+) -> None:
     sources, zones, _ = ten
     rated = rated_efficiencies(sources, zones)
     # Top floor: the PTHP's own coils (supplemental heater excluded).

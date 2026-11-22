@@ -60,7 +60,7 @@ LOOP = FanSeries("AHU fan", energy=_a(400.0, 200.0, 100.0), mass_flow=_a(4.0, 2.
 
 
 def test_standard_density_is_energyplus_std_rho_air() -> None:
-    assert RHO == pytest.approx(1.2041, abs=1e-4)
+    assert pytest.approx(1.2041, abs=1e-4) == RHO
     assert standard_air_density(1000.0) < RHO
 
 
@@ -173,7 +173,10 @@ def test_fixture_fan_energy_and_volume_are_conserved(
     total = sum(ledgers, GroupLedger()).fans
     (meter,) = sources.results.get_timeseries_many([("Fans:Electricity", "*", "Hourly")])
     assert total.energy == pytest.approx(float(np.sum(meter.values)), rel=1e-9)
-    flow = sum(_series(sources, "Fan Air Mass Flow Rate", key).sum() for key in ("VAV SUPPLY FAN", "TOP_CORE PTHP FAN", "TOP_PERIMETER PTHP FAN"))
+    flow = sum(
+        _series(sources, "Fan Air Mass Flow Rate", key).sum()
+        for key in ("VAV SUPPLY FAN", "TOP_CORE PTHP FAN", "TOP_PERIMETER PTHP FAN")
+    )
     assert total.volume == pytest.approx(flow * 3600 / hook.air_density, rel=1e-6)
     sfp = specific_fan_power(total)
     assert sfp is not None
@@ -189,7 +192,9 @@ def test_fixture_fan_energy_and_volume_are_conserved(
     assert 0.0 < delta < 40.0
 
 
-def test_fixture_zone_equipment_fans_three_zone(three: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator]) -> None:
+def test_fixture_zone_equipment_fans_three_zone(
+    three: tuple[SourceData, tuple[ClassifiedZone, ...], ScheduleEvaluator],
+) -> None:
     sources, zones, _ = three
     hook = fans_hook(sources, zones)
     for zone in ("Core", "North_Perimeter", "South_Perimeter"):

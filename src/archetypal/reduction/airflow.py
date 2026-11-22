@@ -3,7 +3,7 @@
 Infiltration
 ------------
 `infiltration_totals` sums a zone's `NominalInfiltration` rows (inventory's `AirflowRecord`s):
-the design flow, its hourly profile (design flow × schedule, R5; a row without a schedule is
+the design flow, its hourly profile (design flow · schedule, R5; a row without a schedule is
 always on), and the design-flow-weighted sums of the four coefficients of EnergyPlus's
 `design_flow · schedule · (A + B·|ΔT| + C·v + D·v²)`. SBEM's `InfiltrationComponent` then
 carries the annual-mean flow with the flow-weighted mean coefficients; the profile and the
@@ -15,12 +15,12 @@ Outdoor air
 Mechanical Ventilation Standard Density Volume Flow Rate`, which inventory has already divided
 by the zone's multiplier), so DCV, economiser and minimum-outdoor-air control are captured as
 EnergyPlus ran them (R2). `design_flow` is the zone's design outdoor air from its
-`DesignSpecification:OutdoorAir` (per area × floor area + per person × installed people).
+`DesignSpecification:OutdoorAir` (per area · floor area + per person · installed people).
 
 Heat recovery and economiser are SBEM categories (`HRV`: `NoHRV`, `Sensible`, `Enthalpy`;
 `Economizer`: `NoEconomizer`, `DifferentialDryBulb`, `DifferentialEnthalpy`). Each zone adds its
 annual outdoor-air volume (m³) to the category that serves it, in `hrv_weighted` and
-`economiser_weighted`, and volume × sensible effectiveness to `effectiveness_weighted`. The
+`economiser_weighted`, and volume · sensible effectiveness to `effectiveness_weighted`. The
 group takes the category with the largest volume, and the airflow-weighted effectiveness is
 `effectiveness_weighted / Σ volume with heat recovery` (R9, FR-019).
 

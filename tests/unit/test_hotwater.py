@@ -35,6 +35,11 @@ MODELS = ROOT / "tests" / "fixtures" / "models"
 HOURS = 24
 
 
+def step(hours: int, before: float, after: float) -> Profile:
+    """`before` for the first `hours` hours of each day, `after` for the rest."""
+    return np.array([before if h % 24 < hours else after for h in range(HOURS)], dtype=np.float64)
+
+
 @dataclass
 class FakeEvaluator:
     table: dict[str, Profile]
@@ -55,7 +60,7 @@ def _zone(name: str, records: tuple[HotWaterRecord, ...], multiplier: int = 1) -
 
 
 def _volume(scale: float) -> Profile:
-    return scale * np.where(np.arange(HOURS) % 24 >= 7, 1.0, 0.0)
+    return scale * step(7, 0.0, 1.0)
 
 
 def test_heat_is_volume_times_rise_above_mains() -> None:

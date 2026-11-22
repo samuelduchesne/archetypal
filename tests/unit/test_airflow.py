@@ -35,6 +35,13 @@ if TYPE_CHECKING:
 ROOT = Path(__file__).resolve().parents[2]
 MODELS = ROOT / "tests" / "fixtures" / "models"
 HOURS = 24
+
+
+def step(hours: int, before: float, after: float) -> Profile:
+    """`before` for the first `hours` hours of each day, `after` for the rest."""
+    return np.array([before if h % 24 < hours else after for h in range(HOURS)], dtype=np.float64)
+
+
 SECONDS = 3600.0
 
 
@@ -50,8 +57,8 @@ class FakeEvaluator:
 
 SCHEDULES: dict[str, Profile] = {
     "ON": np.ones(HOURS),
-    "DAY": np.where(np.arange(HOURS) >= 8, 1.0, 0.25),
-    "OCC": np.where(np.arange(HOURS) >= 9, 0.8, 0.0),
+    "DAY": step(8, 0.25, 1.0),
+    "OCC": step(9, 0.0, 0.8),
 }
 
 
@@ -116,7 +123,7 @@ def test_group_infiltration_conserves_totals_and_flow_weighted_coefficients(
     members: list[tuple[float, float, float, int]],
 ) -> None:
     evaluator = FakeEvaluator(SCHEDULES)
-    ledgers = []
+    ledgers: list[GroupLedger] = []
     for i, (flow, constant, temperature, multiplier) in enumerate(members):
         record = AirflowRecord(f"i{i}", flow, "DAY", constant, temperature, 0.0, 0.0)
         zone = _zone(f"Z{i}", infiltration=(record,), multiplier=multiplier)

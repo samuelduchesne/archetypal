@@ -82,6 +82,7 @@ __all__ = [
     "attribute_energy",
     "building_energy",
     "efficiency_hook",
+    "equipment_table",
     "fit_eir",
     "ledger_fields",
     "rated_efficiencies",
@@ -229,7 +230,11 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
     annual_share: dict[Mode, np.ndarray] = {}
     for mode in modes:
         by_zone = data.delivered.get(mode, {})
-        matrix = np.vstack([np.asarray(by_zone.get(n, zeros), dtype=np.float64) for n in names]) if names else np.zeros((0, hours))
+        matrix = (
+            np.vstack([np.asarray(by_zone.get(n, zeros), dtype=np.float64) for n in names])
+            if names
+            else np.zeros((0, hours))
+        )
         total = (mult[:, None] * matrix).sum(axis=0)
         delivered[mode] = matrix
         building[mode] = total
@@ -379,17 +384,37 @@ def _units(doc: IDFDocumentSince22_1) -> dict[tuple[str, str], ZoneEquipment]:
         units[object_type.casefold(), name.casefold()] = parts
 
     for o in doc["ZoneHVAC:PackagedTerminalAirConditioner"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)))
+        add(
+            o.obj_type,
+            o.name,
+            ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
+        )
     for o in doc["ZoneHVAC:PackagedTerminalHeatPump"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)))
+        add(
+            o.obj_type,
+            o.name,
+            ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
+        )
     for o in doc["ZoneHVAC:WaterToAirHeatPump"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)))
+        add(
+            o.obj_type,
+            o.name,
+            ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
+        )
     for o in doc["ZoneHVAC:FourPipeFanCoil"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)))
+        add(
+            o.obj_type,
+            o.name,
+            ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
+        )
     for o in doc["ZoneHVAC:UnitHeater"]:
         add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name)))
     for o in doc["ZoneHVAC:UnitVentilator"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)))
+        add(
+            o.obj_type,
+            o.name,
+            ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
+        )
     for o in doc["ZoneHVAC:WindowAirConditioner"]:
         add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), (), _names(o.dx_cooling_coil_name)))
     for o in doc["ZoneHVAC:EnergyRecoveryVentilator"]:
@@ -399,7 +424,11 @@ def _units(doc: IDFDocumentSince22_1) -> dict[tuple[str, str], ZoneEquipment]:
     for o in doc["ZoneHVAC:TerminalUnit:VariableRefrigerantFlow"]:
         add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_object_name)))
     for o in doc["AirLoopHVAC:UnitarySystem"]:
-        add(o.obj_type, o.name, ZoneEquipment(_names(o.supply_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)))
+        add(
+            o.obj_type,
+            o.name,
+            ZoneEquipment(_names(o.supply_fan_name), _names(o.heating_coil_name), _names(o.cooling_coil_name)),
+        )
     for o in doc["Fan:ZoneExhaust"]:
         add(o.obj_type, o.name, ZoneEquipment((o.name,)))
     return units
@@ -534,9 +563,7 @@ def rated_efficiencies(sources: SourceData, zones: Sequence[ClassifiedZone]) -> 
 # --- building data -------------------------------------------------------------------------------
 
 
-def _hot_water_heat(
-    zone: ClassifiedZone, mains: Profile, evaluate: Callable[[str], Profile], hours: int
-) -> Profile:
+def _hot_water_heat(zone: ClassifiedZone, mains: Profile, evaluate: Callable[[str], Profile], hours: int) -> Profile:
     heat = np.zeros(hours)
     for record in zone.zone.hot_water:
         if record.target_temperature_schedule is None:

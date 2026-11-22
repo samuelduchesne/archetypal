@@ -27,6 +27,11 @@ MODELS = ROOT / "tests" / "fixtures" / "models"
 HOURS = 24
 
 
+def step(hours: int, before: float, after: float) -> Profile:
+    """`before` for the first `hours` hours of each day, `after` for the rest."""
+    return np.array([before if h % 24 < hours else after for h in range(HOURS)], dtype=np.float64)
+
+
 @dataclass
 class FakeEvaluator:
     """A schedule evaluator over a fixed table, with a calendar of HOURS hours."""
@@ -67,7 +72,7 @@ def test_band_is_five_to_thirty_five() -> None:
 
 
 def test_heated_and_cooled_zone_enters_both_means() -> None:
-    heat = np.where(np.arange(HOURS) < 8, 15.0, 21.0)
+    heat = step(8, 15.0, 21.0)
     evaluator = FakeEvaluator(_table(heat=heat, cool=np.full(HOURS, 24.0)))
     fields = setpoint_fields(_zone("A", 50.0, _dual("HEAT", "COOL")), evaluator)
     assert fields["heating_setpoint"].weight == 50.0
@@ -97,21 +102,20 @@ def test_a_zone_without_thermostat_is_neither_heated_nor_cooled() -> None:
 
 def test_hours_outside_the_band_are_clamped_to_it() -> None:
     # Heated by day (21 °C), set back to -100 °C (off) at night; cooled by day, 100 °C at night.
-    day = np.arange(HOURS) % 24 >= 8
-    heat = np.where(day, 21.0, -100.0)
-    cool = np.where(day, 24.0, 100.0)
+    heat = step(8, -100.0, 21.0)
+    cool = step(8, 100.0, 24.0)
     evaluator = FakeEvaluator(_table(heat=heat, cool=cool))
     fields = setpoint_fields(_zone("A", 1.0, _dual("HEAT", "COOL")), evaluator)
-    np.testing.assert_allclose(fields["heating_setpoint"].weighted, np.where(day, 21.0, 5.0))
-    np.testing.assert_allclose(fields["cooling_setpoint"].weighted, np.where(day, 24.0, 35.0))
+    np.testing.assert_allclose(fields["heating_setpoint"].weighted, step(8, 5.0, 21.0))
+    np.testing.assert_allclose(fields["cooling_setpoint"].weighted, step(8, 35.0, 24.0))
 
 
 def test_uncontrolled_hours_take_the_band_edge_that_leaves_the_mode_off() -> None:
-    control = np.where(np.arange(HOURS) < 6, 0.0, 4.0)
+    control = step(6, 0.0, 4.0)
     evaluator = FakeEvaluator(_table(ctl=control, heat=np.full(HOURS, 20.0), cool=np.full(HOURS, 25.0)))
     fields = setpoint_fields(_zone("A", 1.0, _dual("HEAT", "COOL", control="CTL")), evaluator)
-    np.testing.assert_allclose(fields["heating_setpoint"].weighted, np.where(control == 0, 5.0, 20.0))
-    np.testing.assert_allclose(fields["cooling_setpoint"].weighted, np.where(control == 0, 35.0, 25.0))
+    np.testing.assert_allclose(fields["heating_setpoint"].weighted, step(6, 5.0, 20.0))
+    np.testing.assert_allclose(fields["cooling_setpoint"].weighted, step(6, 35.0, 25.0))
 
 
 @given(
@@ -161,5 +165,5 @@ def test_three_zone_fixture() -> None:
         in_band = (heating >= 5.0) & (heating <= 35.0)
         np.testing.assert_allclose(weighted[in_band], zone.zone.floor_area * heating[in_band])
         assert fields["cooling_setpoint"].weight == zone.zone.floor_area
-        assert np.all(fields["cooling_setpoint"].weighted / zone.zone.floor_area <= 35.0)
+        assert bool((fields["cooling_setpoint"].weighted / zone.zone.floor_area <= 35.0).all())
         assert cooling.size == weighted.size

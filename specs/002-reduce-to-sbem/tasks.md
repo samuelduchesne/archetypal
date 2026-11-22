@@ -231,14 +231,14 @@ accounts for every zone (spec US1, SC-005, SC-006).
   reproduces UA ÷ A with epinterface's films and the inner and outer heat capacities exactly;
   windows conserve area, UA, Σ A·SHGC and Σ A·VT by orientation; a plenum's roof and walls go
   to the zones it shares interzone surfaces with, in proportion to shared area (FR-013).
-- [ ] T033 [P] [US1] Test airflow in `tests/unit/test_airflow.py`: infiltration conserves
+- [X] T033 [P] [US1] Test airflow in `tests/unit/test_airflow.py`: infiltration conserves
   design flow and hourly profile and carries the flow-weighted coefficients; ventilation's
   peak × fraction schedule reproduces the hourly profile; HRV and economiser take the
   category with the largest outdoor-air share (FR-018, FR-019).
-- [ ] T034 [P] [US1] Test thermostats in `tests/unit/test_thermostats.py`: only members with a
+- [X] T034 [P] [US1] Test thermostats in `tests/unit/test_thermostats.py`: only members with a
   setpoint within 5–35 °C at some hour enter a mode's area-weighted mean; the unheated and
   uncooled area shares are reported (FR-020).
-- [ ] T035 [P] [US1] Test hot water in `tests/unit/test_hotwater.py`: volume and heat (volume ×
+- [X] T035 [P] [US1] Test hot water in `tests/unit/test_hotwater.py`: volume and heat (volume ×
   rise) are conserved; equipment without a zone is allocated by occupant-hours; supply
   temperature is mean mains plus the volume-weighted rise (FR-021).
 - [ ] T036 [P] [US1] Test efficiency in `tests/unit/test_efficiency.py`: hourly attribution of
@@ -307,14 +307,14 @@ accounts for every zone (spec US1, SC-005, SC-006).
   orientation, internal mass, excluded-zone envelope assignment, and
   `equivalent_construction(totals)`, which returns a three-layer epinterface assembly
   reproducing UA and both capacities.
-- [ ] T050 [P] [US1] Implement `src/archetypal/reduction/airflow.py`: infiltration totals and
+- [X] T050 [P] [US1] Implement `src/archetypal/reduction/airflow.py`: infiltration totals and
   coefficient sums from `NominalInfiltration`; outdoor-air totals from the hourly output;
   HRV and economiser attribution through each air loop's `HeatExchanger:AirToAir:*` and
   `Controller:OutdoorAir`, read with literal keys (R9, R18).
-- [ ] T051 [P] [US1] Implement `src/archetypal/reduction/thermostats.py`: setpoint schedules
+- [X] T051 [P] [US1] Implement `src/archetypal/reduction/thermostats.py`: setpoint schedules
   by dispatching with `match` on the `Literal` `control_n_object_type` of
   `ZoneControl:Thermostat`; the 5–35 °C band; heated and cooled weighted profiles (R10).
-- [ ] T052 [P] [US1] Implement `src/archetypal/reduction/hotwater.py`: volume and heat
+- [X] T052 [P] [US1] Implement `src/archetypal/reduction/hotwater.py`: volume and heat
   profiles per `WaterUse:Equipment`; allocation of zoneless equipment by occupant-hours,
   recorded for the report (R11).
 - [ ] T053 [P] [US1] Implement `src/archetypal/reduction/efficiency.py`: hourly attribution of

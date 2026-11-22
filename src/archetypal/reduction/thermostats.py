@@ -8,8 +8,8 @@ control-type schedule. This module turns them into the ledger's additive fields.
 Rules
 -----
 - A zone is **heated** (or **cooled**) when its setpoint for that mode lies within `BAND`
-  (5–35 °C, inclusive) at some hour; a zone without a thermostat is neither.
-- A heated zone adds its floor area to `heating_setpoint.weight` and floor area × setpoint to
+  (5 to 35 °C, inclusive) at some hour; a zone without a thermostat is neither.
+- A heated zone adds its floor area to `heating_setpoint.weight` and floor area · setpoint to
   `heating_setpoint.weighted`, hour by hour; the group's setpoint is `weighted / weight`
   (`WeightedProfile.value`), the floor-area-weighted mean over its heated members. Cooling is
   the same. This rule is representative, not conserving (FR-020).
@@ -87,7 +87,9 @@ def band_profile(setpoint: NDArray[np.float64], mode: Mode) -> NDArray[np.float6
     low, high = BAND
     filled = np.array(setpoint, dtype=np.float64)
     filled[np.isnan(filled)] = _OFF[mode]
-    return filled.clip(low, high)
+    filled[filled < low] = low
+    filled[filled > high] = high
+    return filled
 
 
 def setpoint_fields(zone: ClassifiedZone, evaluate: Callable[[str], Profile]) -> ThermostatFields:

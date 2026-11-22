@@ -30,6 +30,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import tempfile
 from dataclasses import dataclass
@@ -361,6 +362,8 @@ class _ZoneMerger:
         infiltration = _get(self.zone, path)
         update = {
             "IsOn": True,
+            # epinterface reads only the field its method names, so the merged flow is given in ACH.
+            "CalculationMethod": "AirChanges/Hour",
             "AirChangesPerHour": flow * _SECONDS_PER_HOUR / self.area,
             "ConstantCoefficient": totals.constant_weighted / flow,
             "TemperatureCoefficient": totals.temperature_weighted / flow,
@@ -524,6 +527,15 @@ def _core_perimeter(item: ArchetypeLike) -> CorePerimeter:
 # --- Translation --------------------------------------------------------------------------------------
 
 
+def _perimeter_name(archetype: Archetype) -> str:
+    """The name of the group the template's window, settings and partitions come from.
+
+    It is the perimeter-exposed group (the template's `Perimeter`), else the first group.
+    """
+    groups = archetype.Groups
+    return next((g.Name for g in groups if g.Exposure == PERIMETER_GROUP), groups[0].Name if groups else "")
+
+
 class _TemplateWriter:
     """Translates one archetype into one building template, collecting its findings."""
 
@@ -582,8 +594,9 @@ class _TemplateWriter:
 
     def window(self, archetype: Archetype) -> WindowSettings:
         """The template's window settings, from the perimeter group's window and settings (R8, UP-9)."""
+        group = _perimeter_name(archetype)
         chosen, losses = template_window(
-            {g.Name: g.Zone.Envelope.Window for g in archetype.Groups}, subject=self.subject
+            {g.Name: g.Zone.Envelope.Window for g in archetype.Groups}, subject=self.subject, chosen=group
         )
         self.context.findings.extend(losses)
         location = next(
@@ -601,15 +614,25 @@ class _TemplateWriter:
         else:
             construction, layer_losses = layers_to_umi(chosen, subject=self.subject, location=location)
             self.context.findings.extend(layer_losses)
-        group, settings, settings_losses = template_settings(
-            {g.Name: g.Zone.Envelope.WindowSettings for g in archetype.Groups}, subject=self.subject
+        # A group with neither window nor settings (a core with no facade) simulates no window:
+        # gaining the template's settings changes nothing, so it is noted below, not lost.
+        _, settings, settings_losses = template_settings(
+            {
+                g.Name: g.Zone.Envelope.WindowSettings
+                for g in archetype.Groups
+                if g.Name == group or g.Zone.Envelope.Window is not None or g.Zone.Envelope.WindowSettings is not None
+            },
+            subject=self.subject,
+            chosen=group,
         )
         self.context.findings.extend(settings_losses)
         for other in archetype.Groups:
             # Reading back gives every group the template's window and settings: a group without
             # them (a core with no facade) gains them, which changes nothing it simulates.
+            if other.Name == group or other.Zone.Envelope.Window is not None:
+                continue
             for key in ("Window", "WindowSettings"):
-                if other.Name != group and getattr(other.Zone.Envelope, key) is None:
+                if getattr(other.Zone.Envelope, key) is None:
                     self.context.note(
                         f"{other.Name}.Envelope.{key}",
                         None,
@@ -631,6 +654,7 @@ class _TemplateWriter:
         partition, partition_losses = partition_ratio_to_umi(
             {g.Name: g.Zone.Envelope.Assemblies.PartitionAreaPerFloorArea for g in archetype.Groups},
             subject=self.subject,
+            chosen=_perimeter_name(archetype),
         )
         self.context.findings.extend(partition_losses)
         structure = None
@@ -724,18 +748,31 @@ class _Assembler:
         return value
 
 
+_NAN: Final = ("nan",)
+"""The identity of every NaN, which never equals itself (equal components must share a key).
+
+0.0 and -0.0 keep one identity: they are equal, as `diff_umi` compares values.
+"""
+
+
 def _identity(value: object) -> Hashable:
     """A hashable stand-in for a field value whose components are already canonical."""
     if isinstance(value, FormatModel):
         return ("component", id(value))
     if isinstance(value, tuple):
         items = cast("tuple[object, ...]", value)
-        if not any(isinstance(item, FormatModel | tuple | Enum) for item in items):
+        if not any(isinstance(item, FormatModel | tuple | Enum) or _is_nan(item) for item in items):
             return items
         return tuple(_identity(item) for item in items)
     if isinstance(value, Enum):
         return (type(value).__name__, value.value)
+    if _is_nan(value):
+        return _NAN
     return cast("Hashable", value)
+
+
+def _is_nan(value: object) -> bool:
+    return isinstance(value, float) and math.isnan(value)
 
 
 # --- Public interface ------------------------------------------------------------------------------

@@ -138,11 +138,11 @@ Status abbreviations: **E** exact, **C** converted, **U** upstream (item), **N**
 |---|---|---|---|
 | `dhw.per_person` | `q_p = q_a × Σ s(h) / (365 × ρ_p)` | `q_a = q_p × 365 × ρ_p / Σ s(h)` | Annual hot-water volume per m² |
 | `cop.system` | `SystemCOP = COP`, `DistributionCOP = 1` | `COP = SystemCOP × DistributionCOP` | Consumed energy for given delivered energy |
-| `material.carbon_per_m3` | `C_m3 = C_kg × ρ` | `C_kg = C_m3 / ρ` (refused for ρ = 0) | Embodied carbon per unit volume |
+| `material.carbon_per_m3` | `C_m3 = C_kg × ρ` | `C_kg = C_m3 / ρ` (lost for ρ = 0) | Embodied carbon per unit volume |
 | `schedule.months` | Month-aligned: copy; misaligned: 002 projection | 12 months → parts, merged when equal | Monthly sum (exact for aligned) |
 | `thermostat.constant` | Constant temperature schedules | Max (heating) / min (cooling) | Occupied setpoint; setback hours reported |
 | `window.layers` | Layer by layer to UP-9's layered window; layers it cannot hold (more than 4 panes, panes and gases not alternating) go through the bridge `simple_from_layers` (idfkit U/SHGC/VT, approximate) | Layered window back layer by layer; simple glazing through the bridge `equivalent_layer` (EnergyPlus simple-glazing model, until UP-10) | Layers exactly; through a bridge, U, SHGC, VT (approximate) |
-| `building.partition_ratio` | `PartitionAreaPerFloorArea = 2 × PartitionRatio` (the ratio is partition wall area per floor area; SBEM counts both faces) | `PartitionRatio = PartitionAreaPerFloorArea / 2`, from the perimeter group | Partition face area |
+| `building.partition_ratio` | `PartitionAreaPerFloorArea = 2 × PartitionRatio` (the ratio is partition wall area per floor area; SBEM counts both faces) | `PartitionRatio = PartitionAreaPerFloorArea / 2`, from the group exposed as perimeter | Partition face area |
 | `vent.provider` | (mech, nat) → None/Natural/Mechanical/Both | inverse | Both switches |
 | `wwr.uniform` | Same ratio on every orientation | Facade-area-weighted mean; loss if orientations differ | Window area for a given facade |
 

@@ -13,10 +13,11 @@ definition and the 5 of a construction set, every schedule of loads, conditionin
 ventilation, hot water and window settings, and the window settings' construction); each day
 has 24 values; year parts cover 1 January to 31 December once, without gap or overlap.
 
-**Range**: every value meets the constraint of the SBEM field it maps to (the epinterface
-field's bounds, found through `CORRESPONDENCE`), the rule modules' own checks
-(`range_problems`, `material_problems`) and the plausibility rules of research R3 (a specific
-heat of at least 100 J/kg·K, a layer thicker than 0, fractions in [0, 1]).
+**Range**: every number is finite (no `NaN` or infinity) and meets the constraint of the SBEM
+field it maps to (the epinterface field's bounds, found through `CORRESPONDENCE`), the rule
+modules' own checks (`range_problems`, `material_problems`) and the plausibility rules of
+research R3 (a specific heat of at least 100 J/kg·K, a layer thicker than 0, fractions in
+[0, 1]).
 
 Duplicate names are not problems (research R11).
 """
@@ -24,6 +25,7 @@ Duplicate names are not problems (research R11).
 from __future__ import annotations
 
 import inspect
+import math
 import types
 from calendar import monthrange
 from dataclasses import dataclass
@@ -309,6 +311,8 @@ class _Bound:
 
     def message(self, value: float) -> str | None:
         """Describe how `value` breaks the bounds, or `None`."""
+        if not math.isfinite(value):
+            return f"{self.key} is {value!r}; SBEM's {self.sbem_path} needs a finite value"
         broken = (
             (self.ge is not None and value < self.ge, f"at least {self.ge}"),
             (self.gt is not None and value <= self.gt, f"above {self.gt}"),
@@ -465,7 +469,7 @@ def _year_problems(year: YearSchedule, pointer: str, template: str) -> list[Prob
 
 def _opaque_material(item: OpaqueMaterial, pointer: str, template: str) -> list[Problem]:
     problems = material_problems(item, pointer, template)
-    if item.specific_heat < _MIN_SPECIFIC_HEAT:
+    if not item.specific_heat >= _MIN_SPECIFIC_HEAT:  # NaN included
         message = f"SpecificHeat is {item.specific_heat!r} J/kg-K; a material needs at least {_MIN_SPECIFIC_HEAT}"
         problems.append(Problem(f"{pointer}/SpecificHeat", template, "material.properties", message))
     return problems
@@ -525,7 +529,35 @@ def _plausibility(item: FormatModel, pointer: str, template: str) -> list[Proble
     return []
 
 
+_RULES: Final = {(row.umi_class, row.umi_key): row.rule for row in CORRESPONDENCE}
+
+
+def _rule_of(model: type[FormatModel], key: str) -> str:
+    """The rule of a UMI field's `CORRESPONDENCE` row, looked up on the class that declares it."""
+    for klass in model.__mro__:
+        origin = getattr(klass, "__pydantic_generic_metadata__", {}).get("origin") or klass
+        rule = _RULES.get((cast("type", origin).__name__, key))
+        if rule is not None:
+            return rule
+    return "format.json"
+
+
+def _finite_problems(item: FormatModel, pointer: str, template: str) -> list[Problem]:
+    """A problem for each number field, or list of numbers, holding `NaN` or an infinity."""
+    problems: list[Problem] = []
+    for name, field in type(item).model_fields.items():
+        key = field.alias or name
+        value: object = getattr(item, name)
+        numbers = cast("tuple[object, ...]", value) if isinstance(value, tuple) else (value,)
+        bad = [number for number in numbers if isinstance(number, float) and not math.isfinite(number)]
+        if bad:
+            message = f"{key} holds {bad[0]!r}; a value must be a finite number"
+            problems.append(Problem(f"{pointer}/{_escape(key)}", template, _rule_of(type(item), key), message))
+    return problems
+
+
 def _problems_of(item: FormatModel, pointer: str, template: str, index: LibraryIndex) -> list[Problem]:
+    non_finite = _finite_problems(item, pointer, template)
     problems = _required(item, pointer, template)
     if isinstance(item, WeekSchedule):
         problems.extend(_week_problems(item, pointer, template))
@@ -539,7 +571,9 @@ def _problems_of(item: FormatModel, pointer: str, template: str, index: LibraryI
     problems.extend(_plausibility(item, pointer, template))
     known = {problem.pointer for problem in problems}
     problems.extend(problem for problem in _bound_problems(item, pointer, template) if problem.pointer not in known)
-    return problems
+    # A non-finite number is one problem, not one per comparison it fails.
+    known = {problem.pointer for problem in non_finite}
+    return non_finite + [problem for problem in problems if problem.pointer not in known]
 
 
 def template_problems(index: LibraryIndex, template: int) -> list[Problem]:

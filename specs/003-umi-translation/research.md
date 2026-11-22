@@ -105,7 +105,7 @@ pre-scan makes reference errors visible, which Basilisk does not.
 |---|---|---|
 | Current Core JSON | JSON with the 17 collections; any of `AdvancedModel`, `UseAdvancedModel`, hot-water `FuelType` present | Read. |
 | Current Core JSON, pre-2023 fields | As above with none of those fields (B2, ND) | Read. Each absent field takes Basilisk's default and is noted as defaulted. |
-| Archsim-era JSON | Material objects carrying `GasType`, `Life` or `Comment` (UZ) | Read through a key map: `Comment` → `Comments`, `GasType` 0–4 → `AIR`, `ARGON`, `KRYPTON`, `XENON`, `SF6` (its `Type: "Gas"` is ignored, unlike Basilisk), material `Type` → `Category`. Keys with no Core counterpart (`Life`, `EmbodiedEnergyStdDev`, `PhaseChange`, `Optical`, …) are listed as lost. |
+| Archsim-era JSON | Material objects carrying `GasType`, `Life` or `Comment` (UZ) | Read through a key map: `Comment` → `Comments`, `GasType` 0–4 → `AIR`, `ARGON`, `KRYPTON`, `XENON`, `SF6` (its `Type: "Gas"` is ignored, unlike Basilisk), material `Type` → `Category` (lost when the material has a `Category` too). Keys with no Core counterpart (`Life`, `EmbodiedEnergyStdDev`, `PhaseChange`, `Optical`, …) are listed as lost. |
 | Legacy XML (`<LibSerializable>`), Core XML, a `.umi` project | XML root, or a zip | Refused, naming the dialect: "Legacy UMI XML library is not supported; open and save it in UMI to convert it to JSON". For `.umi`, the message names the library file to extract. |
 | Anything else | | Refused, naming the marker that was missing. |
 
@@ -123,7 +123,7 @@ with UMI projects and is the most likely older library in users' hands.
 one error that lists them all, each with a JSON pointer (`/Zones/2/Loads`) and the template
 affected. Three kinds of problem:
 
-1. **Format** (always fatal for the library): malformed JSON, duplicate `$id`, `$id` not first,
+1. **Format** (always fatal for the library): malformed JSON (`NaN` and `Infinity` included), duplicate `$id`, `$id` not first,
    a non-string `$ref`, extra keys beside `$ref`, a dangling or forward `$ref`, a JSON type
    that does not convert (Basilisk's own errors). Reference resolution raises these as one
    `UmiFormatError`, before completeness and range are checked, so they never appear inside
@@ -141,7 +141,7 @@ affected. Three kinds of problem:
 
    Also: 24 values in each day, and year parts that cover 1 January to 31 December with no
    gap or overlap.
-3. **Range.** Every value must satisfy the constraint of the SBEM field it maps to (the
+3. **Range.** Every number must be finite (a library built in Python can hold `NaN`). Every value must satisfy the constraint of the SBEM field it maps to (the
    epinterface field's `ge`/`le`), and the plausibility rules of the correspondence table
    (R5): a COP above 0 when heating or cooling is on, a supply temperature above the inlet
    temperature, absorptances and fractions in [0, 1], a specific heat of at least 100 J/kg·K,
@@ -150,7 +150,8 @@ affected. Three kinds of problem:
 Completeness and range problems are raised together as one `UmiValidationError`.
 `skip_invalid_templates=True` makes them skip only the templates
 they affect. Those templates are listed in the report and the others are read. Format
-problems are never skipped. Duplicate names are not a problem; R11 handles them.
+problems are never skipped. A component only skipped templates use is listed as unused.
+Duplicate names are not a problem; R11 handles them.
 
 **Rationale.** FR-004 asks for every problem with its location before any archetype exists.
 Basilisk checks none of this, so the translator must.
@@ -320,7 +321,8 @@ Rejected: it changes the month's energy without bound and has no conservation st
     lists the window as written in a different form (approximate).
 - **Placement.** UMI has one window per building template; SBEM has one per zone group.
   - Reading gives both groups the template's window.
-  - Writing uses the perimeter group's window. A different core window is listed as lost.
+  - Writing uses the window of the group exposed as perimeter, whatever its name; its window
+    settings and partition ratio too. A different core window is listed as lost.
 
 **Rationale.** It is exact where SBEM allows it. The two-way conversion is EnergyPlus's own
 model, so the simulated window is the same.
@@ -402,7 +404,8 @@ Each rule states what it conserves (constitution IV). The full table is in data-
     ```
     Writing uses the inverse.
   - A zone with hot water but no people (`ρ_p = 0` or people off) cannot be represented: it is
-    a range problem on reading and a loss on writing.
+    a range problem on reading and a loss on writing. With `ρ_p = 0` the flow per person
+    itself is lost on writing, even with hot water off.
   - `CoefficientOfPerformance` maps to `SystemCOP` with `DistributionCOP = 1`. `FuelType` maps
     through the table; Basilisk's `Unset` is a range problem.
   - Inlet and supply temperatures map exactly.
@@ -436,11 +439,13 @@ recovers the input to floating-point precision, which SC-003's 0.01 % allows.
   - `ThermalEmittance` maps to `ThermalAbsorptance`. `Roughness` must be one of EnergyPlus's
     six keywords (range problem otherwise).
   - SBEM's required `Type` is taken from the material's `Category` when it names one of the 12
-    types (case-insensitive), else set to `Other` and noted.
+    types (case-insensitive), else set to `Other` and noted. On writing, a `Type` that the
+    category would not read back as (`Other` included) is listed as lost.
   - `TemperatureCoefficientThermalConductivity` is set to 0 and noted.
 - **Environmental fields.** SBEM has one `RateUnit` for cost and carbon, so both are written
   per m³ (`RateUnit = "m3"`): `Cost` as is, and `EmbodiedCarbon` as kg CO₂/kg × density,
-  inverted on writing. This conserves carbon per unit volume. The other life-cycle fields wait
+  inverted on writing. This conserves carbon per unit volume. On writing, a non-zero cost or
+  carbon that cannot be converted (per m² or m, or through a density of 0) is listed as lost. The other life-cycle fields wait
   for UP-9 (R6).
 - **Metadata.** `Category`, `Comments` and `DataSource` map to SBEM's `Category`, `Comment`
   and `DataSource` on the component that receives the UMI component (data-model.md). Where
@@ -450,7 +455,8 @@ recovers the input to floating-point precision, which SC-003's 0.01 % allows.
   - When two different components of one SBEM kind would share a name (a hand-edited library;
     a UMI glazing and gas material with one name, which Basilisk's editor forbids but Core
     loads), the second and later get the suffix ` #2`, ` #3`, … in file order. The collision
-    is reported.
+    is reported. Content ignores `$id`s and number spelling (`1` = `1.0`), and a `$ref`
+    stands for the content of the object it names.
   - Duplicate building-template names keep both archetypes, renamed the same way and
     reported.
   - This replaces the spec's thickness example (spec feedback F-2): thickness is never part of
@@ -469,12 +475,14 @@ recovers the input to floating-point precision, which SC-003's 0.01 % allows.
   SBEM parameters by `GroupLedger.approximate_from_group(group, floor_area)`, a 003 addition to
   002's `reduction.ledger`. The floor area is the group's share times 1 m²; only ratios matter.
   - Rules that need only intensities and areas rebuild exactly: gains and their profiles,
-    setpoints (area-weighted in 002), outdoor air and its profile, and hot water.
+    setpoints (area-weighted in 002), outdoor air and its profile (`MechVentSchedule`, constant
+    without one), and hot water.
   - Rules that need report data are rebuilt by floor-area weighting, and each such parameter
     is listed as approximate (FR-006):
     - envelope U and capacity: surface areas per group are unknown;
     - efficiencies: delivered and consumed energy are unknown;
-    - infiltration;
+    - infiltration, by its calculation method: air changes over a 1 m storey, or flow per
+      exterior area over an exterior area equal to the floor area;
     - the window.
   - An archetype with more than two groups and unset shares cannot be weighted. It is refused
     with an `InputError` naming the archetype.
@@ -628,7 +636,9 @@ keyed by name, so unique template names are this project's rule, not Basilisk's.
 
 - **`diff_umi(original, result, *, rel_tol=1e-4)`** compares two UMI libraries field by field
   after resolving references. Components are matched by name and type, schedules by their
-  hourly values over the reference year. It returns every difference with its JSON pointer
+  hourly values over the reference year. A template is matched by name; only a repeated name
+  (renamed ` #2` on reading) falls back to its place, so a renamed template is missing and
+  extra. An unused component only in the result is located at `/<collection>/-`. It returns every difference with its JSON pointer
   and relevance. This is the round-trip report of US3. It is public, and used by the how-to
   guide.
 - **`diff_archetypes(a, b, *, rel_tol=0.0)`** compares two SBEM archetypes field by field

@@ -5,7 +5,8 @@
   the template's tree, so a component is matched with the one in the same place of the
   template of the same name. Year schedules are compared by their hourly values over the
   reference year (research R7), not by their parts, weeks and days, which a writer may arrange
-  differently. A component no template of the original uses is matched by type and name.
+  differently. A component no template of the original uses is matched by type and name; one
+  no template of the result uses and nothing matches is located at `/<collection>/-`.
 - `diff_archetypes(a, b)` compares two SBEM archetypes field by field. Zone groups are matched
   by name, then by exposure; locations are dotted field paths prefixed by the group (`perimeter.Operations…`) or
   by `archetype.`, as in the translation report.
@@ -144,8 +145,8 @@ def _is_number(value: object) -> bool:
 
 
 def _relative(a: float, b: float) -> float | None:
-    """Return the relative difference, `0.0` for equal numbers, `None` when one is not finite."""
-    if a == b or abs(a - b) < ABS_TOL:
+    """Return the relative difference, `0.0` for equal numbers (two NaNs included), `None` when one is not finite."""
+    if a == b or abs(a - b) < ABS_TOL or (math.isnan(a) and math.isnan(b)):
         return 0.0
     if not (math.isfinite(a) and math.isfinite(b)):
         return None
@@ -382,10 +383,11 @@ def _load(path: str | os.PathLike[str]) -> LibraryIndex:
 def _match_templates(
     originals: Sequence[BuildingTemplate], results: Sequence[BuildingTemplate]
 ) -> list[BuildingTemplate | None]:
-    """Match each original template with a result template: same name first, then same place.
+    """Match each original template with a result template by name.
 
     A template whose name an earlier template already has (renamed ` #2` on reading) is matched
-    with the unmatched result template in its place.
+    with the unmatched result template in its place. Any other template with no namesake is
+    unmatched.
     """
     free = list(range(len(results)))
     matched: list[BuildingTemplate | None] = [None] * len(originals)
@@ -394,8 +396,11 @@ def _match_templates(
         if found is not None:
             free.remove(found)
             matched[index] = results[found]
+    repeated = {
+        index for index, template in enumerate(originals) if any(t.name == template.name for t in originals[:index])
+    }
     for index in range(len(originals)):
-        if matched[index] is None and index in free:
+        if matched[index] is None and index in repeated and index in free:
             free.remove(index)
             matched[index] = results[index]
     return matched
@@ -405,11 +410,13 @@ def diff_umi(original: str | os.PathLike[str], result: str | os.PathLike[str], *
     """Compare two UMI libraries field by field (research R16).
 
     Building templates are matched by name (a repeated name, which reading renames ` #2`, by
-    place), and their components through the template: the `Perimeter` of a template is
-    compared with the `Perimeter` of its match, and so on down to materials. Year schedules
+    place; a renamed template is missing and extra), and their components through the
+    template: the `Perimeter` of a template is compared with the `Perimeter` of its match, and
+    so on down to materials. Year schedules
     are compared by their hourly values over the reference year. Components that no template
     of the original uses are matched by type and name. A template, or an unused component,
-    with no counterpart is one difference whose other value is `None`.
+    with no counterpart is one difference whose other value is `None`; one only in the result
+    is located at `/BuildingTemplates/-` or `/<collection>/-`.
 
     Args:
         original: The original library.
@@ -445,12 +452,26 @@ def diff_umi(original: str | os.PathLike[str], result: str | os.PathLike[str], *
     return UmiDiff(differences=tuple(comparer.found), rel_tol=rel_tol)
 
 
+def _collections(index: LibraryIndex) -> dict[int, str]:
+    """The collection key of each component of a library's collections, by `id`."""
+    found: dict[int, str] = {}
+    for name, field in type(index.library).model_fields.items():
+        for item in cast("tuple[FormatModel, ...]", getattr(index.library, name)):
+            found.setdefault(id(item), field.alias or name)
+    return found
+
+
 def _unused(first: LibraryIndex, second: LibraryIndex, comparer: _UmiComparer) -> None:
-    """Compare the components no template of the original uses with the result's, by type and name."""
+    """Compare the components no template of the original uses with the result's, by type and name.
+
+    A component no template of the result uses and no unused component of the original matches
+    is a difference located at `/<collection>/-`, with no original value.
+    """
     by_name: dict[tuple[type, str | None], FormatModel] = {}
     for item, _ in second.components():
         if isinstance(item, LibraryComponent):
             by_name.setdefault((type(item), item.name), item)
+    matched: set[int] = set()
     for item, pointer in first.components():
         if first.users(item) or not isinstance(item, LibraryComponent):
             continue
@@ -458,7 +479,13 @@ def _unused(first: LibraryIndex, second: LibraryIndex, comparer: _UmiComparer) -
         if other is None:
             comparer.add(pointer, Relevance.DESCRIPTIVE, item.name, None, None)
         else:
+            matched.add(id(other))
             comparer.compare(item, other, pointer)
+    collections = _collections(second)
+    for item, _ in second.components():
+        if second.users(item) or id(item) in matched or not isinstance(item, LibraryComponent):
+            continue
+        comparer.add(f"/{collections[id(item)]}/-", Relevance.DESCRIPTIVE, None, item.name, None)
 
 
 # --- SBEM ------------------------------------------------------------------------------------------

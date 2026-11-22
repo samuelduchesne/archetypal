@@ -7,6 +7,7 @@ from it.
 
 from __future__ import annotations
 
+import inspect
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -832,6 +833,10 @@ def _message(row: RemovedCapability) -> str:
 def raise_removed(v2_path: str) -> NoReturn:
     """Raise the error for a removed v2 capability.
 
+    For a `module` row, the error names the deepest removed module under it that the import in
+    progress asked for: the stub of `archetypal.idfclass` raises `archetypal.idfclass.sql`'s row
+    for `import archetypal.idfclass.sql`.
+
     Args:
         v2_path: A `v2_path` of `REMOVED`.
 
@@ -839,8 +844,36 @@ def raise_removed(v2_path: str) -> NoReturn:
         RemovedInArchetypal3Error: Always, naming the replacement and the migration guide's section.
         LookupError: `v2_path` is not in `REMOVED`.
     """
-    for row in REMOVED:
-        if row.v2_path == v2_path:
-            raise RemovedInArchetypal3Error(row.v2_path, _message(row)) from None
-    msg = f"{v2_path} is not a removed v2 capability"
-    raise LookupError(msg)
+    rows = {row.v2_path: row for row in REMOVED}
+    if v2_path not in rows:
+        msg = f"{v2_path} is not a removed v2 capability"
+        raise LookupError(msg)
+    row = rows[v2_path]
+    if row.kind == "module":
+        # Python runs a parent module before its child, so the stub of `archetypal.idfclass` is
+        # what runs for `import archetypal.idfclass.sql`: name the row of the module asked for.
+        requested = _requested_module(v2_path)
+        while requested != v2_path and (requested not in rows or rows[requested].kind != "module"):
+            requested = requested.rpartition(".")[0]
+        row = rows[requested]
+    raise RemovedInArchetypal3Error(row.v2_path, _message(row)) from None
+
+
+def _requested_module(module: str) -> str:
+    """Return the deepest module under `module` that an import in progress asked for, else `module`.
+
+    It reads the `name` of the import system's `_find_and_load` frames (CPython); without them,
+    it returns `module`.
+    """
+    requested = module
+    frame = inspect.currentframe()
+    while frame is not None:
+        code = frame.f_code
+        if code.co_name in {"_find_and_load", "_find_and_load_unlocked"} and code.co_filename.startswith(
+            "<frozen importlib"
+        ):
+            name = frame.f_locals.get("name")
+            if isinstance(name, str) and name.startswith(f"{module}.") and len(name) > len(requested):
+                requested = name
+        frame = frame.f_back
+    return requested

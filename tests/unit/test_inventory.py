@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 from idfkit import load_idf
+from idfkit.simulation.parsers.sql import TabularRow
 from idfkit.versioned import as_version
 
+from archetypal.errors import ReductionError
 from archetypal.reduction._sql_tables import (
+    NominalInfiltrationRow,
+    ZoneRow,
     read_construction_layers,
     read_constructions,
     read_materials,
@@ -23,6 +28,11 @@ from archetypal.reduction.inventory import (
     HotWaterRecord,
     SurfaceRecord,
     ThermostatRecord,
+    _airflow,  # pyright: ignore[reportPrivateUsage]
+    _design_outdoor_air,  # pyright: ignore[reportPrivateUsage]
+    _hot_water,  # pyright: ignore[reportPrivateUsage]
+    _OutdoorAirSpec,  # pyright: ignore[reportPrivateUsage]
+    _tabular,  # pyright: ignore[reportPrivateUsage]
     build_inventory,
     surface_class,
 )
@@ -306,3 +316,101 @@ def test_records_are_frozen(three: dict[str, ZoneRecord]) -> None:
     with pytest.raises(AttributeError):
         zone.multiplier = 2  # type: ignore[misc]
     assert all(isinstance(s, SurfaceRecord) for s in zone.surfaces)
+
+
+def test_design_outdoor_air_maximum_keeps_only_the_largest_component() -> None:
+    def spec(method: str) -> _OutdoorAirSpec:
+        return _OutdoorAirSpec(method=method, per_person=0.01, per_area=0.001, per_zone=0.05, air_changes=0.0)
+
+    # 100 m², 10 people: per person 0.1, per area 0.1 + per zone 0.05 = 0.15 m³/s summed.
+    assert _design_outdoor_air(spec("Sum"), 100.0, 300.0, 10.0) == pytest.approx((0.0015, 0.01))
+    # Maximum: EnergyPlus takes the largest component (0.1 per person or per area, not 0.05 per zone).
+    per_area, per_person = _design_outdoor_air(spec("Maximum"), 100.0, 300.0, 10.0)
+    assert per_area * 100.0 + per_person * 10.0 == pytest.approx(0.1)
+    # With many people, the per-person component wins.
+    per_area, per_person = _design_outdoor_air(spec("Maximum"), 100.0, 300.0, 50.0)
+    assert (per_area, per_person) == pytest.approx((0.0, 0.01))
+
+
+class _Tabular:
+    """A stand-in `SQLResult` whose Envelope Summary holds the given rows."""
+
+    def __init__(self, rows: list[TabularRow]) -> None:
+        self.rows = rows
+
+    def get_tabular_data(self, report_name: str, table_name: str, report_for: str) -> list[TabularRow]:
+        return [r for r in self.rows if r.table_name == table_name]
+
+
+def _envelope_row(column: str, units: str, value: str) -> TabularRow:
+    return TabularRow("EnvelopeSummary", "Entire Facility", "Exterior Fenestration", "WIN", column, units, value)
+
+
+def test_envelope_summary_converts_inch_pound_units() -> None:
+    rows = [_envelope_row("Assembly U-Factor", "Btu/h-ft2-F", "0.50"), _envelope_row("Assembly SHGC", "", "0.40")]
+    results = _Tabular(rows)
+    u = _tabular(results, "Exterior Fenestration", "Assembly U-Factor")  # pyright: ignore[reportArgumentType]
+    assert u["WIN"] == pytest.approx(0.5 * 5.678263, rel=1e-6)
+    shgc = _tabular(results, "Exterior Fenestration", "Assembly SHGC")  # pyright: ignore[reportArgumentType]
+    assert shgc["WIN"] == pytest.approx(0.4)
+    si = _Tabular([_envelope_row("Assembly U-Factor", "W/m2-K", "2.0")])
+    assert _tabular(si, "Exterior Fenestration", "Assembly U-Factor")["WIN"] == 2.0  # pyright: ignore[reportArgumentType]
+
+
+def test_envelope_summary_rejects_unknown_units() -> None:
+    results = _Tabular([_envelope_row("Assembly U-Factor", "furlongs", "1.0")])
+    with pytest.raises(ReductionError, match="furlongs"):
+        _tabular(results, "Exterior Fenestration", "Assembly U-Factor")  # pyright: ignore[reportArgumentType]
+
+
+def _zone_row(index: int, name: str, area: float) -> ZoneRow:
+    return ZoneRow(index, name, 1, 1, area, area * 3.0, 3.0, 0.0, 3.0, 0.0, 0.0, 0.0, True)
+
+
+def _water_sources(*equipment: tuple[str, str]) -> SourceData:
+    items = [SimpleNamespace(name=n, zone_name=z, target_temperature_schedule_name=None) for n, z in equipment]
+    return SimpleNamespace(model=SimpleNamespace(water_use_equipments=items))  # pyright: ignore[reportReturnType]
+
+
+def test_zoneless_hot_water_goes_to_conditioned_zones_only() -> None:
+    rows = [_zone_row(1, "OFFICE", 100.0), _zone_row(2, "BASEMENT", 100.0)]
+    people = GainRecord("people", "P", 10.0, "Occ", 0.3, 0.0, 0.0, 0.0)
+    gains = {1: (people,), 2: (people,)}
+    volume = np.ones(4)
+    result = _hot_water(
+        _water_sources(("Building Hot Water", "")), rows, gains, lambda _v, _k: volume, lambda _s: np.ones(4), {1}
+    )
+    assert set(result) == {1}
+    (record,) = result[1]
+    assert record.share == 1.0
+    assert record.rule == "occupant-hours"
+    np.testing.assert_allclose(record.volume, volume)
+
+
+def test_zoneless_hot_water_records_the_floor_area_fallback() -> None:
+    rows = [_zone_row(1, "A", 100.0), _zone_row(2, "B", 300.0)]
+    # People whose schedule is zero all year: no occupant-hours, so floor area decides.
+    people = GainRecord("people", "P", 10.0, "Off", 0.3, 0.0, 0.0, 0.0)
+    result = _hot_water(
+        _water_sources(("Building Hot Water", "")),
+        rows,
+        {1: (people,), 2: (people,)},
+        lambda _v, _k: np.ones(4),
+        lambda _s: np.zeros(4),
+        {1, 2},
+    )
+    assert [r.rule for r in result[1] + result[2]] == ["floor-area", "floor-area"]
+    assert result[2][0].share == pytest.approx(0.75)
+
+
+def test_airflow_zone_list_copy_matches_the_longest_object_name() -> None:
+    coefficients = {"INF": (1.0, 0.0, 0.0, 0.0), "BIG INF": (0.5, 0.1, 0.2, 0.0)}
+    record = _airflow(NominalInfiltrationRow(1, "CORE BIG INF", 1, None, 0.1), coefficients)
+    assert (record.constant, record.temperature, record.velocity) == (0.5, 0.1, 0.2)
+
+
+def test_airflow_zone_list_copy_strips_the_zone_name() -> None:
+    # Zone "CORE BIG" with object "INF": the zone name, not the longest suffix, decides.
+    coefficients = {"INF": (1.0, 0.0, 0.0, 0.0), "BIG INF": (0.5, 0.1, 0.2, 0.0)}
+    record = _airflow(NominalInfiltrationRow(1, "CORE BIG INF", 1, None, 0.1), coefficients, "Core Big")
+    assert record.constant == 1.0

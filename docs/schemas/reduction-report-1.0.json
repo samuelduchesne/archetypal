@@ -501,7 +501,7 @@
     },
     "GroupLedger": {
       "additionalProperties": false,
-      "description": "The conserved totals of a group of zones (data-model.md: GroupLedger).\n\nAttributes:\n    members: The zone names, sorted (FR-025 provenance).\n    floor_area: \u03a3 floor area, multipliers applied, m\u00b2 (FR-014).\n    envelope: Opaque totals per surface class (FR-016, FR-017).\n    window_by_orientation: Window totals per orientation (FR-016, FR-024).\n    internal_mass_capacity: \u03a3 heat capacity of internal mass, J/K (FR-017).\n    internal_mass_area: \u03a3 exposed area of internal mass, m\u00b2.\n    gains: Totals per gain kind (FR-015).\n    infiltration: Infiltration (FR-018).\n    outdoor_air: Mechanical outdoor air with HRV and economiser categories (FR-019).\n    heating_setpoint: Area-weighted heating setpoint of the heated members (FR-020).\n    cooling_setpoint: Area-weighted cooling setpoint of the cooled members (FR-020).\n    unheated_area: \u03a3 floor area of members not heated, m\u00b2.\n    uncooled_area: \u03a3 floor area of members not cooled, m\u00b2.\n    hot_water: Domestic hot water (FR-021).\n    energy: Delivered and consumed energy per mode (FR-022).\n    fans: Fan energy and air volume (FR-022a).\n    excluded_envelope: Envelope of excluded zones assigned to members, sorted (FR-013).",
+      "description": "The conserved totals of a group of zones (data-model.md: GroupLedger).\n\nAttributes:\n    members: The zone names, sorted (FR-025 provenance).\n    floor_area: \u03a3 floor area, multipliers applied, m\u00b2 (FR-014).\n    envelope: Opaque totals per surface class (FR-016, FR-017).\n    window_by_orientation: Totals of the windows in walls (60\u00b0 to 120\u00b0 tilt) per orientation\n        (FR-016, FR-024).\n    skylights: Totals of the other windows (skylights, roof and floor windows), kept out of\n        the facade (FR-016).\n    internal_mass_capacity: \u03a3 heat capacity of internal mass, J/K (FR-017).\n    internal_mass_area: \u03a3 exposed area of internal mass, m\u00b2.\n    gains: Totals per gain kind (FR-015).\n    infiltration: Infiltration (FR-018).\n    outdoor_air: Mechanical outdoor air with HRV and economiser categories (FR-019).\n    heating_setpoint: Area-weighted heating setpoint of the heated members (FR-020).\n    cooling_setpoint: Area-weighted cooling setpoint of the cooled members (FR-020).\n    unheated_area: \u03a3 floor area of members not heated, m\u00b2.\n    uncooled_area: \u03a3 floor area of members not cooled, m\u00b2.\n    hot_water: Domestic hot water (FR-021).\n    energy: Delivered and consumed energy per mode (FR-022).\n    fans: Fan energy and air volume (FR-022a).\n    excluded_envelope: Envelope of excluded zones assigned to members, sorted (FR-013).",
       "properties": {
         "members": {
           "default": [],
@@ -552,6 +552,9 @@
           },
           "title": "Window By Orientation",
           "type": "object"
+        },
+        "skylights": {
+          "$ref": "#/$defs/WindowTotals"
         },
         "internal_mass_capacity": {
           "default": 0.0,

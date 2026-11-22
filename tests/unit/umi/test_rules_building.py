@@ -452,6 +452,19 @@ def test_differing_wwr_without_facade_areas_uses_the_plain_mean() -> None:
     assert len(result.losses) == 1
 
 
+def test_differing_wwr_with_zero_facade_areas_says_plain_mean() -> None:
+    ratios = dict.fromkeys(ORIENTATIONS, 0.2) | {"N": 0.6}
+    facades = dict.fromkeys(ORIENTATIONS, 0.0)
+    result = wwr_to_umi(
+        BuildingGeometry(WindowToWallRatio=ratios, FacadeAreaPerFloorArea=facades),  # pyright: ignore[reportArgumentType]
+        subject="office",
+    )
+    assert result.value == pytest.approx((7 * 0.2 + 0.6) / 8, rel=1e-12)
+    [loss] = result.losses
+    assert "plain mean" in loss.reason
+    assert "facade-area-weighted" not in loss.reason
+
+
 def test_unknown_wwr_writes_basilisk_default_with_a_note() -> None:
     result = wwr_to_umi(BuildingGeometry(), subject="office")
     assert result.value == _format.BuildingTemplate().default_window_to_wall_ratio == 0.4
@@ -541,6 +554,12 @@ def test_partition_ratio_is_written_from_the_perimeter_group() -> None:
         0.4,
         "building.partition_ratio",
     )
+
+
+def test_partition_ratio_is_written_from_the_chosen_group() -> None:
+    ratio, losses = building.partition_ratio_to_umi({"perimeter": 0.4, "outer": 0.7}, subject="A", chosen="outer")
+    assert ratio == pytest.approx(0.35)
+    assert [loss.location for loss in losses] == ["perimeter.Envelope.Assemblies.PartitionAreaPerFloorArea"]
 
 
 def test_template_fields_at_basilisk_defaults_lose_nothing() -> None:

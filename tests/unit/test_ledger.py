@@ -553,3 +553,77 @@ def test_from_zone_with_inventory_records_applies_the_multiplier_once() -> None:
     assert ledger.floor_area == 2000.0
     assert ledger.gains["lights"].installed == 10_000.0
     np.testing.assert_array_equal(ledger.gains["lights"].hourly, np.full(4, 10_000.0))
+
+
+# --- approximate_from_group: infiltration method and mechanical ventilation schedule ------------
+
+
+def _office_group(update: Callable[[Any], Any] | None = None) -> Any:
+    from pathlib import Path  # noqa: PLC0415
+
+    from epinterface.sbem.archetype import ZoneGroup  # noqa: PLC0415
+
+    from archetypal.umi import read_umi  # noqa: PLC0415
+
+    library = Path(__file__).parents[1] / "fixtures" / "umi" / "BostonTemplateLibrary_2.json"
+    zone = read_umi(library).archetypes[0].Groups[1].Zone
+    if update is not None:
+        zone = update(zone)
+    return ZoneGroup.model_validate({"Name": "g", "Zone": zone, "FloorAreaShare": 0.4, "Exposure": "perimeter"})
+
+
+def _with(model: Any, path: str, value: object) -> Any:
+    head, _, rest = path.partition(".")
+    if not rest:
+        return model.model_copy(update={head: value})
+    return model.model_copy(update={head: _with(getattr(model, head), rest, value)})
+
+
+def test_approximate_infiltration_follows_flow_per_exterior_area() -> None:
+    """D1: SBEM infiltration written as Flow/ExteriorArea (ACH 0) is not rebuilt as zero."""
+
+    def flow_per_area(zone: Any) -> Any:
+        infiltration = zone.Envelope.Infiltration.model_copy(
+            update={
+                "CalculationMethod": "Flow/ExteriorArea",
+                "AirChangesPerHour": 0.0,
+                "FlowPerExteriorSurfaceArea": 3e-4,
+            }
+        )
+        return _with(zone, "Envelope.Infiltration", infiltration)
+
+    ledger = GroupLedger.approximate_from_group(_office_group(flow_per_area), 0.4).ledger
+    assert ledger.infiltration.design_flow == pytest.approx(3e-4 * 0.4)
+
+
+def test_approximate_infiltration_air_changes_over_a_unit_storey() -> None:
+    def ach(zone: Any) -> Any:
+        infiltration = zone.Envelope.Infiltration.model_copy(
+            update={"CalculationMethod": "AirChanges/Hour", "AirChangesPerHour": 0.5, "FlowPerExteriorSurfaceArea": 9.0}
+        )
+        return _with(zone, "Envelope.Infiltration", infiltration)
+
+    ledger = GroupLedger.approximate_from_group(_office_group(ach), 0.4).ledger
+    assert ledger.infiltration.design_flow == pytest.approx(0.5 * 0.4 * 1.0 / 3600)
+
+
+def test_approximate_outdoor_air_follows_the_mechanical_schedule_not_natural() -> None:
+    """D4: mechanical outdoor air is MechVentSchedule (constant without one), not `Schedule` (natural)."""
+    from archetypal.reduction.schedules import RunPeriodCalendar, calendar_year, year_values  # noqa: PLC0415
+
+    group = _office_group(lambda z: _with(z, "Operations.HVAC.Ventilation.MechVentSchedule", None))
+    ventilation = group.Zone.Operations.HVAC.Ventilation
+    natural = np.asarray(year_values(ventilation.Schedule, RunPeriodCalendar(calendar_year(1, 1, 0))))
+    assert float(natural.max()) > float(natural.min())  # the natural schedule is not constant here
+    oa = GroupLedger.approximate_from_group(group, 0.4).ledger.outdoor_air
+    np.testing.assert_allclose(oa.hourly, np.full(8760, oa.design_flow))
+
+    def mechanical(zone: Any) -> Any:
+        schedule = zone.Operations.HVAC.Ventilation.Schedule
+        return _with(zone, "Operations.HVAC.Ventilation.MechVentSchedule", schedule)
+
+    group = _office_group(mechanical)
+    if group.Zone.Operations.HVAC.Ventilation.MechVentSchedule.schedule_type_limits != "Fraction":
+        pytest.skip("the fixture's ventilation schedule is not a Fraction schedule")
+    oa = GroupLedger.approximate_from_group(group, 0.4).ledger.outdoor_air
+    np.testing.assert_allclose(oa.hourly, oa.design_flow * natural)

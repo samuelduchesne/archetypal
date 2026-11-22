@@ -369,6 +369,22 @@ def test_efficiency_delivered_over_consumed_with_eir_slope() -> None:
     assert cooling.EIRTemperatureSlope == pytest.approx(0.0, abs=1e-12)
 
 
+def test_distribution_energy_of_another_fuel_is_reported() -> None:
+    """D5: a gas boiler's electric pumps are folded into the distribution COP and listed (FR-026)."""
+    ledger = _ledger()
+    heating = ledger.energy["heating"]
+    gas = heating.model_copy(update={"consumed_by_fuel": {"NaturalGas": heating.consumed_by_fuel["Electricity"]}})
+    ledger = ledger.model_copy(update={"energy": {**ledger.energy, "heating": gas}})
+    derived = thermal_system(ledger, ledger, "heating", name="g")
+    lost = [e for e in derived.not_represented if e.feature == "Distribution fuels of heating"]
+    assert len(lost) == 1
+    assert lost[0].magnitude == pytest.approx(heating.distribution_by_fuel["Electricity"])
+    assert lost[0].folded_into is not None
+    assert lost[0].folded_into.endswith("DistributionCOP")
+    same = thermal_system(_ledger(), _ledger(), "heating", name="g")
+    assert not [e for e in same.not_represented if e.feature == "Distribution fuels of heating"]
+
+
 def test_efficiency_rated_without_delivery() -> None:
     derived = thermal_system(_core_ledger(), _ledger(), "heating", name="core")
     assert derived.rule == "efficiency.rated"
@@ -395,6 +411,18 @@ def test_fans_energy_per_volume_and_effective_supply_delta() -> None:
     assert rules["MinimumCoolingSupplyAirTemperature"] == "fans.effective_supply_delta"
     features = {e.feature for e in derived.not_represented}
     assert "Fan air volume without load or outdoor-air demand" in features
+
+
+def test_limit_types_stay_default_without_supply_limits() -> None:
+    """D6: no derived supply-air limit, no `IDEAL_LOADS_LIMITS`."""
+    ledger = _ledger().model_copy(update={"heating_setpoint": WeightedProfile(), "cooling_setpoint": WeightedProfile()})
+    derived = conditioning_systems(ledger, ledger, name="g", air_density=standard_air_density(0.0))
+    systems = derived.value
+    assert systems.SpecificFanPower == pytest.approx(1000.0)
+    default = type(systems).model_fields
+    assert systems.HeatingLimitType == default["HeatingLimitType"].default
+    assert systems.CoolingLimitType == default["CoolingLimitType"].default
+    assert "HeatingLimitType" not in {leaf.path for leaf in derived.leaves}
 
 
 def test_crossing_supply_limits_keep_the_larger_mode() -> None:
@@ -436,6 +464,28 @@ def test_geometry_per_orientation() -> None:
         "ExposedFloorAreaPerFloorArea": "envelope.equivalent",
         "GroundContactAreaPerFloorArea": "envelope.equivalent",
     }
+
+
+def test_skylights_stay_out_of_the_facade_and_are_reported() -> None:
+    """D2: skylights change neither the facade nor its glazing; their area is listed as lost."""
+    sky = WindowTotals(area=50.0, ua=150.0, a_shgc=25.0, a_vt=35.0)
+    ledger = _ledger().model_copy(update={"skylights": sky})
+    plain = geometry(_ledger(), 3.4).value
+    assert geometry(ledger, 3.4).value == plain
+    derived = window(ledger, name="g")
+    assert derived.value == window(_ledger(), name="g").value
+    lost = [e for e in derived.not_represented if e.feature == "Skylights, roof and floor windows"]
+    assert len(lost) == 1
+    assert (lost[0].magnitude, lost[0].unit) == (50.0, "m2")
+    assert not window(_ledger(), name="g").not_represented
+    inf = infiltration(ledger, CAL, name="g").value
+    mean = float(ledger.infiltration.hourly.mean())
+    assert inf.FlowPerExteriorSurfaceArea == pytest.approx(mean / (400.0 + 300.0 + 100.0 + 50.0), rel=1e-12)
+
+
+def test_storeys_round_half_up() -> None:
+    """D7: the nearest integer, halves up, not banker's rounding."""
+    assert [storeys(r).value for r in (1.5, 2.5, 3.5, 2.49)] == [2, 3, 4, 2]
 
 
 # --- the archetype -------------------------------------------------------------------------------
@@ -511,6 +561,14 @@ def test_holidays_reach_the_week_slots() -> None:
     schedule = conversion.archetype.group("office / perimeter").Zone.Operations.SpaceUse.Occupancy.Schedule
     assert schedule.July.Holiday is not None
     assert schedule.June.Holiday is None
+
+
+def test_group_without_floor_area_raises_reduction_error() -> None:
+    """D8: a zero floor-area group is a ReductionError, not a ZeroDivisionError."""
+    empty = _core_ledger().model_copy(update={"floor_area": 0.0})
+    groups = [Group(key=("office", "core"), ledger=empty), Group(key=("office", "perimeter"), ledger=_ledger())]
+    with pytest.raises(ReductionError, match="no floor area"):
+        to_archetype(groups, Layout.SPACE_USE_EXPOSURE, _facts(), name="b")
 
 
 def test_validation_failure_raises_reduction_error_with_epinterfaces_message() -> None:

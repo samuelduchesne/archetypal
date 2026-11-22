@@ -62,8 +62,19 @@ DISTRIBUTION_END_USES = ("Pumps", "Heat Rejection")
 _MODE_METERS = {"Heating": "Heating", "Cooling": "Cooling", "Pumps": "Pumps", "Heat Rejection": "HeatRejection"}
 _NOT_FUELS = frozenset({"EnergyTransfer", "Water"})
 
-# Meter reporting frequencies as the SQLite file names them, finest first.
-_FREQUENCIES = ("HVAC System Timestep", "Zone Timestep", "Hourly", "Daily", "Monthly", "Run Period", "Annual")
+# Meter reporting frequencies, finest first, as the SQLite file names them and as idfkit's
+# `list_variables` renames some of them (`Run Period` becomes `RunPeriod`, `Detailed` `Timestep`).
+_FREQUENCIES = (
+    "HVAC System Timestep",
+    "Timestep",
+    "Zone Timestep",
+    "Hourly",
+    "Daily",
+    "Monthly",
+    "Run Period",
+    "RunPeriod",
+    "Annual",
+)
 _PEAK_FREQUENCIES = ("Zone Timestep", "Hourly", "Daily")
 
 
@@ -79,7 +90,8 @@ class RunResults:
         weather: The weather file as EnergyPlus names it, with its latitude and longitude.
         weather_name: The weather file's name alone (`<city> <state> <country> <source> WMO#=<n>`).
         timesteps_per_hour: The zone timesteps per hour.
-        frequency: The finest reporting frequency of the heating and cooling meters.
+        frequency: The finest peak frequency (Zone Timestep, Hourly, Daily) at which every heating
+            and cooling meter is reported; else their finest reporting frequency.
         period: The run period as `(start, end)`, from the meters' first and last intervals.
         peaks: Peak demand by mode (`Heating`, `Cooling`), in W.
         to_heating: For each distribution end use, the fraction of its energy that served
@@ -218,9 +230,22 @@ def _end_use_meters(variables: Iterable[VariableInfo]) -> dict[str, list[Variabl
     return meters
 
 
+def _rank(frequency: str) -> int:
+    return _FREQUENCIES.index(frequency) if frequency in _FREQUENCIES else len(_FREQUENCIES)
+
+
 def _finest(frequencies: Iterable[str]) -> str | None:
-    ranked = sorted(set(frequencies), key=lambda f: _FREQUENCIES.index(f) if f in _FREQUENCIES else len(_FREQUENCIES))
+    ranked = sorted(set(frequencies), key=_rank)
     return ranked[0] if ranked else None
+
+
+def _peak_frequency(meters: Sequence[VariableInfo]) -> str | None:
+    """The finest peak frequency at which every heating and cooling meter is reported, if any."""
+    names = {v.name for v in meters}
+    for frequency in _PEAK_FREQUENCIES:
+        if names <= {v.name for v in meters if v.frequency == frequency}:
+            return frequency
+    return None
 
 
 def _interval(frequency: str, timesteps_per_hour: int) -> timedelta:
@@ -251,7 +276,7 @@ class _Reader:
         timesteps = self._timesteps()
         meters = _end_use_meters(self.sql.list_variables())
         mode_meters = meters["Heating"] + meters["Cooling"]
-        frequency = _finest(v.frequency for v in mode_meters)
+        frequency = _peak_frequency(mode_meters) or _finest(v.frequency for v in mode_meters)
         period: tuple[datetime, datetime] | None = None
         peaks: dict[str, float] = {}
         if frequency is None:
@@ -260,9 +285,10 @@ class _Reader:
                 "add Output:Meter objects for them to the model and run it again"
             )
         elif frequency not in _PEAK_FREQUENCIES:
+            reported = ", ".join(sorted({v.frequency for v in mode_meters}, key=_rank))
             self.problems.append(
-                f"reporting frequency: {self.label} report the heating and cooling meters {frequency}; "
-                f"peak demand needs them {', '.join(_PEAK_FREQUENCIES)}"
+                f"reporting frequency: {self.label} report the heating and cooling meters {reported}; "
+                f"peak demand needs every one of them at one of {', '.join(_PEAK_FREQUENCIES)}"
             )
         else:
             period, peaks = self._peaks(meters, frequency, timesteps)
@@ -346,7 +372,7 @@ class _Reader:
     def _split(self, meters: list[VariableInfo], use: str) -> tuple[float, float] | None:
         delivered_names = _delivery_variables()
         variables = self.sql.list_variables()
-        for frequency in sorted({v.frequency for v in meters}, key=_FREQUENCIES.index):
+        for frequency in sorted({v.frequency for v in meters}, key=_rank):
             delivered = {
                 mode: [v for v in variables if v.name in names and v.frequency == frequency and not v.is_meter]
                 for mode, names in delivered_names.items()

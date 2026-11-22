@@ -358,8 +358,9 @@ def wwr_to_umi(geometry: BuildingGeometry, *, subject: str) -> WindowToWallRatio
 
     Returns:
         The ratio: copied when every orientation has the same; else the facade-area-weighted
-        mean (the plain mean without facade areas), with the per-orientation ratios reported as
-        lost; Basilisk's default 0.4, noted, when the geometry has no ratio.
+        mean (the plain mean without facade areas, or when they sum to 0), with the
+        per-orientation ratios reported as lost; Basilisk's default 0.4, noted, when the
+        geometry has no ratio.
     """
     ratios = geometry.WindowToWallRatio
     if ratios is None:
@@ -379,7 +380,8 @@ def wwr_to_umi(geometry: BuildingGeometry, *, subject: str) -> WindowToWallRatio
     mean = geometry.OverallWindowToWallRatio
     if mean is None:  # pragma: no cover - set whenever the ratios are
         mean = math.fsum(values) / len(values)
-    weighted = "facade-area-weighted" if geometry.FacadeAreaPerFloorArea is not None else "plain"
+    facades = geometry.FacadeAreaPerFloorArea
+    weighted = "facade-area-weighted" if facades is not None and sum(facades.values()) > 0 else "plain"
     loss = Loss(
         kind=LossKind.LOST,
         subject=subject,
@@ -466,21 +468,26 @@ def partition_area_to_sbem(
 
 
 @rule("building.partition_ratio", to="umi")
-def partition_ratio_to_umi(areas: Mapping[str, float], *, subject: str) -> tuple[float, list[Loss]]:
-    """Return a template's `PartitionRatio` from its groups' partition areas: half the perimeter group's.
+def partition_ratio_to_umi(
+    areas: Mapping[str, float], *, subject: str, chosen: str | None = None
+) -> tuple[float, list[Loss]]:
+    """Return a template's `PartitionRatio` from its groups' partition areas: half the chosen group's.
 
-    Another group's different area is lost.
+    The writer chooses the perimeter-exposed group; by default it is the group named
+    `perimeter`, else the first group. Another group's different area is lost.
 
     Args:
         areas: Each group's `PartitionAreaPerFloorArea`, by group name, in group order.
         subject: The archetype's name.
+        chosen: The name of the group whose partitions are written.
 
     Returns:
         The ratio and the losses.
     """
     if not areas:
         return 0.0, []
-    chosen = PERIMETER_GROUP if PERIMETER_GROUP in areas else next(iter(areas))
+    if chosen is None or chosen not in areas:
+        chosen = PERIMETER_GROUP if PERIMETER_GROUP in areas else next(iter(areas))
     area = areas[chosen]
     losses = [
         _lost(

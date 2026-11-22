@@ -119,6 +119,8 @@ ROOF = _surface("R", "Roof", 0.0, "outdoors")
         ((_surface("W", "Wall", 60.0, "outdoors"),), "perimeter"),
         ((_surface("W", "Wall", 120.0, "outdoors"),), "perimeter"),
         ((_surface("G", "Window", 90.0, "outdoors"),), "perimeter"),
+        ((_surface("G", "Window", 0.0, "outdoors"),), "core"),  # a skylight: roofs never decide
+        ((ROOF, _surface("G", "Window", 30.0, "outdoors")), "core"),  # a roof window
         ((ROOF,), "core"),
         ((_surface("W", "Wall", 59.0, "outdoors"),), "core"),  # a roof by tilt
         ((_surface("F", "Floor", 180.0, "outdoors"),), "core"),  # exposed floor

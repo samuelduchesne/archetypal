@@ -22,8 +22,9 @@ covers every copy; `delivery.delivered_energy` divides it by the multiplier.
 
 Domestic hot water follows research R11: equipment with a zone belongs to that zone; equipment
 without one is allocated to zones in proportion to their occupant-hours (Σ people * schedule,
-times the zone's multiplier). Without any occupant-hours it is allocated by floor area of the
-zones that count towards the building's total area.
+times the zone's multiplier) among the conditioned zones, the only ones reduction keeps. Without
+any occupant-hours it is allocated by floor area of the conditioned zones that count towards the
+building's total area. Each record keeps the rule that was used.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from typing import TYPE_CHECKING, Literal, TypeVar
 import numpy as np
 from idfkit.exceptions import ResultLookupError
 
+from archetypal.errors import ReductionError
 from archetypal.reduction._sql_tables import (
     NominalInfiltrationRow,
     NominalLoadRow,
@@ -50,7 +52,7 @@ from archetypal.reduction.delivery import delivered_energy
 from archetypal.reduction.schedules import ScheduleEvaluator
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Mapping, Sequence
+    from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
     from idfkit.simulation import SQLResult
     from idfkit.versioned import IDFDocumentSince22_1
@@ -62,6 +64,7 @@ if TYPE_CHECKING:
 __all__ = [
     "BAND",
     "AirflowRecord",
+    "AllocationRule",
     "Boundary",
     "GainRecord",
     "HotWaterRecord",
@@ -339,6 +342,10 @@ class ThermostatRecord:
             }
 
 
+AllocationRule = Literal["zone", "occupant-hours", "floor-area"]
+"""How a `WaterUse:Equipment`'s volume was attributed to a zone (research R11)."""
+
+
 @dataclass(frozen=True, eq=False)
 class HotWaterRecord:
     """The part of one `WaterUse:Equipment` a zone's single copy uses (research R11).
@@ -350,7 +357,9 @@ class HotWaterRecord:
         share: The fraction of the equipment's volume one copy receives (1 for equipment in the
             zone, divided by the zone's multiplier in EnergyPlus's own reporting; the
             occupant-hour share otherwise). Over every copy of every zone the shares sum to 1.
-        allocated: `True` when the equipment has no zone and was allocated by occupant-hours.
+        allocated: `True` when the equipment has no zone and was allocated.
+        rule: How the volume reached the zone: `zone` (the equipment's own), `occupant-hours`, or
+            `floor-area` (no conditioned zone has occupant-hours).
     """
 
     equipment: str
@@ -358,6 +367,7 @@ class HotWaterRecord:
     target_temperature_schedule: str | None
     share: float
     allocated: bool
+    rule: AllocationRule = "zone"
 
 
 def _zeros() -> Profile:
@@ -382,7 +392,7 @@ class ZoneRecord:
             zeros for a zone without HVAC equipment connections.
         outdoor_air_per_area: Design outdoor air per floor area from the zone's
             `DesignSpecification:OutdoorAir` (via `Sizing:Zone`), m³/s·m², per-zone flow and air
-            changes included; 0 without one.
+            changes included (only the largest design flow for the `Maximum` method); 0 without one.
         outdoor_air_per_person: Design outdoor air per person, m³/s; 0 without one.
         thermostat: The zone's thermostat, or `None`.
         hot_water: Hot-water use attributed to the zone (R11).
@@ -476,6 +486,10 @@ class _Envelope:
     vt: dict[str, float]
 
 
+_TO_SI: dict[str, float] = {"": 1.0, "W/m2-K": 1.0, "Btu/h-ft2-F": 5.678263}
+"""Factors from the Envelope Summary's units to SI; InchPound tables write U-factors in Btu/h·ft²·°F."""
+
+
 def _tabular(results: SQLResult, table: str, column: str) -> dict[str, float]:
     try:
         rows = results.get_tabular_data(_ENVELOPE_SUMMARY, table, report_for="Entire Facility")
@@ -485,8 +499,12 @@ def _tabular(results: SQLResult, table: str, column: str) -> dict[str, float]:
     for row in rows:
         if row.column_name != column:
             continue
+        factor = _TO_SI.get(row.units.strip())
+        if factor is None:
+            message = f"Envelope Summary column {column!r} of table {table!r} is in unsupported units {row.units!r}"
+            raise ReductionError("the results", message)  # noqa: TRY003 - names the column and units
         try:
-            values[row.row_name.upper()] = row.as_float()
+            values[row.row_name.upper()] = row.as_float() * factor
         except ValueError:
             continue
     return values
@@ -652,12 +670,18 @@ def _ventilation_coefficients(doc: IDFDocumentSince22_1) -> dict[str, _Coefficie
     }
 
 
-def _airflow(row: NominalInfiltrationRow, coefficients: Mapping[str, _Coefficients]) -> AirflowRecord:
+def _airflow(row: NominalInfiltrationRow, coefficients: Mapping[str, _Coefficients], zone: str = "") -> AirflowRecord:
     name = row.object_name.upper()
+    prefix = zone.upper() + " "
     found = coefficients.get(name)
+    if found is None and zone and name.startswith(prefix):
+        # A ZoneList object: EnergyPlus names each copy "<ZONE> <OBJECT>".
+        found = coefficients.get(name.removeprefix(prefix))
     if found is None:
-        # A ZoneList or SpaceList object: EnergyPlus names each copy "<ZONE> <OBJECT>".
-        found = next((value for key, value in coefficients.items() if name.endswith(" " + key)), None)
+        # A SpaceList object ("<SPACE> <OBJECT>"): the longest matching object name wins, so
+        # "INF" never shadows "BIG INF".
+        matches = [key for key in coefficients if name.endswith(" " + key)]
+        found = coefficients[max(matches, key=len)] if matches else None
     constant, temperature, velocity, squared = found or (1.0, 0.0, 0.0, 0.0)
     return AirflowRecord(
         name=row.object_name,
@@ -771,19 +795,32 @@ def _outdoor_air_specs(
     return by_zone
 
 
-def _design_outdoor_air(spec: _OutdoorAirSpec | None, floor_area: float, volume: float) -> tuple[float, float]:
-    """Return (per area, per person) for a zone; per-zone flow and air changes count per area."""
+def _design_outdoor_air(
+    spec: _OutdoorAirSpec | None, floor_area: float, volume: float, people: float
+) -> tuple[float, float]:
+    """Return (per area, per person) for a zone; per-zone flow and air changes count per area.
+
+    `Maximum` keeps only the largest of the four design flows, given the zone's design `people`,
+    as EnergyPlus does; `Sum` adds them.
+    """
     if spec is None:
         return 0.0, 0.0
     method = spec.method.casefold()
-    combined = method in {"sum", "maximum"}
+    zone_flow = spec.per_zone / floor_area if floor_area > 0.0 else 0.0
+    ach_flow = spec.air_changes * volume / 3600.0 / floor_area if floor_area > 0.0 else 0.0
+    if method == "maximum":
+        flows = (spec.per_person * people, spec.per_area * floor_area, zone_flow * floor_area, ach_flow * floor_area)
+        largest = max(range(len(flows)), key=lambda i: flows[i])
+        if largest == 0:
+            return 0.0, spec.per_person
+        return (spec.per_area, zone_flow, ach_flow)[largest - 1], 0.0
+    combined = method == "sum"
     per_person = spec.per_person if combined or method == "flow/person" else 0.0
     per_area = spec.per_area if combined or method == "flow/area" else 0.0
-    if floor_area > 0.0:
-        if combined or method == "flow/zone":
-            per_area += spec.per_zone / floor_area
-        if combined or method == "airchanges/hour":
-            per_area += spec.air_changes * volume / 3600.0 / floor_area
+    if combined or method == "flow/zone":
+        per_area += zone_flow
+    if combined or method == "airchanges/hour":
+        per_area += ach_flow
     return per_area, per_person
 
 
@@ -859,8 +896,13 @@ def _hot_water(
     gains: Mapping[int, Sequence[GainRecord]],
     get: Callable[[str, str], Profile],
     evaluate: Callable[[str], Profile],
+    conditioned: Collection[int],
 ) -> dict[int, list[HotWaterRecord]]:
-    """Attribute each `WaterUse:Equipment` to zones (R11), per copy of each zone."""
+    """Attribute each `WaterUse:Equipment` to zones (R11), per copy of each zone.
+
+    Equipment without a zone goes to the `conditioned` zones (indices), which are the only ones
+    reduction keeps; to every zone when none is conditioned.
+    """
     multipliers = {row.index: row.multiplier * row.list_multiplier for row in zone_rows}
     index_by_name = {row.name.casefold(): row.index for row in zone_rows}
     hot_water: dict[int, list[HotWaterRecord]] = {}
@@ -877,18 +919,41 @@ def _hot_water(
         hot_water.setdefault(zone_index, []).append(record)
     if not zoneless:
         return hot_water
-    weights = {row.index: _occupant_hours(gains.get(row.index, ()), evaluate) for row in zone_rows}
+    targets = [row for row in zone_rows if row.index in conditioned] or list(zone_rows)
+    rule: AllocationRule = "occupant-hours"
+    weights = {row.index: _occupant_hours(gains.get(row.index, ()), evaluate) for row in targets}
     if sum(weights[i] * multipliers[i] for i in weights) <= 0.0:
-        weights = {row.index: row.floor_area if row.is_part_of_total_area else 0.0 for row in zone_rows}
+        rule = "floor-area"
+        weights = {row.index: row.floor_area if row.is_part_of_total_area else 0.0 for row in targets}
     total = sum(weights[i] * multipliers[i] for i in weights)
     for name, volume, target in zoneless:
-        for row in zone_rows:
+        for row in targets:
             share = weights[row.index] / total if total > 0.0 else 0.0
             if share > 0.0:
                 hot_water.setdefault(row.index, []).append(
-                    HotWaterRecord(name, volume * share, target, share, allocated=True)
+                    HotWaterRecord(name, volume * share, target, share, allocated=True, rule=rule)
                 )
     return hot_water
+
+
+def _conditioned(
+    zone_rows: Sequence[ZoneRow],
+    names: Mapping[int, str],
+    thermostats: Mapping[str, ThermostatRecord],
+    plenums: Collection[str],
+    delivered: Callable[[str], Mapping[Mode, float]],
+    evaluate: Callable[[str], Profile],
+) -> frozenset[int]:
+    """The indices of the zones `classify` will find conditioned (R8): the same test as its own."""
+    found: set[int] = set()
+    for row in zone_rows:
+        key = names[row.index].casefold()
+        thermostat = thermostats.get(key)
+        if (thermostat is not None and any(thermostat.enabled(evaluate).values())) or (
+            key not in plenums and any(v != 0.0 for v in delivered(names[row.index]).values())
+        ):
+            found.add(row.index)
+    return frozenset(found)
 
 
 def _hourly_getter(sources: SourceData, zone_rows: Sequence[ZoneRow]) -> Callable[[str, str], Profile]:
@@ -932,9 +997,14 @@ def build_inventory(sources: SourceData, evaluate: Callable[[str], Profile] | No
     surfaces = _surfaces(results, names)
     gains = _by_zone(read_nominal_loads(results), _gain)
     infiltration_coefficients = _infiltration_coefficients(doc)
-    infiltration = _by_zone(read_nominal_infiltration(results), lambda r: _airflow(r, infiltration_coefficients))
+    infiltration = _by_zone(
+        read_nominal_infiltration(results),
+        lambda r: _airflow(r, infiltration_coefficients, names.get(r.zone_index, "")),
+    )
     ventilation_coefficients = _ventilation_coefficients(doc)
-    ventilation = _by_zone(read_nominal_ventilation(results), lambda r: _airflow(r, ventilation_coefficients))
+    ventilation = _by_zone(
+        read_nominal_ventilation(results), lambda r: _airflow(r, ventilation_coefficients, names.get(r.zone_index, ""))
+    )
 
     zone_lists = _zone_lists(doc)
     thermostats = _thermostats(doc, zone_lists)
@@ -942,19 +1012,21 @@ def build_inventory(sources: SourceData, evaluate: Callable[[str], Profile] | No
     space_types = _space_types(doc)
     plenums = _plenums(doc)
     get = _hourly_getter(sources, zone_rows)
-    hot_water = _hot_water(sources, zone_rows, gains, get, evaluate)
     delivery = delivered_energy(
         sources,
         {names[row.index]: row.multiplier * row.list_multiplier for row in zone_rows},
         {names[row.index]: row.floor_area for row in zone_rows},
     )
+    conditioned = _conditioned(zone_rows, names, thermostats, plenums, delivery.annual, evaluate)
+    hot_water = _hot_water(sources, zone_rows, gains, get, evaluate, conditioned)
 
     records: list[ZoneRecord] = []
     for row in zone_rows:
         name = names[row.index]
         key = name.casefold()
         multiplier = row.multiplier * row.list_multiplier
-        per_area, per_person = _design_outdoor_air(outdoor_air_specs.get(key), row.floor_area, row.volume)
+        people = sum(g.design_level for g in gains.get(row.index, ()) if g.kind == "people")
+        per_area, per_person = _design_outdoor_air(outdoor_air_specs.get(key), row.floor_area, row.volume, people)
         types = space_types.get(key, ())
         records.append(
             ZoneRecord(

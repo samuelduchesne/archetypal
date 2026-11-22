@@ -195,7 +195,7 @@ def test_reading_sets_metabolic_rate_with_a_note() -> None:
     [note] = [note for note in notes(context) if note.rule == "loads.people"]
     assert note.kind is NoteKind.ASSUMED
     assert note.value == 1.2
-    assert note.location == "/ZoneLoads/0/PeopleDensity"
+    assert note.location == "/ZoneLoads/0/MetabolicRate"
     assert "MetabolicRate" in note.reason
 
 

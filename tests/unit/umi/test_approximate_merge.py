@@ -84,7 +84,9 @@ def test_exact_parts_rebuild_from_intensities(office: ZoneComponent) -> None:
         ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * space_use.Occupancy.PeopleDensity
     )
     assert ledger.outdoor_air.design_flow == pytest.approx(design)
-    np.testing.assert_allclose(ledger.outdoor_air.hourly, design * year_values(ventilation.Schedule, CALENDAR))
+    mechanical = ventilation.MechVentSchedule
+    fraction = year_values(mechanical, CALENDAR) if mechanical is not None else np.ones(8760)
+    np.testing.assert_allclose(ledger.outdoor_air.hourly, design * fraction)
     annual = space_use.WaterUse.FlowRatePerPerson * 365 * space_use.Occupancy.PeopleDensity * 0.4
     assert float(ledger.hot_water.volume.sum()) == pytest.approx(annual)
     dhw = office.Operations.DHW
@@ -254,3 +256,25 @@ def test_more_than_two_groups_with_unset_shares_is_refused(office: ZoneComponent
     archetype = Archetype.model_construct(Name="unweighted", Groups=groups)
     with pytest.raises(InputError, match="unweighted"):
         approximate_merge(archetype)
+
+
+def test_merged_infiltration_is_given_in_air_changes(office: ZoneComponent) -> None:
+    """The merged ACH is the one epinterface uses: the method is AirChanges/Hour whatever the members'."""
+    path = "Envelope.Infiltration"
+    by_surface = replace(office, f"{path}.CalculationMethod", "Flow/ExteriorArea")
+    by_surface = replace(by_surface, f"{path}.FlowPerExteriorSurfaceArea", 0.0003)
+    leaky = replace(office, f"{path}.CalculationMethod", "AirChanges/Hour")
+    leaky = replace(leaky, f"{path}.AirChangesPerHour", 2.0)
+    leaky = replace(leaky, "Name", "Leaky office")
+    archetype = Archetype(
+        Name="two infiltrations",
+        Groups=[
+            group(by_surface, "perimeter surface", 0.3, "perimeter"),
+            group(leaky, "perimeter leaky", 0.2, "perimeter"),
+            group(office, "core office", 0.5, "core"),
+        ],
+    )
+    zone = next(g.Zone for g in approximate_merge(archetype).archetype.Groups if g.Exposure == "perimeter")
+    infiltration = zone.Envelope.Infiltration
+    assert infiltration.CalculationMethod == "AirChanges/Hour"
+    assert infiltration.AirChangesPerHour > 0

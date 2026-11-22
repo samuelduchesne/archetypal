@@ -8,10 +8,13 @@ Every fan's hourly `Fan Electricity Energy` and `Fan Air Mass Flow Rate` go to z
   fan, or the fan of an air terminal such as a PIU) belongs to its zone;
 - an **air-loop fan** (the *Equipment Summary* Fans table names its air loop) is split between
   the zones the loop serves, each hour in proportion to the mass flow through each zone's
-  air-distribution-unit inlet nodes (`System Node Mass Flow Rate`). An hour with fan flow but no
-  inlet flow is split by the zones' annual inlet flow. The zones a loop serves are those whose
-  return nodes its return path collects (`AirLoopHVAC:ReturnPath` through zone mixers and
-  return plenums); with a single air loop, every zone fed by an air distribution unit.
+  air-distribution-unit inlet nodes (`System Node Mass Flow Rate`), counting only the units whose
+  terminal the loop's supply path feeds when that is known. An hour with fan flow but no inlet
+  flow is split by the zones' annual inlet flow. The zones a loop serves are those whose return
+  nodes its return path collects (`AirLoopHVAC:ReturnPath` through zone mixers and return
+  plenums), and those its supply path feeds (`airflow.air_loop_zones`, so a dedicated
+  outdoor-air loop without a return path serves its zones); with a single air loop, every zone
+  fed by an air distribution unit.
 
 Air volume is mass flow ÷ the standard air density EnergyPlus uses for "standard density"
 outputs, `StdRhoAir` at 20 °C, dry air and the site's standard pressure, so it matches the ideal
@@ -52,11 +55,12 @@ from the archetype stays in `FanAttribution.zones` for the report.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 
+from archetypal.reduction.airflow import air_loop_zones
 from archetypal.reduction.efficiency import equipment_table, read_hourly, zone_equipment
 from archetypal.reduction.ledger import FanTotals, Mode
 
@@ -123,6 +127,9 @@ class FanSeries:
         mass_flow: Air mass flow, hourly mean, kg/s.
         zone: The zone of a zone-equipment fan.
         loop_zones: The zones an air-loop fan serves.
+        loop_inlet_flow: Mass flow through the inlet nodes of the air distribution units the
+            fan's loop feeds, kg/s, every copy, by zone name; `None` when the units cannot be told
+            apart by loop, and `BuildingFans.inlet_flow` (every unit of the zone) is used.
     """
 
     name: str
@@ -130,6 +137,7 @@ class FanSeries:
     mass_flow: Profile
     zone: str | None = None
     loop_zones: tuple[str, ...] = ()
+    loop_inlet_flow: Mapping[str, Profile] | None = None
 
 
 @dataclass(frozen=True)
@@ -221,10 +229,11 @@ def loop_shares(
     return np.divide(flows, total, out=fallback, where=total > 0.0)
 
 
-def _loop_shares(data: BuildingFans, served: Sequence[str], hours: int) -> _Array:
-    """Each served zone's share (every copy) of an air-loop fan, hour by hour."""
+def _loop_shares(data: BuildingFans, fan: FanSeries, served: Sequence[str], hours: int) -> _Array:
+    """Each served zone's share (every copy) of an air-loop fan, hour by hour, by its own loop's inlet flow."""
     weights = {z: data.multipliers[z] * data.floor_area.get(z, 0.0) for z in served}
-    return loop_shares(data.inlet_flow, weights, served, hours)
+    inlet_flow = data.inlet_flow if fan.loop_inlet_flow is None else fan.loop_inlet_flow
+    return loop_shares(inlet_flow, weights, served, hours)
 
 
 def _zone_totals(data: BuildingFans, name: str, energy: _Array, volume: _Array) -> FanTotals:
@@ -279,7 +288,7 @@ def attribute_fans(data: BuildingFans) -> FanAttribution:
         if fan.zone is not None and fan.zone in data.multipliers:
             shares: list[tuple[str, _Array | float]] = [(fan.zone, 1.0)]
         elif served:
-            matrix = _loop_shares(data, served, hours)
+            matrix = _loop_shares(data, fan, served, hours)
             shares = [(zone, matrix[i]) for i, zone in enumerate(served)]
         else:
             orphans.append(fan.name)
@@ -352,7 +361,7 @@ def _expand(name: str | None, node_lists: Mapping[str, tuple[str, ...]]) -> tupl
 
 
 def _loop_zones(doc: IDFDocumentSince22_1, node_lists: Mapping[str, tuple[str, ...]]) -> dict[str, set[str]]:
-    """Case-folded zone names each air loop's return path collects, by case-folded loop name."""
+    """Case-folded zone names each air loop's return path collects or supply path feeds, by case-folded loop name."""
     mixers = {o.name.casefold(): [n.inlet_node_name for n in o.nodes] for o in doc["AirLoopHVAC:ZoneMixer"]}
     plenums = {o.name.casefold(): [n.inlet_node_name for n in o.nodes] for o in doc["AirLoopHVAC:ReturnPlenum"]}
     paths: dict[str, set[str]] = {}
@@ -371,6 +380,8 @@ def _loop_zones(doc: IDFDocumentSince22_1, node_lists: Mapping[str, tuple[str, .
     for loop in doc["AirLoopHVAC"]:
         collected = paths.get((loop.demand_side_outlet_node_name or "").casefold(), set())
         loops[loop.name.casefold()] = {zone for zone, nodes in returns.items() if nodes & collected}
+    for name, zones in air_loop_zones(doc).items():  # the supply side: a loop without a return path
+        loops.setdefault(name.casefold(), set()).update(zones)
     return loops
 
 
@@ -395,6 +406,66 @@ def _adu_nodes(
     return adu_nodes
 
 
+_TERMINAL_INLETS = (
+    "air_inlet_node_name",
+    "supply_air_inlet_node_name",
+    "primary_air_inlet_node_name",
+    "hot_air_inlet_node_name",
+    "cold_air_inlet_node_name",
+)
+"""The fields of an air terminal that name an inlet node fed by an air loop (single duct, PIU, dual duct)."""
+
+
+def _supply_outlets(doc: IDFDocumentSince22_1) -> dict[str, set[str]]:
+    """Case-folded outlet nodes of each air loop's supply paths (splitters and supply plenums), by loop."""
+    splitters = {o.name.casefold(): [n.outlet_node_name for n in o.nodes] for o in doc["AirLoopHVAC:ZoneSplitter"]}
+    plenums = {o.name.casefold(): [n.outlet_node_name for n in o.nodes] for o in doc["AirLoopHVAC:SupplyPlenum"]}
+    paths: dict[str, set[str]] = {}
+    for path in doc["AirLoopHVAC:SupplyPath"]:
+        nodes = paths.setdefault((path.supply_air_path_inlet_node_name or "").casefold(), set())
+        for component in path.components:
+            name = component.component_name.casefold()
+            nodes.update((n or "").casefold() for n in splitters.get(name, []) + plenums.get(name, []))
+    return {
+        loop.name.casefold(): paths.get((loop.demand_side_inlet_node_names or "").casefold(), set())
+        for loop in doc["AirLoopHVAC"]
+    }
+
+
+def _loop_adu_nodes(
+    doc: IDFDocumentSince22_1, adu_nodes: Mapping[str, tuple[str, ...]]
+) -> dict[str, dict[str, tuple[str, ...]]]:
+    """Each zone's ADU inlet nodes fed by each air loop, by case-folded loop name, then zone name.
+
+    An air distribution unit belongs to a loop when its terminal's air inlet node is an outlet of
+    the loop's supply path. When a unit cannot be traced to a loop, the result is empty and every
+    loop's split uses the zones' whole inlet flow, as with a single loop.
+    """
+    outlets = _supply_outlets(doc)
+    unit_inlets: dict[str, set[str]] = {}  # ADU outlet node -> its terminal's air inlet nodes
+    for adu in doc["ZoneHVAC:AirDistributionUnit"]:
+        # The terminal's type is data (single duct, PIU, dual duct), read through its inlet fields below.
+        collection = doc[adu.air_terminal_object_type]
+        terminal = collection.get(adu.air_terminal_name) if adu.air_terminal_name else None
+        if terminal is None:
+            continue
+        inlets = {str(terminal.data[f]).casefold() for f in _TERMINAL_INLETS if terminal.data.get(f)}
+        unit_inlets[adu.air_distribution_unit_outlet_node_name.casefold()] = inlets
+    loops: dict[str, dict[str, tuple[str, ...]]] = {}
+    for loop, supply in outlets.items():
+        by_zone = {
+            zone: fed
+            for zone, nodes in adu_nodes.items()
+            if (fed := tuple(n for n in nodes if unit_inlets.get(n.casefold(), set()) & supply))
+        }
+        if by_zone:
+            loops[loop] = by_zone
+    traced = {n for by_zone in loops.values() for nodes in by_zone.values() for n in nodes}
+    if any(n not in traced for nodes in adu_nodes.values() for n in nodes):
+        return {}
+    return loops
+
+
 @dataclass(frozen=True)
 class AirLoops:
     """Which zones each air loop serves, and through which inlet nodes (R19).
@@ -404,10 +475,15 @@ class AirLoops:
             A zone fed by an air distribution unit but on no loop's return path is given to
             the only loop when there is one.
         inlet_nodes: Each zone's inlet nodes fed by an air distribution unit, by zone name.
+        loop_inlet_nodes: Of those, the nodes each loop's supply path feeds, by case-folded loop
+            name, then zone name; a loop is absent when none of its units could be traced.
     """
 
     served: Mapping[str, tuple[str, ...]]
     inlet_nodes: Mapping[str, tuple[str, ...]]
+    loop_inlet_nodes: Mapping[str, Mapping[str, tuple[str, ...]]] = field(
+        default_factory=dict[str, "Mapping[str, tuple[str, ...]]"]
+    )
 
 
 def air_loops(doc: IDFDocumentSince22_1, zone_names: Iterable[str]) -> AirLoops:
@@ -429,7 +505,7 @@ def air_loops(doc: IDFDocumentSince22_1, zone_names: Iterable[str]) -> AirLoops:
     if unassigned and len(loops) == 1:
         next(iter(loops.values())).update(unassigned)
     served = {loop: tuple(sorted(model_names[z] for z in zones if z in model_names)) for loop, zones in loops.items()}
-    return AirLoops(served=served, inlet_nodes=adu_nodes)
+    return AirLoops(served=served, inlet_nodes=adu_nodes, loop_inlet_nodes=_loop_adu_nodes(doc, adu_nodes))
 
 
 def _fan_zones(sources: SourceData, model_names: Mapping[str, str]) -> dict[str, str]:
@@ -469,7 +545,7 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
 
     fan_names = sources.facts.fans
     requests = [(variable, fan) for fan in fan_names for variable in (_ENERGY_VARIABLE, _FLOW_VARIABLE)]
-    requests += [(_NODE_VARIABLE, node) for nodes in adu_nodes.values() for node in nodes]
+    requests += [(_NODE_VARIABLE, node) for nodes in adu_nodes.values() for node in nodes]  # every loop's too
     requests += [(variable, zone.zone.name) for zone in zones for variable in (HEATING_VARIABLE, COOLING_VARIABLE)]
     series = read_hourly(results, requests)
     hours = next((len(profile) for profile in series.values()), sources.run_period.calendar.hours)
@@ -478,6 +554,13 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
     def get(variable: str, key: str) -> Profile:
         return series.get((variable.upper(), key.upper()), zeros)
 
+    def flow(nodes: Iterable[str]) -> Profile:
+        return sum((get(_NODE_VARIABLE, node) for node in nodes), zeros)
+
+    loop_flows = {
+        loop: {name: flow(nodes) for name, nodes in by_zone.items()}
+        for loop, by_zone in topology.loop_inlet_nodes.items()
+    }
     fans: list[FanSeries] = []
     for fan in fan_names:
         loop = fan_loop.get(fan.casefold(), "")
@@ -489,13 +572,12 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
                 mass_flow=get(_FLOW_VARIABLE, fan),
                 zone=None if served else fan_zone.get(fan.casefold()),
                 loop_zones=served,
+                loop_inlet_flow=loop_flows.get(loop) if served else None,
             )
         )
     return BuildingFans(
         fans=tuple(fans),
-        inlet_flow={
-            name: sum((get(_NODE_VARIABLE, node) for node in nodes), zeros) for name, nodes in adu_nodes.items()
-        },
+        inlet_flow={name: flow(nodes) for name, nodes in adu_nodes.items()},
         multipliers={zone.zone.name: zone.zone.multiplier for zone in zones},
         floor_area={zone.zone.name: zone.zone.floor_area for zone in zones},
         delivered={

@@ -30,12 +30,12 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, NamedTuple, cast
 
 from epinterface.sbem.components.envelope import InfiltrationComponent
+from epinterface.sbem.components.systems import VentilationComponent
 
 from archetypal.errors import Problem
 from archetypal.umi._format import ZoneVentilation
 from archetypal.umi.correspondence import rule
 from archetypal.umi.rules._common import (
-    all_values_equal,
     identity_to_sbem,
     identity_to_umi,
     optional_schedule_to_sbem,
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
     from epinterface.sbem.components.envelope import ZoneEnvelopeComponent
     from epinterface.sbem.components.schedules import YearComponent
-    from epinterface.sbem.components.systems import VentilationComponent, VentilationProvider
+    from epinterface.sbem.components.systems import VentilationProvider
     from pydantic import JsonValue
 
     from archetypal.umi._format import YearSchedule
@@ -277,8 +277,9 @@ def natural_limits_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext
     """Read UMI's natural-ventilation limits and switches as UP-9's fields of SBEM's ventilation.
 
     A temperature outside SBEM's [-100, 100] °C, a humidity outside [0, 100] %, or a minimum
-    outdoor temperature not below the maximum is lost, SBEM's default kept. The airflow-network
-    switch, which UP-9 does not add, is reported when on.
+    outdoor temperature not below the maximum (SBEM's default standing in for a limit lost) is
+    lost, SBEM's default kept. The airflow-network switch, which UP-9 does not add, is reported
+    when on.
 
     Args:
         ventilation: The UMI ventilation settings.
@@ -306,15 +307,18 @@ def natural_limits_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext
                 rule="vent.natural_limits",
                 reason=f"SBEM accepts {lowest} to {highest}; its default is kept",
             )
-    minimum, maximum = fields.get("NatVentMinOutdoorAirTemp"), fields.get("NatVentMaxOutdoorAirTemp")
-    if minimum is not None and maximum is not None and cast("float", minimum) >= cast("float", maximum):
-        for key in ("NatVentMinOutdoorAirTemp", "NatVentMaxOutdoorAirTemp"):
-            context.lose(
-                key,
-                cast("float", fields.pop(key)),
-                rule="vent.natural_limits",
-                reason="SBEM needs a minimum outdoor temperature below the maximum; its band is kept",
-            )
+    # A limit dropped above takes SBEM's default, so the band is checked with that default.
+    band = ("NatVentMinOutdoorAirTemp", "NatVentMaxOutdoorAirTemp")
+    minimum, maximum = (cast("float", fields.get(key, VentilationComponent.model_fields[key].default)) for key in band)
+    if minimum >= maximum:
+        for key in band:
+            if key in fields:
+                context.lose(
+                    key,
+                    cast("float", fields.pop(key)),
+                    rule="vent.natural_limits",
+                    reason="SBEM needs a minimum outdoor temperature below the maximum; its band is kept",
+                )
     return fields
 
 
@@ -400,20 +404,15 @@ def scheduled_to_sbem(
 
 @rule("vent.scheduled", to="umi")
 def scheduled_to_umi(
-    ventilation: VentilationComponent,
-    natural_schedule: YearSchedule,
-    *,
-    schedule: ScheduleToUmi,
-    context: RuleContext,
+    ventilation: VentilationComponent, *, schedule: ScheduleToUmi, context: RuleContext
 ) -> dict[str, object]:
     """Write SBEM's scheduled ventilation (UP-9).
 
-    SBEM's `None` schedule (constant) is written as the natural-ventilation schedule when that
-    is always on, so equal schedules stay one component, else as an always-on schedule (noted).
+    SBEM's `None` schedule (constant) is written as the always-on schedule (noted), which
+    reads back as `None`; an always-on natural-ventilation schedule of another name would not.
 
     Args:
         ventilation: The SBEM ventilation.
-        natural_schedule: The UMI natural-ventilation schedule written.
         schedule: The schedule converter.
         context: The writing context at the ventilation.
     """
@@ -426,12 +425,12 @@ def scheduled_to_umi(
             rule="vent.scheduled",
             reason="SBEM's None is no indoor limit; UMI needs a value, so the lowest SBEM accepts is written",
         )
-    year = ventilation.ScheduledVentilationSchedule
-    if year is None and all_values_equal(natural_schedule, 1.0):
-        fields["scheduled_ventilation_schedule"] = natural_schedule
-        return fields
     fields["scheduled_ventilation_schedule"] = optional_schedule_to_umi(
-        year, "ScheduledVentilationSchedule", schedule=schedule, context=context, rule_id="vent.scheduled"
+        ventilation.ScheduledVentilationSchedule,
+        "ScheduledVentilationSchedule",
+        schedule=schedule,
+        context=context,
+        rule_id="vent.scheduled",
     )
     return fields
 
@@ -483,7 +482,7 @@ def zone_ventilation_to_umi(
         "is_nat_vent_on": provider_to_umi(ventilation.Provider)[1],
         "nat_vent_schedule": natural_schedule,
         **natural_limits_to_umi(ventilation, context=at_ventilation),
-        **scheduled_to_umi(ventilation, natural_schedule, schedule=schedule, context=at_ventilation),
+        **scheduled_to_umi(ventilation, schedule=schedule, context=at_ventilation),
     }
     return ZoneVentilation.model_validate(fields)
 

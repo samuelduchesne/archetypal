@@ -63,6 +63,7 @@ Decisions of this module (spec gaps)
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
@@ -449,7 +450,7 @@ def storey_ratio(zones: Iterable[ClassifiedZone]) -> float:
 
 
 def storeys(ratio: float) -> Derived[int]:
-    """`Geometry.Storeys`: the storey ratio rounded to the nearest integer, at least 1 (rule `geometry.storeys`).
+    """`Geometry.Storeys`: the storey ratio rounded to the nearest integer, halves up, at least 1 (`geometry.storeys`).
 
     Args:
         ratio: The unrounded ratio (`storey_ratio`).
@@ -457,16 +458,16 @@ def storeys(ratio: float) -> Derived[int]:
     Returns:
         The number of storeys.
     """
-    value = max(1, round(ratio))
+    value = max(1, math.floor(ratio + 0.5))
     return Derived(value, "geometry.storeys", (LeafRule("Storeys", value, "geometry.storeys"),))
 
 
 def geometry(building: GroupLedger, ratio: float) -> Derived[BuildingGeometry]:
     """The archetype's geometry characteristics (FR-024; UP-2's per-orientation ratios).
 
-    Per orientation, the gross facade is the exterior wall area plus its windows; the
-    window-to-wall ratio is window ÷ gross facade (0 without facade). Areas are per conditioned
-    floor area.
+    Per orientation, the gross facade is the exterior wall area plus its windows in walls
+    (skylights, roof and floor windows are not facade); the window-to-wall ratio is window ÷
+    gross facade (0 without facade). Areas are per conditioned floor area.
 
     Args:
         building: The sum of every group's ledger.
@@ -747,6 +748,21 @@ def _efficiency(
                     source="efficiency",
                 )
             )
+        foreign = sum(v for k, v in totals.distribution_by_fuel.items() if k != fuel) if primary > 0 else 0.0
+        if foreign > 0:
+            lost.append(
+                _entry(
+                    ledger,
+                    name,
+                    f"Distribution fuels of {mode.replace('_', ' ')}",
+                    f"Pump and heat-rejection consumption of fuels other than {fuel} is counted as {fuel} "
+                    "in the distribution COP.",
+                    magnitude=foreign,
+                    unit="J",
+                    folded_into=f"{path}.DistributionCOP",
+                    source="efficiency",
+                )
+            )
     elif totals.rated_efficiency is not None:
         system, dist, rule = totals.rated_efficiency, 1.0, "efficiency.rated"
         fallback = building.energy.get(mode)
@@ -874,21 +890,40 @@ def assemblies(ledger: GroupLedger, building: GroupLedger, *, name: str) -> Deri
 def window(ledger: GroupLedger, *, name: str) -> Derived[GlazingConstructionSimpleComponent | None]:
     """The simple glazing with area-weighted U, SHGC and VT (rule `window.area_weighted`), or `None`.
 
+    The glazing is the facade windows'. SBEM's window is a share of the facade, so it cannot hold
+    skylights, roof or floor windows (`ledger.skylights`): their area is listed as not represented,
+    and their UA, A·SHGC and A·VT, which the ledger conserves, are not written.
+
     Args:
         ledger: The group's ledger.
         name: The group's name.
 
     Returns:
-        The glazing, or `None` without windows.
+        The glazing, or `None` without facade windows.
     """
     value = window_construction(ledger.window_by_orientation, name=f"{name} window")
     leaves = () if value is None else _leaves(value, {}, "window.area_weighted")
-    return Derived(value, "window.area_weighted", leaves)
+    lost: list[NotRepresented] = []
+    skylights = ledger.skylights
+    if skylights.area > 0:
+        lost.append(
+            _entry(
+                ledger,
+                name,
+                "Skylights, roof and floor windows",
+                f"SBEM's window is a share of the facade; these windows (UA {skylights.ua:.6g} W/K, "
+                f"A·SHGC {skylights.a_shgc:.6g} m², A·VT {skylights.a_vt:.6g} m²) are not written.",
+                magnitude=skylights.area,
+                unit="m2",
+                source="envelope",
+            )
+        )
+    return Derived(value, "window.area_weighted", leaves, tuple(lost))
 
 
 def _exterior_area(ledger: GroupLedger) -> float:
     opaque = sum(ledger.envelope.get(c, EnvelopeTotals()).area for c in ("exterior_wall", "roof", "exposed_floor"))
-    return opaque + sum(w.area for w in ledger.window_by_orientation.values())
+    return opaque + sum(w.area for w in ledger.window_by_orientation.values()) + ledger.skylights.area
 
 
 def _off_infiltration(name: str) -> InfiltrationComponent:
@@ -1190,8 +1225,8 @@ def conditioning_systems(
 
     `SpecificFanPower = fan energy / air volume` (`fans.energy_per_volume`); the ideal loads'
     supply-air limits are the setpoint ± the detailed model's effective supply temperature
-    difference in that mode (`fans.effective_supply_delta`), and their limit types are then
-    `IDEAL_LOADS_LIMITS` (same rule).
+    difference in that mode (`fans.effective_supply_delta`), and, when at least one is set, their
+    limit types are `IDEAL_LOADS_LIMITS` (same rule).
 
     Args:
         ledger: The group's ledger.
@@ -1210,8 +1245,9 @@ def conditioning_systems(
     if sfp is not None:
         extra["SpecificFanPower"] = sfp
         limits, limit_lost = _supply_limits(ledger, air_density, name)
-        extra.update(limits)
-        extra.update(IDEAL_LOADS_LIMITS)
+        if limits:  # epinterface's default limits stay with its default supply temperatures
+            extra.update(limits)
+            extra.update(IDEAL_LOADS_LIMITS)
         lost.extend(limit_lost)
         if ledger.fans.volume_without_demand > 0:
             lost.append(
@@ -1376,11 +1412,17 @@ def to_archetype(groups: Sequence[Group], layout: Layout, facts: BuildingFacts, 
         The archetype, its parameters and what it cannot hold.
 
     Raises:
-        ReductionError: With epinterface's message when a component or the archetype does not
-            validate, or a rule cannot produce a component. Either is a bug, never silenced.
+        ReductionError: When a group has no floor area, or, with epinterface's message, when a
+            component or the archetype does not validate, or a rule cannot produce a component.
+            Either of the latter is a bug, never silenced.
     """
     if not groups:
         raise ReductionError(name, "no group to convert")
+    for group in groups:
+        if not group.ledger.floor_area > 0:  # every intensity is per floor area
+            members = ", ".join(group.ledger.members)
+            msg = f"group {group_name(group.key)!r} ({members}) has no floor area; its intensities are undefined"
+            raise ReductionError(name, msg)
     building = sum((g.ledger for g in groups), GroupLedger())
     parameters: list[Parameter] = []
     lost: list[NotRepresented] = []

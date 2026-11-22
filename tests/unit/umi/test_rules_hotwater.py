@@ -254,3 +254,21 @@ def test_names_and_metadata() -> None:
     assert (written.name, written.category) == ("B_Off_0 hot water", "Office Spaces")
     assert written.water_schedule is not None
     assert written.water_schedule.name == "dhw"
+
+
+def test_writing_a_flow_per_person_without_people_is_lost_even_with_hot_water_off() -> None:
+    context = writing()
+    written = dhw_to_umi(dhw(on=False), water_use(0.01), occupancy(0.0), schedule=write_schedule, context=context)
+    assert written.flow_rate_per_floor_area == 0.0
+    [loss] = context.losses
+    assert (loss.location, loss.value, loss.replacement) == (
+        "perimeter.Operations.SpaceUse.WaterUse.FlowRatePerPerson",
+        0.01,
+        0.0,
+    )
+
+
+def test_writing_hot_water_off_with_people_off_loses_nothing() -> None:
+    context = writing()
+    dhw_to_umi(dhw(on=False), water_use(0.01), occupancy(on=False), schedule=write_schedule, context=context)
+    assert context.losses == []

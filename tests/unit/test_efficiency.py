@@ -11,6 +11,7 @@ import pytest
 from archetypal.reduction.efficiency import (
     BuildingEnergy,
     EnergyAttribution,
+    _coil_mean,  # pyright: ignore[reportPrivateUsage]
     attribute_energy,
     building_energy,
     efficiency_hook,
@@ -314,3 +315,19 @@ def test_fixture_delivered_over_consumed_is_physically_plausible(
     for mode, (low, high) in bounds:
         energy = total.energy[mode]
         assert low <= energy.delivered / sum(energy.consumed_by_fuel.values()) <= high, mode
+
+
+def test_coil_mean_excludes_supplementary_heaters_as_energyplus_writes_them() -> None:
+    coils = {
+        "HP COIL": {
+            "Nominal Efficiency": "3.20",
+            "Nominal Total Capacity": "36714.85",
+            "Used as Supplementary Heat": "No",
+        },
+        "BACKUP": {
+            "Nominal Efficiency": "1.00",
+            "Nominal Total Capacity": "34999.02",
+            "Used as Supplementary Heat": "Yes",
+        },
+    }
+    assert _coil_mean(coils) == pytest.approx(3.2)

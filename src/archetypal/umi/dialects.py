@@ -12,9 +12,10 @@ file holds:
 
 The Archsim key map renames `Comment` to `Comments`, turns `GasType` 0 to 4 into the gas names
 `AIR`, `ARGON`, `KRYPTON`, `XENON` and `SF6` (the gas's own `Type: "Gas"` is ignored), and moves
-a material's `Type` to its `Category`. The keys of the collections' objects that have no Core
-counterpart (`Life`, `EmbodiedEnergyStdDev`, `PhaseChange`, `Optical`, …) are removed and listed
-in `RawLibrary.lost`, so the reader can report them as lost.
+a material's `Type` to its `Category` (lost when the material has a `Category` too). The keys of
+the collections' objects that have no Core counterpart (`Life`, `EmbodiedEnergyStdDev`,
+`PhaseChange`, `Optical`, …) are removed and listed in `RawLibrary.lost`, so the reader can
+report them as lost.
 """
 
 from __future__ import annotations
@@ -63,6 +64,15 @@ _MATERIALS: Final = ("GasMaterials", "GlazingMaterials", "OpaqueMaterials")
 _ARCHSIM_MARKERS: Final = frozenset({"GasType", "Life", "Comment"})
 _GASES: Final = ("AIR", "ARGON", "KRYPTON", "XENON", "SF6")
 _ZIP_MAGIC: Final = b"PK\x03\x04"
+
+
+class _NonFiniteError(ValueError):
+    """`NaN`, `Infinity` or `-Infinity` in a file: Python's JSON reader accepts them, JSON does not."""
+
+
+def _refuse_constant(constant: str) -> object:
+    raise _NonFiniteError(constant)
+
 
 Json = dict[str, object]
 
@@ -141,10 +151,13 @@ def _archsim_object(
         elif material and key == "GasType":
             mapped["Type"] = _GASES[value] if isinstance(value, int) and 0 <= value < len(_GASES) else value
         elif material and key == "Type":
-            if collection != "GasMaterials" and "Category" not in item:
-                mapped["Category"] = value
+            if collection != "GasMaterials":
+                if "Category" not in item:
+                    mapped["Category"] = value
+                else:  # the file's own `Category` wins; the Archsim `Type` has no other place
+                    lost.append((f"{pointer}/Type", value))
             # A gas's own `Type` ("Gas") is ignored: `GasType` gives the gas.
-            elif collection == "GasMaterials" and "GasType" not in item:
+            elif "GasType" not in item:
                 mapped["Type"] = value
         elif key in known:
             mapped[key] = value
@@ -234,7 +247,8 @@ def parse(data: bytes, subject: str | os.PathLike[str]) -> RawLibrary:
         The library in Core JSON, with its dialect and the SHA-256 of `data`.
 
     Raises:
-        UmiFormatError: The file is a `.umi` project, XML, malformed JSON or not a UMI library.
+        UmiFormatError: The file is a `.umi` project, XML, malformed JSON (`NaN` and `Infinity`
+            included) or not a UMI library.
     """
     sha256 = hashlib.sha256(data).hexdigest()
     if data.startswith(_ZIP_MAGIC):
@@ -247,7 +261,11 @@ def parse(data: bytes, subject: str | os.PathLike[str]) -> RawLibrary:
     if text.lstrip().startswith("<"):
         raise _refuse_xml(text, subject)
     try:
-        document: object = json.loads(text)
+        document: object = json.loads(text, parse_constant=_refuse_constant)
+    except _NonFiniteError as error:
+        message = f"{error} is not a JSON number; a library holds finite numbers only"
+        problem = Problem(pointer="", template=None, rule="format.json", message=message)
+        raise _refuse(subject, "the library is not valid JSON", (problem,)) from error
     except json.JSONDecodeError as error:
         problem = Problem(
             pointer="",

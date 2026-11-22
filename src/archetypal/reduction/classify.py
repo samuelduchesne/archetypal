@@ -107,12 +107,16 @@ def exposure(zone: ZoneRecord) -> Exposure:
         zone: The zone.
 
     Returns:
-        `"perimeter"` when it has an outdoor wall (60° to 120° tilt) or an outdoor window, else `"core"`.
+        `"perimeter"` when it has an outdoor wall or an outdoor window in a wall (both 60° to 120°
+        tilt), else `"core"`: roofs and skylights never decide.
     """
+    low, high = _WALL_TILT
     for surface in zone.surfaces:
         if surface.boundary != "outdoors":
             continue
-        if surface.surface_class in {"exterior_wall", "window"}:
+        if surface.surface_class == "exterior_wall" or (
+            surface.surface_class == "window" and low <= surface.tilt <= high
+        ):
             return "perimeter"
     return "core"
 

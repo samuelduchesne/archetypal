@@ -15,7 +15,8 @@ The fourth check, at least one conditioned zone, needs classification and is mad
 Which fuels each end use meters (`ModelFacts.end_use_fuels`) is read from the results' tabular
 *Annual Building Utility Performance Summary*, End Uses, which the run conditions of
 `contracts/results-requirements.md` require: a fuel is needed where that table reports
-non-zero energy. Reading it from the model would mean following every coil, boiler and plant
+non-zero energy, or where the results already hold its hourly `<end use>:<fuel>` meter (the
+table rounds a fuel under 5 MJ a year to zero). Reading it from the model would mean following every coil, boiler and plant
 loop to its fuel, which EnergyPlus has already done.
 """
 
@@ -35,7 +36,13 @@ from idfkit.versioned import as_version
 
 from archetypal.errors import MissingResults, ModelResultsMismatch, UnsupportedEnergyPlusVersion
 from archetypal.reduction._sql_tables import database_path, read_simulations, read_zones
-from archetypal.reduction.requirements import RESULTS_REQUIREMENTS, ModelFacts, check_results, delivery_outputs
+from archetypal.reduction.requirements import (
+    ENERGYPLUS_FUELS,
+    RESULTS_REQUIREMENTS,
+    ModelFacts,
+    check_results,
+    delivery_outputs,
+)
 from archetypal.reduction.schedules import WEEKDAYS, RunPeriodCalendar
 
 if TYPE_CHECKING:
@@ -178,7 +185,9 @@ def end_use_fuels(results: SQLResult) -> tuple[tuple[str, str], ...] | None:
     """Return the (end use, fuel) pairs with energy in the results' End Uses table.
 
     Names follow EnergyPlus's meter spelling: the table's `Heat Rejection` and `Natural Gas`
-    become `HeatRejection` and `NaturalGas`. The `Water` column is not a fuel.
+    become `HeatRejection` and `NaturalGas`. The `Water` column is not a fuel. The table rounds
+    to 0.01 GJ, so a fuel under 5 MJ a year reads as zero there: the `<end use>:<fuel>` meters
+    the results already report hourly are added too.
 
     Args:
         results: The results.
@@ -201,6 +210,10 @@ def end_use_fuels(results: SQLResult) -> tuple[tuple[str, str], ...] | None:
             continue
         if value != 0.0:
             pairs.add((end_use, row.column_name.replace(" ", "")))
+    for info in results.list_variables():
+        end_use, _, fuel = info.name.partition(":")
+        if info.is_meter and info.frequency == "Hourly" and end_use in _END_USES and fuel in ENERGYPLUS_FUELS:
+            pairs.add((end_use, fuel))
     return tuple(sorted(pairs))
 
 

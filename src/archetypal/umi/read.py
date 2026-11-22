@@ -16,7 +16,7 @@
    unset shares, through the registered UMI → SBEM rules. Fields SBEM has no place for (the
    rows of `CORRESPONDENCE` still waiting for an upstream item) are lost when they differ from
    Basilisk's default.
-6. **Report**: components no template uses (`library.unused`), the fields that took
+6. **Report**: components no translated template uses (`library.unused`), the fields that took
    Basilisk's default and the unknown keys (notes), the Archsim keys without a Core
    counterpart (losses), and the source (file name, SHA-256, dialect, versions).
 
@@ -27,6 +27,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, TypeVar, cast
@@ -64,7 +67,6 @@ from archetypal.umi.rules.windows import SbemWindow, layers_to_sbem, settings_to
 from archetypal.umi.validate import LibraryIndex, template_problems
 
 if TYPE_CHECKING:
-    import os
     from collections.abc import Callable, Hashable, Iterable
 
     from epinterface.sbem.archetype import Archetype
@@ -116,7 +118,10 @@ class UmiImport:
     def write(self, directory: str | os.PathLike[str], *, overwrite: bool = False) -> tuple[Path, ...]:
         """Write `<archetype>.sbem.json` per archetype and `<library stem>.loss.json`.
 
-        No file is written when one of them exists and `overwrite` is false.
+        Every file is written to a temporary file first, and they are renamed only once all are
+        written, so a failed write leaves none. No file is written when one of them exists and
+        `overwrite` is false. An archetype's name becomes a file name that every system accepts:
+        the characters Windows refuses become `_`.
 
         Args:
             directory: The directory, created if needed.
@@ -127,29 +132,51 @@ class UmiImport:
 
         Raises:
             InputError: A file exists and `overwrite` is false, or two archetypes would
-                share a file name.
+                share a file name (letter case aside, as on Windows and macOS).
         """
         folder = Path(directory)
         stem = Path(self.report.source.path).stem if self.report.source.path else "library"
         files = [(folder / f"{_file_stem(a.Name)}{ARCHETYPE_SUFFIX}", dumps(a)) for a in self.archetypes]
         files.append((folder / f"{stem}{LOSS_SUFFIX}", self.report.to_json()))
-        seen: set[Path] = set()
+        seen: set[str] = set()
         for path, _ in files:
-            if path in seen:
+            if path.name.casefold() in seen:
                 raise InputError(path, "two archetypes would be written to this file; rename one of them")
-            seen.add(path)
+            seen.add(path.name.casefold())
             if not overwrite and path.exists():
                 raise InputError(path, "already exists; pass overwrite=True to replace it")
         folder.mkdir(parents=True, exist_ok=True)
-        for path, text in files:
-            path.write_bytes(text.encode("utf-8"))
+        staged: list[tuple[Path, Path]] = []
+        try:
+            for target, text in files:
+                handle, temporary = tempfile.mkstemp(dir=folder, prefix=f".{target.name}.", suffix=".tmp")
+                os.close(handle)
+                staged.append((Path(temporary), target))
+                Path(temporary).write_bytes(text.encode("utf-8"))
+            for temporary, target in staged:
+                temporary.replace(target)
+        finally:
+            for temporary, _ in staged:
+                temporary.unlink(missing_ok=True)
         return tuple(path for path, _ in files)
 
 
+# Characters Windows refuses in a file name, and its reserved device names.
+_UNSAFE: Final = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+_RESERVED: Final = frozenset({"CON", "PRN", "AUX", "NUL", *(f"{d}{n}" for d in ("COM", "LPT") for n in range(1, 10))})
+
+
 def _file_stem(name: str) -> str:
-    """Return a file name stem for an archetype name: path separators become `_`."""
-    stem = name.replace("/", "_").replace("\\", "_").strip()
-    return stem if stem not in {"", ".", ".."} else "archetype"
+    """Return a file name stem for an archetype name that Windows, macOS and Linux all accept.
+
+    Path separators and the other characters Windows refuses become `_`; trailing dots and
+    spaces are removed; a reserved device name (`CON`, `NUL`, `COM1`, …) takes a `_`.
+    """
+    stem = _UNSAFE.sub("_", name).strip().rstrip(". ")
+    base, dot, rest = stem.partition(".")
+    if base.upper() in _RESERVED:
+        stem = f"{base}_{dot}{rest}"
+    return stem or "archetype"
 
 
 # --- Names (research R11) ----------------------------------------------------------------------
@@ -172,8 +199,57 @@ def _definitions(document: dict[str, object]) -> list[tuple[str, str, dict[str, 
     return found
 
 
-def _content(obj: dict[str, object]) -> str:
-    return json.dumps({key: value for key, value in obj.items() if key not in {"$id", "Name"}}, sort_keys=True)
+class _Contents:
+    """The content of the components of a document, to tell same-named components apart (R11).
+
+    Content ignores `$id`s and how a number is spelled (`1` and `1.0` are equal), and follows
+    each `$ref` to the content of the object it names, so two references to equal components
+    are equal.
+    """
+
+    def __init__(self, document: dict[str, object]) -> None:
+        self._ids: dict[str, dict[str, object]] = {}
+        self._memo: dict[str, object] = {}
+        self._collect(document)
+
+    def _collect(self, value: object) -> None:
+        if isinstance(value, dict):
+            obj = cast("dict[str, object]", value)
+            identifier = obj.get("$id")
+            if isinstance(identifier, str):
+                self._ids.setdefault(identifier, obj)
+            for child in obj.values():
+                self._collect(child)
+        elif isinstance(value, list):
+            for child in cast("list[object]", value):
+                self._collect(child)
+
+    def renamed(self) -> None:
+        """Forget what was computed: a component's name, part of its users' content, changed."""
+        self._memo.clear()
+
+    def _canonical(self, value: object, stack: frozenset[str]) -> object:
+        if isinstance(value, dict):
+            obj = cast("dict[str, object]", value)
+            reference = obj.get("$ref")
+            if isinstance(reference, str):
+                target = self._ids.get(reference)
+                if target is None or reference in stack:
+                    return {"$ref": reference}
+                if reference not in self._memo:
+                    self._memo[reference] = self._canonical(target, stack | {reference})
+                return self._memo[reference]
+            return {key: self._canonical(child, stack) for key, child in obj.items() if key != "$id"}
+        if isinstance(value, list):
+            return [self._canonical(child, stack) for child in cast("list[object]", value)]
+        if isinstance(value, int | float) and not isinstance(value, bool):
+            return float(value)
+        return value
+
+    def of(self, obj: dict[str, object]) -> str:
+        """Return the content of a component, without its `$id` and `Name`, as canonical JSON."""
+        content = {key: value for key, value in obj.items() if key not in {"$id", "Name"}}
+        return json.dumps(self._canonical(content, frozenset()), sort_keys=True)
 
 
 def _rename_collisions(document: dict[str, object]) -> tuple[dict[str, object], list[Loss]]:
@@ -186,6 +262,7 @@ def _rename_collisions(document: dict[str, object]) -> tuple[dict[str, object], 
         A copy with the new names, and one `names.collision` loss per renaming.
     """
     renamed = copy.deepcopy(document)
+    contents = _Contents(renamed)
     namers: dict[str, UniqueNames] = {}
     losses: list[Loss] = []
     for group, pointer, obj in _definitions(renamed):
@@ -193,10 +270,11 @@ def _rename_collisions(document: dict[str, object]) -> tuple[dict[str, object], 
         if not isinstance(name, str):
             continue
         # Every template gives an archetype, so a repeated template name is always renamed.
-        content: Hashable = pointer if group == "BuildingTemplates" else _content(obj)
+        content: Hashable = pointer if group == "BuildingTemplates" else contents.of(obj)
         unique = namers.setdefault(group, UniqueNames()).assign(name, content)
         if unique != name:
             obj["Name"] = unique
+            contents.renamed()
             subject = unique if group == "BuildingTemplates" else ""
             losses.append(collision_loss(subject=subject, location=pointer, original=name, renamed=unique))
     return renamed, losses
@@ -424,14 +502,20 @@ class _Reader:
 # --- The report -------------------------------------------------------------------------------------
 
 
-def _unused(index: LibraryIndex) -> list[Loss]:
-    """A loss for each component of the collections that no template uses."""
-    used = {id(item) for number in range(len(index.library.building_templates)) for item, _ in index.reachable(number)}
-    reason = (
+def _unused(index: LibraryIndex, skipped: set[int]) -> list[Loss]:
+    """A loss for each component of the collections that no translated template uses.
+
+    A component only skipped templates use was not translated either, and is listed too.
+    """
+    count = len(index.library.building_templates)
+    used = {id(item) for number in range(count) if number not in skipped for item, _ in index.reachable(number)}
+    reached = {id(item) for number in skipped for item, _ in index.reachable(number)}
+    none = (
         "No building template uses this component, so it was not translated."
-        if index.library.building_templates
+        if count
         else "The library has no building template, so no component is used; it was not translated."
     )
+    only_skipped = "Only skipped building templates use this component, so it was not translated."
     return [
         Loss(
             kind=LossKind.UNUSED,
@@ -439,7 +523,7 @@ def _unused(index: LibraryIndex) -> list[Loss]:
             location=pointer,
             value=item.name if isinstance(item, LibraryComponent) else None,
             rule="library.unused",
-            reason=reason,
+            reason=only_skipped if id(item) in reached else none,
         )
         for item, pointer in index.components()
         if id(item) not in used
@@ -577,10 +661,12 @@ def read_umi(
     archetypes: list[Archetype] = []
     findings: list[_Finding] = list(renamed)
     failed: list[Problem] = []
+    skipped: set[int] = set()
     for number, template in enumerate(library.building_templates):
         pointer = index.pointer(template)
         name = template.name or pointer
         if problems[number]:
+            skipped.add(number)
             findings.append(_skipped(name, pointer, problems[number]))
             continue
         try:
@@ -590,6 +676,7 @@ def read_umi(
             if not skip_invalid_templates:
                 failed.append(problem)
             else:
+                skipped.add(number)
                 findings.append(_skipped(name, pointer, [problem]))
             continue
         archetypes.append(archetype)
@@ -597,7 +684,7 @@ def read_umi(
     if failed:
         raise UmiValidationError(path, failed)
 
-    findings.extend(_unused(index))
+    findings.extend(_unused(index, skipped))
     findings.extend(_library_findings(raw, index, resolution.defaulted, resolution.unknown_keys))
     kept = _unique(findings)
     report = TranslationReport(

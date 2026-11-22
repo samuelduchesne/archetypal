@@ -321,3 +321,33 @@ def test_ventilation_round_trip() -> None:
         "scheduled_ventilation_setpoint",
     ):
         assert getattr(back, field) == getattr(original, field), field
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum", "lost"),
+    [
+        (26.0, 150.0, {"NatVentMinOutdoorAirTemp", "NatVentMaxOutdoorAirTemp"}),
+        (-150.0, 10.0, {"NatVentMinOutdoorAirTemp", "NatVentMaxOutdoorAirTemp"}),
+        (5.0, 150.0, {"NatVentMaxOutdoorAirTemp"}),
+        (-150.0, 30.0, {"NatVentMinOutdoorAirTemp"}),
+    ],
+)
+def test_one_outdoor_limit_out_of_range_is_checked_against_sbem_default(
+    minimum: float, maximum: float, lost: set[str]
+) -> None:
+    context = reading(POINTER)
+    ventilation = read_ventilation(
+        settings(NatVentMinOutdoorAirTemp=minimum, NatVentMaxOutdoorAirTemp=maximum), context
+    )
+    assert ventilation.NatVentMinOutdoorAirTemp < ventilation.NatVentMaxOutdoorAirTemp
+    assert {loss.location.rsplit("/", 1)[1] for loss in context.losses} == lost
+
+
+def test_constant_scheduled_ventilation_reads_back_as_constant_with_an_always_on_natural_schedule() -> None:
+    ventilation = hvac_ventilation().model_copy(update={"Schedule": sbem_schedule("open", 1.0, "Window")})
+    assert ventilation.ScheduledVentilationSchedule is None
+    context = writing()
+    written = zone_ventilation_to_umi(envelope(infiltration()), ventilation, schedule=write_schedule, context=context)
+    back = scheduled_to_sbem(written, schedule=read_schedule, context=reading(POINTER))
+    assert back["ScheduledVentilationSchedule"] is None
+    assert any(note.location.endswith("ScheduledVentilationSchedule") for note in context.notes)

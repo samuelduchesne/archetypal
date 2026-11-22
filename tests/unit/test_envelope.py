@@ -287,6 +287,20 @@ def test_windows_conserve_area_ua_shgc_and_vt_by_orientation() -> None:
     assert window_construction({}) is None
 
 
+def test_skylights_are_kept_out_of_the_facade_sectors() -> None:
+    """D2: a skylight is not a north window; its UA, A·SHGC and A·VT are conserved apart."""
+    windows = [
+        _surface("W", "Window", 90.0, "outdoors", area=4.0, azimuth=180.0, u=2.0, shgc=0.4, vt=0.6),
+        _surface("Sky", "Window", 0.0, "outdoors", area=5.0, azimuth=0.0, u=3.0, shgc=0.5, vt=0.7),
+        _surface("Roof window", "Window", 30.0, "outdoors", area=1.0, azimuth=90.0, u=1.0, shgc=0.2, vt=0.3),
+    ]
+    ledger = _ledger(_zone("Z", *windows))
+    assert set(ledger.window_by_orientation) == {"S"}
+    assert ledger.window_by_orientation["S"].area == pytest.approx(4.0)
+    sky = ledger.skylights
+    assert (sky.area, sky.ua, sky.a_shgc, sky.a_vt) == pytest.approx((6.0, 16.0, 2.7, 3.8), rel=REL)
+
+
 def test_window_without_shgc_is_refused() -> None:
     with pytest.raises(ValueError, match="SHGC"):
         _ledger(_zone("Z", _surface("W", "Window", 90.0, "outdoors", shgc=None, vt=0.5)))
@@ -423,6 +437,18 @@ def test_plenum_assignment_conserves_envelope_with_multipliers(
     assert sum(r.area for r in ledger.excluded_envelope if r.envelope_class == "roof") == pytest.approx(100.0 * m)
 
 
+def test_skylights_of_an_excluded_zone_are_carried_by_shared_area() -> None:
+    zones = _plenum_building()
+    plenum = zones[0].zone
+    sky = _surface("P sky", "Window", 0.0, "outdoors", area=5.0, u=3.0, shgc=0.5, vt=0.7)
+    zones[0] = _classified(_zone("Plenum", *plenum.surfaces, sky), "excluded")
+    hook = EnvelopeHook(zones)
+    perimeter, core = _hooked(hook, zones[1]), _hooked(hook, zones[2])
+    assert perimeter.skylights.area == pytest.approx(0.6 * 5.0)
+    assert (perimeter + core).skylights.ua == pytest.approx(15.0)
+    assert set(perimeter.window_by_orientation) == {"S"}
+
+
 def test_excluded_zone_without_conditioned_neighbour_passes_through_excluded_neighbours() -> None:
     attic = _zone(
         "Attic",
@@ -499,7 +525,8 @@ def test_fixture_conserves_exterior_envelope_of_conditioned_plenums_and_attic(
         assert ledger.envelope[klass].area == pytest.approx(expected_area, rel=1e-12)
         assert ledger.envelope[klass].ua == pytest.approx(expected_ua, rel=1e-12)
     windows = sum(s.area * z.zone.multiplier for z in carried for s in z.zone.surfaces if s.surface_class == "window")
-    assert sum(w.area for w in ledger.window_by_orientation.values()) == pytest.approx(windows, rel=1e-12)
+    in_walls = sum(w.area for w in ledger.window_by_orientation.values())
+    assert in_walls + ledger.skylights.area == pytest.approx(windows, rel=1e-12)
     # Every class in the ledger yields an equivalent construction reproducing its U.
     for klass, totals in ledger.envelope.items():
         assembly = equivalent_construction(totals, klass)

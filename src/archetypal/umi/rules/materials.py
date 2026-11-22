@@ -13,7 +13,8 @@ UMI to SBEM (reading):
 
 SBEM to UMI (writing) inverts each rule and lists as lost what UMI cannot hold: a filled slot that
 differs from the one it would be filled from, a non-zero temperature coefficient, a material
-type its category does not name, a vegetation layer, and cost or carbon given per m² or m.
+type its category does not name, a vegetation layer, and cost or carbon given per m² or m (or
+through a density of 0).
 
 Life-cycle fields (UP-9): a material's embodied energy and transport carbon and energy are per
 unit of `RateUnit`, like its embodied carbon, so per m³ = per kg x density (`material.environmental`);
@@ -248,14 +249,15 @@ def cost_from_sbem(cost: float | None, rate_unit: str | None, density: float) ->
         density: Density, kg/m³, to convert a cost per kg.
 
     Returns:
-        Cost per m³, or `None` when the cost is per m² or per m, which needs a thickness the
-        material does not have.
+        Cost per m³ (0 when there is no cost), or `None` when a cost cannot be given per m³:
+        per m² or per m, which needs a thickness the material does not have, or per kg of a
+        material of density 0.
     """
-    if cost is None:
+    if not cost:
         return 0.0
     if rate_unit in (None, _PER_VOLUME):
         return cost
-    if rate_unit == "kg":
+    if rate_unit == _PER_MASS and density != 0.0:
         return cost * density
     return None
 
@@ -535,33 +537,41 @@ def _environmental_to_umi(
     """Return UMI's cost and carbon per kg of an SBEM material, listing what cannot be converted."""
     cost = cost_from_sbem(component.Cost, component.RateUnit, component.Density)
     if cost is None:
+        why = (
+            "a cost per kg cannot be given per m3 without a density"
+            if component.RateUnit == _PER_MASS
+            else f"a cost per {component.RateUnit} needs a thickness the material lacks"
+        )
         findings.lose(
             LossKind.LOST,
             subject,
             _path(location, "Cost"),
             component.Cost,
             "material.cost_per_m3",
-            f"UMI holds cost per m3; a cost per {component.RateUnit} needs a thickness the material lacks.",
+            f"UMI holds cost per m3; {why}.",
             replacement=0.0,
         )
         cost = 0.0
     carbon = component.EmbodiedCarbon or 0.0
-    if component.RateUnit == "kg":
-        per_kg = carbon
-    elif component.RateUnit in (None, _PER_VOLUME):
-        per_kg = carbon_per_kg(carbon, component.Density)
-    else:
-        findings.lose(
-            LossKind.LOST,
-            subject,
-            _path(location, "EmbodiedCarbon"),
-            carbon,
-            "material.carbon_per_m3",
-            f"UMI holds carbon per kg; a carbon per {component.RateUnit} needs a thickness the material lacks.",
-            replacement=0.0,
-        )
-        per_kg = 0.0
-    return cost, per_kg
+    if component.RateUnit == _PER_MASS or carbon == 0.0:
+        return cost, carbon
+    if component.RateUnit in (None, _PER_VOLUME) and component.Density != 0.0:
+        return cost, carbon_per_kg(carbon, component.Density)
+    why = (
+        "a carbon per m3 cannot be given per kg without a density"
+        if component.RateUnit in (None, _PER_VOLUME)
+        else f"a carbon per {component.RateUnit} needs a thickness the material lacks"
+    )
+    findings.lose(
+        LossKind.LOST,
+        subject,
+        _path(location, "EmbodiedCarbon"),
+        carbon,
+        "material.carbon_per_m3",
+        f"UMI holds carbon per kg; {why}.",
+        replacement=0.0,
+    )
+    return cost, 0.0
 
 
 # SBEM fields that may be unset and that UMI always holds: writing fills them (noted).
@@ -602,24 +612,24 @@ def material_to_umi(
         subject: The archetype being written.
         location: The material's SBEM field path.
         findings: Collects the losses: a non-zero temperature coefficient, a type its category
-            does not name, the material life (UP-9), cost or carbon per m² or m.
+            does not name (or `Other` with a category that names a type), the material life
+            (UP-9), cost or carbon per m² or m, and carbon per m³ or cost per kg of a material
+            of density 0.
 
     Returns:
         The UMI material.
-
-    Raises:
-        ValueError: The material has carbon per m³ and a density of 0.
     """
     category = component.Category if component.Category is not None else component.Type
-    if component.Type != "Other" and category.lower() != component.Type.lower():
+    read_back = _TYPE_BY_LOWER.get(category.lower(), "Other")
+    if read_back != component.Type:
         findings.lose(
             LossKind.LOST,
             subject,
             _path(location, "Type"),
             component.Type,
             "material.properties",
-            f"UMI has no material type; Category {category!r} does not name it, so it reads back as Other.",
-            replacement="Other",
+            f"UMI has no material type; Category {category!r} does not name it, so it reads back as {read_back}.",
+            replacement=read_back,
         )
     if component.TemperatureCoefficientThermalConductivity != 0.0:
         findings.lose(

@@ -308,8 +308,11 @@ gain, and no `mkdocs-click` equivalent.
 - **Modules** (`import archetypal.idfclass`): one two-line stub module per removed v2 module
   (`dataportal`, `eplus_interface`, `idfclass`, `plot`, `reportdata`, `schedule`,
   `simple_glazing`, `tabulardata`, `template`, `umi_template`, `utils`, `zone_graph`) calls
-  `raise_removed(__name__)`. A unit test checks that every module in the table has a stub and
-  that each stub raises.
+  `raise_removed(__name__)`. Python runs a parent before its child, so for a nested row
+  (`import archetypal.idfclass.sql`) `raise_removed` reads the module name the import in
+  progress asked for and raises the deepest `module` row it names; `import archetypal.idfclass`
+  keeps the parent's row. A unit test checks that every module in the table has a stub and
+  that each import raises its own row.
 - **Options and commands:** `REMOVED_OPTIONS` (R6) is derived from the same table.
 - **Migration guide coverage (SC-003).** `verification/v2_surface.py` runs in a separate
   environment with `archetypal==2.18.10` and writes `tests/data/v2_surface.json`: every public

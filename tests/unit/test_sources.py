@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from idfkit import load_idf, new_document
 from idfkit.simulation import SQLResult
+from idfkit.simulation.parsers.sql import TabularRow, VariableInfo
 from idfkit.versioned import IDFDocumentV9_6
 
 from archetypal.errors import MissingResults, ModelResultsMismatch, ReductionError, UnsupportedEnergyPlusVersion
@@ -251,3 +252,25 @@ def test_missing_outputs_are_reported_before_zone_names(tmp_path: Path) -> None:
     )
     with pytest.raises(MissingResults):
         load_sources(THREE_IDF, results)
+
+
+def test_end_use_fuels_keeps_hourly_metered_fuels_the_table_rounds_to_zero() -> None:
+    class _Results:
+        def get_tabular_data(self, report_name: str, table_name: str, report_for: str) -> list[TabularRow]:
+            row = "AnnualBuildingUtilityPerformanceSummary", report_for, table_name
+            return [
+                TabularRow(*row, "Heating", "Natural Gas", "GJ", "12.00"),
+                # Under 5 MJ a year: EnergyPlus prints 0.00 GJ.
+                TabularRow(*row, "Heating", "Propane", "GJ", "0.00"),
+                TabularRow(*row, "Cooling", "Electricity", "GJ", "0.00"),
+            ]
+
+        def list_variables(self) -> list[VariableInfo]:
+            return [
+                VariableInfo("Heating:Propane", "", "Hourly", "J", True, "Sum"),
+                VariableInfo("Cooling:Electricity", "", "Monthly", "J", True, "Sum"),
+                VariableInfo("WaterSystems:Water", "", "Hourly", "m3", True, "Sum"),
+            ]
+
+    fuels = end_use_fuels(_Results())  # pyright: ignore[reportArgumentType]
+    assert fuels == (("Heating", "NaturalGas"), ("Heating", "Propane"))

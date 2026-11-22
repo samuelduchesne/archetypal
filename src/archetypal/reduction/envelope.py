@@ -275,7 +275,8 @@ class ZoneEnvelope:
 
     Attributes:
         envelope: Opaque totals per class.
-        window_by_orientation: Window totals per orientation.
+        window_by_orientation: Totals of the windows in walls (60° to 120° tilt) per orientation.
+        skylights: Totals of the other windows (skylights, roof and floor windows).
         internal_mass_capacity: Σ area · heat capacity of internal masses, J/K.
         internal_mass_area: Σ area of internal masses, m².
         excluded_envelope: Assignments of excluded zones' envelope to this zone.
@@ -283,6 +284,7 @@ class ZoneEnvelope:
 
     envelope: dict[EnvelopeClass, EnvelopeTotals] = field(default_factory=dict[EnvelopeClass, EnvelopeTotals])
     window_by_orientation: dict[Orientation, WindowTotals] = field(default_factory=dict[Orientation, WindowTotals])
+    skylights: WindowTotals = field(default_factory=WindowTotals)
     internal_mass_capacity: float = 0.0
     internal_mass_area: float = 0.0
     excluded_envelope: list[EnvelopeAssignment] = field(default_factory=list[EnvelopeAssignment])
@@ -301,6 +303,7 @@ class ZoneEnvelope:
         return {
             "envelope": dict(self.envelope),
             "window_by_orientation": dict(self.window_by_orientation),
+            "skylights": self.skylights,
             "internal_mass_capacity": self.internal_mass_capacity,
             "internal_mass_area": self.internal_mass_area,
             "excluded_envelope": tuple(self.excluded_envelope),
@@ -353,7 +356,11 @@ def zone_envelope(
     result = ZoneEnvelope()
     for surface in zone.surfaces:
         if surface.surface_class == "window":
-            result.add_window(orientation(surface.azimuth), _window_totals(surface))
+            low, high = _WALL_TILT
+            if low <= surface.tilt <= high:
+                result.add_window(orientation(surface.azimuth), _window_totals(surface))
+            else:  # a skylight, roof or floor window: not part of any facade (FR-016, FR-024)
+                result.skylights = result.skylights + _window_totals(surface)
             continue
         if surface.surface_class == "internal_mass":
             if internal_mass:
@@ -377,8 +384,8 @@ def ledger_fields(zone: ClassifiedZone, schedules: ScheduleEvaluator) -> dict[st
         schedules: Unused; part of the hook signature.
 
     Returns:
-        `envelope`, `window_by_orientation`, `internal_mass_capacity`, `internal_mass_area` and
-        an empty `excluded_envelope`.
+        `envelope`, `window_by_orientation`, `skylights`, `internal_mass_capacity`,
+        `internal_mass_area` and an empty `excluded_envelope`.
     """
     del schedules
     return zone_envelope(zone.zone).fields()
@@ -475,7 +482,7 @@ class EnvelopeHook:
             schedules: Unused; part of the hook signature.
 
         Returns:
-            The five envelope ledger fields.
+            The six envelope ledger fields.
         """
         del schedules
         result = zone_envelope(zone.zone)
@@ -496,6 +503,7 @@ class EnvelopeHook:
                 )
             for sector, window in sorted(carried.window_by_orientation.items()):
                 result.add_window(sector, window.scaled(factor))
+            result.skylights = result.skylights + carried.skylights.scaled(factor)
         return result.fields()
 
 

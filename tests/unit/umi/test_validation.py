@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -346,3 +347,21 @@ def test_a_gas_energyplus_lacks_is_a_window_layers_problem() -> None:
     problems = [problem for problem in problems_of(document) if problem.pointer == "/GasMaterials/0/Type"]
     assert problems
     assert {problem.rule for problem in problems} == {"window.layers"}
+
+
+@pytest.mark.parametrize(
+    ("collection", "name", "key"),
+    [
+        ("OpaqueMaterials", "Concrete", "Conductivity"),
+        ("OpaqueMaterials", "Concrete", "Density"),
+        ("OpaqueMaterials", "Concrete", "SpecificHeat"),
+        ("ZoneLoads", "Office loads", "LightingPowerDensity"),
+        ("VentilationSettings", "Office ventilation", "Infiltration"),
+    ],
+)
+@pytest.mark.parametrize("value", [math.nan, math.inf])
+def test_non_finite_numbers_are_range_problems(collection: str, name: str, key: str, value: float) -> None:
+    document = base()
+    index, item = by_name(document, collection, name)
+    item[key] = value
+    assert (f"/{collection}/{index}/{key}", "Office") in where(problems_of(document))

@@ -74,7 +74,7 @@ def _collect_context_files(data: dict, project_root: str) -> list[str]:
         integration_key = ""
         try:
             with open(
-                f"{project_root}/.specify/init-options.json", "r", encoding="utf-8"
+                f"{project_root}/.specify/init-options.json", encoding="utf-8"
             ) as fh:
                 opts = json.load(fh)
             if isinstance(opts, dict):
@@ -89,7 +89,7 @@ def _collect_context_files(data: dict, project_root: str) -> list[str]:
             )
             mapping = {}
             try:
-                with open(defaults_path, "r", encoding="utf-8") as fh:
+                with open(defaults_path, encoding="utf-8") as fh:
                     loaded = json.load(fh)
                 agents = loaded.get("agents", {}) if isinstance(loaded, dict) else {}
                 mapping = agents if isinstance(agents, dict) else {}
@@ -145,7 +145,7 @@ def _resolve_plan_path(project_root: str) -> str:
     if feature_json.is_file():
         feature_dir = ""
         try:
-            with open(feature_json, "r", encoding="utf-8") as fh:
+            with open(feature_json, encoding="utf-8") as fh:
                 data = json.load(fh)
             value = data.get("feature_directory", "")
             feature_dir = value if isinstance(value, str) else ""
@@ -261,7 +261,7 @@ def _upsert_section(
 ) -> None:
     """Insert or replace the managed section, then normalize and write."""
     if os.path.exists(ctx_path):
-        with open(ctx_path, "r", encoding="utf-8-sig") as fh:
+        with open(ctx_path, encoding="utf-8-sig") as fh:
             content = fh.read()
         s = content.find(marker_start)
         e = content.find(marker_end, s if s != -1 else 0)
@@ -320,7 +320,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     try:
-        with open(ext_config, "r", encoding="utf-8") as fh:
+        with open(ext_config, encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
     except Exception as exc:
         _err(

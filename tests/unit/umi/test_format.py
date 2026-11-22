@@ -269,6 +269,15 @@ def test_basilisk_key_order_is_derived_class_first() -> None:
     assert keys.count("Category") == 1
 
 
+@pytest.mark.parametrize(
+    "system",
+    [_format.BeamSystem, _format.ColumnSystem, _format.FloorSystem, _format.FoundationSystem, _format.LateralSystem],
+)
+def test_construction_systems_keep_the_generic_class_order(system: type[_format.FormatModel]) -> None:
+    # Basilisk's ConstructionSystem<T> is one generic class: closing it does not move a key.
+    assert [alias for _, alias in system.basilisk_keys()] == BASILISK_FIELDS["ConstructionSystem"]
+
+
 def test_nothing_from_format_is_exported() -> None:
     assert _format.__all__ == []
     public = set(getattr(archetypal.umi, "__all__", ()))

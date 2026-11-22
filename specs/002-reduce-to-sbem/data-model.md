@@ -80,7 +80,8 @@ Supporting records:
   radiant, latent and lost fractions.
 - **`AirflowRecord`**: design flow, schedule name, and the four coefficients.
 - **`ThermostatRecord`**: heating and cooling setpoint schedule names.
-- **`HotWaterRecord`**: volume `Profile`, target-temperature schedule name, allocation share.
+- **`HotWaterRecord`**: volume `Profile`, target-temperature schedule name, allocation share,
+  and the allocation rule used (`zone`, `occupant-hours` or `floor-area`).
 
 **Invariant.** Every total a zone contributes is multiplied by `multiplier` exactly once, at
 ledger creation (`GroupLedger.from_zone`). Nothing upstream of that applies a multiplier.
@@ -130,6 +131,7 @@ SC-007 hold by construction.
 | `floor_area` | `float` | FR-014 |
 | `envelope` | `dict[EnvelopeClass, EnvelopeTotals]` | FR-016, FR-017 |
 | `window_by_orientation` | `dict[Orientation, WindowTotals]` | FR-016, FR-024 |
+| `skylights` | `WindowTotals` (windows not in walls: tilt outside 60°–120°) | FR-016 |
 | `internal_mass_capacity` | `float` | FR-017 |
 | `gains` | `dict[GainKind, GainTotals]` | FR-015 |
 | `infiltration` | `AirflowTotals` | FR-018 |

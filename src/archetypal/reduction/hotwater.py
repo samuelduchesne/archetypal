@@ -37,7 +37,7 @@ the result").
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal, TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
 
@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from idfkit.versioned import IDFDocumentSince22_1
 
     from archetypal.reduction.classify import ClassifiedZone
+    from archetypal.reduction.inventory import AllocationRule
     from archetypal.reduction.schedules import Profile, ScheduleEvaluator
     from archetypal.reduction.sources import SourceData
 
@@ -70,8 +71,6 @@ MAINS_VARIABLE = "Site Mains Water Temperature"
 
 _MAINS_KEY = "Environment"
 _HOURLY = "Hourly"
-
-AllocationRule = Literal["zone", "occupant-hours", "floor-area"]
 
 
 class HotWaterFields(TypedDict):
@@ -253,29 +252,17 @@ def allocations(zones: Iterable[ClassifiedZone]) -> tuple[HotWaterAllocation, ..
     Returns:
         One entry per (equipment, zone).
     """
-    zones = tuple(zones)
-    occupied: dict[str, bool] = {}
-    for zone in zones:
-        has_people = any(g.kind == "people" and g.design_level > 0.0 for g in zone.zone.gains)
-        for record in zone.zone.hot_water:
-            if record.allocated:
-                occupied[record.equipment] = occupied.get(record.equipment, False) or has_people
-    entries: list[HotWaterAllocation] = []
-    for zone in zones:
-        record_zone = zone.zone
-        for record in record_zone.hot_water:
-            rule: AllocationRule = "zone"
-            if record.allocated:
-                rule = "occupant-hours" if occupied.get(record.equipment) else "floor-area"
-            entries.append(
-                HotWaterAllocation(
-                    equipment=record.equipment,
-                    zone=record_zone.name,
-                    share=record.share,
-                    multiplier=record_zone.multiplier,
-                    volume=float(np.sum(record.volume)) * record_zone.multiplier,
-                    allocated=record.allocated,
-                    rule=rule,
-                )
-            )
+    entries = [
+        HotWaterAllocation(
+            equipment=record.equipment,
+            zone=zone.zone.name,
+            share=record.share,
+            multiplier=zone.zone.multiplier,
+            volume=float(np.sum(record.volume)) * zone.zone.multiplier,
+            allocated=record.allocated,
+            rule=record.rule,
+        )
+        for zone in zones
+        for record in zone.zone.hot_water
+    ]
     return tuple(sorted(entries, key=lambda e: (e.equipment, e.zone)))

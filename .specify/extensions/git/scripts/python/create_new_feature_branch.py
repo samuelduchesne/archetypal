@@ -57,9 +57,7 @@ Examples:
 """
 
 STOP_WORDS = frozenset(
-    "i a an the to for of in on at by with from is are was were be been being "
-    "have has had do does did will would should could can may might must shall "
-    "this that these those my your our their want need add get set".split()
+    ["i", "a", "an", "the", "to", "for", "of", "in", "on", "at", "by", "with", "from", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did", "will", "would", "should", "could", "can", "may", "might", "must", "shall", "this", "that", "these", "those", "my", "your", "our", "their", "want", "need", "add", "get", "set"]
 )
 
 
@@ -294,15 +292,7 @@ def generate_branch_name(description: str) -> str:
     for word in clean_name.split():
         if word in STOP_WORDS:
             continue
-        if len(word) >= 3:
-            meaningful_words.append(word)
-        # Keep short words only when they appear uppercased in the original
-        # description (acronyms like "API" or "DB"). The boundaries are spelled
-        # out as ASCII rather than using \b: \b is Unicode-aware on str, so
-        # "\u00e9DB\u00e9 cache" would hide the acronym behind a non-ASCII word
-        # character, while the bash twin's `grep -qw` runs under LC_ALL=C and
-        # sees a boundary there.
-        elif re.search(
+        if len(word) >= 3 or re.search(
             rf"(?<![0-9A-Za-z_]){re.escape(word.upper())}(?![0-9A-Za-z_])",
             description,
         ):
@@ -318,7 +308,7 @@ def generate_branch_name(description: str) -> str:
 
 def branch_token(value: str, fallback: str) -> str:
     cleaned = clean_branch_name(value)
-    return cleaned if cleaned else fallback
+    return cleaned or fallback
 
 
 def get_author_token(repo_root: Path) -> str:

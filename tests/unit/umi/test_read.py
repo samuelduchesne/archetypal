@@ -265,3 +265,75 @@ def test_strict_mode_raises_when_something_is_lost() -> None:
 def test_read_umi_is_exported() -> None:
     assert archetypal.read_umi is read_umi
     assert "read_umi" in archetypal.__all__
+
+
+# --- Regressions: names, unused components and file names ------------------------------------------
+
+
+def _with_names(result: UmiImport, *names: str) -> UmiImport:
+    archetypes = tuple(a.model_copy(update={"Name": n}) for a, n in zip(result.archetypes, names, strict=False))
+    return UmiImport(archetypes=archetypes, report=result.report)
+
+
+def test_write_refuses_names_that_differ_only_by_case(b2: UmiImport, tmp_path: Path) -> None:
+    with pytest.raises(InputError, match="two archetypes"):
+        _with_names(b2, "Office", "OFFICE").write(tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_write_makes_names_portable_file_names(b2: UmiImport, tmp_path: Path) -> None:
+    written = _with_names(b2, 'a<b>c:d"e|f?g*h', "CON", "trailing. ", "tab\there").write(tmp_path)
+    stems = [path.name.removesuffix(".sbem.json") for path in written[:4]]
+    assert stems == ["a_b_c_d_e_f_g_h", "CON_", "trailing", "tab_here"]
+
+
+def test_write_leaves_no_file_when_one_fails(b2: UmiImport, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    write_bytes = Path.write_bytes
+    calls: list[Path] = []
+
+    def failing(self: Path, data: bytes) -> int:
+        calls.append(self)
+        if len(calls) == 2:
+            message = "disk full"
+            raise OSError(message)
+        return write_bytes(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", failing)
+    with pytest.raises(OSError, match="disk full"):
+        b2.write(tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_components_of_skipped_templates_are_unused() -> None:
+    result = read_umi(EDGE / "out_of_range.json", skip_invalid_templates=True)
+    unused = {loss.location: loss for loss in losses(result, LossKind.UNUSED)}
+    assert "/OpaqueMaterials/2" in unused
+    assert "skipped" in unused["/OpaqueMaterials/2"].reason
+
+
+def _base() -> Json:
+    return cast("Json", json.loads((EDGE / "unused_components.json").read_text(encoding="utf-8")))
+
+
+def test_number_spelling_is_not_different_content(tmp_path: Path) -> None:
+    document = _base()
+    materials = cast("list[Json]", document["OpaqueMaterials"])
+    assert materials[0]["SpecificHeat"] == 900.0
+    twin = {**materials[0], "$id": "twin", "SpecificHeat": 900}
+    materials.append(twin)
+    path = tmp_path / "lib.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    assert losses(read_umi(path), LossKind.RENAMED) == []
+
+
+def test_references_to_equal_components_are_not_different_content(tmp_path: Path) -> None:
+    document = _base()
+    materials = cast("list[Json]", document["OpaqueMaterials"])
+    constructions = cast("list[Json]", document["OpaqueConstructions"])
+    materials.append({**materials[0], "$id": "twin"})
+    layers = [dict(layer) for layer in cast("list[Json]", constructions[0]["Layers"])]
+    layers[0]["Material"] = {"$ref": "twin"}
+    constructions.append({**constructions[0], "$id": "twin wall", "Layers": layers})
+    path = tmp_path / "lib.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    assert losses(read_umi(path), LossKind.RENAMED) == []

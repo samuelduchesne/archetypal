@@ -13,6 +13,8 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+import shutil
+import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -386,3 +388,39 @@ def test_results_run_with_another_weather_file_are_refused(tmp_path: Path) -> No
     assert len(caught.value.differences) == 2  # neither result was run with it
     assert all(d.startswith("weather: ") for d in caught.value.differences)
     assert "duluth.epw" in caught.value.differences[0]
+
+
+# --- Meter frequencies -------------------------------------------------------------------------
+
+
+def _with_meter(source: Path, target: Path, meter: str, frequency: str) -> Path:
+    """Copy `source` to `target`, declaring `meter` again at `frequency` (with no values)."""
+    shutil.copy(source, target)
+    with sqlite3.connect(target) as db:
+        (index_group,) = db.execute(
+            "SELECT IndexGroup FROM ReportDataDictionary WHERE Name = ? AND IsMeter = 1", (meter,)
+        ).fetchone()
+        db.execute(
+            "INSERT INTO ReportDataDictionary (IsMeter, Type, IndexGroup, TimestepType, KeyValue, Name, "
+            "ReportingFrequency, ScheduleName, Units) VALUES (1, 'Sum', ?, 'Zone', NULL, ?, ?, NULL, 'J')",
+            (index_group, meter, frequency),
+        )
+    return target
+
+
+def test_a_run_period_meter_does_not_break_the_distribution_split(tmp_path: Path, ten_zone: ComparisonResult) -> None:
+    detailed = _with_meter(DETAILED, tmp_path / "detailed.sql", "Pumps:Electricity", "Run Period")
+    result = compare(detailed, ARCHETYPE)
+    assert result.row("Peak heating demand").detailed == ten_zone.row("Peak heating demand").detailed
+
+
+@pytest.mark.parametrize(
+    ("meter", "frequency"),
+    [("Cooling:DistrictCooling", "Zone Timestep"), ("Heating:DistrictHeatingWater", "HVAC System Timestep")],
+)
+def test_peaks_use_the_finest_frequency_every_mode_meter_shares(tmp_path: Path, meter: str, frequency: str) -> None:
+    base = COMPARISON / "base.sql"
+    extra = _with_meter(base, tmp_path / "extra.sql", meter, frequency)
+    result = compare(base, extra)
+    assert result.row("Peak heating demand").archetype == result.row("Peak heating demand").detailed > 0.0
+    assert result.row("Peak cooling demand").archetype == result.row("Peak cooling demand").detailed > 0.0

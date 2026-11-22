@@ -265,7 +265,9 @@ totals exactly and makes merging commute with reducing.
   table: wall if 60° ≤ tilt ≤ 120°, roof if tilt < 60°, floor if tilt > 120°.
 - **Conserved per class.** Area and UA (Σ net area × U with films) per class, area by
   orientation (eight 45° sectors from azimuth), and for windows Σ A·SHGC and Σ A·VT by
-  orientation.
+  orientation. Only windows in walls (60° ≤ tilt ≤ 120°) are binned by orientation; skylights,
+  roof and floor windows are summed apart (`skylights`), kept out of the facade's area and
+  window-to-wall ratio, and listed as not represented: SBEM's window is a share of the facade.
 - **SBEM assemblies.** SBEM wants layered assemblies in fixed slots (`Facade`, `FlatRoof`,
   `ExternalFloor`, `GroundSlab`, `GroundWall`, `Partition`, `FloorCeiling`, …). For each class,
   archetypal synthesises an **equivalent three-layer construction**:
@@ -286,7 +288,7 @@ totals exactly and makes merging commute with reducing.
 - **Storeys** (FR-024). The number of storeys is the conditioned floor area divided by the
   floor area of the lowest level: the conditioned zones whose `Zones.MinimumZ` is within
   0.1 m of the lowest, multipliers applied. The archetype takes the ratio rounded to the
-  nearest integer (at least 1); the report keeps the unrounded ratio. Dividing areas, rather
+  nearest integer, halves up (at least 1); the report keeps the unrounded ratio. Dividing areas, rather
   than counting levels, stays right when one typical floor is drawn with a zone multiplier.
 - **Excluded zones.** An excluded zone's envelope (FR-013) is assigned to the conditioned
   zones it shares interzone surfaces with, in proportion to shared area. The report records
@@ -303,9 +305,10 @@ totals exactly and makes merging commute with reducing.
 ## R7 — Exposure (FR-006)
 
 **Decision.** A conditioned zone is *perimeter* if any of its surfaces is a wall
-(60°–120° tilt) with outside boundary `Outdoors`, or carries a window. Otherwise it is *core*.
+(60°–120° tilt) with outside boundary `Outdoors`, or carries a window in such a wall. Otherwise
+it is *core*.
 
-Roofs, exposed floors and ground contact never decide exposure.
+Roofs, skylights, exposed floors and ground contact never decide exposure.
 
 Surfaces come from the `Surfaces` table, so simplified geometry is covered.
 
@@ -381,8 +384,9 @@ a mode in practice (for example a −100 °C heating setpoint), and is stated in
   and the target temperature from its schedule. Mains temperature comes from R2.
 - **Zone attribution.**
   - Equipment with a zone is that zone's.
-  - Equipment without one is allocated to zones in proportion to their occupant-hours (the use
-    that drives DHW in the prototypes).
+  - Equipment without one is allocated to the conditioned zones (R8), the only ones reduction
+    keeps, in proportion to their occupant-hours (the use that drives DHW in the prototypes);
+    by floor area when none has occupant-hours.
   - The report states the rule and the result.
 - **SBEM fields.**
   - SBEM's `WaterUseComponent.FlowRatePerPerson` = annual volume ÷ (group occupant-days) and
@@ -526,7 +530,8 @@ itself.
   delivery in each mode. Only the results file is read, so the split sums every equipment
   output it holds.
 - **Peak demand.** Peak heating and cooling demand is the maximum, over the run period, of the
-  summed heating (and cooling) end-use meters at the common reporting frequency.
+  summed heating (and cooling) end-use meters at the common reporting frequency: the finest of
+  Zone Timestep, Hourly and Daily at which every heating and cooling meter is reported.
 - **Refusal.** Refuse when any of these differ:
   - weather file (location and data source from the `Simulations` and `EnvironmentPeriods`
     tables, plus an EPW SHA-256 when the user passes the file);

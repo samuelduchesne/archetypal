@@ -95,6 +95,30 @@ def test_importing_a_removed_module_raises(v2_path: str) -> None:
 
 
 @pytest.mark.parametrize("v2_path", MODULES)
+def test_importing_a_removed_module_names_that_module(v2_path: str) -> None:
+    for statement in (f"import {v2_path}", f"importlib.import_module({v2_path!r})"):
+        _forget("archetypal." + v2_path.split(".")[1])
+        with pytest.raises(RemovedInArchetypal3Error) as info:
+            exec(statement, {"importlib": importlib})  # noqa: S102
+        assert info.value.subject == v2_path, statement
+        assert _guide_section(v2_path) in str(info.value)
+
+
+def test_from_a_nested_removed_module_names_that_module() -> None:
+    _forget("archetypal.idfclass")
+    with pytest.raises(RemovedInArchetypal3Error) as info:
+        exec("from archetypal.idfclass.sql import Sql", {})  # noqa: S102
+    assert info.value.subject == "archetypal.idfclass.sql"
+
+
+def test_an_unknown_child_of_a_removed_module_names_the_nearest_row() -> None:
+    _forget("archetypal.template")
+    with pytest.raises(RemovedInArchetypal3Error) as info:
+        importlib.import_module("archetypal.template.materials.not_a_v2_module")
+    assert info.value.subject == "archetypal.template.materials"
+
+
+@pytest.mark.parametrize("v2_path", MODULES)
 def test_every_module_row_has_a_stub(v2_path: str) -> None:
     top = v2_path.split(".")[1]
     assert top in STUB_MODULES, f"{v2_path}: no stub module for archetypal.{top}"

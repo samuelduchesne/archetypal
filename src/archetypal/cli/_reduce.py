@@ -74,7 +74,8 @@ def expand_models(arguments: Sequence[str]) -> list[Path]:
         else:
             found = sorted(
                 Path(p)
-                for p in glob.glob(argument, recursive=True)  # noqa: PTH207 - absolute patterns too if Path(p).suffix.casefold() in MODEL_SUFFIXES
+                for p in glob.glob(argument, recursive=True)  # noqa: PTH207 - absolute patterns too
+                if Path(p).is_file() and Path(p).suffix.casefold() in MODEL_SUFFIXES
             )
             if not found:
                 raise InputError(argument, "matches no model file (.idf or .epJSON)")

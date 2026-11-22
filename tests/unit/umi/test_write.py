@@ -22,9 +22,10 @@ from epinterface.sbem.archetype import Archetype, AtticAssumptions, ZoneGroup
 from archetypal.errors import InputError, LossyTranslationError
 from archetypal.reduction.report import MergedDistinction
 from archetypal.umi import UmiExport, read_umi, to_umi
+from archetypal.umi._format import OpaqueMaterial
 from archetypal.umi._refs import resolve
 from archetypal.umi.report import LossKind, TranslationReport
-from archetypal.umi.write import write_umi
+from archetypal.umi.write import _Assembler, write_umi  # pyright: ignore[reportPrivateUsage]
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -358,3 +359,43 @@ def test_a_group_name_umi_cannot_keep_is_reported(office: Archetype) -> None:
     archetype = office.model_copy(update={"Groups": [core, perimeter.model_copy(update={"Name": "outer ring"})]})
     [renamed] = [loss for loss in to_umi([archetype]).report.losses if loss.location == "outer ring.Name"]
     assert (renamed.kind, renamed.replacement) == (LossKind.RENAMED, "perimeter")
+
+
+def test_template_window_settings_and_partitions_come_from_the_perimeter_exposure(office: Archetype) -> None:
+    core, perimeter = office.Groups
+    bare = replace(replace(core, "Zone.Envelope.Window", None), "Zone.Envelope.WindowSettings", None)
+    bare = replace(bare, "Zone.Envelope.Assemblies.PartitionAreaPerFloorArea", 0.7)
+    outer = replace(perimeter, "Name", "outer ring")
+    outer = replace(outer, "Zone.Envelope.Assemblies.PartitionAreaPerFloorArea", 0.3)
+    export = to_umi([office.model_copy(update={"Groups": [bare, outer]})])
+    (template,) = library(export).building_templates
+    window = perimeter.Zone.Envelope.Window
+    settings = perimeter.Zone.Envelope.WindowSettings
+    assert window is not None
+    assert settings is not None
+    assert template.windows is not None
+    assert template.windows.name == settings.Name
+    assert template.windows.construction is not None
+    assert template.windows.construction.name == window.Name
+    assert template.partition_ratio == pytest.approx(0.15)
+    report = export.report
+    assert [loss.location for loss in report.losses if loss.rule == "building.partition_ratio"] == [
+        "core.Envelope.Assemblies.PartitionAreaPerFloorArea"
+    ]
+    placement = {n.location for n in report.notes if n.rule in {"window.placement", "window.settings"}}
+    assert {"core.Envelope.Window", "core.Envelope.WindowSettings"} <= placement
+    assert "outer ring.Envelope.Window" not in placement
+    assert not [n for n in report.notes if n.location.startswith("outer ring") and "The group has no" in n.reason]
+    assert not [loss for loss in report.losses if loss.location.startswith("core.Envelope.Window")]
+
+
+def test_equal_components_with_nan_are_shared_not_renamed() -> None:
+    def material() -> OpaqueMaterial:
+        fields = {"Name": "M", "Conductivity": float("nan"), "Density": 1.0, "SpecificHeat": 1.0}
+        return OpaqueMaterial.model_validate(fields)
+
+    assembler = _Assembler()
+    first = assembler.component(material(), "/a", "S")
+    second = assembler.component(material(), "/b", "S")
+    assert first is second
+    assert assembler.losses == []

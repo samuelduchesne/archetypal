@@ -543,7 +543,7 @@ def _coil_mean(coils: Mapping[str, Mapping[str, str]], names: Iterable[str] | No
     return _weighted_mean(
         (_number(coils[k].get("Nominal Efficiency")), _number(coils[k].get("Nominal Total Capacity")))
         for k in keys
-        if k in coils and coils[k].get("Used as Supplementary Heat", "N") != "Y"
+        if k in coils and coils[k].get("Used as Supplementary Heat", "No").strip().upper() not in {"Y", "YES"}
     )
 
 

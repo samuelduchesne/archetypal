@@ -493,10 +493,12 @@ def _first_error(error: ValidationError) -> str:
 def _glass_to_umi(
     material: GlazingMaterialComponent, location: str, subject: str, findings: Findings
 ) -> GlazingMaterial:
+    # An unset RateUnit is per m3, as for opaque materials (`material.cost_per_m3`).
     density = material.Density or 0.0
+    per_volume = material.RateUnit in (None, "m3")
     cost = 0.0
-    if material.Cost is not None:
-        if material.RateUnit in (None, "m3"):
+    if material.Cost:
+        if per_volume:
             cost = material.Cost
         elif material.RateUnit == _PER_MASS and density > 0:
             cost = material.Cost * density
@@ -511,8 +513,21 @@ def _glass_to_umi(
                 replacement=0.0,
             )
     carbon = material.EmbodiedCarbon or 0.0
-    if material.RateUnit in (None, "m3") and carbon:
-        carbon = carbon / density if density > 0 else 0.0
+    if carbon and material.RateUnit != _PER_MASS:
+        if per_volume and density > 0:
+            carbon /= density
+        else:
+            findings.lose(
+                LossKind.LOST,
+                subject,
+                f"{location}.EmbodiedCarbon",
+                carbon,
+                "material.carbon_per_m3",
+                f"UMI holds carbon per kg; a carbon per {material.RateUnit or 'm3'} needs a density or thickness "
+                "the material lacks.",
+                replacement=0.0,
+            )
+            carbon = 0.0
     return GlazingMaterial.model_validate({
         "Name": material.Name,
         "Category": material.Category or _UNCATEGORIZED,
@@ -532,7 +547,7 @@ def _glass_to_umi(
         "DirtFactor": material.DirtFactor,
         "Cost": cost,
         "EmbodiedCarbon": carbon,
-        **life_cycle_to_umi(material, material.RateUnit or _PER_MASS, density, subject, location, findings),
+        **life_cycle_to_umi(material, material.RateUnit, density, subject, location, findings),
     })
 
 
@@ -557,13 +572,27 @@ def _gas_to_umi(material: GasMaterialComponent, location: str, subject: str, fin
             'Basilisk fixes the category of gas materials to "Gases".',
             replacement="Gases",
         )
+    # An SBEM gas has no density (UMI writes 0), so only a carbon per kg converts.
+    carbon = material.EmbodiedCarbon or 0.0
+    if carbon and material.RateUnit != _PER_MASS:
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            f"{location}.EmbodiedCarbon",
+            carbon,
+            "material.carbon_per_m3",
+            f"UMI holds carbon per kg; a carbon per {material.RateUnit or 'm3'} needs a density or thickness "
+            "an SBEM gas lacks.",
+            replacement=0.0,
+        )
+        carbon = 0.0
     return GasMaterial.model_validate({
         "Name": material.Name,
         "Comments": material.Comment,
         "DataSource": material.DataSource,
         "Type": material.GasType.upper(),
-        "EmbodiedCarbon": material.EmbodiedCarbon or 0.0,
-        **life_cycle_to_umi(material, _PER_MASS, None, subject, location, findings),
+        "EmbodiedCarbon": carbon,
+        **life_cycle_to_umi(material, material.RateUnit, None, subject, location, findings),
     })
 
 
@@ -629,38 +658,48 @@ def place_window(window: SbemWindow | None, groups: Sequence[str]) -> dict[str, 
 
 
 @rule("window.placement", to="umi")
-def template_window(windows: Mapping[str, SbemWindow | None], *, subject: str) -> tuple[SbemWindow | None, list[Loss]]:
+def template_window(
+    windows: Mapping[str, SbemWindow | None], *, subject: str, chosen: str | None = None
+) -> tuple[SbemWindow | None, list[Loss]]:
     """Choose the building template's window from the zone groups' windows.
 
-    The perimeter group's window is used (the first group's when there is no perimeter group).
-    Another group's window that differs from it is lost; a group without a window loses
-    nothing.
+    The `chosen` group's window is used: the perimeter-exposed group's, which the writer passes
+    (by default the group named `perimeter`, else the first group). Another group's window that
+    differs from it is lost; a group without a window loses nothing.
 
     Args:
         windows: Each group's window, by group name, in group order.
         subject: The archetype being written, for the losses.
+        chosen: The name of the group whose window is used.
 
     Returns:
         The template's window and the losses.
     """
     if not windows:
         return None, []
-    chosen_group = PERIMETER if PERIMETER in windows else next(iter(windows))
-    chosen = windows[chosen_group]
+    chosen_group = _chosen_group(windows, chosen)
+    window = windows[chosen_group]
     losses = [
         Loss(
             kind=LossKind.LOST,
             subject=subject,
             location=f"{group}.Envelope.Window",
-            value=window.model_dump(mode="json", exclude_none=True),
-            replacement=None if chosen is None else chosen.Name,
+            value=other.model_dump(mode="json", exclude_none=True),
+            replacement=None if window is None else window.Name,
             rule="window.placement",
             reason=f"UMI has one window per building template: the {chosen_group} group's window is used.",
         )
-        for group, window in windows.items()
-        if group != chosen_group and window is not None and window != chosen
+        for group, other in windows.items()
+        if group != chosen_group and other is not None and other != window
     ]
-    return chosen, losses
+    return window, losses
+
+
+def _chosen_group(groups: Mapping[str, object], chosen: str | None) -> str:
+    """The group whose window (settings) the template takes: `chosen`, else `perimeter`, else the first."""
+    if chosen is not None and chosen in groups:
+        return chosen
+    return PERIMETER if PERIMETER in groups else next(iter(groups))
 
 
 # --- Window settings (window.settings, UP-9) -------------------------------------------------------
@@ -786,33 +825,39 @@ def settings_to_umi(
 
 
 def template_settings(
-    settings: Mapping[str, WindowSettingsComponent | None], *, subject: str
+    settings: Mapping[str, WindowSettingsComponent | None], *, subject: str, chosen: str | None = None
 ) -> tuple[str, WindowSettingsComponent | None, list[Loss]]:
     """Choose the building template's window settings from the zone groups' (UP-9).
 
-    As for the window: the perimeter group's (the first group's without one); another group's
-    settings that differ are lost.
+    As for the window: the `chosen` group's (by default the group named `perimeter`, else the
+    first group); another group's settings that differ are lost, `None` (fully operable,
+    unshaded) included. The writer leaves out a group with neither window nor settings: it
+    simulates no window, so gaining the template's settings changes nothing (noted instead).
 
     Args:
         settings: Each group's window settings, by group name, in group order.
         subject: The archetype being written, for the losses.
+        chosen: The name of the group whose settings are used.
 
     Returns:
-        The chosen group's name, its settings and the losses.
+        The chosen group's name, its settings and the losses; with no groups, `chosen` (or
+        `perimeter`), no settings and no losses.
     """
-    chosen_group = PERIMETER if PERIMETER in settings else next(iter(settings))
-    chosen = settings[chosen_group]
+    if not settings:
+        return chosen if chosen is not None else PERIMETER, None, []
+    chosen_group = _chosen_group(settings, chosen)
+    chosen_settings = settings[chosen_group]
     losses = [
         Loss(
             kind=LossKind.LOST,
             subject=subject,
             location=f"{group}.Envelope.WindowSettings",
             value=None if other is None else other.model_dump(mode="json", exclude_none=True),
-            replacement=None if chosen is None else chosen.Name,
+            replacement=None if chosen_settings is None else chosen_settings.Name,
             rule=_SETTINGS,
             reason=f"UMI has one window settings per building template: the {chosen_group} group's are used.",
         )
         for group, other in settings.items()
-        if group != chosen_group and other != chosen
+        if group != chosen_group and other != chosen_settings
     ]
-    return chosen_group, chosen, losses
+    return chosen_group, chosen_settings, losses

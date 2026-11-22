@@ -179,3 +179,12 @@ def test_fixture_conserves_volume_and_heat(
     assert sum(a.volume for a in zoneless) == pytest.approx(float(building.sum()))
     zoned = [a for a in recorded if not a.allocated]
     assert all(a.rule == "zone" and a.share == 1.0 for a in zoned)
+
+
+def test_allocations_report_the_rule_the_inventory_used() -> None:
+    # People with a zero schedule: the inventory fell back to floor area, which the report must say.
+    people = SimpleNamespace(kind="people", design_level=10.0)
+    record = HotWaterRecord("Building Hot Water", np.ones(2), None, 1.0, allocated=True, rule="floor-area")
+    zone = SimpleNamespace(zone=SimpleNamespace(name="A", multiplier=1, gains=(people,), hot_water=(record,)))
+    (entry,) = allocations([zone])  # pyright: ignore[reportArgumentType]
+    assert entry.rule == "floor-area"

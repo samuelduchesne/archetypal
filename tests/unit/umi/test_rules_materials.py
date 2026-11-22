@@ -248,11 +248,6 @@ def test_material_to_umi_area_rate_is_lost() -> None:
     assert {loss.location for loss in findings.losses} == {"m.EmbodiedCarbon", "m.Cost"}
 
 
-def test_material_to_umi_refuses_carbon_at_zero_density() -> None:
-    with pytest.raises(ValueError, match="density"):
-        material_to_umi(sbem_material(Density=0.0, EmbodiedCarbon=4.0), "A", "m", Findings())
-
-
 # --- construction.layers ----------------------------------------------------------------------
 
 
@@ -518,3 +513,50 @@ def test_construction_round_trip(layers: list[tuple[OpaqueMaterial, float]]) -> 
         assert want.material is not None
         assert_material_close(got.material, want.material)
     assert not findings.losses
+
+
+# --- Code-review regressions ------------------------------------------------------------------
+
+
+def test_material_to_umi_type_other_with_a_category_naming_a_type_is_lost() -> None:
+    findings = Findings()
+    umi = material_to_umi(sbem_material(Type="Other", Category="Masonry"), "A", "m", findings)
+    assert umi.category == "Masonry"
+    (loss,) = [loss for loss in findings.losses if loss.location == "m.Type"]
+    assert (loss.value, loss.replacement) == ("Other", "Masonry")
+
+
+def test_material_to_umi_type_other_with_an_other_category_loses_nothing() -> None:
+    findings = Findings()
+    material_to_umi(sbem_material(Type="Other", Category="Uncategorized"), "A", "m", findings)
+    assert not [loss for loss in findings.losses if loss.location == "m.Type"]
+
+
+def test_material_to_umi_carbon_per_m3_at_zero_density_is_lost() -> None:
+    findings = Findings()
+    umi = material_to_umi(sbem_material(Density=0.0, EmbodiedCarbon=4.0), "A", "m", findings)
+    assert umi.embodied_carbon == 0.0
+    (loss,) = [loss for loss in findings.losses if loss.location == "m.EmbodiedCarbon"]
+    assert (loss.value, loss.replacement, loss.rule) == (4.0, 0.0, "material.carbon_per_m3")
+
+
+def test_material_to_umi_cost_per_kg_at_zero_density_is_lost() -> None:
+    findings = Findings()
+    umi = material_to_umi(sbem_material(Density=0.0, RateUnit="kg", Cost=2.0, EmbodiedCarbon=0.0), "A", "m", findings)
+    assert umi.cost == 0.0
+    (loss,) = [loss for loss in findings.losses if loss.location == "m.Cost"]
+    assert (loss.value, loss.replacement, loss.rule) == (2.0, 0.0, "material.cost_per_m3")
+
+
+@pytest.mark.parametrize("rate_unit", ["m2", "m"])
+@pytest.mark.parametrize("value", [None, 0.0])
+def test_material_to_umi_no_cost_or_carbon_per_area_loses_nothing(rate_unit: str, value: float | None) -> None:
+    findings = Findings()
+    umi = material_to_umi(sbem_material(RateUnit=rate_unit, Cost=value, EmbodiedCarbon=value), "A", "m", findings)
+    assert (umi.cost, umi.embodied_carbon) == (0.0, 0.0)
+    assert not [loss for loss in findings.losses if loss.location in {"m.Cost", "m.EmbodiedCarbon"}]
+
+
+def test_cost_from_sbem_of_no_cost_per_area_is_zero() -> None:
+    assert cost_from_sbem(0.0, "m2", 50.0) == 0.0
+    assert cost_from_sbem(2.0, "kg", 0.0) is None

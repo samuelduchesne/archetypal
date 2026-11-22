@@ -9,7 +9,12 @@ from typing import Any
 
 import idfkit.thermal
 import pytest
-from epinterface.sbem.components.envelope import GlazingConstructionLayeredComponent, GlazingConstructionSimpleComponent
+from epinterface.sbem.components.envelope import (
+    GasLayerComponent,
+    GlazingConstructionLayeredComponent,
+    GlazingConstructionSimpleComponent,
+    GlazingLayerComponent,
+)
 from idfkit import new_document
 from idfkit.thermal import calculate_shgc, calculate_u_value, calculate_visible_transmittance
 
@@ -438,3 +443,114 @@ def test_writing_uses_the_perimeter_settings_and_loses_another() -> None:
     assert (group, chosen) == ("perimeter", shaded)
     (loss,) = losses
     assert (loss.location, loss.rule, loss.replacement) == ("core.Envelope.WindowSettings", "window.settings", "Shaded")
+
+
+def test_writing_uses_the_chosen_group_whatever_its_name() -> None:
+    outer, inner = simple("Outer window"), simple("Inner window", u=2.8)
+    window, losses = windows.template_window({"perimeter": inner, "outer": outer}, subject="A", chosen="outer")
+    assert window is outer
+    assert [loss.location for loss in losses] == ["perimeter.Envelope.Window"]
+
+
+def test_template_settings_of_no_group_is_none() -> None:
+    assert windows.template_settings({}, subject="A") == ("perimeter", None, [])
+    assert windows.template_settings({}, subject="A", chosen="outer") == ("outer", None, [])
+
+
+def test_template_settings_use_the_chosen_group() -> None:
+    context = reading("/BuildingTemplates/0/Windows")
+    shaded = windows.settings_to_sbem(umi_settings(), schedule=read_schedule, context=context)
+    group, chosen, losses = windows.template_settings({"perimeter": None, "outer": shaded}, subject="A", chosen="outer")
+    assert (group, chosen) == ("outer", shaded)
+    assert [loss.location for loss in losses] == ["perimeter.Envelope.WindowSettings"]
+
+
+def layered_with_glass(**changes: object) -> GlazingConstructionLayeredComponent:
+    """A one-pane SBEM window whose glazing material takes `changes`."""
+    glass = GlazingMaterial(Name="Glass", Conductivity=0.9, Density=2500.0)
+    construction = WindowConstruction(
+        Name="W", Layers=(MaterialLayer[GlazingMaterial | GasMaterial](Material=glass, Thickness=0.006),)
+    )
+    window, _ = windows.layers_to_sbem(construction, subject="T", location="/WindowConstructions/0")
+    assert isinstance(window, GlazingConstructionLayeredComponent)
+    (layer,) = window.Layers
+    assert isinstance(layer, GlazingLayerComponent)
+    material = layer.GlazingMaterial.model_copy(update=changes)
+    return window.model_copy(update={"Layers": [layer.model_copy(update={"GlazingMaterial": material})]})
+
+
+@pytest.mark.parametrize("rate_unit", ["m2", "m"])
+def test_glass_carbon_per_area_or_length_is_lost(rate_unit: str) -> None:
+    window = layered_with_glass(RateUnit=rate_unit, EmbodiedCarbon=5.0, Cost=None)
+    back, losses = windows.layers_to_umi(window, subject="A", location="w")
+    material = back.layers[0].material
+    assert material is not None
+    assert material.embodied_carbon == 0.0
+    assert [(loss.location, loss.value) for loss in losses] == [("w.Layers.0.GlazingMaterial.EmbodiedCarbon", 5.0)]
+
+
+def test_glass_carbon_per_m3_at_zero_density_is_lost() -> None:
+    window = layered_with_glass(RateUnit="m3", EmbodiedCarbon=5.0, Density=0.0, Cost=None)
+    back, losses = windows.layers_to_umi(window, subject="A", location="w")
+    material = back.layers[0].material
+    assert material is not None
+    assert material.embodied_carbon == 0.0
+    assert [loss.location for loss in losses] == ["w.Layers.0.GlazingMaterial.EmbodiedCarbon"]
+
+
+@pytest.mark.parametrize("rate_unit", ["m2", "m"])
+def test_glass_without_cost_or_carbon_per_area_loses_nothing(rate_unit: str) -> None:
+    window = layered_with_glass(RateUnit=rate_unit, EmbodiedCarbon=0.0, Cost=0.0)
+    _, losses = windows.layers_to_umi(window, subject="A", location="w")
+    assert losses == []
+
+
+def test_glass_life_cycle_of_unset_rate_unit_is_per_m3_like_its_carbon() -> None:
+    window = layered_with_glass(RateUnit=None, EmbodiedCarbon=5000.0, EmbodiedEnergy=2500.0, Cost=None)
+    back, losses = windows.layers_to_umi(window, subject="A", location="w")
+    material = back.layers[0].material
+    assert isinstance(material, GlazingMaterial)
+    assert losses == []
+    assert material.embodied_carbon == pytest.approx(2.0)
+    assert material.embodied_energy == pytest.approx(1.0)
+
+
+def layered_with_gas(**changes: object) -> GlazingConstructionLayeredComponent:
+    """A double-glazed SBEM window whose gas material takes `changes`."""
+    glass = GlazingMaterial(Name="Glass", Conductivity=0.9, Density=2500.0)
+    air = GasMaterial(Name="Air", Type="AIR")
+    construction = WindowConstruction(
+        Name="W",
+        Layers=(
+            MaterialLayer[GlazingMaterial | GasMaterial](Material=glass, Thickness=0.006),
+            MaterialLayer[GlazingMaterial | GasMaterial](Material=air, Thickness=0.012),
+            MaterialLayer[GlazingMaterial | GasMaterial](Material=glass, Thickness=0.006),
+        ),
+    )
+    window, _ = windows.layers_to_sbem(construction, subject="T", location="/WindowConstructions/0")
+    assert isinstance(window, GlazingConstructionLayeredComponent)
+    layer = window.Layers[1]
+    assert isinstance(layer, GasLayerComponent)
+    material = layer.GasMaterial.model_copy(update=changes)
+    layers = list(window.Layers)
+    layers[1] = layer.model_copy(update={"GasMaterial": material})
+    return window.model_copy(update={"Layers": layers})
+
+
+def test_gas_carbon_per_kg_is_copied() -> None:
+    window = layered_with_gas(RateUnit="kg", EmbodiedCarbon=5.0, Cost=None)
+    back, losses = windows.layers_to_umi(window, subject="A", location="w")
+    material = back.layers[1].material
+    assert material is not None
+    assert material.embodied_carbon == 5.0
+    assert losses == []
+
+
+@pytest.mark.parametrize("rate_unit", [None, "m3", "m2", "m"])
+def test_gas_carbon_not_per_kg_is_lost(rate_unit: str | None) -> None:
+    window = layered_with_gas(RateUnit=rate_unit, EmbodiedCarbon=5.0, Cost=None)
+    back, losses = windows.layers_to_umi(window, subject="A", location="w")
+    material = back.layers[1].material
+    assert material is not None
+    assert material.embodied_carbon == 0.0
+    assert [(loss.location, loss.value) for loss in losses] == [("w.Layers.1.GasMaterial.EmbodiedCarbon", 5.0)]

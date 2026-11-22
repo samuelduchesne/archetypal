@@ -155,6 +155,7 @@ Fuel: TypeAlias = str
 _SECONDS_PER_HOUR = 3600.0
 _DAYS_PER_YEAR = 365.0
 _UNIT_HEIGHT = 1.0  # m: the storey height the approximate infiltration assumes in every group
+_REFERENCE_HOURS = 8760  # hours of UMI's reference year (non-leap), over which `_profile` evaluates
 
 APPROXIMATE_PATHS: tuple[str, ...] = (
     "Envelope.Assemblies",
@@ -614,7 +615,10 @@ class GroupLedger(_Totals):
         members: The zone names, sorted (FR-025 provenance).
         floor_area: Σ floor area, multipliers applied, m² (FR-014).
         envelope: Opaque totals per surface class (FR-016, FR-017).
-        window_by_orientation: Window totals per orientation (FR-016, FR-024).
+        window_by_orientation: Totals of the windows in walls (60° to 120° tilt) per orientation
+            (FR-016, FR-024).
+        skylights: Totals of the other windows (skylights, roof and floor windows), kept out of
+            the facade (FR-016).
         internal_mass_capacity: Σ heat capacity of internal mass, J/K (FR-017).
         internal_mass_area: Σ exposed area of internal mass, m².
         gains: Totals per gain kind (FR-015).
@@ -634,6 +638,7 @@ class GroupLedger(_Totals):
     floor_area: float = 0.0
     envelope: dict[EnvelopeClass, EnvelopeTotals] = Field(default_factory=dict[EnvelopeClass, EnvelopeTotals])
     window_by_orientation: dict[Orientation, WindowTotals] = Field(default_factory=dict[Orientation, WindowTotals])
+    skylights: WindowTotals = Field(default_factory=WindowTotals)
     internal_mass_capacity: float = 0.0
     internal_mass_area: float = 0.0
     gains: dict[GainKind, GainTotals] = Field(default_factory=dict[GainKind, GainTotals])
@@ -745,14 +750,15 @@ class GroupLedger(_Totals):
         - **Exact**, from intensities: gains and their profiles (people, lights and equipment as
           `electric`), the heating and cooling setpoints of a heated or cooled group (else
           `unheated_area` or `uncooled_area`), mechanical outdoor air at design occupancy
-          times the ventilation schedule (with its HRV and economiser categories and, with heat
-          recovery, its sensible effectiveness weighted by outdoor-air volume), and hot
+          times `MechVentSchedule`, constant without one (with its HRV and economiser categories
+          and, with heat recovery, its sensible effectiveness weighted by outdoor-air volume), and hot
           water (annual volume `FlowRatePerPerson · 365 · PeopleDensity · area` spread over the
           water-use schedule, temperature rise `WaterSupplyTemperature - WaterTemperatureInlet`),
           and internal mass (exposed area and capacity per floor area).
         - **Approximate**, floor-area weighted (`APPROXIMATE_PATHS`): each opaque class's U and
           capacities taken over an area equal to the floor area; the window likewise, under
-          orientation `S`; infiltration as air changes over a 1 m storey; and each system's
+          orientation `S`; infiltration by its calculation method, as air changes over a 1 m storey
+          or as flow per exterior area over an exterior area equal to the floor area; and each system's
           efficiency (`SystemCOP · DistributionCOP`) as a rated efficiency weighted by floor area.
 
         Args:
@@ -856,7 +862,10 @@ def _exact_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
     ventilation = hvac.Ventilation
     if ventilation.Provider in {"Mechanical", "Both"}:
         design = area * ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * people
-        hourly = design * profile(ventilation.Schedule)
+        # The mechanical outdoor air follows `MechVentSchedule` (UP-9), constant without one, as
+        # epinterface's ideal loads; `Schedule` opens the windows of natural ventilation.
+        mechanical = ventilation.MechVentSchedule
+        hourly = design * (profile(mechanical) if mechanical is not None else np.ones(_REFERENCE_HOURS))
         volume = float(hourly.sum()) * _SECONDS_PER_HOUR
         # Heat-recovery effectiveness is weighted by outdoor-air volume, as `airflow` does (R9):
         # the effectiveness the group simulates with (its field, else epinterface's constant).
@@ -902,6 +911,22 @@ def _window_performance(window: Any) -> tuple[float, float, float]:
     )
 
 
+def _infiltration_flow(infiltration: Any, area: float) -> float:
+    """An infiltration's design flow over `area`, m³/s, by its calculation method (R12).
+
+    `AirChanges/Hour` takes the air changes over a 1 m storey; `Flow/ExteriorArea` and
+    `Flow/ExteriorWallArea` take the flow per exterior area over an exterior area equal to the
+    floor area, as the envelope's assemblies do. `Flow/Zone` and `Flow/Area` have no field in
+    SBEM's component, so epinterface writes no flow: 0.
+    """
+    method = infiltration.CalculationMethod
+    if method == "AirChanges/Hour":
+        return infiltration.AirChangesPerHour * area * _UNIT_HEIGHT / _SECONDS_PER_HOUR
+    if method in {"Flow/ExteriorArea", "Flow/ExteriorWallArea"}:
+        return infiltration.FlowPerExteriorSurfaceArea * area
+    return 0.0
+
+
 def _approximate_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
     """The ledger fields rebuilt by floor-area weighting (R12, `APPROXIMATE_PATHS`), and internal mass."""
     from archetypal.reduction.envelope import (  # noqa: PLC0415 - envelope imports this module
@@ -935,7 +960,7 @@ def _approximate_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
 
     infiltration = envelope.Infiltration
     if infiltration.IsOn:
-        flow = infiltration.AirChangesPerHour * area * _UNIT_HEIGHT / _SECONDS_PER_HOUR
+        flow = _infiltration_flow(infiltration, area)
         values["infiltration"] = AirflowTotals(
             design_flow=flow,
             constant_weighted=flow * infiltration.ConstantCoefficient,
@@ -976,6 +1001,7 @@ FIELD_OWNERS: Mapping[str, tuple[str, ...]] = {
     "envelope": (
         "envelope",
         "window_by_orientation",
+        "skylights",
         "internal_mass_capacity",
         "internal_mass_area",
         "excluded_envelope",

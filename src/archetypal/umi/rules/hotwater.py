@@ -154,7 +154,9 @@ def _flow_to_umi(
             )
         return 0.0
     result = flow_per_area(flow, schedule_sum, occupancy.PeopleDensity)
-    if dhw.IsOn and flow != 0 and (occupancy.PeopleDensity == 0 or not occupancy.IsOn):
+    # Density 0 loses the flow itself; people off only the hot water simulated, which matters
+    # only when hot water is on.
+    if flow != 0 and (occupancy.PeopleDensity == 0 or (dhw.IsOn and not occupancy.IsOn)):
         context.lose(
             "Operations.SpaceUse.WaterUse.FlowRatePerPerson",
             flow,

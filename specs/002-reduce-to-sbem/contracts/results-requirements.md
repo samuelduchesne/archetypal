@@ -49,8 +49,11 @@ performance objects and thermal-storage coils (`requirements.delivery_outputs`).
   `NominalBaseboardHeaters`, `NominalInfiltration`, `NominalVentilation`, `Simulations`,
   `EnvironmentPeriods`, `Time`.
 - **Tabular reports:**
-  - Envelope Summary (Opaque Exterior, Exterior Fenestration);
-  - Annual Building Utility Performance Summary (End Uses);
+  - Envelope Summary (Opaque Exterior, Exterior Fenestration), in SI or InchPound units
+    (U-factors converted to W/m²·K; other units are refused);
+  - Annual Building Utility Performance Summary (End Uses), which decides the `<fuel>` of each
+    meter above; an hourly `<end use>:<fuel>` meter already in the results counts too, since
+    the table rounds a fuel under 5 MJ a year to zero;
   - Equipment Summary, for rated efficiencies (R12).
 
 ## On failure

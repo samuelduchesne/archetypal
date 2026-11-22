@@ -310,7 +310,7 @@ def _reduce(sources: SourceData, options: ReductionOptions) -> Reduction:
         *_unassigned_envelope(envelope),
         *_allocated_hot_water(zones),
         *_unattributed_energy(energy, conditioned),
-        *_unattributed_fans(fans),
+        *_unattributed_fans(fans, conditioned),
     )
     building = sum((g.ledger for g in grouping.groups), GroupLedger())
     return _assemble(
@@ -659,16 +659,36 @@ def _unattributed_by_fuel(energy: _efficiency.EnergyAttribution) -> dict[Fuel, f
     return {fuel: value for fuel, value in sorted(totals.items()) if value != 0.0}
 
 
-def _unattributed_fans(fans: _fans.FanAttribution) -> tuple[NotRepresented, ...]:
-    if not fans.unattributed_fans:
-        return ()
-    return (
-        NotRepresented(
-            feature="Fans serving no conditioned zone",
-            effect="Their energy is attributed to no group's specific fan power (FR-022a).",
-            objects=tuple(sorted(fans.unattributed_fans)),
-            magnitude=fans.unattributed_energy,
-            unit="J",
-            source="fans",
-        ),
-    )
+def _unattributed_fans(fans: _fans.FanAttribution, conditioned: Sequence[ClassifiedZone]) -> tuple[NotRepresented, ...]:
+    """Fans matched to no zone, and fan energy attributed to zones left out of every group (FR-026)."""
+    entries: list[NotRepresented] = []
+    if fans.unattributed_fans:
+        entries.append(
+            NotRepresented(
+                feature="Fans serving no conditioned zone",
+                effect="Their energy is attributed to no group's specific fan power (FR-022a).",
+                objects=tuple(sorted(fans.unattributed_fans)),
+                magnitude=fans.unattributed_energy,
+                unit="J",
+                source="fans",
+            )
+        )
+    kept = {z.zone.name for z in conditioned}
+    excluded = {
+        name: fans.multipliers_applied(name).energy
+        for name in fans.zones
+        if name not in kept and fans.zones[name].energy > 0.0
+    }
+    if excluded:
+        entries.append(
+            NotRepresented(
+                feature="Fan energy of excluded zones",
+                effect="Fan energy attributed to zones left out of every group (plenums, attics, unconditioned "
+                "zones) is in no group's specific fan power (FR-022a).",
+                affected_zones=tuple(sorted(excluded)),
+                magnitude=math.fsum(excluded.values()),
+                unit="J",
+                source="fans",
+            )
+        )
+    return tuple(entries)

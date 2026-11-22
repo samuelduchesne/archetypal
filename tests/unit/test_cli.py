@@ -112,6 +112,15 @@ def test_reduce_expands_directories_and_globs_sorted(tmp_path: Path, cli_reducti
     assert [stem for stem, _ in cli_reductions] == ["bar_building", "three_zone"]
 
 
+def test_a_glob_keeps_only_model_files(tmp_path: Path) -> None:
+    from archetypal.cli._reduce import expand_models  # noqa: PLC0415
+
+    for name in ("a.idf", "b.epJSON", "a.sql", "a.epw", "notes.txt"):
+        (tmp_path / name).write_text("", encoding="utf-8")
+    (tmp_path / "c.idf").mkdir()  # a folder named like a model is no model
+    assert expand_models([str(tmp_path / "*")]) == [tmp_path / "a.idf", tmp_path / "b.epJSON"]
+
+
 def test_reduce_refuses_an_empty_directory_naming_it(tmp_path: Path, cli_reductions: list[tuple[str, str]]) -> None:
     empty = tmp_path / "empty"
     empty.mkdir()

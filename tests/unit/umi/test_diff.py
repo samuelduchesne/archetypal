@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -143,12 +144,36 @@ def test_a_renamed_component_is_matched_through_its_template(document: Json, tmp
     assert (difference.original, difference.result) == ("B_Off_0 loads", "renamed loads")
 
 
-def test_a_template_without_a_namesake_is_matched_by_place(document: Json, tmp_path: Path) -> None:
-    document["BuildingTemplates"][1]["Name"] = "B_Ret_0 #2"
-    [difference] = diff_umi(B2, save(tmp_path, document)).differences
+def test_a_repeated_template_name_is_matched_by_place(document: Json, tmp_path: Path) -> None:
+    first = document["BuildingTemplates"][0]["Name"]
+    document["BuildingTemplates"][1]["Name"] = first
+    original = save(tmp_path, document, "original.json")
+    document["BuildingTemplates"][1]["Name"] = f"{first} #2"  # as reading renames it
+    [difference] = diff_umi(original, save(tmp_path, document)).differences
     assert difference.location == "/BuildingTemplates/1/Name"
-    assert difference.subject == "B_Ret_0 #2"
-    assert (difference.original, difference.result) == ("B_Ret_0", "B_Ret_0 #2")
+    assert difference.subject == f"{first} #2"
+    assert (difference.original, difference.result) == (first, f"{first} #2")
+
+
+def test_a_renamed_template_is_missing_and_extra(document: Json, tmp_path: Path) -> None:
+    document["BuildingTemplates"][0]["Name"] = "renamed"
+    found = {(d.location, d.original, d.result) for d in diff_umi(B2, save(tmp_path, document)).differences}
+    assert found == {("/BuildingTemplates/0", "B_Off_0", None), ("/BuildingTemplates/-", None, "renamed")}
+
+
+def test_an_unused_component_only_in_the_result_is_a_difference(document: Json, tmp_path: Path) -> None:
+    extra = copy.deepcopy(document["OpaqueMaterials"][0])
+    extra["$id"] = "added-material"
+    extra["Name"] = "added material"
+    document["OpaqueMaterials"].append(extra)
+    [difference] = diff_umi(B2, save(tmp_path, document)).differences
+    assert (difference.location, difference.original, difference.result) == (
+        "/OpaqueMaterials/-",
+        None,
+        "added material",
+    )
+    assert difference.relevance is Relevance.DESCRIPTIVE
+    assert difference.subject == ""
 
 
 def test_a_missing_template_is_a_difference_with_no_result(document: Json, tmp_path: Path) -> None:
@@ -207,6 +232,20 @@ def test_archetype_differences_are_located_by_sbem_field_path(office: Archetype)
     assert by_location["archetype.Comment"].relevance is Relevance.DESCRIPTIVE
     assert not diff.within_tolerance
     assert diff_archetypes(office, other, rel_tol=0.6).within_tolerance
+
+
+def test_nan_equals_nan(office: Archetype) -> None:
+    perimeter = next(g for g in office.Groups if g.Name == "perimeter")
+    lighting = perimeter.Zone.Operations.SpaceUse.Lighting
+    changed = lighting.model_copy(update={"PowerDensity": math.nan})
+    space_use = perimeter.Zone.Operations.SpaceUse.model_copy(update={"Lighting": changed})
+    zone = perimeter.Zone.model_copy(
+        update={"Operations": perimeter.Zone.Operations.model_copy(update={"SpaceUse": space_use})}
+    )
+    other = office.model_copy(update={"Groups": [g.model_copy(update={"Zone": zone}) for g in office.Groups]})
+    assert diff_archetypes(other, other).differences == ()
+    [difference] = diff_archetypes(office, other).beyond(0.0)[:1]
+    assert difference.relative is None
 
 
 def test_a_missing_group_is_a_difference(office: Archetype) -> None:

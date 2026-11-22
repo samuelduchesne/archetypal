@@ -89,7 +89,7 @@ def occupancy_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: Ru
         context: The loads' reading context.
     """
     context.note(
-        "PeopleDensity",
+        "MetabolicRate",
         METABOLIC_RATE,
         rule="loads.people",
         reason="SBEM's Occupancy.MetabolicRate has no UMI field; epinterface's default used",

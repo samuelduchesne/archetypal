@@ -45,10 +45,10 @@ shares unset, which is not a loss, since UMI never held them.
 ## One window per template
 
 UMI has one window construction and one set of window settings per template; SBEM has one per
-group. Reading gives every group the template's window. Writing uses the perimeter group's
-window, and reports the window of any other group that differs from it. A core without a window
-gains the template's window when the library is read back; it has no facade, so this changes
-nothing it simulates, and the report notes it.
+group. Reading gives every group the template's window. Writing uses the window of the group
+exposed as perimeter, and reports the window of any other group that differs from it. A core
+without a window gains the template's window when the library is read back; it has no facade, so
+this changes nothing it simulates, and the report notes it.
 
 The window itself survives when it is layered. UMI windows are layers of glazing and gas, and
 since UP-9 SBEM can hold the same layers, so a layered window maps exactly both ways. An SBEM

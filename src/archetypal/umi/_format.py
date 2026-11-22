@@ -392,6 +392,15 @@ class ConstructionSystem(FormatModel, Generic[_E]):
     material: OpaqueMaterial | None = Field(default=None, alias="Material")
     construction_system_type: _E = Field(alias="ConstructionSystemType")
 
+    @classmethod
+    def basilisk_keys(cls) -> tuple[tuple[str, str], ...]:
+        """Each field as `(name, Basilisk key)`, in the order of Basilisk's generic class.
+
+        The subclasses only close `ConstructionSystem<T>` (their override of
+        `ConstructionSystemType` reads it by name), so they keep its order: `Material` first.
+        """
+        return tuple((name, cls.model_fields[name].alias or name) for name in ("material", "construction_system_type"))
+
 
 class BeamSystem(ConstructionSystem[ConstructionSystemTypeBeam]):
     """`ConstructionSystem<ConstructionSystemTypeBeam>`."""

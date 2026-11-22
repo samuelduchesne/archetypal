@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pytest
+from idfkit import new_document
 
 from archetypal.reduction.fans import (
     AIR_SPECIFIC_HEAT,
     BuildingFans,
+    FanAttribution,
     FanSeries,
+    air_loops,
     attribute_fans,
     building_fans,
     effective_supply_delta,
@@ -125,6 +129,124 @@ def test_unmatched_fans_are_reported() -> None:
     assert result.unattributed_fans == ("lost fan",)
 
 
+def test_a_loop_splits_by_its_own_units_inlet_flow() -> None:
+    """D10: a DOAS feeding only A is not split by B's VAV inlet flow."""
+    doas = FanSeries(
+        "DOAS fan",
+        energy=_a(100.0, 100.0, 100.0),
+        mass_flow=_a(1.0, 1.0, 1.0),
+        loop_zones=("A", "B"),
+        loop_inlet_flow={"A": _a(1.0, 1.0, 1.0), "B": _a(0.0, 0.0, 0.0)},
+    )
+    result = attribute_fans(_data((doas,)))  # B's whole inlet flow (VAV) is larger than A's
+    assert result.zones["A"].energy == pytest.approx(300.0)
+    assert result.zones["B"].energy == 0.0
+
+
+def _two_loop_model() -> Any:
+    """Zones A and B on a VAV loop (with a return path), and A also on a DOAS (no return path)."""
+    doc = new_document()
+
+    def add(kind: str, name: str, **fields: object) -> None:
+        doc.add(kind, name, validate=False, **fields)  # pyright: ignore[reportArgumentType]
+
+    for zone in ("A", "B"):
+        add("Zone", zone)
+        units = [("VAV", f"{zone} VAV inlet", f"{zone} VAV box")] + (
+            [("DOAS", "A DOAS inlet", "A DOAS box")] * (zone == "A")
+        )
+        add(
+            "ZoneHVAC:EquipmentConnections",
+            "",
+            zone_name=zone,
+            zone_conditioning_equipment_list_name=f"{zone} equipment",
+            zone_air_inlet_node_or_nodelist_name=f"{zone} inlets",
+            zone_air_node_name=f"{zone} air",
+            zone_return_air_node_or_nodelist_name=f"{zone} return",
+        )
+        add("NodeList", f"{zone} inlets", nodes=[{"node_name": node} for _, node, _ in units])
+        add(
+            "ZoneHVAC:EquipmentList",
+            f"{zone} equipment",
+            equipment=[
+                {"zone_equipment_object_type": "ZoneHVAC:AirDistributionUnit", "zone_equipment_name": f"{box} ADU"}
+                for _, _, box in units
+            ],
+        )
+        for _, node, box in units:
+            add(
+                "ZoneHVAC:AirDistributionUnit",
+                f"{box} ADU",
+                air_distribution_unit_outlet_node_name=node,
+                air_terminal_object_type="AirTerminal:SingleDuct:ConstantVolume:NoReheat",
+                air_terminal_name=box,
+            )
+            add(
+                "AirTerminal:SingleDuct:ConstantVolume:NoReheat",
+                box,
+                air_inlet_node_name=f"{box} in",
+                air_outlet_node_name=node,
+            )
+    for loop, zones in (("VAV", ("A", "B")), ("DOAS", ("A",))):
+        add(
+            "AirLoopHVAC",
+            loop,
+            demand_side_inlet_node_names=f"{loop} demand in",
+            demand_side_outlet_node_name=f"{loop} demand out",
+        )
+        add(
+            "AirLoopHVAC:SupplyPath",
+            f"{loop} supply path",
+            supply_air_path_inlet_node_name=f"{loop} demand in",
+            components=[{"component_object_type": "AirLoopHVAC:ZoneSplitter", "component_name": f"{loop} splitter"}],
+        )
+        add(
+            "AirLoopHVAC:ZoneSplitter",
+            f"{loop} splitter",
+            inlet_node_name=f"{loop} demand in",
+            nodes=[{"outlet_node_name": f"{z} {loop} box in"} for z in zones],
+        )
+    add(
+        "AirLoopHVAC:ReturnPath",
+        "VAV return path",
+        return_air_path_outlet_node_name="VAV demand out",
+        components=[{"component_object_type": "AirLoopHVAC:ZoneMixer", "component_name": "VAV mixer"}],
+    )
+    add(
+        "AirLoopHVAC:ZoneMixer",
+        "VAV mixer",
+        outlet_node_name="VAV demand out",
+        nodes=[{"inlet_node_name": "A return"}, {"inlet_node_name": "B return"}],
+    )
+    return doc
+
+
+def test_a_loop_without_return_path_serves_the_zones_its_supply_path_feeds() -> None:
+    """D11: a DOAS without a return path serves A; each loop knows its own units' inlet nodes."""
+    loops = air_loops(_two_loop_model(), ("A", "B"))
+    assert loops.served == {"vav": ("A", "B"), "doas": ("A",)}
+    assert loops.loop_inlet_nodes == {
+        "vav": {"A": ("A VAV inlet",), "B": ("B VAV inlet",)},
+        "doas": {"A": ("A DOAS inlet",)},
+    }
+
+
+def test_fan_energy_of_excluded_zones_is_reported() -> None:
+    """D9: fan energy attributed to a plenum is listed, not dropped."""
+    from archetypal.reduction import _unattributed_fans  # pyright: ignore[reportPrivateUsage]  # noqa: PLC0415
+
+    attribution = FanAttribution(
+        zones={"Room": FanTotals(energy=10.0), "Plenum": FanTotals(energy=4.0)},
+        multipliers={"Room": 1, "Plenum": 3},
+        air_density=RHO,
+    )
+    room = cast("ClassifiedZone", SimpleNamespace(zone=SimpleNamespace(name="Room")))
+    (entry,) = _unattributed_fans(attribution, [room])
+    assert entry.feature == "Fan energy of excluded zones"
+    assert entry.affected_zones == ("Plenum",)
+    assert entry.magnitude == pytest.approx(12.0)
+
+
 def test_the_module_hook_needs_building_data() -> None:
     with pytest.raises(ValueError, match="fans_hook"):
         ledger_fields(None, None)  # pyright: ignore[reportArgumentType]
@@ -159,6 +281,9 @@ def test_fixture_fans_are_assigned(ten: tuple[SourceData, tuple[ClassifiedZone, 
     assert by_name["TOP_CORE PTHP FAN"].zone == "Top_Core"
     assert set(by_name["VAV SUPPLY FAN"].loop_zones) == {"G_Perimeter", "G_Core", "Typical_Perimeter", "Typical_Core"}
     assert set(data.inlet_flow) == {"G_Perimeter", "G_Core", "Typical_Perimeter", "Typical_Core"}
+    vav = by_name["VAV SUPPLY FAN"].loop_inlet_flow  # the single loop's units are traced
+    assert vav is not None
+    assert set(vav) == set(data.inlet_flow)
 
 
 def test_fixture_fan_energy_and_volume_are_conserved(

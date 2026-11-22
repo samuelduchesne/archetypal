@@ -178,3 +178,21 @@ def test_anything_else_is_refused_naming_the_missing_marker(tmp_path: Path, text
 def test_a_missing_file_is_a_format_error(tmp_path: Path) -> None:
     with pytest.raises(UmiFormatError, match="cannot be read"):
         dialects.load(tmp_path / "absent.json")
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_non_finite_numbers_are_not_json(tmp_path: Path, constant: str) -> None:
+    path = tmp_path / "nan.json"
+    path.write_text(f'{{"OpaqueMaterials": [{{"$id": "1", "Conductivity": {constant}}}]}}', encoding="utf-8")
+    with pytest.raises(UmiFormatError) as caught:
+        dialects.load(path)
+    [problem] = caught.value.problems
+    assert problem.rule == "format.json"
+    assert constant in problem.message
+
+
+def test_an_archsim_type_beside_a_category_is_lost() -> None:
+    document: Json = {"OpaqueMaterials": [{"$id": "1", "Life": 30, "Type": "Concrete", "Category": "Masonry"}]}
+    raw = dialects.from_document(document, "archsim.json", sha256="0" * 64)
+    assert objects(raw, "OpaqueMaterials")[0] == {"$id": "1", "Category": "Masonry"}
+    assert raw.lost == (("/OpaqueMaterials/0/Life", 30), ("/OpaqueMaterials/0/Type", "Concrete"))

@@ -50,7 +50,7 @@ def _status_marker() -> str:
     return glyph
 
 
-def _die(*lines: str) -> "None":
+def _die(*lines: str) -> None:
     for line in lines:
         print(line, file=sys.stderr)
     raise SystemExit(1)

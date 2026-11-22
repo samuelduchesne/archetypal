@@ -79,6 +79,50 @@ before upgrading.
   give the replacement of each. archetypal 2 stays available from the `v2.18.11` release.
 - The `geomeppy` submodule, Docker files, the paper, the Sphinx docs and the poetry setup.
 
+### Fixed
+
+- `reduce` given a glob keeps only model files (`.idf`, `.epJSON`).
+- A removed archetypal 2 module nested in another names its own replacement, not its parent's.
+- UMI translation:
+  - NaN and infinite values are refused instead of written; Archsim's `Type` field is reported
+    as lost.
+  - `diff_umi` reports unused components found only in the result, reports a renamed template
+    as missing and extra instead of matching it by place, and treats two NaN values as equal.
+  - Archetype file names are unique without regard to letter case and accepted by Windows;
+    files are written to temporary files and moved into place only once all are written.
+  - Construction systems are written with Basilisk's key order; components used only by
+    skipped templates are reported; components with equal content are still recognised after
+    one of them is renamed.
+  - A template's window, window settings and partitions come from the group exposed as
+    perimeter, whatever its name.
+  - Material types, and costs or carbon at a density of 0, are reported as lost; values that
+    are zero are no longer reported as losses.
+  - Ventilation limits UMI cannot hold are reported as lost instead of raising an error.
+  - Glazing and gas embodied carbon is converted from its rate unit (per m³ through the
+    density) or reported as lost; gas carbon is no longer copied whatever its unit.
+  - Constant scheduled ventilation round-trips; hot water per person is reported as lost
+    where UMI cannot hold it.
+  - A merged group gives its infiltration in air changes per hour, which epinterface uses,
+    instead of keeping the largest member's calculation method.
+- Reduction:
+  - Backup heaters are left out of the rated heating efficiency.
+  - Outdoor air honours the `Maximum` method of `DesignSpecification:OutdoorAir`.
+  - Tables in IP units are converted to SI, or refused when they cannot be.
+  - Hot water without a zone is assigned to the conditioned zones, and the rule used is
+    reported.
+  - Infiltration coefficients are found for objects that a ZoneList or SpaceList copies; small
+    fuel uses are kept; the distribution fuel entry is read.
+  - `compare` uses the RunPeriod frequency and compares peaks at the frequency both models
+    share.
+  - Approximate infiltration follows each object's calculation method.
+  - Skylights are kept out of facade window ratios and exposure, and reported as not
+    represented.
+  - The mechanical outdoor-air schedule is derived; ideal-loads limits are written only when
+    derived from the model.
+  - The number of storeys is rounded; a group of zero floor area raises a clear error.
+  - Fan energy of excluded zones is reported; fan energy is split across several air loops,
+    and zones served from a loop's supply side are counted.
+
 ## [2.18.11] - 2026-10-25
 
 ### Changed

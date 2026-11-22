@@ -107,7 +107,7 @@ def _run(job: _Job) -> Reduction | tuple[Failure, str]:
 
 
 def _run_all(jobs: Sequence[_Job], parallel: int) -> list[Reduction | tuple[Failure, str]]:
-    workers = os.cpu_count() or 1 if parallel == -1 else parallel
+    workers = (os.cpu_count() or 1) if parallel == -1 else parallel
     if workers <= 1 or len(jobs) <= 1:
         return [_run(job) for job in jobs]
     context = multiprocessing.get_context("spawn")  # the same on every OS, and safe with threads

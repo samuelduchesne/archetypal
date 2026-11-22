@@ -24,7 +24,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, cast, get_args
 
-import numpy as np
 from epinterface.sbem.components.schedules import (
     DayComponent,
     ScheduleTypeLimitType,
@@ -38,6 +37,7 @@ from archetypal.umi.correspondence import declare_rule, rule
 from archetypal.umi.report import LossKind
 
 if TYPE_CHECKING:
+    import numpy as np
     from epinterface.sbem.components.schedules import YearScheduleCategory
     from pydantic import JsonValue
 

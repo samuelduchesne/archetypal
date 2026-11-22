@@ -78,7 +78,7 @@ def _parse(path: Path) -> _Page:
 def reference(tmp_path_factory: pytest.TempPathFactory) -> dict[str, _Page]:
     """Build the site once into a temporary folder; return its reference pages by URL path."""
     from mkdocs.commands.build import build  # noqa: PLC0415 - only this module needs mkdocs
-    from mkdocs.config import load_config  # noqa: PLC0415
+    from mkdocs.config import load_config  # noqa: PLC0415  # pyright: ignore[reportUnknownVariableType]
 
     site = tmp_path_factory.mktemp("site")
     build(load_config(str(ROOT / "mkdocs.yml"), site_dir=str(site)))

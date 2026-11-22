@@ -170,11 +170,11 @@ def test_rebuilt_ledgers_weight_heat_recovery_effectiveness_by_outdoor_air_volum
     high = replace(high, f"{path}.FreshAirPerFloorArea", 3 * office.Operations.HVAC.Ventilation.FreshAirPerFloorArea)
     high = replace(high, "Name", "High recovery office")
     groups = [group(low, "perimeter low", 0.3, "perimeter"), group(high, "perimeter high", 0.2, "perimeter")]
-    volumes = []
+    volumes: list[float] = []
     for g in groups:
         outdoor_air = GroupLedger.approximate_from_group(g, cast("float", g.FloorAreaShare)).ledger.outdoor_air
         volumes.append(outdoor_air.hrv_weighted["Sensible"])
-        effectiveness = g.Zone.Operations.HVAC.Ventilation.SensibleHeatRecoveryEffectiveness
+        effectiveness = g.Zone.Operations.HVAC.Ventilation.sensible_heat_recovery_effectiveness
         assert outdoor_air.effectiveness_weighted == pytest.approx(volumes[-1] * effectiveness)
     assert volumes[0] != pytest.approx(volumes[1] * 0.3 / 0.2)  # the volumes are not proportional to area
     total = sum(

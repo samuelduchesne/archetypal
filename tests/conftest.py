@@ -114,7 +114,7 @@ def fixture_results() -> Iterator[Callable[[str], SQLResult]]:
     and every module test of the same fixture shares what earlier ones read. Series are
     immutable, so sharing them changes no result.
     """
-    from archetypal.reduction import _ReadOnceSQLResult  # noqa: PLC0415 - imports epinterface, only when used
+    from archetypal.reduction import _ReadOnceSQLResult  # noqa: PLC0415  # pyright: ignore[reportPrivateUsage]
 
     cache: dict[str, SQLResult] = {}
 

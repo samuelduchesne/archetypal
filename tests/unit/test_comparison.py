@@ -218,18 +218,22 @@ def test_pump_split_agrees_with_the_reduction_attribution(
 
     sources, zones, evaluate = detailed("ten_zone_multipliers")
     data = building_energy(sources, zones, evaluate)
-    building = {
-        mode: sum(data.multipliers[name] * np.asarray(profile) for name, profile in data.delivered[mode].items())
-        for mode in ("heating", "cooling")
-    }
-    pumps = sum(np.asarray(profile) for profile in data.distribution.values())
+    hours = len(data.outdoor_temperature)
+    building: dict[str, np.ndarray] = {}
+    for mode in ("heating", "cooling"):
+        total = np.zeros(hours)
+        for name, profile in data.delivered[mode].items():
+            total += data.multipliers[name] * np.asarray(profile, dtype=np.float64)
+        building[mode] = total
+    pumps = np.zeros(hours)
+    for profile in data.distribution.values():
+        pumps += np.asarray(profile, dtype=np.float64)
     both = building["heating"] + building["cooling"]
     hourly = np.divide(building["heating"], both, out=np.zeros_like(both), where=both > 0)
-    idle = float(pumps[both <= 0].sum())
-    annual_heat, annual_cool = float(building["heating"].sum()), float(building["cooling"].sum())
-    reduction_share = (float((pumps * hourly).sum()) + idle * annual_heat / (annual_heat + annual_cool)) / float(
-        pumps.sum()
-    )
+    idle = float(np.sum(pumps[both <= 0]))
+    annual_heat, annual_cool = float(np.sum(building["heating"])), float(np.sum(building["cooling"]))
+    hourly_part = float(np.sum(pumps * hourly))
+    reduction_share = (hourly_part + idle * annual_heat / (annual_heat + annual_cool)) / float(np.sum(pumps))
     assert reduction_share == pytest.approx(heating_share, rel=1e-6)
 
 

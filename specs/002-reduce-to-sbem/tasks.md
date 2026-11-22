@@ -476,10 +476,10 @@ and peak is reported and flagged against SC-001–SC-003; mismatched runs are re
 **Purpose**: the measured proof that reduction meets its targets and beats v2 (constitution
 IV). Depends on US1–US3.
 
-- [ ] T079 [P] Write `verification/reference_set.toml`: the 16 DOE commercial prototypes in a
+- [X] T079 [P] Write `verification/reference_set.toml`: the 16 DOE commercial prototypes in a
   hot, a mixed and a cold climate zone, plus the DOE residential single-family prototype, with
   download URLs and SHA-256 (49 buildings; spec, Reference set).
-- [ ] T080 [P] Write `verification/run_v2_baseline.py`: in a separate environment with
+- [X] T080 [P] Write `verification/run_v2_baseline.py`: in a separate environment with
   `archetypal<3`, reduce each reference building with v2 and record its errors and run time
   (SC-004, SC-008).
 - [ ] T081 Write `verification/report.py`: `--fetch` downloads and checks the set; tabulates

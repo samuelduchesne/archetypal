@@ -10,10 +10,18 @@ Research R5 (spec 002) fixes the method:
 - representative days become epinterface `YearComponent`s (`to_year_component`), and any
   `YearComponent` becomes `Schedule:Compact` text (`schedule_compact`, FR-023).
 
-Special days in SBEM follow epinterface's own EnergyPlus writer: a holiday takes Sunday's day,
-custom days and design days take Monday's. `year_values` and `schedule_compact` both use that
-rule, so the `Schedule:Compact` text evaluates to the same hourly values as the `YearComponent`
-on any calendar.
+Special days in SBEM follow epinterface's own EnergyPlus writer: a holiday takes the week's
+`Holiday` day when it has one (UP-2's slot), else Sunday's; custom days take Monday's; design
+days take the week's `SummerDesignDay` / `WinterDesignDay` when set, else Monday's.
+`year_values` and `schedule_compact` both use that rule, so the `Schedule:Compact` text
+evaluates to the same hourly values as the `YearComponent` on any calendar.
+
+Holidays (UP-2, T087). `project_holidays` projects a profile with the holidays of each month
+kept apart: each weekday's day is the mean over that month's non-holiday days of that weekday,
+and the month's holiday day the mean over its holidays. Each month's energy is still conserved
+exactly (`expand(..., holidays=...)`). `to_year_component(..., holidays=...)` writes the holiday
+days into the weeks' `Holiday` slots, and design days into `SummerDesignDay` and
+`WinterDesignDay` when given.
 """
 
 from __future__ import annotations
@@ -50,13 +58,16 @@ __all__ = [
     "MONTHS",
     "WEEKDAYS",
     "AnySchedule",
+    "HolidayDays",
     "Profile",
     "RepresentativeDays",
     "RunPeriodCalendar",
     "ScheduleEvaluator",
     "calendar_year",
     "expand",
+    "holiday_days",
     "project",
+    "project_holidays",
     "representative_days",
     "schedule_compact",
     "schedule_index",
@@ -69,6 +80,9 @@ Profile: TypeAlias = "npt.NDArray[np.float64]"
 
 RepresentativeDays: TypeAlias = "npt.NDArray[np.float64]"
 """SBEM's representative days: a float64 array of shape (12 months, 7 weekdays Monday first, 24 hours)."""
+
+HolidayDays: TypeAlias = "dict[int, npt.NDArray[np.float64]]"
+"""The holiday day of each month that has holidays: month index (0 for January) → 24 values."""
 
 AnySchedule: TypeAlias = "ScheduleCompact | AnyScheduleYear | ScheduleConstant | AnyScheduleFile"
 """A schedule object that covers a whole year, as loads and setpoints reference it."""
@@ -98,16 +112,9 @@ _FIRST_CANDIDATE_YEAR = 2013
 # Through: dates of each month. February ends on 02/29 so that a leap day stays in February;
 # idfkit and EnergyPlus both read 02/29 as the end of February in a non-leap year.
 _MONTH_ENDS = (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-# For: labels, Monday to Sunday. Special days follow epinterface's `WeekComponent.add_week_to_idf`.
-_FOR_LABELS = (
-    "Monday SummerDesignDay WinterDesignDay CustomDay1 CustomDay2",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday Holiday",
-)
+# For: labels, Monday to Sunday. Special days follow epinterface's `WeekComponent.add_week_to_idf`:
+# a slot the week does not set falls back to Sunday (holidays) or Monday (design days).
+_FOR_LABELS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 # Values of a Fraction schedule this far outside [0, 1] are float round-off, and are clipped.
 _FRACTION_TOLERANCE = 1e-9
 _FORBIDDEN_NAME_CHARACTERS = frozenset(",;!\n\r")
@@ -335,17 +342,85 @@ def project(
     return (sums / counts[:, None]).reshape(12, 7, 24)  # pyright: ignore[reportUnknownMemberType]
 
 
-def expand(days: RepresentativeDays, calendar: RunPeriodCalendar) -> Profile:
+def _holiday_mask(calendar: RunPeriodCalendar) -> npt.NDArray[np.bool_]:
+    mask = np.zeros(calendar.days, dtype=bool)
+    for day in calendar.holidays:
+        if day.year == calendar.year:
+            mask[day.timetuple().tm_yday - 1] = True
+    return mask
+
+
+def project_holidays(
+    profile: npt.NDArray[np.floating[Any]] | Sequence[float], calendar: RunPeriodCalendar
+) -> tuple[RepresentativeDays, HolidayDays]:
+    """Project an hourly profile onto representative days with each month's holidays apart (UP-2).
+
+    Each weekday's day is the mean, hour by hour, over the month's days of that weekday that are
+    not holidays; each month with holidays gets a holiday day, the mean over its holidays. A
+    weekday whose every occurrence in a month is a holiday keeps the mean over all of them. The
+    projection is linear and each month's energy is conserved exactly:
+    `expand(days, calendar, holidays=holidays)` gives the same monthly sums.
+
+    Args:
+        profile: One value per hour of `calendar`.
+        calendar: The calendar the profile was evaluated on; its `holidays` are kept apart.
+
+    Returns:
+        The representative days, shape (12, 7, 24), and the holiday day of each month that has
+        holidays.
+
+    Raises:
+        ValueError: If the profile does not have one value per hour of the calendar.
+    """
+    hourly = np.asarray(profile, dtype=np.float64)
+    if hourly.shape != (calendar.hours,):
+        msg = f"the profile has shape {hourly.shape}; the {calendar.year} calendar needs ({calendar.hours},)"
+        raise ValueError(msg)
+    by_day = hourly.reshape(-1, 24)
+    holiday = _holiday_mask(calendar)
+    slots = calendar.day_months * 7 + calendar.day_weekdays
+    ordinary = ~holiday
+    sums = np.zeros((12 * 7, 24), dtype=np.float64)
+    np.add.at(sums, slots[ordinary], by_day[ordinary])  # pyright: ignore[reportUnknownMemberType]
+    counts = np.bincount(slots[ordinary], minlength=12 * 7).astype(np.float64)
+    days = np.zeros((12 * 7, 24), dtype=np.float64)
+    present = counts > 0
+    days[present] = sums[present] / counts[present, None]
+    if not present.all():  # a weekday that is a holiday every time it occurs in a month
+        inclusive = project(hourly, calendar).reshape(12 * 7, 24)
+        days[~present] = inclusive[~present]
+    holidays: HolidayDays = {}
+    for month in sorted({int(m) for m in calendar.day_months[holiday]}):
+        chosen = holiday & (calendar.day_months == month)
+        holidays[month] = by_day[chosen].mean(axis=0)
+    return days.reshape(12, 7, 24), holidays
+
+
+def expand(
+    days: RepresentativeDays, calendar: RunPeriodCalendar, *, holidays: HolidayDays | None = None
+) -> Profile:
     """Lay representative days out on a calendar, each day taking its month and weekday's day.
 
     Args:
         days: An array of shape (12, 7, 24), as `project` returns.
         calendar: The calendar.
+        holidays: Holiday days by month (`project_holidays`); a holiday of a month listed here
+            takes that day instead of its weekday's.
 
     Returns:
         The hourly profile.
     """
-    return np.asarray(days, dtype=np.float64)[calendar.day_months, calendar.day_weekdays].ravel()
+    by_day = np.array(np.asarray(days, dtype=np.float64)[calendar.day_months, calendar.day_weekdays])
+    if holidays:
+        _apply_holidays(by_day, calendar, holidays)
+    return by_day.ravel()
+
+
+def _apply_holidays(by_day: npt.NDArray[np.float64], calendar: RunPeriodCalendar, holidays: HolidayDays) -> None:
+    for index in np.flatnonzero(_holiday_mask(calendar)):
+        month = int(calendar.day_months[index])
+        if month in holidays:
+            by_day[index] = holidays[month]
 
 
 def representative_days(year: YearComponent) -> RepresentativeDays:
@@ -363,8 +438,8 @@ def representative_days(year: YearComponent) -> RepresentativeDays:
 def year_values(year: YearComponent, calendar: RunPeriodCalendar) -> Profile:
     """Return the hourly values of a `YearComponent` on a calendar, as EnergyPlus would run it.
 
-    Each day takes its month's day for its weekday; a holiday takes Sunday's, a custom day
-    Monday's, as epinterface writes the schedule for EnergyPlus.
+    Each day takes its month's day for its weekday; a holiday takes the week's `Holiday` day,
+    else Sunday's, and a custom day Monday's, as epinterface writes the schedule for EnergyPlus.
 
     Args:
         year: The schedule.
@@ -374,7 +449,27 @@ def year_values(year: YearComponent, calendar: RunPeriodCalendar) -> Profile:
         The hourly profile.
     """
     days = representative_days(year)
-    return days[calendar.day_months, calendar.day_schedule_weekdays].ravel()
+    by_day = np.array(days[calendar.day_months, calendar.day_schedule_weekdays])
+    holidays = holiday_days(year)
+    if holidays:
+        _apply_holidays(by_day, calendar, holidays)
+    return by_day.ravel()
+
+
+def holiday_days(year: YearComponent) -> HolidayDays:
+    """Return the holiday days a `YearComponent` sets, by month (weeks without a `Holiday` slot are left out).
+
+    Args:
+        year: The schedule.
+
+    Returns:
+        Month index (0 for January) → the 24 values of that month's week's `Holiday` day.
+    """
+    return {
+        month: np.asarray(week.Holiday.Values, dtype=np.float64)
+        for month, week in enumerate(year.Weeks)
+        if week.Holiday is not None
+    }
 
 
 def _default_limits(category: YearScheduleCategory) -> ScheduleTypeLimitType:
@@ -387,6 +482,9 @@ def to_year_component(
     name: str,
     category: YearScheduleCategory,
     limits: ScheduleTypeLimitType | None = None,
+    holidays: HolidayDays | None = None,
+    summer_design_day: npt.NDArray[np.floating[Any]] | Sequence[float] | None = None,
+    winter_design_day: npt.NDArray[np.floating[Any]] | Sequence[float] | None = None,
 ) -> YearComponent:
     """Turn representative days into an epinterface `YearComponent`.
 
@@ -400,6 +498,10 @@ def to_year_component(
         category: What the schedule drives (epinterface's `YearComponent.Type`).
         limits: The schedule type limits of its days. Defaults to `"Temperature"` for a
             setpoint and `"Fraction"` otherwise.
+        holidays: Holiday days by month (`project_holidays`); each listed month's week gets a
+            `Holiday` slot, the others keep none (Sunday's day applies).
+        summer_design_day: 24 values for every week's `SummerDesignDay` slot, or `None`.
+        winter_design_day: 24 values for every week's `WinterDesignDay` slot, or `None`.
 
     Returns:
         The schedule.
@@ -408,37 +510,51 @@ def to_year_component(
         ValueError: If `days` has the wrong shape, or a `"Fraction"` value lies outside [0, 1]
             by more than float round-off.
     """
-    array = np.asarray(days, dtype=np.float64)
+    array = _checked_values(np.asarray(days, dtype=np.float64), name, _default_limits(category) if limits is None else limits)
     if array.shape != (12, 7, 24):
         msg = f"{name}: representative days have shape {array.shape}, not (12, 7, 24)"
         raise ValueError(msg)
     kind = _default_limits(category) if limits is None else limits
-    if kind == "Fraction":
-        if (array < -_FRACTION_TOLERANCE).any() or (array > 1.0 + _FRACTION_TOLERANCE).any():
-            msg = f"{name}: a Fraction schedule has values in [{array.min()!r}, {array.max()!r}], outside [0, 1]"
+
+    def special(values: object, what: str) -> tuple[float, ...] | None:
+        if values is None:
+            return None
+        hours = np.asarray(values, dtype=np.float64)
+        if hours.shape != (24,):
+            msg = f"{name}: a {what} day has shape {hours.shape}, not (24,)"
             raise ValueError(msg)
-        array = np.minimum(np.maximum(array, 0.0), 1.0)
+        return tuple(float(v) for v in _checked_values(hours, name, kind))
+
+    holiday_keys = {month: special(values, "holiday") for month, values in (holidays or {}).items()}
+    summer = special(summer_design_day, "summer design")
+    winter = special(winter_design_day, "winter design")
 
     day_components: dict[tuple[float, ...], DayComponent] = {}
-    week_components: dict[tuple[tuple[float, ...], ...], WeekComponent] = {}
+
+    def day(key: tuple[float, ...]) -> DayComponent:
+        if key not in day_components:
+            hours = {f"Hour_{hour:02d}": value for hour, value in enumerate(key)}
+            day_components[key] = DayComponent.model_validate({
+                "Name": f"{name} day {len(day_components) + 1}",
+                "Type": kind,
+                **hours,
+            })
+        return day_components[key]
+
+    week_components: dict[tuple[object, ...], WeekComponent] = {}
     weeks: list[WeekComponent] = []
     for month in range(12):
-        keys: list[tuple[float, ...]] = []
-        for weekday in range(7):
-            key = tuple(float(v) for v in array[month, weekday])
-            if key not in day_components:
-                hours = {f"Hour_{hour:02d}": value for hour, value in enumerate(key)}
-                day_components[key] = DayComponent.model_validate({
-                    "Name": f"{name} day {len(day_components) + 1}",
-                    "Type": kind,
-                    **hours,
-                })
-            keys.append(key)
-        week_key = tuple(keys)
+        keys = [tuple(float(v) for v in array[month, weekday]) for weekday in range(7)]
+        for key in keys:
+            day(key)
+        slots = {"Holiday": holiday_keys.get(month), "SummerDesignDay": summer, "WinterDesignDay": winter}
+        week_key = (*keys, *slots.values())
         if week_key not in week_components:
+            extra = {slot: day(key) for slot, key in slots.items() if key is not None}
             week_components[week_key] = WeekComponent.model_validate({
                 "Name": f"{name} week {len(week_components) + 1}",
                 **{WEEKDAYS[i]: day_components[k] for i, k in enumerate(keys)},
+                **extra,
             })
         weeks.append(week_components[week_key])
     return YearComponent.model_validate({
@@ -446,6 +562,16 @@ def to_year_component(
         "Type": category,
         **dict(zip(MONTHS, weeks, strict=True)),
     })
+
+
+def _checked_values(array: npt.NDArray[np.float64], name: str, kind: ScheduleTypeLimitType) -> npt.NDArray[np.float64]:
+    """Refuse Fraction values outside [0, 1] beyond round-off, and clip the round-off."""
+    if kind != "Fraction" or array.size == 0:
+        return array
+    if (array < -_FRACTION_TOLERANCE).any() or (array > 1.0 + _FRACTION_TOLERANCE).any():
+        msg = f"{name}: a Fraction schedule has values in [{array.min()!r}, {array.max()!r}], outside [0, 1]"
+        raise ValueError(msg)
+    return np.minimum(np.maximum(array, 0.0), 1.0)
 
 
 def _number(value: float) -> str:
@@ -463,11 +589,26 @@ def _until_fields(hours: npt.NDArray[np.float64]) -> list[str]:
     return fields
 
 
+def _special_slots(week: WeekComponent) -> dict[str, npt.NDArray[np.float64]]:
+    slots: dict[str, npt.NDArray[np.float64]] = {}
+    for slot in ("Holiday", "SummerDesignDay", "WinterDesignDay"):
+        day: DayComponent | None = getattr(week, slot)
+        if day is not None:
+            slots[slot] = np.asarray(day.Values, dtype=np.float64)
+    return slots
+
+
+def _same_slots(a: dict[str, npt.NDArray[np.float64]], b: dict[str, npt.NDArray[np.float64]]) -> bool:
+    return a.keys() == b.keys() and all(bool((a[k] == b[k]).all()) for k in a)
+
+
 def schedule_compact(schedule: YearComponent, *, name: str | None = None) -> str:
     """Return a `YearComponent` as an EnergyPlus `Schedule:Compact` object, in IDF text (FR-023).
 
     The text has one `Through: <month end>` per run of equal months and `For:` blocks Monday
-    to Sunday. As in epinterface's own EnergyPlus writer, holidays follow Sunday and design and
+    to Sunday, then `For: Holiday`, `For: SummerDesignDay` and `For: WinterDesignDay` for the
+    slots the month's week sets (UP-2). As in epinterface's own EnergyPlus writer, a holiday
+    the week does not set follows Sunday, a design day it does not set follows Monday, and
     custom days follow Monday. Values are written as shortest round-trip floats, so idfkit
     evaluates the text to exactly the hourly values of the schedule (`year_values`) on any
     calendar.
@@ -488,14 +629,30 @@ def schedule_compact(schedule: YearComponent, *, name: str | None = None) -> str
         msg = f"Schedule:Compact name {object_name!r} is empty or holds ',', ';', '!' or a line break"
         raise ValueError(msg)
     days = representative_days(schedule)
+    weeks = schedule.Weeks
+    specials = [_special_slots(week) for week in weeks]
     fields: list[str] = []
     for month in range(12):
-        if month < _DECEMBER and bool((days[month] == days[month + 1]).all()):
+        if (
+            month < _DECEMBER
+            and bool((days[month] == days[month + 1]).all())
+            and _same_slots(specials[month], specials[month + 1])
+        ):
             continue
         fields.append(f"Through: {month + 1:02d}/{_MONTH_ENDS[month]:02d}")
+        slots = specials[month]
         for weekday in range(7):
-            fields.append(f"For: {_FOR_LABELS[weekday]}")
+            label = _FOR_LABELS[weekday]
+            if weekday == _MONDAY:
+                label += "".join(f" {slot}" for slot in ("SummerDesignDay", "WinterDesignDay") if slot not in slots)
+                label += " CustomDay1 CustomDay2"
+            elif weekday == _SUNDAY and "Holiday" not in slots:
+                label += " Holiday"
+            fields.append(f"For: {label}")
             fields.extend(_until_fields(days[month, weekday]))
+        for slot, values in slots.items():
+            fields.append(f"For: {slot}")
+            fields.extend(_until_fields(values))
     lines = [
         "Schedule:Compact,",
         f"  {object_name},  !- Name",

@@ -45,5 +45,7 @@ The run settings above write these, so they need no output object:
 
 `reduce` raises `MissingResults`. The error lists each missing item with the `Output:Variable`
 or `Output:Meter` object to add, in IDF syntax, and suggests `simulate=True`, which runs the
-model once with every missing output (see
+model once with every missing output. Results of a run without its weather-file run period
+(`SimulationControl` with `Run Simulation for Weather File Run Periods` set to `No`, as in many
+EnergyPlus example files) are missing too; the single run sets it to `Yes` (see
 [How to reduce a model](../how-to/reduce-a-model.md#reduce-without-results)).

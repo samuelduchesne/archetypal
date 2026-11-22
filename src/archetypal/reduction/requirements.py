@@ -393,7 +393,8 @@ def add_missing_outputs(doc: IDFDocumentSince22_1, facts: ModelFacts) -> int:
     """Add to a model every output of `RESULTS_REQUIREMENTS` it needs and does not request.
 
     Also makes EnergyPlus write the SQLite file with its tabular reports
-    (`Output:SQLite,SimpleAndTabular` and `Output:Table:SummaryReports,AllSummary`). The model
+    (`Output:SQLite,SimpleAndTabular` and `Output:Table:SummaryReports,AllSummary`) and run its
+    weather-file run periods, which a model set to run only its design days skips. The model
     is changed in place: pass a copy.
 
     Args:
@@ -425,7 +426,17 @@ def add_missing_outputs(doc: IDFDocumentSince22_1, facts: ModelFacts) -> int:
             if (meter.casefold(), frequency.casefold()) not in have_meters:
                 meters.add(key_name=meter, reporting_frequency=frequency)
                 changed += 1
-    return changed + _request_tabular_reports(doc)
+    return changed + _request_tabular_reports(doc) + _run_weather_file_periods(doc)
+
+
+def _run_weather_file_periods(doc: IDFDocumentSince22_1) -> int:
+    """Make EnergyPlus run the model's weather-file run periods; return the objects changed."""
+    changed = 0
+    for control in doc["SimulationControl"]:
+        if str(control.run_simulation_for_weather_file_run_periods).casefold() != "yes":
+            control.run_simulation_for_weather_file_run_periods = "Yes"
+            changed += 1
+    return changed
 
 
 def _request_tabular_reports(doc: IDFDocumentSince22_1) -> int:

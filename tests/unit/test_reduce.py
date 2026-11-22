@@ -19,7 +19,7 @@ import pytest
 from epinterface.sbem.archetype import Archetype
 from idfkit import load_idf, new_document
 from idfkit.simulation import SQLResult
-from idfkit.versioned import IDFDocumentV9_6
+from idfkit.versioned import IDFDocumentV9_6, as_version
 
 import archetypal
 from archetypal.errors import (
@@ -32,6 +32,8 @@ from archetypal.errors import (
 )
 from archetypal.reduction import RESULTS_REQUIREMENTS, Reduction, reduce, schedule_compact
 from archetypal.reduction.options import Layout, ReductionOptions
+from archetypal.reduction.requirements import add_missing_outputs, single_run_facts
+from archetypal.reduction.sources import model_facts
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -250,6 +252,32 @@ def test_quickstart_3_missing_results_are_named(in_tmp: Path) -> None:
     assert all(item.startswith("Output:") and item.endswith(";") for item in caught.value.missing)
     assert "simulate=True" in str(caught.value)
     assert list(in_tmp.iterdir()) == []
+
+
+def test_design_day_results_are_refused(in_tmp: Path, tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Results of a run without its weather-file run period name the SimulationControl switch."""
+    model, results = _paths("three_zone")
+    design_days = tmp_path_factory.mktemp("results") / "design_days.sql"
+    shutil.copyfile(results, design_days)
+    with sqlite3.connect(design_days) as connection:
+        connection.execute("UPDATE EnvironmentPeriods SET EnvironmentType = 1")
+    connection.close()
+    with pytest.raises(MissingResults) as caught:
+        reduce(model, design_days)
+    assert any("Run Simulation for Weather File Run Periods" in item for item in caught.value.missing)
+    assert list(in_tmp.iterdir()) == []
+
+
+def test_single_run_turns_on_the_weather_file_run_period() -> None:
+    """The single run's copy of a model set to run only its design days runs its run period."""
+    model, _ = _paths("three_zone")
+    doc = as_version(load_idf(model), since="22.1")
+    for control in doc["SimulationControl"]:
+        control.run_simulation_for_weather_file_run_periods = "No"
+    add_missing_outputs(doc, single_run_facts(model_facts(doc, ())))
+    controls = list(doc["SimulationControl"])
+    assert controls
+    assert all(str(c.run_simulation_for_weather_file_run_periods) == "Yes" for c in controls)
 
 
 def test_simulate_needs_weather(in_tmp: Path) -> None:

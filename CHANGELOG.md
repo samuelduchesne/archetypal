@@ -81,6 +81,9 @@ before upgrading.
 
 ### Fixed
 
+- `reduce` refuses results without a weather-file run period, naming the `SimulationControl`
+  switch, and its single run turns that switch on: a model set to run only its design days, such
+  as many EnergyPlus example files, failed with a NumPy broadcast error.
 - `reduce` given a glob keeps only model files (`.idf`, `.epJSON`).
 - A removed archetypal 2 module nested in another names its own replacement, not its parent's.
 - UMI translation:

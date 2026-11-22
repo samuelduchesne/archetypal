@@ -69,6 +69,15 @@ TABULAR_OUTPUTS = (
 )
 """The objects that make EnergyPlus write the tabular reports reduction reads."""
 
+WEATHER_FILE_RUN = (
+    "SimulationControl with 'Run Simulation for Weather File Run Periods' set to Yes, and an annual RunPeriod;"
+)
+"""What a run needs to report its weather-file run period: results of design days alone hold too
+few hours to reduce (EnergyPlus's example files often run only their design days)."""
+
+_WEATHER_FILE_RUN_PERIOD = 3
+"""`EnvironmentPeriods.EnvironmentType` of a weather-file run period."""
+
 _ABUPS = "AnnualBuildingUtilityPerformanceSummary"
 _END_USES = ("Heating", "Cooling", "HeatRejection", "WaterSystems")
 _NOT_A_FUEL = frozenset({"Water"})
@@ -402,6 +411,8 @@ def _check(
     missing = [text for requirement in check_results(sql, facts) for text in requirement.idf_objects(facts)]
     if fuels is None:
         missing.extend(TABULAR_OUTPUTS)
+    if not any(env.environment_type == _WEATHER_FILE_RUN_PERIOD for env in sql.list_environments()):
+        missing.append(WEATHER_FILE_RUN)
     if missing:
         raise MissingResults(results_subject, missing)
 

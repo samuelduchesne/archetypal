@@ -51,7 +51,7 @@ Single library in src layout (plan.md, Project Structure): `src/archetypal/umi/`
 **Purpose**: confirm the foundation 003 builds on, build the Basilisk harness first (research
 R15: its claims are not yet verified), and collect the UMI test set.
 
-- [ ] T001 Confirm on the `v3` branch that spec 001's foundation (Phases 1–2: shared tooling,
+- [X] T001 Confirm on the `v3` branch that spec 001's foundation (Phases 1–2: shared tooling,
   test tiers, docs checks, `src/archetypal/errors.py`) and spec 002's pieces 003 calls are
   done: `reduction/schedules.py` projection (002 T026), `reduction/ledger.py` (002 T048),
   `Layout` (002 T021) with the `CORE_PERIMETER` key (002 T069), `merge(reduction, layout)`

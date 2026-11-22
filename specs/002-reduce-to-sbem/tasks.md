@@ -297,7 +297,7 @@ accounts for every zone (spec US1, SC-005, SC-006).
   schedule digests of values rounded to 6 decimals, setpoint digests, outdoor air per area and
   per person); label `use:<smallest zone name>`; zones sorted by name first;
   `space_use_source` recorded.
-- [ ] T048 [US1] Implement `src/archetypal/reduction/ledger.py`: `EnvelopeTotals`,
+- [X] T048 [US1] Implement `src/archetypal/reduction/ledger.py`: `EnvelopeTotals`,
   `WindowTotals`, `GainTotals`, `AirflowTotals`, `WeightedProfile`, `HotWaterTotals`,
   `EnergyTotals` (with `eir_sums`), `FanTotals`, and `GroupLedger` with every field of
   data-model.md (GroupLedger); `GroupLedger.from_zone(zone, schedules)` applying the

@@ -7,9 +7,10 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-
-import pytest
+if TYPE_CHECKING:
+    import pytest
 
 # Run in a fresh interpreter: record every environment read and the root logger's handlers
 # around `import archetypal`, and print them as JSON.
@@ -125,13 +126,13 @@ def test_commands_write_only_their_outputs_and_reports(
     before = _tree(tmp_path)
 
     sql = ["--results", str(models / "bar_building.sql")]
-    assert _invoke(["reduce", str(models / "bar_building.idf"), *sql, "-o", "lib.json"]) == 4  # noqa: PLR2004
-    assert _invoke(["reduce", str(models / "bar_building.idf"), *sql, "--to", "sbem", "-o", "sbem"]) == 4  # noqa: PLR2004
+    assert _invoke(["reduce", str(models / "bar_building.idf"), *sql, "-o", "lib.json"]) == 4
+    assert _invoke(["reduce", str(models / "bar_building.idf"), *sql, "--to", "sbem", "-o", "sbem"]) == 4
     merged = ["merge", "sbem/bar_building.sbem.json", "--layout", "single-zone", "-o", "merged/bar.sbem.json"]
     assert _invoke(merged) in {0, 4}
     detailed, archetype = models / "ten_zone_multipliers.sql", models / "ten_zone_explicit.sql"
     assert _invoke(["compare", str(detailed), str(archetype), "--json", "comparison.json"]) == 0
-    assert _invoke(["translate", str(_FIXTURES / "umi" / "BostonTemplateLibrary_2.json"), "-o", "boston"]) == 4  # noqa: PLR2004
+    assert _invoke(["translate", str(_FIXTURES / "umi" / "BostonTemplateLibrary_2.json"), "-o", "boston"]) == 4
 
     added = {path for path, _ in _tree(tmp_path) - before}
     boston = {p for p in added if p.startswith("work/boston/")}

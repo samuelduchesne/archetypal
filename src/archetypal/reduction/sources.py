@@ -236,10 +236,8 @@ def _inlet_nodes(doc: IDFDocumentSince22_1) -> tuple[str, ...]:
 def _hvac_outputs(doc: IDFDocumentSince22_1) -> tuple[tuple[str, str], ...]:
     """(variable, object name) pairs reporting the energy each HVAC object delivers (R12)."""
     pairs: list[tuple[str, str]] = []
-    for object_type, collection in doc.objects_by_type():
-        outputs = delivery_outputs(object_type)
-        if outputs:
-            pairs.extend((variable, obj.name) for obj in collection for _, variable in outputs)
+    for obj in doc.all_objects:
+        pairs.extend((variable, obj.name) for _, variable in delivery_outputs(obj.obj_type))
     return tuple(pairs)
 
 

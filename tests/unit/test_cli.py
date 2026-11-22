@@ -74,7 +74,9 @@ def test_log_level_adds_a_handler_for_the_command_only(tmp_path: Path, cli_reduc
     del cli_reductions
     before = list(logging.getLogger("archetypal").handlers)
     model = MODELS / "bar_building.idf"
-    code, _, _ = run("--log-level", "debug", "reduce", model, *results_args("bar_building"), "--to", "sbem", "-o", tmp_path)
+    code, _, _ = run(
+        "--log-level", "debug", "reduce", model, *results_args("bar_building"), "--to", "sbem", "-o", tmp_path
+    )
     assert code in {0, 4}
     assert logging.getLogger("archetypal").handlers == before
 
@@ -82,9 +84,9 @@ def test_log_level_adds_a_handler_for_the_command_only(tmp_path: Path, cli_reduc
 def test_removed_v2_cli_names_raise_the_migration_error() -> None:
     from archetypal.errors import RemovedInArchetypal3Error  # noqa: PLC0415
 
-    with pytest.raises(RemovedInArchetypal3Error, match="archetypal.cli.CliConfig"):
+    with pytest.raises(RemovedInArchetypal3Error, match=r"archetypal\.cli\.CliConfig"):
         exec("from archetypal.cli import CliConfig", {})  # noqa: S102
-    import archetypal.cli as cli  # noqa: PLC0415
+    from archetypal import cli  # noqa: PLC0415
 
     with pytest.raises(RemovedInArchetypal3Error, match="archetypal reduce"):
         _ = cli.reduce  # pyright: ignore[reportAttributeAccessIssue]
@@ -218,7 +220,9 @@ def test_to_umi_is_the_default_with_v2s_output_name(
 
 def test_layout_with_to_umi_is_refused(tmp_path: Path, cli_reductions: list[tuple[str, str]]) -> None:
     model = MODELS / "bar_building.idf"
-    code, _, err = run("reduce", model, *results_args("bar_building"), "--layout", "space-use", "-o", tmp_path / "l.json")
+    code, _, err = run(
+        "reduce", model, *results_args("bar_building"), "--layout", "space-use", "-o", tmp_path / "l.json"
+    )
     assert code == 2
     assert "--layout" in err
     assert "core-perimeter" in err

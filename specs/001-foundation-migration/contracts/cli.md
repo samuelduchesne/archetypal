@@ -26,33 +26,38 @@ archetypal reduce MODELS... -w/--weather EPW [-o/--output PATH] [--to umi|sbem]
 
 | Option | Default | Meaning |
 |---|---|---|
-| `MODELS...` | required | IDF or epJSON files, directories or glob patterns; expanded and sorted. A directory with no model is an error naming it. |
+| `MODELS...` | required | IDF or epJSON files, directories or glob patterns. Each directory or pattern expands to its model files sorted by name; arguments keep their order, so `--results` can follow it. A directory or pattern with no model is an error naming it (status 1). |
 | `-w/--weather` | required when any model has no `--results` | EPW file for the single simulation of each such model (002 FR-002). v2's default path into an EnergyPlus install is not kept. |
 | `-o/--output` | `myumitemplate.json` with `--to umi` (v2's default); the current directory with `--to sbem` | UMI library file, or folder for SBEM archetypes. |
 | `--to` | `umi` | `umi`: one library, one building template per model, at the core/perimeter layout UMI requires. `sbem`: one `<model>.sbem.json` per model. |
 | `--results` | none | One SQLite file per model, in the same order; skips the simulation. |
-| `--layout` | `space-use-exposure` (`--to sbem`) | 002's layouts. Refused with `--to umi`, which needs `core-perimeter`. |
+| `--layout` | `space-use-exposure` (`--to sbem`) | 002's layouts, spelt with hyphens: `space-use-exposure`, `space-use`, `core-perimeter`, `single-zone`. Refused with `--to umi`, which needs `core-perimeter`. |
 | `--threshold` | `0.05` | 002's small-group threshold. |
 | `-p/--parallel` | `1` | Models processed at once. `-1` uses every core, as in v2. |
-| `--force` | off | Overwrite existing outputs (FR-015). |
+| `--force` | off | Overwrite existing outputs and reports (FR-015). Without it, an existing one stops the command before any work, with status 1. |
 
 Reports, written beside the output:
 
 - `--to sbem`: `<model>.report.json` beside each `<model>.sbem.json` (002's `Reduction.write`),
   the pair `merge` reads back.
 - `--to umi`: `<stem>.<model>.report.json` (002) for each model, where `<stem>` is the
-  library's file name without `.json`, and `<stem>.loss.json` (003).
+  library's file name without `.json`, and `<stem>.loss.json` (003). A model that failed has
+  no template; the loss report lists it as a `skipped_template` loss whose value is its error.
 
 ## `merge`, `compare`, `translate`
 
 ```text
 archetypal merge ARCHETYPE --layout LAYOUT [-o PATH] [--threshold SHARE] [--force]
-archetypal compare DETAILED_SQL ARCHETYPE_SQL [--weather EPW] [--json PATH]
+archetypal compare DETAILED_SQL ARCHETYPE_SQL [--weather EPW] [--json PATH] [--force]
 archetypal translate SOURCE -o PATH [--strict] [--force]
 ```
 
-- `merge` reads `<name>.sbem.json` and its `<name>.report.json` (002's `merge`).
-- `compare` prints the comparison table; `--json` also writes it (002's `compare`).
+- `merge` reads `<name>.sbem.json` and its `<name>.report.json` (002's `merge`). `-o` is the
+  merged `<target>.sbem.json`, its `<target>.report.json` written beside it; it defaults to
+  `<name>-<layout>.sbem.json` beside the input.
+- `compare` prints the comparison table to stdout; `--json` also writes it, and `--force`
+  lets it replace an existing file (FR-015). It exits 0 when the results are compared,
+  whether or not every row is within its target, and 1 when they are not comparable.
 - `translate` goes UMI → SBEM when `SOURCE` is a UMI library, and SBEM → UMI when it is an
   SBEM archetype or a folder of them (003).
   - UMI → SBEM: `PATH` is a folder; it receives `<template>.sbem.json` per building template
@@ -71,7 +76,8 @@ reports are the only files written (FR-006).
 ## Rejected v2 options and commands (FR-013)
 
 Each is accepted by the parser so that it can be named, then rejected with status 2 before any
-work. The message names it and gives its replacement or reason, from `REMOVED`.
+work. The message names it and gives its replacement or reason, from `REMOVED`; v2's short
+flags are the rows' `aliases`.
 
 | v2 | Message gist |
 |---|---|

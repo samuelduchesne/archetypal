@@ -75,6 +75,7 @@ class RunSummary:
         outputs: The output files written.
         reports: The report files written.
         verb: How the summary names the work done on a model (`reduced`, `merged`, ...).
+        noun: What the summary counts (`model`, `template`, `archetype`).
     """
 
     models_ok: int = 0
@@ -84,6 +85,7 @@ class RunSummary:
     outputs: list[Path] = field(default_factory=list["Path"])
     reports: list[Path] = field(default_factory=list["Path"])
     verb: str = "reduced"
+    noun: str = "model"
 
     @property
     def models_failed(self) -> int:
@@ -101,7 +103,7 @@ class RunSummary:
 
     def render(self) -> str:
         """Return the summary as text, one fact per line."""
-        noun = _plural(self.models_ok, "model")
+        noun = _plural(self.models_ok, self.noun)
         lines = [f"{noun} {self.verb}, {self.models_failed} failed."]
         lines += [f"  failed: {f.model}: {f.error}: {f.message}" for f in self.failures]
         if self.models_ok:

@@ -742,4 +742,3 @@ member = "US+SF+CZ4A+gasfurnace+slab+IECC_2024.idf"
 sha256 = "f8fd51378c7b2aa3e72aab7c694c8411e51cfa7e556512948981062312769f5b"
 size = 269086
 energyplus_version = "23.1"
-

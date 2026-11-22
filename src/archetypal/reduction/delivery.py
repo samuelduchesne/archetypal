@@ -102,12 +102,11 @@ class _Walker:
     """Follows (object type, name) references from a starting object to the outputs it holds."""
 
     def __init__(self, doc: IDFDocumentSince22_1) -> None:
-        self.types = {object_type.casefold() for object_type, _ in doc.objects_by_type()}
+        self.types = {obj.obj_type.casefold() for obj in doc.all_objects}
         self.objects = {
-            (object_type.casefold(), obj.name.casefold()): obj
-            for object_type, collection in doc.objects_by_type()
-            if object_type.casefold().startswith(_CONTAINERS)
-            for obj in collection
+            (obj.obj_type.casefold(), obj.name.casefold()): obj
+            for obj in doc.all_objects
+            if obj.obj_type.casefold().startswith(_CONTAINERS)
         }
         self.unmeasured: list[str] = []
 

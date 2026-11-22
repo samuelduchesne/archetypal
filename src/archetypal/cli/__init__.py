@@ -40,7 +40,7 @@ def _version(distribution: str) -> str:
         return "not installed"
 
 
-def _print_version(ctx: click.Context, param: click.Parameter, value: bool) -> None:  # noqa: FBT001 - click's callback
+def _print_version(ctx: click.Context, param: click.Parameter, value: bool) -> None:
     del param
     if not value or ctx.resilient_parsing:
         return
@@ -61,14 +61,15 @@ class _Group(click.Group):
         del ctx
         return list(self.commands)
 
-    def invoke(self, ctx: click.Context) -> Any:  # noqa: ANN401 - click's signature
+    def invoke(self, ctx: click.Context) -> Any:
         """Run the sub-command, turning its errors into exit statuses."""
         try:
             return super().invoke(ctx)
         except (click.ClickException, click.exceptions.Exit, click.Abort):
             raise
         except ArchetypalError as error:
-            click.echo(f"Error: {error}", err=True)
+            # The library's refusal to overwrite names its argument; the command's is --force.
+            click.echo(f"Error: {error}".replace("pass overwrite=True", "pass --force"), err=True)
             ctx.exit(ExitStatus.FAILURE)
         except Exception as error:
             if ctx.meta.get("archetypal.debug"):
@@ -103,7 +104,7 @@ class _Group(click.Group):
 )
 @click.option("-d", "--debug", is_flag=True, help="Show the traceback of an unexpected error.")
 @click.pass_context
-def main(ctx: click.Context, log_level: str, debug: bool) -> None:  # noqa: FBT001 - click passes flags as booleans
+def main(ctx: click.Context, log_level: str, debug: bool) -> None:
     """Create, translate and codify building energy archetypes on SBEM.
 
     Exit statuses: 0 success, 1 failure, 2 usage error, 3 some models failed, 4 success with
@@ -134,7 +135,7 @@ main.add_command(translate_command)
 main.add_command(removed_command("transition"))
 
 
-def __getattr__(name: str) -> Any:  # noqa: ANN401 - PEP 562
+def __getattr__(name: str) -> Any:
     """Raise the migration error for a name of archetypal 2's `archetypal.cli` (FR-016).
 
     Args:

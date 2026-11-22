@@ -69,7 +69,7 @@ def test_public_names() -> None:
     assert archetypal.ReductionOptions is ReductionOptions
     assert archetypal.MissingResults is MissingResults
     assert archetypal.NoConditionedZones is NoConditionedZones
-    assert {"reduce", "Layout", "ReductionOptions", "ReductionError"} <= set(archetypal.__all__)
+    assert {"reduce", "Layout", "ReductionOptions"} <= set(archetypal.__all__)
     import archetypal.reduction as package  # noqa: PLC0415
 
     assert set(package.__all__) == {"RESULTS_REQUIREMENTS", "Reduction", "merge", "reduce", "schedule_compact"}

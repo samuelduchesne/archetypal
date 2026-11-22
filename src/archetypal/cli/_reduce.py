@@ -73,7 +73,8 @@ def expand_models(arguments: Sequence[str]) -> list[Path]:
                 raise InputError(path, "holds no model; give a folder with .idf or .epJSON files")
         else:
             found = sorted(
-                Path(p) for p in glob.glob(argument, recursive=True) if Path(p).suffix.casefold() in MODEL_SUFFIXES
+                Path(p)
+                for p in glob.glob(argument, recursive=True)  # noqa: PTH207 - absolute patterns too if Path(p).suffix.casefold() in MODEL_SUFFIXES
             )
             if not found:
                 raise InputError(argument, "matches no model file (.idf or .epJSON)")
@@ -102,7 +103,7 @@ def _run(job: _Job) -> Reduction | tuple[Failure, str]:
         return _reduce_one(job.model, job.results, job.weather, job.options)
     except ArchetypalError as error:
         return Failure(job.model, type(error).__name__, str(error)), traceback.format_exc()
-    except Exception as error:  # noqa: BLE001 - one model's unexpected error must not lose the others
+    except Exception as error:
         return Failure(job.model, type(error).__name__, str(error) or repr(error)), traceback.format_exc()
 
 
@@ -115,7 +116,7 @@ def _run_all(jobs: Sequence[_Job], parallel: int) -> list[Reduction | tuple[Fail
         return list(pool.map(_run, jobs))
 
 
-def _refuse_existing(paths: Sequence[Path], force: bool) -> None:  # noqa: FBT001
+def _refuse_existing(paths: Sequence[Path], force: bool) -> None:
     if force:
         return
     for path in paths:
@@ -182,6 +183,7 @@ def _check_unique(models: Sequence[Path]) -> None:
 @click.pass_context
 def reduce_command(  # noqa: PLR0913 - one argument per option of the contract
     ctx: click.Context,
+    *,
     models: tuple[str, ...],
     weather: Path | None,
     output: Path | None,
@@ -190,7 +192,7 @@ def reduce_command(  # noqa: PLR0913 - one argument per option of the contract
     layout: str | None,
     threshold: float,
     parallel: int,
-    force: bool,  # noqa: FBT001
+    force: bool,
 ) -> None:
     """Reduce detailed EnergyPlus models to one UMI library or to SBEM archetypes.
 
@@ -200,12 +202,7 @@ def reduce_command(  # noqa: PLR0913 - one argument per option of the contract
     <stem>.<model>.report.json for each model and <stem>.loss.json beside the library. With
     --to sbem each model becomes <model>.sbem.json with <model>.report.json beside it.
     """
-    if target == "umi" and layout is not None:
-        msg = "--layout is refused with --to umi: a UMI library needs the core-perimeter layout"
-        raise click.UsageError(msg, ctx)
-    if parallel == 0 or parallel < -1:
-        msg = f"{parallel} is not a number of models; give 1 or more, or -1 for every core"
-        raise click.BadParameter(msg, ctx, param_hint="'-p' / '--parallel'")
+    _check_usage(ctx, target=target, layout=layout, parallel=parallel)
     found = expand_models(models)
     if results and len(results) != len(found):
         msg = f"--results gives {len(results)} files for {len(found)} models; give one per model, in order"
@@ -229,8 +226,27 @@ def reduce_command(  # noqa: PLR0913 - one argument per option of the contract
 
     options = ReductionOptions(layout=chosen, small_group_threshold=threshold)
     jobs = [_Job(m, results[i] if results else None, weather, options) for i, m in enumerate(found)]
-    outcomes = _run_all(jobs, parallel)
+    summary, done = _collect(ctx, jobs, _run_all(jobs, parallel))
+    if done:
+        write = _write_umi if target == "umi" else _write_sbem
+        write(output, done, summary, force=force)
+    summary.echo()
+    ctx.exit(summary.status)
 
+
+def _check_usage(ctx: click.Context, *, target: str, layout: str | None, parallel: int) -> None:
+    if target == "umi" and layout is not None:
+        msg = "--layout is refused with --to umi: a UMI library needs the core-perimeter layout"
+        raise click.UsageError(msg, ctx)
+    if parallel == 0 or parallel < -1:
+        msg = f"{parallel} is not a number of models; give 1 or more, or -1 for every core"
+        raise click.BadParameter(msg, ctx, param_hint="'-p' / '--parallel'")
+
+
+def _collect(
+    ctx: click.Context, jobs: Sequence[_Job], outcomes: Sequence[Reduction | tuple[Failure, str]]
+) -> tuple[RunSummary, list[tuple[Path, Reduction]]]:
+    """Split the outcomes into reductions and failures; `--debug` prints each failure's traceback."""
     summary = RunSummary()
     done: list[tuple[Path, Reduction]] = []
     for job, outcome in zip(jobs, outcomes, strict=True):
@@ -242,13 +258,7 @@ def reduce_command(  # noqa: PLR0913 - one argument per option of the contract
         else:
             done.append((job.model, outcome))
     summary.models_ok = len(done)
-    if done:
-        if target == "umi":
-            _write_umi(output, done, summary, force=force)
-        else:
-            _write_sbem(output, done, summary, force=force)
-    summary.echo()
-    ctx.exit(summary.status)
+    return summary, done
 
 
 def _loss_path(library: Path) -> Path:
@@ -291,8 +301,14 @@ def _write_umi(library: Path, done: Sequence[tuple[Path, Reduction]], summary: R
             )
             for failure in summary.failures
         ]
-        fields = {name: getattr(export.report, name) for name in TranslationReport.model_fields}
-        report = TranslationReport(**{**fields, "losses": [*export.report.losses, *failed]})
+        before = export.report
+        report = TranslationReport(
+            direction=before.direction,
+            source=before.source,
+            subjects=before.subjects,
+            losses=[*before.losses, *failed],
+            notes=before.notes,
+        )
         export = UmiExport(text=export.text, report=report)
     written, loss = export.write(library, overwrite=force)
     summary.outputs.append(written)

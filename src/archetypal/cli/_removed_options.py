@@ -62,7 +62,7 @@ def usage_error(row: RemovedCapability, ctx: click.Context | None) -> click.Usag
 
 
 def _rejecter(row: RemovedCapability) -> Callable[[click.Context, click.Parameter, Any], None]:
-    def reject(ctx: click.Context, param: click.Parameter, value: Any) -> None:  # noqa: ANN401 - click's callback
+    def reject(ctx: click.Context, param: click.Parameter, value: Any) -> None:
         del param
         if value:
             raise usage_error(row, ctx)

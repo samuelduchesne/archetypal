@@ -20,6 +20,7 @@ are generated from it.
 | `replacement` | `Replacement \| None` | `None` only when `reason` says why there is none. |
 | `reason` | `str` | Always set: why it was removed, in one sentence. |
 | `frequent_task` | `FrequentTask \| None` | Links the row to a before/after example (FR-018). |
+| `aliases` | `tuple[str, ...]` | For an `option` row, v2's other spellings of the flag (`-z` for `--all_zones`); the command line rejects each (FR-013). Empty otherwise. |
 
 `Replacement`: `package` (`Literal["archetypal", "idfkit", "epinterface"]`), `target` (the
 name, module or command to use), `docs_url` (the page that documents it).
@@ -96,15 +97,21 @@ The names and commands documented in the reference (FR-007), module by module, a
 
 - **`archetypal`** (top level): `__version__`; from 002, `reduce`, `merge`, `compare`, `Layout`,
   `ReductionOptions`; from 003, `read_umi`, `write_umi`.
-- **`archetypal.reduction`** (002): `Reduction`, `RESULTS_REQUIREMENTS`, `schedule_compact`.
-- **`archetypal.comparison`** (002): `ComparisonResult`, `AcceptanceTargets`.
-- **`archetypal.umi`** (003): `to_umi`, `UmiImport`, `UmiExport`, `TranslationReport`, `Loss`,
-  `LossKind`, `Note`, `NoteKind`, `diff_umi`, `diff_archetypes`, `UmiDiff`, `ArchetypeDiff`,
-  `CORRESPONDENCE`, `FieldMapping`, `Relevance`, `MappingStatus`.
-- **`archetypal.errors`**: the errors of R8, with 002's (`ReductionError`,
-  `NoConditionedZones`, `MissingResults`, `ModelResultsMismatch`,
+- **`archetypal.reduction`** (002): `reduce`, `merge` (the same objects as the top-level
+  names), `Reduction`, `RESULTS_REQUIREMENTS`, `schedule_compact`.
+- **`archetypal.comparison`** (002): `compare` (the top-level name), `ComparisonResult`,
+  `ComparisonRow`, `AcceptanceTargets`, `MetricKind`.
+- **`archetypal.umi`** (003): `read_umi`, `write_umi` (the top-level names), `to_umi`,
+  `UmiImport`, `UmiExport`, `TranslationReport`, `Loss`, `LossKind`, `Note`, `NoteKind`,
+  `CORRESPONDENCE`, `FieldMapping`, `Relevance`, `MappingStatus`; `diff_umi`,
+  `diff_archetypes`, `UmiDiff` and `ArchetypeDiff` join them with 003 US3 (T061).
+- **`archetypal.errors`**: the errors of R8 (`ArchetypalError`, `InputError`,
+  `UnsupportedFeatureError`, `LossyTranslationError` with its `LossReport` protocol,
+  `NotComparableError`, `OptionalDependencyError`, `RemovedInArchetypal3Error`), with 002's
+  (`ReductionError`, `NoConditionedZones`, `MissingResults`, `ModelResultsMismatch`,
   `UnsupportedEnergyPlusVersion`) and 003's (`UmiFormatError`, `UmiValidationError`,
-  `Problem`).
+  `Problem`). The 002 errors are also reachable as `archetypal.<name>`, but are not in the
+  top-level `__all__`.
 - **Commands:** `archetypal reduce`, `merge`, `compare`, `translate`.
 
 These five modules are public; every other module is private (underscore-prefixed or

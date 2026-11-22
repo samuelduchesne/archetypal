@@ -94,7 +94,9 @@ def test_summary_names_failures_counts_and_reports() -> None:
 # --- through the command ------------------------------------------------------------------------------
 
 
-def test_exit_0_without_loss(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reduced: Callable[..., Reduction]) -> None:
+def test_exit_0_without_loss(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reduced: Callable[..., Reduction]
+) -> None:
     from archetypal.cli import _reduce  # noqa: PLC0415
     from archetypal.reduction import Reduction  # noqa: PLC0415
 
@@ -134,7 +136,9 @@ def test_exit_3_when_one_of_two_models_fails(
     assert (tmp_path / "lib.bar_building.report.json").is_file()
 
 
-def test_exit_3_with_sbem_writes_the_others(tmp_path: Path, broken: Path, cli_reductions: list[tuple[str, str]]) -> None:
+def test_exit_3_with_sbem_writes_the_others(
+    tmp_path: Path, broken: Path, cli_reductions: list[tuple[str, str]]
+) -> None:
     del cli_reductions
     out = tmp_path / "out"
     code, err = run(

@@ -49,18 +49,13 @@ except PackageNotFoundError:  # pragma: no cover - only when run from an uninsta
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-# Public re-exports of specs 002 and 003 are added here.
+# The public interface (spec 001, data-model.md, Public interface). The errors of spec 002 are
+# also reachable here, as `_LAZY` lists, but are documented and exported by `archetypal.errors`.
 __all__ = [
-    "ArchetypalError",
     "Layout",
-    "MissingResults",
-    "ModelResultsMismatch",
-    "NoConditionedZones",
-    "NotComparableError",
-    "ReductionError",
     "ReductionOptions",
-    "UnsupportedEnergyPlusVersion",
     "__version__",
+    "compare",
     "merge",
     "read_umi",
     "reduce",

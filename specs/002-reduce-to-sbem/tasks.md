@@ -105,7 +105,7 @@ models and results, schedules, deterministic files and test fixtures.
   `InputError` or `ArchetypalError` and starts its message with the input at fault;
   `MissingResults` lists items and suggests `simulate=True`; `UnsupportedEnergyPlusVersion`
   names the supported range and `idfkit.migration.migrate`.
-- [ ] T013 [P] Test options in `tests/unit/test_options.py`: `Layout` coarseness order
+- [X] T013 [P] Test options in `tests/unit/test_options.py`: `Layout` coarseness order
   (`SPACE_USE_EXPOSURE` ≤ `SPACE_USE`, `CORE_PERIMETER` ≤ `SINGLE_ZONE`; `SPACE_USE` and
   `CORE_PERIMETER` not comparable; `Layout.is_strictly_finer(a, b)`, which `merge` uses);
   `small_group_threshold` "a share of conditioned floor area in [0, 1)" is enforced;
@@ -113,7 +113,7 @@ models and results, schedules, deterministic files and test fixtures.
 - [ ] T014 [P] Test the static-table rows in `tests/unit/test_sql_tables.py` against the
   committed fixture SQLite files: one typed row per record, types converted and checked at the
   boundary, a clear error on an unexpected column type.
-- [ ] T015 [P] Test `RESULTS_REQUIREMENTS` in `tests/unit/test_requirements.py`: it lists
+- [X] T015 [P] Test `RESULTS_REQUIREMENTS` in `tests/unit/test_requirements.py`: it lists
   exactly the rows of `contracts/results-requirements.md` (parse the Markdown table); the
   check on a fixture with outputs removed names each one, with its `Output:Variable` or
   `Output:Meter` IDF text; items that do not apply (no `WaterUse:Equipment`) are not required.
@@ -129,11 +129,11 @@ models and results, schedules, deterministic files and test fixtures.
   `Schedule:Compact` with one `Through:` per run of equal months and `For:` blocks Monday to
   Sunday, which idfkit evaluates to the same hourly values as the `YearComponent`, for every
   schedule of a committed fixture archetype (FR-023, contracts/python-api.md).
-- [ ] T018 [P] Test the UP-6 bridge in `tests/unit/test_bridges.py`: a `Schedule:Year` loaded
+- [X] T018 [P] Test the UP-6 bridge in `tests/unit/test_bridges.py`: a `Schedule:Year` loaded
   from a file evaluates after normalisation, the original object is not modified, and a
   marked test fails once the installed idfkit no longer needs the bridge (reminder to remove
   it).
-- [ ] T019 [P] Test deterministic files in `tests/unit/test_io.py`: UTF-8, two-space indent,
+- [X] T019 [P] Test deterministic files in `tests/unit/test_io.py`: UTF-8, two-space indent,
   floats as shortest round-trip `repr`, base64 little-endian float64 profiles with their
   length, no timestamp, byte-identical output on repeat, and `write` refusing to overwrite
   unless asked.
@@ -144,13 +144,13 @@ models and results, schedules, deterministic files and test fixtures.
   under `InputError`, with `NoConditionedZones`, `MissingResults`, `ModelResultsMismatch`,
   `UnsupportedEnergyPlusVersion`; and `NotComparableError` under `ArchetypalError`. Each
   takes the input at fault first (plan.md, Source Code; contracts/python-api.md).
-- [ ] T021 [P] Implement `src/archetypal/reduction/options.py`: `Layout` `StrEnum` with members
+- [X] T021 [P] Implement `src/archetypal/reduction/options.py`: `Layout` `StrEnum` with members
   `SPACE_USE_EXPOSURE` (default), `SPACE_USE`, `CORE_PERIMETER`, `SINGLE_ZONE`, a group-key
   function per member and a partial order by coarseness; `ReductionOptions`, a frozen
   pydantic model with `layout: Layout = Layout.SPACE_USE_EXPOSURE`, `small_group_threshold:
   float = 0.05` ("a share of conditioned floor area in [0, 1)"), and `space_use_mapping:
   Mapping[str, str] | None = None` (data-model.md, Layout and ReductionOptions).
-- [ ] T022 [P] Implement `src/archetypal/reduction/_bridges.py`:
+- [X] T022 [P] Implement `src/archetypal/reduction/_bridges.py`:
   `normalise_schedule_year(obj) -> ScheduleYear` returning a copy whose start and end month and
   day fields are `int`, with its removal condition (UP-6) in the docstring (plan.md,
   Complexity Tracking).
@@ -160,7 +160,7 @@ models and results, schedules, deterministic files and test fixtures.
   `NominalInfiltrationRow`, `NominalVentilationRow`, `SimulationRow`, `EnvironmentPeriodRow`,
   and one reader per table over `SQLResult.query`. This is the only module that calls
   `query` (research R18; removal condition UP-7).
-- [ ] T024 Implement `src/archetypal/reduction/requirements.py`: `ResultRequirement`
+- [X] T024 Implement `src/archetypal/reduction/requirements.py`: `ResultRequirement`
   (item, key, frequency, used for, IDF text, applies-to predicate), the constant
   `RESULTS_REQUIREMENTS` with every row of `contracts/results-requirements.md`, and
   `check_results(source) -> tuple[ResultRequirement, ...]` returning the missing items
@@ -180,7 +180,7 @@ models and results, schedules, deterministic files and test fixtures.
   representative days; conversion to epinterface `YearComponent`/`WeekComponent`/
   `DayComponent`; and the public `schedule_compact(year, *, name=None)`, turning any
   `YearComponent` into `Schedule:Compact` text (research R5, FR-023).
-- [ ] T027 [P] Implement `src/archetypal/io.py`: deterministic JSON writing and reading for
+- [X] T027 [P] Implement `src/archetypal/io.py`: deterministic JSON writing and reading for
   `<name>.sbem.json` (epinterface's `model_dump_json`, indented, keys in model order) and
   `<name>.report.json`, with the encoding rules of `contracts/reduction-report.md`
   (research R14).

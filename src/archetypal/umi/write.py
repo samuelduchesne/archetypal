@@ -293,9 +293,10 @@ class _ZoneMerger:
         """Peak flow per area, its profile and the dominant categories from 002's `ventilation`.
 
         The provider stays `Both` when a member has natural ventilation, the outdoor-air
-        schedule is set only when a member has one, and the rest (natural-ventilation limits,
-        heat-recovery effectiveness, which the rebuilt ledgers do not weight) is the largest
-        member's.
+        schedule is set only when a member has one, and the sensible heat-recovery
+        effectiveness, with heat recovery, is the outdoor-air-volume-weighted mean the rebuilt
+        ledgers carry. The rest (natural-ventilation limits, the latent effectiveness, which the
+        ledgers do not hold) is the largest member's.
         """
         path = "Operations.HVAC.Ventilation"
         if not _differ(self.members, path):
@@ -323,6 +324,8 @@ class _ZoneMerger:
             "HRV": derived.HRV,
             "Economizer": derived.Economizer,
         }
+        if derived.HRV != "NoHRV":
+            update["SensibleHeatRecoveryEffectiveness"] = derived.SensibleHeatRecoveryEffectiveness
         self.set(path, current.model_copy(update=update))
 
     def hot_water(self) -> None:

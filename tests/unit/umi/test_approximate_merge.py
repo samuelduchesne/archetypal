@@ -187,6 +187,29 @@ def test_rebuilt_ledgers_weight_heat_recovery_effectiveness_by_outdoor_air_volum
     assert result != pytest.approx(0.9)  # not the largest member's value
 
 
+def test_merge_sets_outdoor_air_weighted_heat_recovery_effectiveness(office: ZoneComponent) -> None:
+    """The merged zone takes the volume-weighted sensible effectiveness, not the largest member's (R9, R12)."""
+    path = "Operations.HVAC.Ventilation"
+    low = replace(office, f"{path}.HRV", "Sensible")
+    low = replace(low, f"{path}.SensibleHeatRecoveryEffectiveness", 0.6)
+    high = replace(low, f"{path}.SensibleHeatRecoveryEffectiveness", 0.9)
+    high = replace(high, f"{path}.FreshAirPerFloorArea", 3 * office.Operations.HVAC.Ventilation.FreshAirPerFloorArea)
+    high = replace(high, "Name", "High recovery office")
+    groups = [group(low, "perimeter low", 0.3, "perimeter"), group(high, "perimeter high", 0.2, "perimeter")]
+    volumes = [
+        GroupLedger.approximate_from_group(g, cast("float", g.FloorAreaShare)).ledger.outdoor_air.hrv_weighted[
+            "Sensible"
+        ]
+        for g in groups
+    ]
+    archetype = Archetype(Name="two recoveries", Groups=[*groups, group(office, "core office", 0.5, "core")])
+    zone = next(g.Zone for g in approximate_merge(archetype).archetype.Groups if g.Exposure == "perimeter")
+    effectiveness = zone.Operations.HVAC.Ventilation.SensibleHeatRecoveryEffectiveness
+    assert effectiveness == pytest.approx((volumes[0] * 0.6 + volumes[1] * 0.9) / (volumes[0] + volumes[1]))
+    assert effectiveness != pytest.approx(0.6)  # not the largest member's value
+    assert zone.Operations.HVAC.Ventilation.HRV == "Sensible"
+
+
 def test_merge_reports_merged_groups_and_approximate_parameters(office: ZoneComponent) -> None:
     merged = approximate_merge(three_groups(office))
     kinds = {(loss.kind, loss.location) for loss in merged.losses}

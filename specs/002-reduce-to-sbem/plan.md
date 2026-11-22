@@ -44,7 +44,8 @@ All decisions and their evidence are in [research.md](research.md).
 epinterface; research R15, R17).
 
 **Primary Dependencies**:
-- epinterface (SBEM data model; first release with UP-1 and UP-2);
+- the SBEM fork of epinterface (roadmap C-17; working distribution name `epinterface-sbem`,
+  imported as `epinterface`): SBEM data model, first fork release with UP-1 and UP-2;
 - idfkit `>=1.3,<2` (model I/O, schedule evaluation, SQLite and tabular results, single
   simulation run), used through its typed interface only (R18);
 - numpy;
@@ -88,7 +89,7 @@ spec feedback F-1 (now resolved) and F-2.
 
 | Principle | Check | Status |
 |---|---|---|
-| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls, made through its typed interface (R18). The SBEM model and its JSON are epinterface's. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6, UP-7, UP-8. There are two temporary bridges, both tracked and removed when their upstream item is released: normalising `Schedule:Year` month and day fields to `int` until UP-6, and typed row wrappers over `SQLResult.query` until UP-7. | Pass (bridges recorded below) |
+| **I. Archetypes, not EnergyPlus** | Model I/O, schedule evaluation, SQLite and tabular parsing, simulation and migration are all idfkit calls, made through its typed interface (R18). The SBEM model and its JSON are epinterface's, from the maintained fork archetypal depends on (constitution 1.4.0, I; roadmap C-17), which carries only changes also offered upstream. Geometry is not recomputed: EnergyPlus's `Zones` and `Surfaces` tables are read (R1). Gaps go upstream: UP-1, UP-2, UP-4, UP-5, UP-6, UP-7, UP-8. There are two temporary bridges, both tracked and removed when their upstream item is released: normalising `Schedule:Year` month and day fields to `int` until UP-6, and typed row wrappers over `SQLResult.query` until UP-7. | Pass (bridges recorded below) |
 | **II. One archetype data model** | The output is SBEM only. The ledger is internal working state, not a second archetype model: it is never written as an archetype, and only its totals appear in the report (needed for FR-010 and FR-022). | Pass |
 | **III. Small and focused** | Four runtime dependencies, each justified (R17). There is at most one simulation run, on request. No geometry generation (FR-024 carries ratios only). No calibration. | Pass |
 | **IV. Physically correct and verifiable** | Each SBEM parameter is tied to a conservation rule (data-model.md, "Derivation rules"). The reference tier measures SC-001–SC-008 against stated targets, including v2's baseline (SC-004). | Pass. Spec feedback F-1 (SC-002 and fan end uses) is resolved by FR-022a and UP-8. |
@@ -114,13 +115,18 @@ Every code example in these pages runs in CI against the unit fixtures (docs-tes
 
 ## Upstream dependencies (constitution: Development Workflow)
 
-Spec 002 cannot be marked implemented until the blocking items are released.
+Spec 002 cannot be marked implemented until the blocking items are released. The main
+epinterface repository is not expected to accept our pull requests for a long time, so every
+epinterface item is built and released in the SBEM fork (roadmap C-17) and offered upstream
+as a pull request. "Released" below means released by the fork; the upstream merge is not a
+dependency. This changes who releases, not what 002 needs, so no blocking status changes,
+except UP-3.
 
 | Item | Repository | What | Blocking? |
 |---|---|---|---|
 | UP-1 | epinterface | Depend on idfkit instead of `archetypal==2.18.10`. `sbem.components` must be importable without archetypal, eppy or a generated Prisma client, and PyYAML must be declared. | Yes |
 | UP-2 | epinterface | Several zone groups per archetype. It also adds these fields, which this plan's research showed are missing: per-orientation envelope and window ratios (FR-024), an infiltration schedule (FR-018), numeric heat-recovery effectiveness (FR-019), holiday and design-day slots in `WeekComponent` (FR-023), and save/load helpers with a schema version (R14). | Zone groups: yes. Each extra field: no (until it lands, its loss is reported under FR-026). |
-| UP-3 | epinterface | Published on PyPI. | **Already met**: 15 releases on PyPI, 1.0.0–1.5.0. |
+| UP-3 | epinterface (fork) | The fork published on PyPI under its own distribution name. | Yes, for any release (upstream's own PyPI releases no longer count, C-17) |
 | UP-4 | epinterface | Heavy dependencies become optional (Prisma, geopandas, ladybug), and exact pins are loosened (`click==8.1.7`, `pandas<2.3`). | No (install size and conflicts) |
 | UP-5 | idfkit | Day-type-aware `Schedule:Compact` creation. Now also a faster day-profile evaluation if the R5 benchmark fails. | No |
 | UP-6 (new) | idfkit | Fix `Schedule:Year` evaluation on loaded models (`int('1.0')` in `schedules/year.py`) before 1.3.0 final, so the typed `schedule_weeks[i].start_month: int` really is an `int`. | Yes for release; bridged meanwhile |
@@ -240,8 +246,9 @@ owns that move and the command line.
   - `check-docs` job.
   - Added: an `integration` job (EnergyPlus 24.2, Python 3.12, `-m energyplus`) on PRs, and
     `reference.yml` (weekly and `workflow_dispatch`).
-  - Extra job: unit tests against epinterface's development branch (C-14), allowed to fail
-    but reported.
+  - Extra jobs (C-14): unit tests against the SBEM fork's development branch, required; and
+    a weekly job against upstream epinterface's `main`, allowed to fail but reported, which
+    shows how far upstream and the fork have drifted.
 
 ## Complexity Tracking
 

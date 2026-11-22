@@ -20,6 +20,8 @@ Six facts drive most of the decisions below.
    import time (for its `add_to_idf` methods). The fix is UP-1, which the roadmap already lists;
    it must also leave `epinterface.sbem.components` importable without archetypal, eppy or a
    generated Prisma client. Checked by reading `pyproject.toml` and the component modules.
+   Upstream is not expected to accept it for a long time, so UP-1, like every epinterface
+   item, is released in the SBEM fork (roadmap C-17; R17).
 2. **epinterface declares `requires-python = ">=3.10,<3.13"`.** archetypal 3 is therefore
    bounded to 3.10–3.12 (constitution VI, C-07).
 3. **epinterface has no archetype file format.** There is no save or load function, no file
@@ -507,7 +509,8 @@ itself.
 
 - **Archetype file.** The archetype is written as epinterface's pydantic JSON
   (`model_dump_json`, indented, keys in model order) of the UP-2 multi-group archetype object.
-  The file is `<name>.sbem.json`, readable by epinterface alone. This is what spec 001's
+  The file is `<name>.sbem.json`, readable by the SBEM fork alone, and by upstream epinterface
+  only if it uses no field the fork adds (the file records the fork's schema version). This is what spec 001's
   clarification calls "epinterface's own serialisation".
 - **Report file.** The report is a separate JSON file, `<name>.report.json`, validated by a
   published JSON Schema generated from archetypal's pydantic models. It carries:
@@ -604,7 +607,7 @@ every push, and reserves the slow evidence for its own workflow.
 
 | Dependency | Range | Justification |
 |---|---|---|
-| `epinterface` | `>=X,<2` (X = first release with UP-1 and UP-2) | SBEM data model, the only archetype model (C-02). |
+| SBEM fork of `epinterface` (working name `epinterface-sbem`, imported as `epinterface`) | `>=X,<Y` (X = first fork release with UP-1 and UP-2; Y = next upstream minor) | SBEM data model, the only archetype model (C-02), from the maintained fork (roadmap C-17). |
 | `idfkit` | `>=1.3,<2` (`>=1.3.0rc2` until 1.3.0 is final) | Model reading, schedules, SQLite results, simulation. Zero runtime dependencies. |
 | `numpy` | `>=1.26` | 8760-hour profiles and float64 sums. Already pulled in by epinterface's pandas, but used directly, so declared (deptry). |
 | `pydantic` | `>=2.9,<3` | Report models and JSON Schema. Already required by epinterface, but used directly, so declared. |
@@ -617,7 +620,14 @@ No pandas import in archetypal. The command line (`click` or similar) is spec 00
 **Compatibility.** idfkit has no dependencies, so it cannot conflict. epinterface 1.5.0's exact
 pins (`click==8.1.7`, `pandas<2.3`, `packaging<25` via archetypal 2.18.10) and undeclared
 `PyYAML` must be loosened or fixed. Those changes are folded into UP-1 and UP-4 (see the
-upstream table in plan.md).
+upstream table in plan.md), released in the fork.
+
+**Why a fork.** Upstream epinterface is not expected to accept our pull requests for a long
+time, and its releases pin `archetypal==2.18.10`, so archetypal 3 cannot depend on them in
+the same environment. The fork keeps the import name, so archetypal's code is the same
+whichever package provides `epinterface`; switching back when upstream catches up changes one
+line of `pyproject.toml`. The alternative, carrying the SBEM extensions inside archetypal,
+was rejected (roadmap C-17).
 
 ## R18 — idfkit's typed interface first
 

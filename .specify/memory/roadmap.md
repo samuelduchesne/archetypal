@@ -1,6 +1,25 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.5.0 → 1.6.0
+Bump rationale: MINOR — new decision C-17: archetypal depends on a maintained fork of
+epinterface, because the main epinterface repository is not expected to accept archetypal's
+pull requests for a long time. Follows constitution 1.4.0 (Principle I). C-01, C-03 and C-14
+amended; every epinterface prerequisite (UP-1, UP-2, UP-3, UP-4, UP-8) is now delivered in
+the fork, with its upstream pull request kept open but no longer a dependency.
+
+Changes this revision:
+  - Added C-17: the SBEM fork (home, packaging, sync, scope, exit)
+  - C-01, C-03: epinterface changes go to the fork when upstream cannot take them in time
+  - C-14: archetypal pins the fork; tests also run against upstream epinterface, non-blocking
+  - Upstream Prerequisites: "released" means released by the fork for epinterface items;
+    UP-3 reopened (the fork must be on PyPI)
+  - 009: agreement still sought upstream before the fork carries it
+
+Specs affected: 001, 002, 003 (dependency name and source of SBEM changes)
+Open questions added/resolved: none
+
+Previous revision (1.5.0):
 Version change: 1.4.0 → 1.5.0
 Bump rationale: MINOR — new upstream prerequisite UP-8 (SBEM fan energy and temperature-
 dependent COP, still on ideal loads) and a new undecided spec 009 (real HVAC systems in SBEM).
@@ -113,7 +132,7 @@ Living, non-binding map of the specs planned for archetypal v3. It is **not a co
 order or scope**. It captures the decisions, technology choices, outcomes and constraints from
 the v3 design conversation so they are not lost before the spec that needs them is written.
 Specs are scoped and clarified when they are actually started. Foundation: the project
-[constitution](constitution.md) (1.2.0).
+[constitution](constitution.md) (1.4.0).
 
 Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **specced** ·
 **in-progress** · **implemented** · **verified** · **deferred** · **abandoned**.
@@ -140,7 +159,8 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
 ## Constraints & Decisions
 
 - **C-01 — Stack:** archetypal depends on epinterface, which depends on idfkit. archetypal never
-  reimplements what either provides; missing capabilities are added upstream by pull request.
+  reimplements what either provides; missing capabilities are added upstream by pull request,
+  and carried in a maintained fork of epinterface while upstream cannot take them (C-17).
   *Constitution I.*
 - **C-02 — One data model:** epinterface's SBEM is the only archetype data model. UMI becomes a
   translator; v2's UMI template classes (`archetypal/template/`) are not carried into v3 as a
@@ -149,8 +169,8 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
 - **C-03 — An archetype is a set of zone groups, defined upstream:** epinterface's `Model`
   holds a single zone definition. We extend epinterface (UP-2) so that an archetype holds
   several zone groups, each with its own zone definition and its share of the building's floor
-  area. Core/perimeter is one layout among others (C-11). Built by us and contributed by pull
-  request rather than wrapped in archetypal.
+  area. Core/perimeter is one layout among others (C-11). Built by us, released in the SBEM
+  fork (C-17) and offered upstream by pull request, rather than wrapped in archetypal.
   ~~Revision 1.0.0: separate core and perimeter zone components only.~~
 - **C-04 — Nothing from v2 is ported as is:** every v3 capability is specified and written
   afresh to v3's standards (strict typing, tests, documentation). v2 predates strict typing and
@@ -202,10 +222,13 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   representable in SBEM; where it is not, UP-2 adds it. Descriptive fields (names, comments,
   lifespan, embodied-carbon data) map to SBEM's metadata and environmental fields. Nothing is
   dropped silently. The field-by-field mapping is part of spec 003.
-- **C-14 — Coordinating changes to SBEM** *(resolves Q3)*: archetypal pins epinterface to a
-  compatible version range; every SBEM change archetypal needs is made upstream by our own pull
-  request; archetypal's test suite also runs against epinterface's development branch so a
-  breaking change is seen before it is released. archetypal uses only SBEM's public model.
+- **C-14 — Coordinating changes to SBEM** *(resolves Q3)*: archetypal pins the SBEM fork
+  (C-17) to a compatible version range; every SBEM change archetypal needs is made in the fork
+  and offered upstream by our own pull request; archetypal's test suite also runs against the
+  fork's development branch, so a breaking change is seen before it is released, and, as a
+  non-blocking scheduled job, against upstream epinterface's, to measure how far the two have
+  drifted. archetypal uses only SBEM's public model.
+  ~~Revision 1.5.0: archetypal pinned upstream epinterface directly.~~
 - **C-15 — Licensing of published sources** *(resolves Q4)*: archetypal ships readers, not
   copies of source data, unless the source's licence explicitly allows redistribution. Every
   derived archetype records its source and that source's licence in its provenance. Data under
@@ -214,10 +237,43 @@ Status legend (lifecycle): **undecided** · **needs-info** · **planned** · **s
   not build a second composer. Spec 006 delivers rule sets for epinterface's composer and the
   means to author, test and share them; anything the composer lacks is added upstream.
   epinterface already reads ClimateStudio templates, so that translator stays there.
+- **C-17 — archetypal depends on a maintained fork of epinterface** *(constitution I)*: the
+  main epinterface repository is not expected to accept our pull requests for a long time, and
+  its releases pin `archetypal==2.18.10`, so archetypal 3 cannot depend on them at all.
+  - *Home:* `samuelduchesne/epinterface`. Its `main` is upstream `main` plus one topic branch
+    per prerequisite (UP-1, UP-2, UP-4, UP-8), merged in that order. Each topic branch is also
+    an open pull request to upstream.
+  - *Package:* published on PyPI under its own distribution name (working name
+    `epinterface-sbem`, checked for availability and confirmed at its first release), with
+    the import name `epinterface` unchanged. Code that uses SBEM is then identical against the
+    fork and upstream, and a merged pull request needs no change in archetypal. The fork and
+    upstream epinterface cannot be installed in the same environment; that is documented in
+    the fork's README and in archetypal's installation page.
+  - *Versions:* upstream base version plus a post-release number (`1.5.0.post1`, …), so the
+    upstream release each fork release builds on is visible.
+  - *Licence:* MIT, as upstream; the copyright notice is kept and upstream is credited.
+  - *Sync:* the fork is rebased on every upstream release, and its own tests run on every
+    change. Conflicts are resolved in the fork, never in archetypal.
+  - *Scope:* the fork carries only changes that are offered upstream. Anything specific to
+    archetypal stays in archetypal (none is expected).
+  - *Archetype files:* an archetype that uses a field only the fork has will not validate in
+    upstream epinterface (`extra="forbid"`). Archetype files record the fork's schema version
+    (UP-2's save/load helpers), so a reader can tell.
+  - *Exit:* when upstream releases what archetypal depends on (UP-1 at least, then each SBEM
+    field it uses), archetypal switches its dependency back to `epinterface` and the fork is
+    retired.
+
+  Chosen over carrying the extensions in archetypal (subclassed SBEM components and an
+  archetypal builder), which would break constitution I (EnergyPlus generation) and II (a
+  second SBEM), and would not remove the `archetypal==2.18.10` pin, which makes upstream
+  uninstallable next to archetypal 3 anyway.
 
 ## Upstream Prerequisites
 
 Not archetypal specs. Pull requests to other repositories that archetypal specs depend on.
+The epinterface items (UP-1, UP-2, UP-3, UP-4, UP-8) are delivered in the SBEM fork (C-17):
+"blocking" means blocking until released by the fork. Their upstream pull requests stay open
+but are no longer a dependency of any spec. The idfkit items are unchanged.
 
 - **UP-1 — epinterface uses idfkit instead of archetypal/eppy.** Removes the circular
   dependency (epinterface currently pins `archetypal==2.18.10`). A draft PR is open. It must
@@ -226,14 +282,17 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   *Blocking for 002.*
 - **UP-2 — epinterface `Model` holds several zone groups** (zone definition plus floor-area
   share, C-03), plus whatever simulation-relevant fields the UMI field mapping shows are missing
-  (C-13). Built by us, contributed by PR. The 002 plan's research adds: envelope and window
-  ratios by orientation, an infiltration schedule, numeric heat-recovery effectiveness,
-  holiday and design-day slots in `WeekComponent`, and save/load helpers with a schema version.
-  Zone groups block 002; each added field does not (its loss is reported until it lands).
+  (C-13). Built by us, released in the fork, offered upstream (C-17). The 002 plan's research
+  adds: envelope and window ratios by orientation, an infiltration schedule, numeric
+  heat-recovery effectiveness, holiday and design-day slots in `WeekComponent`, and save/load
+  helpers with a schema version. Zone groups block 002; each added field does not (its loss is
+  reported until it lands).
   ~~Revision 1.0.0: separate core and perimeter zones only.~~
-- **UP-3 — epinterface is published on PyPI.** A package on PyPI cannot depend on a git
-  repository, so no v3 release can ship before this. **Met:** releases 1.0.0–1.5.0 are on PyPI
-  (checked 2026-11-21).
+- **UP-3 — the SBEM fork is published on PyPI.** A package on PyPI cannot depend on a git
+  repository, so no v3 release can ship before this. Upstream epinterface is on PyPI
+  (1.0.0–1.5.0, checked 2026-11-21), but archetypal now depends on the fork (C-17), which is
+  not yet published. *Blocking for every v3 release.*
+  ~~Revision 1.5.0: met by upstream's PyPI releases.~~
 - **UP-4 — epinterface's heavy dependencies become optional extras** (Prisma, geopandas,
   ladybug). Desirable, not blocking; keeps archetypal's install small (C-06, constitution III).
   ladybug-core is used once, in `sbem/builder.py`, to read monthly ground temperatures from the
@@ -261,7 +320,8 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   as a fan end use; the ideal loads' maximum heating and minimum cooling supply-air
   temperatures as SBEM fields; and an optional linear dependence of the energy input ratio
   (1/COP) on outdoor dry-bulb temperature around a reference temperature, applied hour by
-  hour. Built by us, contributed by PR (C-14). 002 derives all three (research R12, R19).
+  hour. Built by us, released in the fork and offered upstream (C-14, C-17). 002 derives all
+  three (research R12, R19).
   *Blocking for 002's release* (SC-002's fan target); reduction is built without it and
   reports what is not yet represented. Real HVAC systems are the separate, undecided 009.
 
@@ -412,7 +472,8 @@ Not archetypal specs. Pull requests to other repositories that archetypal specs 
   energy from the system itself.
 - **Depends on:** 002, UP-8
 - **Notes:** Undecided because it changes what SBEM is (a simple archetype on ideal loads), so
-  it needs agreement in epinterface first (C-14). UP-8 covers fans and temperature-dependent
+  it needs agreement in epinterface first, even though the fork (C-17) could carry it: the fork
+  only carries changes offered upstream, and this one would make it diverge furthest. UP-8 covers fans and temperature-dependent
   efficiency without it. Recorded when 002's spec feedback F-1 was resolved.
 
 ## Open Questions
@@ -437,4 +498,4 @@ None open. Resolved in revision 1.2.0:
 
 ---
 
-**Version**: 1.5.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.6.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

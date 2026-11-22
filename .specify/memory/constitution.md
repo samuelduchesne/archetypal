@@ -1,3 +1,23 @@
+<!--
+SYNC IMPACT REPORT
+==================
+Version change: 1.3.0 → 1.4.0
+Bump rationale: MINOR — Principle I's upstream rule materially expanded: a change epinterface
+cannot take in time may be carried in a maintained fork that archetypal depends on in its
+place. The main epinterface repository is not expected to accept archetypal's pull requests
+for a long time, and archetypal 3 cannot depend on its current releases at all (they pin
+archetypal 2).
+
+Modified principles:
+  - I. Archetypes, Not EnergyPlus: new paragraph on maintained forks
+  - II. One Archetype Data Model: SBEM is defined by the epinterface archetypal depends on
+Modified sections:
+  - Development Workflow: "released" means released by the package archetypal depends on
+
+Templates requiring updates: none (plan template's Constitution Check reads the principles)
+Follow-up: roadmap C-17 records the fork; spec 002's plan applies it.
+-->
+
 # archetypal Constitution
 
 ## Purpose and Place in the Stack
@@ -32,12 +52,19 @@ request (for example, separate core and perimeter zones in epinterface's `Model`
 workaround is allowed only as a temporary bridge that is tracked against the upstream change and
 removed when it lands.
 
+When an upstream project cannot take a change in time, the change MAY be carried in a
+maintained fork that archetypal depends on in place of that project. The fork counts as
+upstream for this principle only if it is a separate package, every change it carries is also
+offered to the original project as a pull request, and archetypal holds none of its code. The
+fork is retired when the original project has released what archetypal needs.
+
 *Rationale:* v2 grew into a general EnergyPlus toolkit and duplicated what is now better done
 elsewhere. Duplication splits users, bugs, and maintenance effort.
 
 ### II. One Archetype Data Model
 
-SBEM, as defined by epinterface, is the single archetype data model. Every capability MUST read
+SBEM, as defined by epinterface (or by the maintained fork archetypal depends on in its place,
+Principle I), is the single archetype data model. Every capability MUST read
 or produce SBEM. Other formats (UMI JSON first; later ClimateStudio and CityGML Energy ADE) are
 **translators** to and from SBEM, never parallel models maintained inside archetypal.
 
@@ -139,7 +166,8 @@ Version 2 is kept on a `v2.x` maintenance branch that receives security fixes on
 - Every plan MUST name the user-facing documentation it adds or changes, with its Diátaxis kind,
   and its tasks MUST include those documentation updates.
 - Upstream changes that a spec depends on (idfkit, epinterface) MUST be listed as dependencies of
-  that spec, and the spec cannot be marked implemented until they are released.
+  that spec, and the spec cannot be marked implemented until they are released by the package
+  archetypal depends on (the original project or its maintained fork, Principle I).
 
 ## Governance
 
@@ -154,4 +182,4 @@ request that edits this file, states the reason, and bumps the version:
 Reviewers verify compliance with this constitution on every pull request. Any exception MUST be
 justified in the relevant plan and recorded there.
 
-**Version**: 1.3.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-21
+**Version**: 1.4.0 | **Ratified**: 2026-11-21 | **Last Amended**: 2026-11-22

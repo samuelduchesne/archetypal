@@ -1,2 +1,2 @@
-models/*.sql binary
-weather/*.epw -text
+**/*.sql binary
+**/*.epw binary

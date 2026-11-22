@@ -241,13 +241,13 @@ accounts for every zone (spec US1, SC-005, SC-006).
 - [X] T035 [P] [US1] Test hot water in `tests/unit/test_hotwater.py`: volume and heat (volume ×
   rise) are conserved; equipment without a zone is allocated by occupant-hours; supply
   temperature is mean mains plus the volume-weighted rise (FR-021).
-- [ ] T036 [P] [US1] Test efficiency in `tests/unit/test_efficiency.py`: hourly attribution of
+- [X] T036 [P] [US1] Test efficiency in `tests/unit/test_efficiency.py`: hourly attribution of
   consumption to delivery by mode; pumps and heat rejection folded into `DistributionCOP`;
   standby reported as unattributed; the constrained linear fit reproduces annual consumption
   exactly and gives `b ≈ 0` for a boiler; refitting from merged sums equals fitting the merged
   hours; a group with no delivery takes the rated efficiency from *Equipment Summary*
   (FR-022, R12).
-- [ ] T037 [P] [US1] Test fans in `tests/unit/test_fans.py`: zone-equipment fans belong to
+- [X] T037 [P] [US1] Test fans in `tests/unit/test_fans.py`: zone-equipment fans belong to
   their zone; air-loop fans are split by hourly inlet-node mass flow; specific fan power ×
   detailed volume = detailed fan energy; the effective supply ΔT per mode follows R19; the
   share of volume without demand is reported (FR-022a).
@@ -317,13 +317,13 @@ accounts for every zone (spec US1, SC-005, SC-006).
 - [X] T052 [P] [US1] Implement `src/archetypal/reduction/hotwater.py`: volume and heat
   profiles per `WaterUse:Equipment`; allocation of zoneless equipment by occupant-hours,
   recorded for the report (R11).
-- [ ] T053 [P] [US1] Implement `src/archetypal/reduction/efficiency.py`: hourly attribution of
+- [X] T053 [P] [US1] Implement `src/archetypal/reduction/efficiency.py`: hourly attribution of
   `Heating:*` and `Cooling:*` meters to zones by delivered energy; pumps and heat rejection
   split by the hour's delivered modes into the distribution share; unattributed consumption;
   the additive `eir_sums`; `fit_eir(sums) -> (a, b, t_ref)` by constrained least squares with
   the annual consumption exact; rated efficiency from *Equipment Summary* for a mode with no
   delivery (R12).
-- [ ] T054 [P] [US1] Implement `src/archetypal/reduction/fans.py`: fan energy and
+- [X] T054 [P] [US1] Implement `src/archetypal/reduction/fans.py`: fan energy and
   standard-density air volume per zone (zone-equipment fans to their zone, air-loop fans by
   hourly inlet-node mass flow), per-mode volume and delivered energy, volume without demand;
   `specific_fan_power` and `effective_supply_delta` (R19).

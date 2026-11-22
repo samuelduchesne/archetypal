@@ -125,8 +125,9 @@ def scan_references(document: object) -> list[Problem]:
         return [
             Problem(pointer="", template=None, rule="format.not-object", message="the library is not a JSON object")
         ]
-    scan = _Scan(cast("_Json", document))
-    scan.walk(document, "")
+    obj = cast("_Json", document)
+    scan = _Scan(obj)
+    scan.walk_object(obj, "")
     return scan.problems
 
 
@@ -216,11 +217,11 @@ class _Builder:
         obj = cast("_Json", raw)
         if "$ref" in obj:
             return self.follow(cast("str", obj["$ref"]), classes, pointer)
-        if len(classes) > 1:
-            names = " or ".join(c.__name__ for c in classes)
-            self.problem(pointer, "refs.inline-ambiguous", f"a {names} must be given by reference here")
-            return _FAILED
-        return self.model(classes[0], obj, pointer)
+        if len(classes) == 1:
+            return self.model(classes[0], obj, pointer)
+        names = " or ".join(c.__name__ for c in classes)
+        self.problem(pointer, "refs.inline-ambiguous", f"a {names} must be given by reference here")
+        return _FAILED
 
     def follow(self, ref: str, classes: tuple[type[FormatModel], ...], pointer: str) -> object:
         """The object a `$ref` names, checked against the classes the field admits."""

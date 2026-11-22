@@ -5,13 +5,16 @@ from __future__ import annotations
 import copy
 import json
 from pathlib import Path
-from typing import cast, get_args
+from typing import TYPE_CHECKING, cast, get_args
 
 import pytest
 from pydantic import BaseModel
 
 from archetypal.errors import Problem, UmiFormatError
 from archetypal.umi import _format, _refs
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 UMI = Path(__file__).parents[2] / "fixtures" / "umi"
 SAMPLES = {
@@ -42,11 +45,11 @@ def rules(problems: list[Problem]) -> list[tuple[str, str]]:
     return [(p.rule, p.pointer) for p in problems]
 
 
-def week_library(days: list[object], *, day_id: str = "1") -> Json:
+def week_library(days: Sequence[object], *, day_id: str = "1") -> Json:
     """A library with one day schedule and one week schedule whose days are `days`."""
     return {
         "DaySchedules": [{"$id": day_id, "Values": [1.0] * 24, "Name": "On"}],
-        "WeekSchedules": [{"$id": "2", "Days": days, "Name": "Week"}],
+        "WeekSchedules": [{"$id": "2", "Days": list(days), "Name": "Week"}],
     }
 
 

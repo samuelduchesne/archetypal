@@ -47,6 +47,9 @@ jobs:
 
       - name: Set up the environment
         uses: ./.github/actions/setup-python-env
+        with:
+          # Type checking needs the newest NumPy stubs, which need Python 3.12 (see "Check typing").
+          python-version: "3.12"
 
       - name: Run checks
         run: make check
@@ -79,6 +82,9 @@ jobs:
         run: uv run python -m pytest tests --cov --cov-config=pyproject.toml --cov-report=xml
 
       - name: Check typing
+        # Python 3.10 and 3.11 resolve older NumPy releases (2.2, 2.4) whose type stubs leave arrays
+        # partially unknown under strict mode; types are checked once, against the newest stubs.
+        if: ${{ matrix.python-version == '3.12' }}
         run: uv run pyright
 
       - name: Upload coverage reports to Codecov with GitHub Action on Ubuntu, Python 3.12

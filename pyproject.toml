@@ -50,6 +50,11 @@ dev = [
     "jsonschema>=4.26.0",
 ]
 
+[tool.uv]
+# On Python 3.10 the newest mkdocstrings is 1.0.6, whose highlighter does not pass `md`, which
+# pymdown-extensions 12.2 made required: the docs build fails with both. 3.11+ resolve newer pairs.
+constraint-dependencies = ["pymdown-extensions<12.2; python_version < '3.11'"]
+
 [tool.uv.sources]
 # SBEM fork of epinterface, pinned to a pushed commit until the fork is tagged.
 epinterface = { git = "https://github.com/samuelduchesne/epinterface", rev = "dee8d343eb9aaceb8ae43819ab95232b94fae63a" }

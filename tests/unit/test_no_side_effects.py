@@ -55,7 +55,7 @@ print(json.dumps({
 
 
 def _tree(root: Path) -> set[tuple[str, int]]:
-    return {(str(p.relative_to(root)), p.stat().st_size if p.is_file() else -1) for p in root.rglob("*")}
+    return {(p.relative_to(root).as_posix(), p.stat().st_size if p.is_file() else -1) for p in root.rglob("*")}
 
 
 def test_import_has_no_side_effects(tmp_path: Path) -> None:

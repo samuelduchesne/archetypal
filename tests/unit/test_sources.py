@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import shutil
 import sqlite3
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -276,15 +277,19 @@ def test_a_file_that_is_not_sqlite_is_a_reduction_error(tmp_path: Path) -> None:
     assert str(results.resolve()) in str(caught.value)
 
 
+# `?` is not allowed in a Windows file name; the other URI characters are.
+URI_FOLDER = "run #1 %41" if sys.platform == "win32" else "run #1 ?a=%41"
+
+
 def test_a_results_path_with_uri_characters_opens_that_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    folder = tmp_path / "run #1 ?a=%41"
+    folder = tmp_path / URI_FOLDER
     folder.mkdir()
     results = folder / "eplusout.sql"
     shutil.copyfile(THREE_SQL, results)
     monkeypatch.chdir(tmp_path)
-    sources = load_sources(THREE_IDF, Path("run #1 ?a=%41") / "eplusout.sql")
+    sources = load_sources(THREE_IDF, Path(URI_FOLDER) / "eplusout.sql")
     sources.results.close()
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["run #1 ?a=%41"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [URI_FOLDER]
 
 
 def test_a_model_with_hvac_templates_is_refused() -> None:

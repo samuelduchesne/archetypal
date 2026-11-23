@@ -7,6 +7,7 @@ import json
 import math
 import os
 import re
+import sys
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
@@ -285,6 +286,7 @@ def test_write_replaces_nothing_when_a_file_fails(tmp_path: Path, monkeypatch: p
     assert (tmp_path / "x.sbem.json").read_text() == "old archetype"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows has no umask or POSIX permission bits")
 def test_written_files_follow_the_umask(tmp_path: Path) -> None:
     """Every output (archetypes, reports, UMI libraries) is written through `write_atomically`."""
     umask = os.umask(0o022)

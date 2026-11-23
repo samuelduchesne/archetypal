@@ -13,6 +13,7 @@ from archetypal.reduction.efficiency import (
     BuildingEnergy,
     EnergyAttribution,
     _coil_mean,  # pyright: ignore[reportPrivateUsage]
+    _weighted_mean,  # pyright: ignore[reportPrivateUsage]
     attribute_energy,
     building_energy,
     efficiency_hook,
@@ -380,3 +381,78 @@ def test_hot_water_delivery_uses_the_cold_water_schedule_the_ledger_uses(
             continue
         ledger_heat = np.sum(hook(zone, evaluate)["hot_water"].heat) * WATER_VOLUMETRIC_HEAT
         assert np.sum(energy.delivered["hot_water"][zone.zone.name]) == pytest.approx(ledger_heat, rel=1e-9)
+
+
+def test_rated_efficiencies_combine_as_output_over_input() -> None:
+    # Two chillers of equal capacity, COP 2 and 6: 2000 W delivered for 667 W consumed.
+    assert _weighted_mean([(2.0, 1000.0), (6.0, 1000.0)]) == pytest.approx(3.0)
+    # A water heater's weight is its input: output over input is the arithmetic mean.
+    assert _weighted_mean([(0.8, 1000.0), (0.9, 1000.0)], weight_is_input=True) == pytest.approx(0.85)
+
+
+def test_standby_is_shared_equally_without_delivery_or_floor_area() -> None:
+    data = BuildingEnergy(
+        outdoor_temperature=np.zeros(4),
+        multipliers={"a": 1, "b": 2},
+        floor_area={},
+        delivered={},
+        consumed={"heating": {"Electricity": np.ones(4)}},
+    )
+    result = attribute_energy(data)
+    shared = sum(
+        data.multipliers[name] * sum(result.zones[name]["heating"].unattributed.values()) for name in ("a", "b")
+    )
+    assert shared == pytest.approx(4.0)
+
+
+def _joint(joint_fuels: frozenset[str] | None) -> BuildingEnergy:
+    hours = 4
+    return BuildingEnergy(
+        outdoor_temperature=np.zeros(hours),
+        multipliers={"a": 1},
+        floor_area={"a": 10.0},
+        delivered={
+            "heating": {"a": np.array([3.0, 0.0, 9.0, 9.0])},
+            "hot_water": {"a": np.array([1.0, 0.0, 1.0, 1.0])},
+        },
+        consumed={
+            "heating": {
+                "NaturalGas": np.array([0.0, 100.0, 10.0, 10.0]),
+                "Electricity": np.array([0.0, 0.0, 3.0, 3.0]),
+            }
+        },
+        joint_fuels=joint_fuels,
+    )
+
+
+def test_a_shared_heating_meters_idle_consumption_is_reported_per_mode() -> None:
+    result = attribute_energy(_joint(None))
+    heating = result.unattributed["heating"]["NaturalGas"]
+    hot_water = result.unattributed["hot_water"]["NaturalGas"]
+    assert heating + hot_water == pytest.approx(100.0)
+    assert hot_water == pytest.approx(100.0 * 3.0 / 24.0)
+    zone = result.zones["a"]
+    assert zone["hot_water"].unattributed["NaturalGas"] == pytest.approx(hot_water)
+
+
+def test_only_the_plants_fuels_are_shared_with_hot_water() -> None:
+    result = attribute_energy(_joint(frozenset({"naturalgas"})))
+    zone = result.zones["a"]
+    assert "Electricity" not in zone["hot_water"].consumed_by_fuel
+    assert zone["heating"].consumed_by_fuel["Electricity"] == pytest.approx(6.0)
+    assert zone["hot_water"].consumed_by_fuel["NaturalGas"] == pytest.approx(2.0)
+
+
+def test_heat_rejection_is_charged_to_cooling() -> None:
+    hours = 2
+    data = BuildingEnergy(
+        outdoor_temperature=np.zeros(hours),
+        multipliers={"a": 1},
+        floor_area={"a": 10.0},
+        delivered={"heating": {"a": np.full(hours, 15.0)}, "cooling": {"a": np.full(hours, 80.0)}},
+        consumed={},
+        heat_rejection={"Electricity": np.full(hours, 2.0)},
+    )
+    zone = attribute_energy(data).zones["a"]
+    assert zone["cooling"].distribution_by_fuel["Electricity"] == pytest.approx(4.0)
+    assert "Electricity" not in zone["heating"].distribution_by_fuel

@@ -205,3 +205,24 @@ def test_an_equipment_without_a_temperature_schedule_draws_at_the_water_heater_s
     (heater,) = doc["WaterHeater:Mixed"]
     schedules = supply_schedules(doc)
     assert set(schedules.values()) == {heater.setpoint_temperature_schedule_name}
+
+
+def test_connected_equipment_draws_at_the_water_heater_setpoint_before_its_target() -> None:
+    from idfkit import load_idf  # noqa: PLC0415
+    from idfkit.versioned import as_version  # noqa: PLC0415
+
+    from archetypal.reduction.hotwater import supply_schedules  # noqa: PLC0415
+
+    doc = as_version(load_idf(MODELS / "ten_zone_multipliers.idf"), since="22.1")
+    connected: set[str] = set()
+    for connection in doc["WaterUse:Connections"]:
+        connection.hot_water_supply_temperature_schedule_name = None
+        connected |= {
+            str(entry["water_use_equipment_name"]).casefold() for entry in connection.data.get("connections") or ()
+        }
+    assert connected
+    (heater,) = doc["WaterHeater:Mixed"]
+    schedules = supply_schedules(doc)
+    for equipment in doc.water_use_equipments:
+        if equipment.name.casefold() in connected and equipment.target_temperature_schedule_name:
+            assert schedules[equipment.name.casefold()] == heater.setpoint_temperature_schedule_name

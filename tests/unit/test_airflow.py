@@ -16,6 +16,7 @@ from archetypal.reduction.airflow import (
     NO_CONTROL,
     AirflowHook,
     OutdoorAirControl,
+    doas_loops,
     economiser_category,
     infiltration_totals,
     ledger_fields,
@@ -351,3 +352,8 @@ def test_a_loop_without_return_serves_zones_through_any_terminal(terminal_type: 
     zones = air_loop_zones(_outdoor_air_loop(terminal_type, inlet_field))
     assert zones["DOAS"] == {"z1", "z2"}
     assert zones["Other"] == frozenset()
+
+
+def test_the_loops_a_dedicated_outdoor_air_system_feeds() -> None:
+    data = {"airloophvac_outdoorairsystem_name": "OA", "airloophvacs": [{"airloophvac_name": "Loop A"}, {}]}
+    assert doas_loops(data) == ["loop a"]

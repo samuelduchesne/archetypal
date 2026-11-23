@@ -28,6 +28,7 @@ from archetypal.reduction.schedules import (
     calendar_year,
     expand,
     holiday_days,
+    parse_date,
     project,
     project_holidays,
     representative_days,
@@ -826,3 +827,44 @@ def test_steps_average_to_the_hourly_profile() -> None:
     assert steps.shape == (8760, 4)
     assert not steps.flags.writeable
     np.testing.assert_allclose(steps.mean(axis=1), evaluate("Office"))
+
+
+def test_dates_are_read_in_english_whatever_the_locale() -> None:
+    assert parse_date("2nd Sunday in March", 2013).isoformat() == "2013-03-10"
+    assert parse_date("Last Monday in May", 2013).isoformat() == "2013-05-27"
+
+
+def test_a_constant_profile_projects_to_one_value() -> None:
+    cal = RunPeriodCalendar(year=2013)
+    days = project(np.full(cal.hours, 0.98), cal)
+    assert float(days.min()) == float(days.max()) == 0.98
+
+
+def test_a_schedule_with_a_value_that_is_not_finite_is_refused() -> None:
+    days = np.full((12, 7, 24), 0.5)
+    days[0, 0, 0] = np.nan
+    with pytest.raises(ValueError, match="not finite"):
+        to_year_component(days, name="n", category="Occupancy")
+
+
+def test_a_date_that_is_a_holiday_and_a_custom_day_is_a_custom_day() -> None:
+    day = date(2013, 1, 10)  # a Thursday
+    cal = RunPeriodCalendar(year=2013, holidays=frozenset({day}), custom_day_1=frozenset({day}))
+    days = np.zeros((12, 7, 24))
+    days[:, 0, :] = 0.1  # Monday's day, which a custom day takes
+    year = to_year_component(days, name="n", category="Occupancy", holidays={0: np.full(24, 0.9)})
+    values = [float(v) for v in year_values(year, cal)[9 * 24 : 10 * 24]]
+    assert set(values) == {0.1}
+
+
+def test_a_leap_begin_year_run_on_365_days_has_no_leap_day() -> None:
+    from idfkit import load_idf  # noqa: PLC0415
+    from idfkit.versioned import as_version  # noqa: PLC0415
+
+    doc = as_version(load_idf(FIXTURES / "models" / "ten_zone_multipliers.idf"), since="22.1")
+    for run_period in doc.run_periods:
+        run_period.begin_year = 2024
+    leap = RunPeriodCalendar.from_document(doc)
+    plain = RunPeriodCalendar.from_document(doc, leap_day=False)
+    assert (leap.days, plain.days) == (366, 365)
+    assert plain.start_weekday == leap.start_weekday

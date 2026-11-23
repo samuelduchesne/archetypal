@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pytest
@@ -26,7 +27,7 @@ from archetypal.reduction.envelope import (
     zone_envelope,
 )
 from archetypal.reduction.inventory import LayerRecord, SurfaceRecord, ZoneRecord, surface_class
-from archetypal.reduction.ledger import EnvelopeTotals, GroupLedger
+from archetypal.reduction.ledger import EnvelopeTotals, GroupLedger, WindowTotals
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -549,3 +550,35 @@ def test_adiabatic_floors_and_ceilings_keep_their_layers_under_the_class_films()
     for surface in (interzone, adiabatic_floor, adiabatic_ceiling):
         totals = zone_envelope(_zone("Z", surface)).envelope["floor_ceiling"]
         assert totals.ua / totals.area == pytest.approx(interzone.u_factor, rel=1e-12)
+
+
+def test_glazing_at_a_threshold_keeps_its_type() -> None:
+    total = WindowTotals()
+    for area in (11.85, 6.62, 8.61, 7.42):
+        total = total + WindowTotals(area=area, ua=area * 1.2, a_shgc=area * 0.4, a_vt=area * 0.5)
+    glazing = window_construction(total)
+    assert glazing is not None
+    assert glazing.Type == "Double"
+
+
+def test_a_large_cluster_of_excluded_zones_is_assigned_in_one_sweep() -> None:
+    size = 8
+
+    def surface(other: str) -> Any:
+        return SimpleNamespace(boundary="interzone", adjacent_zone=other, area=10.0)
+
+    zones: list[Any] = []
+    for row in range(size):
+        for column in range(size):
+            near = [(row + 1, column), (row - 1, column), (row, column + 1), (row, column - 1)]
+            surfaces = [surface(f"g{r}_{c}") for r, c in near if 0 <= r < size and 0 <= c < size]
+            if (row, column) == (0, 0):
+                surfaces.append(surface("office"))
+            record = SimpleNamespace(name=f"g{row}_{column}", surfaces=surfaces, floor_area=25.0, multiplier=1)
+            zones.append(SimpleNamespace(role="excluded", zone=record))
+    office = SimpleNamespace(name="office", surfaces=[surface("g0_0")], floor_area=100.0, multiplier=1)
+    zones.append(SimpleNamespace(role="conditioned", zone=office))
+    hook = EnvelopeHook(cast("Any", zones), assigned_roles=("excluded",))
+    assert hook.unassigned == ()
+    assert all(shares == {"office": pytest.approx(1.0)} for shares in hook.shares.values())
+    assert len(hook.shares) == size * size

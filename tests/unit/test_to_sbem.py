@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
@@ -683,3 +684,37 @@ def test_fixture_reductions_validate_with_a_parameter_per_set_leaf(model: str, d
     listed = {(p.group, p.path) for p in conversion.parameters}
     assert set(set_leaf_paths(archetype)) <= listed
     assert all(p.rule in RULE_IDS for p in conversion.parameters)
+
+
+def _zone(min_z: float, area: float, multiplier: int = 1) -> Any:
+    return SimpleNamespace(
+        role="conditioned", zone=SimpleNamespace(min_z=min_z, floor_area=area, multiplier=multiplier)
+    )
+
+
+def test_a_small_lowest_level_does_not_multiply_the_storeys() -> None:
+    zones = [_zone(0.0, 100.0), *(_zone(3.0 * level, 1000.0) for level in range(1, 11))]
+    assert storey_ratio(cast("Any", zones)) == pytest.approx(10.1)
+    # A typical floor drawn once with a multiplier still counts its copies.
+    stacked = [_zone(0.0, 1000.0), _zone(3.0, 1000.0, 10), _zone(33.0, 1000.0)]
+    assert storey_ratio(cast("Any", stacked)) == pytest.approx(12.0)
+
+
+def test_delivery_without_consumption_or_rating_is_reported() -> None:
+    ledger = GroupLedger(floor_area=100.0, members=("z",), energy={"heating": EnergyTotals(delivered=1e9)})
+    derived = thermal_system(ledger, ledger, "heating", name="g")
+    assert derived.value is None
+    (entry,) = derived.not_represented
+    assert entry.magnitude == 1e9
+    assert entry.unit == "J"
+
+
+def test_hot_water_without_an_efficiency_is_reported() -> None:
+    ledger = GroupLedger(
+        floor_area=100.0,
+        members=("z",),
+        hot_water=HotWaterTotals(volume=np.full(8760, 0.001), heat=np.full(8760, 0.04)),
+    )
+    derived = dhw(ledger, ledger, 10.0, name="g")
+    assert derived.value.IsOn
+    assert [e.feature for e in derived.not_represented] == ["Hot-water efficiency unknown"]

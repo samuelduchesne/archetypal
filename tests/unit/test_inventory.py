@@ -31,6 +31,7 @@ from archetypal.reduction.inventory import (
     _airflow,  # pyright: ignore[reportPrivateUsage]
     _design_outdoor_air,  # pyright: ignore[reportPrivateUsage]
     _hot_water,  # pyright: ignore[reportPrivateUsage]
+    _mean_set,  # pyright: ignore[reportPrivateUsage]
     _OutdoorAirSpec,  # pyright: ignore[reportPrivateUsage]
     _tabular,  # pyright: ignore[reportPrivateUsage]
     build_inventory,
@@ -454,3 +455,11 @@ def test_design_outdoor_air_adds_each_spaces_flow_per_zone() -> None:
     per_area, per_person = _design_outdoor_air(((0.5, spec), (0.5, spec)), 100.0, 300.0, 10.0)
     assert per_area * 100.0 == pytest.approx(0.10)
     assert per_person == 0.0
+
+
+def test_an_hour_mixing_a_setpoint_with_an_off_sentinel_is_clamped_per_timestep() -> None:
+    steps = np.array([[-100.0, -100.0, -100.0, 21.0, 21.0, 21.0], [-100.0] * 6, [21.0] * 6])
+    hourly = _mean_set(steps, (5.0, 35.0))
+    assert hourly[0] == pytest.approx((3 * 5.0 + 3 * 21.0) / 6)
+    assert hourly[1] == -100.0  # wholly off: left out of band, so the mode is not enabled by it
+    assert hourly[2] == 21.0

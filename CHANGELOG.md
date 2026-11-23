@@ -111,6 +111,13 @@ before upgrading.
     where UMI cannot hold it.
   - A merged group gives its infiltration in air changes per hour, which epinterface uses,
     instead of keeping the largest member's calculation method.
+  - The attic floor takes the slab's layers in reverse order, the way up epinterface places
+    it.
+  - Windows reduced to simple glazing apply each pane's dirt factor; window costs, carbon and
+    assembly life-cycle values UMI or SBEM cannot hold are reported as lost; a four-pane window
+    is no longer typed as triple glazing; a template takes another group's window when the
+    perimeter group has none, instead of a default clear glazing.
+  - Each dropped ideal-loads limit is reported with the limit type actually written.
 - Reduction:
   - Backup heaters are left out of the rated heating efficiency.
   - Outdoor air honours the `Maximum` method of `DesignSpecification:OutdoorAir`.
@@ -129,6 +136,19 @@ before upgrading.
   - The number of storeys is rounded; a group of zero floor area raises a clear error.
   - Fan energy of excluded zones is reported; fan energy is split across several air loops,
     and zones served from a loop's supply side are counted.
+  - Equivalent envelope assemblies subtract the films EnergyPlus used for the Envelope
+    Summary's U (ASHRAE 90.1 nominal films) instead of ISO 6946's, so they keep the source
+    layers' resistance; uninsulated walls, roofs and partitions no longer raise an error.
+  - The hot-water temperature rise uses the hot and cold water schedules of the
+    `WaterUse:Connections` an equipment belongs to, and a cold water schedule instead of the
+    mains temperature.
+  - An air loop's coil energy is split between its zones by the air that loop supplies, not by
+    every loop's air entering the zone.
+  - Pump energy is shared between heating, cooling and hot water, so service hot-water pumps
+    are no longer charged to space conditioning; a negative hot-water delivery no longer
+    inflates other zones' share of the consumption.
+  - A zone served by several air loops takes the heat recovery and economiser of the loop that
+    treats its outdoor air most, whatever the loops' names.
 
 ## [2.18.11] - 2026-10-25
 

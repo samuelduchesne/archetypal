@@ -437,7 +437,7 @@ def _outdoor_air_controllers(doc: IDFDocumentSince22_1) -> dict[str, tuple[str, 
             (item.controller_8_object_type, item.controller_8_name),
         )
         lists[item.name.casefold()] = tuple(
-            _cf(name) for kind, name in pairs if _cf(kind) == "controller:outdoorair" and name
+            _cf(name) for kind, name in pairs if kind == "Controller:OutdoorAir" and name
         )
     return lists
 
@@ -477,9 +477,6 @@ def _loop_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirControl]:
     return controls
 
 
-_IDEAL_RECOVERY: dict[str, HRVCategory] = {"none": "NoHRV", "sensible": "Sensible", "enthalpy": "Enthalpy"}
-
-
 def _treatment(control: OutdoorAirControl) -> tuple[bool, bool, float]:
     """Rank an outdoor-air control by how much it treats the outdoor air."""
     return (control.hrv != "NoHRV", control.economiser != "NoEconomizer", control.effectiveness or 0.0)
@@ -488,8 +485,8 @@ def _treatment(control: OutdoorAirControl) -> tuple[bool, bool, float]:
 def _ideal_loads_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirControl]:
     controls: dict[str, OutdoorAirControl] = {}
     for system in doc["ZoneHVAC:IdealLoadsAirSystem"]:
-        # EnergyPlus accepts choice keys in any case; map them to SBEM's categories.
-        hrv: HRVCategory = _IDEAL_RECOVERY.get((system.heat_recovery_type or "None").casefold(), "NoHRV")
+        recovery = system.heat_recovery_type or "None"
+        hrv: HRVCategory = "NoHRV" if recovery == "None" else recovery
         effectiveness = 0.0
         if hrv != "NoHRV":
             sensible = system.sensible_heat_recovery_effectiveness

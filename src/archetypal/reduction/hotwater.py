@@ -7,7 +7,9 @@ into the ledger's `HotWaterTotals`:
 
 - `volume`: Σ hot-water volume per hour, m³ (from `Water Use Equipment Hot Water Volume`);
 - `heat`: Σ volume · temperature rise per hour, m³·K, where the rise is the equipment's hot
-  water temperature minus the mains temperature (`Site Mains Water Temperature`) that hour.
+  water temperature minus its cold water temperature that hour: the cold water supply
+  temperature schedule when one applies, else the mains temperature (`Site Mains Water
+  Temperature`).
 
 The group's supply temperature is then the annual-mean mains plus the volume-weighted mean rise
 (`supply_temperature`), so volume and heating energy are both conserved (FR-021).
@@ -16,10 +18,13 @@ Which temperature
 -----------------
 EnergyPlus reports the volume of *hot* water an equipment draws, the part it mixes with cold
 water to reach its target temperature. The energy to heat it follows the hot water's
-temperature, so the rise uses the equipment's `Hot Water Supply Temperature Schedule` when it
-has one, and its `Target Temperature Schedule` otherwise (EnergyPlus then draws only hot water
+temperature, so the rise uses the hot water supply temperature schedule of the equipment's
+`WaterUse:Connections` when it has one, else the equipment's `Hot Water Supply Temperature
+Schedule`, and its `Target Temperature Schedule` otherwise (EnergyPlus then draws only hot water
 at the target temperature). This refines R11, which names the target temperature: with a
-separate hot supply the target would understate the heat. A rise is kept as it is, even where
+separate hot supply the target would understate the heat. A connection fed by a plant loop
+without a hot water supply schedule delivers at the plant's temperature, which is not read
+here; the equipment's schedule is then an approximation. A rise is kept as it is, even where
 negative.
 
 Building-wide data
@@ -59,6 +64,7 @@ __all__ = [
     "HotWaterFields",
     "HotWaterHook",
     "allocations",
+    "cold_schedules",
     "hot_water_totals",
     "ledger_fields",
     "mains_temperature",
@@ -79,22 +85,68 @@ class HotWaterFields(TypedDict):
     hot_water: HotWaterTotals
 
 
+def _connections(doc: IDFDocumentSince22_1) -> dict[str, object]:
+    """The `WaterUse:Connections` listing each equipment, by case-folded equipment name."""
+    found: dict[str, object] = {}
+    for connection in doc.water_use_connections:
+        for entry in connection.data.get("connections") or ():
+            name = entry.get("water_use_equipment_name")
+            if name:
+                found[str(name).casefold()] = connection
+    return found
+
+
 def supply_schedules(doc: IDFDocumentSince22_1) -> dict[str, str | None]:
     """Return each `WaterUse:Equipment`'s hot-water temperature schedule, by case-folded name.
+
+    EnergyPlus ignores the equipment's own hot water supply schedule when the equipment is
+    listed in a `WaterUse:Connections`: the hot water then arrives at the connection's hot
+    water supply temperature. That schedule is used when the connection has one.
 
     Args:
         doc: The model.
 
     Returns:
-        The hot water supply temperature schedule, else the target temperature schedule, else
-        `None`.
+        The connection's hot water supply temperature schedule, else the equipment's hot water
+        supply temperature schedule, else its target temperature schedule, else `None`.
     """
-    return {
-        item.name.casefold(): item.hot_water_supply_temperature_schedule_name
-        or item.target_temperature_schedule_name
-        or None
-        for item in doc.water_use_equipments
-    }
+    connections = _connections(doc)
+    schedules: dict[str, str | None] = {}
+    for item in doc.water_use_equipments:
+        connection = connections.get(item.name.casefold())
+        connection_schedule = getattr(connection, "hot_water_supply_temperature_schedule_name", None)
+        schedules[item.name.casefold()] = (
+            connection_schedule
+            or item.hot_water_supply_temperature_schedule_name
+            or item.target_temperature_schedule_name
+            or None
+        )
+    return schedules
+
+
+def cold_schedules(doc: IDFDocumentSince22_1) -> dict[str, str | None]:
+    """Return each `WaterUse:Equipment`'s cold-water temperature schedule, by case-folded name.
+
+    A cold water supply temperature schedule replaces the mains temperature in EnergyPlus: the
+    connection's when the equipment is listed in a `WaterUse:Connections`, else the equipment's
+    own.
+
+    Args:
+        doc: The model.
+
+    Returns:
+        The schedule, or `None` when the mains temperature applies.
+    """
+    connections = _connections(doc)
+    schedules: dict[str, str | None] = {}
+    for item in doc.water_use_equipments:
+        connection = connections.get(item.name.casefold())
+        if connection is not None:
+            schedule = getattr(connection, "cold_water_supply_temperature_schedule_name", None)
+        else:
+            schedule = item.cold_water_supply_temperature_schedule_name
+        schedules[item.name.casefold()] = schedule or None
+    return schedules
 
 
 def mains_temperature(sources: SourceData) -> Profile:
@@ -117,6 +169,7 @@ def hot_water_totals(
     evaluate: Callable[[str], Profile],
     mains: Profile,
     schedules_by_equipment: Mapping[str, str | None],
+    cold_by_equipment: Mapping[str, str | None] | None = None,
 ) -> HotWaterTotals:
     """Return the hot-water totals of one copy of `zone`.
 
@@ -126,6 +179,8 @@ def hot_water_totals(
         mains: The mains temperature each hour, °C.
         schedules_by_equipment: Hot-water temperature schedule by case-folded equipment name
             (`supply_schedules`); an equipment missing here uses its target temperature schedule.
+        cold_by_equipment: Cold-water temperature schedule by case-folded equipment name
+            (`cold_schedules`); without one the mains temperature is the cold temperature.
 
     Returns:
         The volume and heat (volume · rise) per hour; empty profiles without hot water.
@@ -142,7 +197,9 @@ def hot_water_totals(
                 continue
             msg = f"WaterUse:Equipment {record.equipment!r} has no hot water or target temperature schedule"
             raise ValueError(msg)
-        rise = np.asarray(evaluate(schedule), dtype=np.float64) - mains
+        cold_schedule = (cold_by_equipment or {}).get(record.equipment.casefold())
+        cold = mains if cold_schedule is None else np.asarray(evaluate(cold_schedule), dtype=np.float64)
+        rise = np.asarray(evaluate(schedule), dtype=np.float64) - cold
         totals = totals + HotWaterTotals(volume=volume, heat=volume * rise)
     return totals
 
@@ -174,6 +231,7 @@ class HotWaterHook:
 
     mains: Profile
     supply_schedules: Mapping[str, str | None] = field(default_factory=dict[str, "str | None"])
+    cold_schedules: Mapping[str, str | None] = field(default_factory=dict[str, "str | None"])
 
     @classmethod
     def from_sources(cls, sources: SourceData) -> HotWaterHook:
@@ -188,11 +246,13 @@ class HotWaterHook:
         """
         schedules = supply_schedules(sources.model)
         mains = mains_temperature(sources) if schedules else np.zeros(0, dtype=np.float64)
-        return cls(mains=mains, supply_schedules=schedules)
+        return cls(mains=mains, supply_schedules=schedules, cold_schedules=cold_schedules(sources.model))
 
     def __call__(self, zone: ClassifiedZone, schedules: ScheduleEvaluator, /) -> HotWaterFields:
         """Return `{"hot_water": HotWaterTotals}` for one copy of `zone`."""
-        return HotWaterFields(hot_water=hot_water_totals(zone, schedules, self.mains, self.supply_schedules))
+        return HotWaterFields(
+            hot_water=hot_water_totals(zone, schedules, self.mains, self.supply_schedules, self.cold_schedules)
+        )
 
 
 def ledger_fields(zone: ClassifiedZone, schedules: ScheduleEvaluator) -> HotWaterFields:

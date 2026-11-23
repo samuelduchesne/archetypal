@@ -120,6 +120,19 @@ FILLED_SLOTS: Mapping[str, str] = MappingProxyType({
 })
 """SBEM slots UMI lacks, and the UMI slot each is filled from on reading (research R11)."""
 
+REVERSED_FILLED_SLOTS: frozenset[str] = frozenset({"AtticFloorAssembly"})
+"""Filled slots that take their UMI slot's layers in reverse order. epinterface places
+`FloorCeilingAssembly` with its first layer on the upper side but `AtticFloorAssembly` with its
+first layer on the lower (occupied) side, so the slab's layers are reversed for the attic floor."""
+
+
+def _filled_from(source: ConstructionAssemblyComponent, sbem_slot: str) -> ConstructionAssemblyComponent:
+    """The assembly a filled slot takes from its source slot: the same layers, or reversed."""
+    if sbem_slot not in REVERSED_FILLED_SLOTS:
+        return source
+    return source.reversed.model_copy(update={"Name": source.Name})
+
+
 SLOT_SURFACE_TYPES: Mapping[str, ConstructionComponentSurfaceType] = MappingProxyType({
     "FacadeAssembly": "Facade",
     "FlatRoofAssembly": "FlatRoof",
@@ -813,7 +826,7 @@ def assemblies_to_sbem(
         )
     for sbem_slot, umi_slot in FILLED_SLOTS.items():
         source = slots[SET_SLOTS[umi_slot]]
-        slots[sbem_slot] = source.model_copy(update={"Type": SLOT_SURFACE_TYPES[sbem_slot]})
+        slots[sbem_slot] = _filled_from(source, sbem_slot).model_copy(update={"Type": SLOT_SURFACE_TYPES[sbem_slot]})
         findings.assume(
             subject,
             _pointer(location, umi_slot),
@@ -860,7 +873,7 @@ def assemblies_to_umi(
     for sbem_slot, umi_slot in FILLED_SLOTS.items():
         filled = cast("ConstructionAssemblyComponent", getattr(envelope, sbem_slot))
         source = cast("ConstructionAssemblyComponent", getattr(envelope, SET_SLOTS[umi_slot]))
-        if not _same_assembly(filled, source):
+        if not _same_assembly(filled, _filled_from(source, sbem_slot)):
             findings.lose(
                 LossKind.LOST,
                 subject,

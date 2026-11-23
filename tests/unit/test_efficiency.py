@@ -251,7 +251,9 @@ def test_fixture_meters_are_conserved_over_conditioned_zones(
         assert energy.consumed_by_fuel[fuel] + hook.unattributed[mode].get(fuel, 0.0) == pytest.approx(
             _meter(sources, meter), rel=1e-9
         )
-    distribution = sum(total.energy[m].distribution_by_fuel.get("Electricity", 0.0) for m in ("heating", "cooling"))
+    distribution = sum(
+        total.energy[m].distribution_by_fuel.get("Electricity", 0.0) for m in ("heating", "cooling", "hot_water")
+    )
     assert distribution + hook.unattributed_distribution.get("Electricity", 0.0) == pytest.approx(
         _meter(sources, "Pumps:Electricity"), rel=1e-9
     )

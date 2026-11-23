@@ -48,9 +48,10 @@ SBEM assemblies
 an inner mass layer. With the films of `FILMS`, its U is exactly `ua / area`; split by the same
 rule as the sources (the insulation is the most resistive layer), its capacities per area are
 exactly `capacity_inner / area` and `capacity_outer / area`. epinterface's assemblies carry
-layers only and epinterface defines no surface films; `FILMS` are therefore this module's,
-the ISO 6946 surface resistances by direction of heat flow (no outside film against the
-ground, an inside film on both faces of interior classes). A side without any capacity gets
+layers only and epinterface defines no surface films; `FILMS` are therefore this module's:
+the nominal films EnergyPlus used to compute the Envelope Summary's U that `ua` comes from (no
+outside film against the ground, an inside film on both faces of interior classes), so the
+equivalent layers have the source layers' resistance. A side without any capacity gets
 `MIN_CAPACITY` (a layer must have mass in EnergyPlus); that is the one case where the
 capacities are not reproduced exactly.
 
@@ -108,16 +109,20 @@ __all__ = [
 ]
 
 FILMS: Mapping[EnvelopeClass, tuple[float, float]] = {
-    "exterior_wall": (0.13, 0.04),
-    "roof": (0.10, 0.04),
-    "exposed_floor": (0.17, 0.04),
-    "ground_floor": (0.17, 0.0),
-    "ground_wall": (0.13, 0.0),
-    "partition": (0.13, 0.13),
-    "floor_ceiling": (0.10, 0.17),
+    "exterior_wall": (0.1197548, 0.0299387),
+    "roof": (0.1074271, 0.0299387),
+    "exposed_floor": (0.1620212, 0.0299387),
+    "ground_floor": (0.1620212, 0.0),
+    "ground_wall": (0.1197548, 0.0),
+    "partition": (0.1197548, 0.1197548),
+    "floor_ceiling": (0.1074271, 0.1620212),
 }
-"""Inside and outside surface resistances per class, m²K/W (ISO 6946: horizontal heat flow 0.13,
-upward 0.10, downward 0.17, outside 0.04, none against the ground)."""
+"""Inside and outside surface resistances per class, m²K/W: the films EnergyPlus's Envelope
+Summary uses for 'U-Factor with Film' (ASHRAE 90.1 nominal films, as in EnergyPlus's
+`ComputeNominalUwithConvCoeffs`: inside 0.1197548 for walls, 0.1074271 for roofs and ceilings,
+0.1620212 for floors; outside 0.0299387 outdoors, none against the ground; an inside film on
+both faces of interior classes). The source U is read from that report, so subtracting the same
+films recovers the source layers' resistance."""
 
 ASSEMBLY_TYPES: Mapping[EnvelopeClass, ConstructionComponentSurfaceType] = {
     "exterior_wall": "Facade",

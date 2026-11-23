@@ -437,7 +437,7 @@ def _outdoor_air_controllers(doc: IDFDocumentSince22_1) -> dict[str, tuple[str, 
             (item.controller_8_object_type, item.controller_8_name),
         )
         lists[item.name.casefold()] = tuple(
-            _cf(name) for kind, name in pairs if kind == "Controller:OutdoorAir" and name
+            _cf(name) for kind, name in pairs if _cf(kind) == "controller:outdoorair" and name
         )
     return lists
 
@@ -477,11 +477,19 @@ def _loop_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirControl]:
     return controls
 
 
+_IDEAL_RECOVERY: dict[str, HRVCategory] = {"none": "NoHRV", "sensible": "Sensible", "enthalpy": "Enthalpy"}
+
+
+def _treatment(control: OutdoorAirControl) -> tuple[bool, bool, float]:
+    """Rank an outdoor-air control by how much it treats the outdoor air."""
+    return (control.hrv != "NoHRV", control.economiser != "NoEconomizer", control.effectiveness or 0.0)
+
+
 def _ideal_loads_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirControl]:
     controls: dict[str, OutdoorAirControl] = {}
     for system in doc["ZoneHVAC:IdealLoadsAirSystem"]:
-        recovery = system.heat_recovery_type or "None"
-        hrv: HRVCategory = "NoHRV" if recovery == "None" else recovery
+        # EnergyPlus accepts choice keys in any case; map them to SBEM's categories.
+        hrv: HRVCategory = _IDEAL_RECOVERY.get((system.heat_recovery_type or "None").casefold(), "NoHRV")
         effectiveness = 0.0
         if hrv != "NoHRV":
             sensible = system.sensible_heat_recovery_effectiveness
@@ -504,9 +512,16 @@ def outdoor_air_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirContr
     node_lists = {nl.name.casefold(): tuple(_cf(g.node_name) for g in nl.nodes) for nl in doc["NodeList"]}
     controls: dict[str, OutdoorAirControl] = {}
     loop_controls = _loop_controls(doc)
+    # A zone served by several loops takes the control with the most outdoor-air treatment
+    # (heat recovery first, then an economiser, then the higher effectiveness), so the
+    # result depends on the physical content of the loops, not on their names; the loop
+    # name only breaks ties between equivalent controls.
     for loop, zones in sorted(air_loop_zones(doc).items()):
-        for zone in sorted(zones):
-            controls.setdefault(zone, loop_controls[loop])
+        candidate = loop_controls[loop]
+        for zone in zones:
+            current = controls.get(zone)
+            if current is None or _treatment(candidate) > _treatment(current):
+                controls[zone] = candidate
     ideal = _ideal_loads_controls(doc)
     for conn in _zone_connections(doc, node_lists):
         for kind, name in conn.equipment:

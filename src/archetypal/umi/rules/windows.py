@@ -11,8 +11,10 @@ visible transmittance) or, since UP-9, layers of glazing and gas.
     `Construction`, and `idfkit.thermal` gives U, SHGC and VT. Each layer is lost, and the
     three values are approximate: idfkit's simplified method is not EnergyPlus's window model.
   - `equivalent_layer` (writing), for a simple-glazing window: it becomes the one glazing layer
-    EnergyPlus's simple window model builds from it (`archetypal.umi._bridges` until UP-10), so
-    EnergyPlus simulates the same window.
+    EnergyPlus's simple window model builds from it (`archetypal.umi._bridges` until UP-10). The
+    layer reproduces the window at normal incidence; EnergyPlus applies its simple-glazing
+    angular curves only to `WindowMaterial:SimpleGlazingSystem`, so off-normal solar gains
+    differ.
 - `window.placement`: UMI has one window per building template, SBEM one per zone group.
   Reading gives every group the template's window; writing uses the perimeter group's window
   and lists a different window of another group as lost.
@@ -64,6 +66,7 @@ from archetypal.umi.rules._common import (
 )
 from archetypal.umi.rules.building import window_settings_name
 from archetypal.umi.rules.materials import (
+    ASSEMBLY_LIFE_CYCLE,
     assembly_life_cycle_to_sbem,
     assembly_life_cycle_to_umi,
     life_cycle_to_sbem,
@@ -107,6 +110,7 @@ above it is written as a layer at about this U (`verification/umi/simple_glazing
 
 WindowType = Literal["Single", "Double", "Triple"]
 _TYPES: dict[int, WindowType] = {1: "Single", 2: "Double"}
+_TRIPLE_PANES = 3
 GasType = Literal["Air", "Argon", "Krypton", "Xenon"]
 _GASES: dict[str, GasType] = {"AIR": "Air", "ARGON": "Argon", "KRYPTON": "Krypton", "XENON": "Xenon"}
 _MAX_LAYERS = 10  # of an EnergyPlus Construction
@@ -144,21 +148,24 @@ def _idfkit_construction(construction: WindowConstruction) -> Construction:
         material = layer.material
         name = f"Layer {index + 1}"
         if isinstance(material, GlazingMaterial):
+            # idfkit.thermal ignores the dirt correction factor; EnergyPlus multiplies the solar
+            # and visible transmittances by it, so it is applied here and set to 1.
+            dirt = material.dirt_factor
             doc.window_material_glazings.add(
                 name,
                 optical_data_type="SpectralAverage",
                 thickness=layer.thickness,
-                solar_transmittance_at_normal_incidence=material.solar_transmittance,
+                solar_transmittance_at_normal_incidence=material.solar_transmittance * dirt,
                 front_side_solar_reflectance_at_normal_incidence=material.solar_reflectance_front,
                 back_side_solar_reflectance_at_normal_incidence=material.solar_reflectance_back,
-                visible_transmittance_at_normal_incidence=material.visible_transmittance,
+                visible_transmittance_at_normal_incidence=material.visible_transmittance * dirt,
                 front_side_visible_reflectance_at_normal_incidence=material.visible_reflectance_front,
                 back_side_visible_reflectance_at_normal_incidence=material.visible_reflectance_back,
                 infrared_transmittance_at_normal_incidence=material.ir_transmittance,
                 front_side_infrared_hemispherical_emissivity=material.ir_emissivity_front,
                 back_side_infrared_hemispherical_emissivity=material.ir_emissivity_back,
                 conductivity=material.conductivity,
-                dirt_correction_factor_for_solar_and_visible_transmittance=material.dirt_factor,
+                dirt_correction_factor_for_solar_and_visible_transmittance=1.0,
             )
         elif isinstance(material, GasMaterial):
             doc.window_material_gases.add(name, gas_type=_gas_type(material), thickness=layer.thickness)
@@ -250,10 +257,39 @@ def simple_from_layers(
             value=[layer.material.name if layer.material else None for layer in construction.layers],
             replacement={"UValue": u_value, "SHGF": shgc, "TVis": visible},
             rule=_LAYERS,
-            reason=f"U, SHGC and VT are {_SIMPLIFIED}.",
+            reason=f"U, SHGC and VT are {_SIMPLIFIED}; each pane's dirt factor is applied to its transmittances.",
         )
     )
+    # Simple glazing has no assembly life-cycle fields: they are lost, not dropped silently.
+    losses += [
+        Loss(
+            kind=LossKind.LOST,
+            subject=subject,
+            location=f"{location}/{key}",
+            value=value,
+            rule="construction.environmental",
+            reason="SBEM's simple-glazing window has no assembly life-cycle fields.",
+        )
+        for key, name in ASSEMBLY_LIFE_CYCLE.items()
+        if (value := getattr(construction, name))
+    ]
     return window, losses
+
+
+def _window_life_cycle_losses(window: SbemWindow, *, subject: str, location: str) -> list[Loss]:
+    """The SBEM window's own life-cycle fields, which a UMI window construction cannot hold."""
+    return [
+        Loss(
+            kind=LossKind.LOST,
+            subject=subject,
+            location=f"{location}.{key}",
+            value=value,
+            rule="construction.environmental",
+            reason="A UMI window construction has no cost, rate unit, life or embodied carbon of its own.",
+        )
+        for key in ("Cost", "RateUnit", "Life", "EmbodiedCarbon")
+        if (value := getattr(window, key, None)) is not None
+    ]
 
 
 def equivalent_layer(
@@ -316,7 +352,7 @@ def equivalent_layer(
         rule=_LAYERS,
         reason=reason,
     )
-    return construction, [loss]
+    return construction, [loss, *_window_life_cycle_losses(window, subject=subject, location=location)]
 
 
 # --- Layered windows (window.layers, UP-9) ---------------------------------------------------------
@@ -450,7 +486,8 @@ def _layered(
         "Comment": construction.comments,
         "DataSource": construction.data_source,
         "Layers": layers,
-        "Type": _TYPES.get(panes, "Triple"),
+        # Above three panes there is no SBEM type: `None` names the window by its number of panes.
+        "Type": _TYPES.get(panes, "Triple" if panes == _TRIPLE_PANES else None),
         **assembly_life_cycle_to_sbem(construction),
     })
 
@@ -640,7 +677,7 @@ def layers_to_umi(window: SbemWindow, *, subject: str, location: str) -> tuple[W
         "Layers": layers,
         **assembly_life_cycle_to_umi(window),
     })
-    return construction, findings.losses
+    return construction, [*findings.losses, *_window_life_cycle_losses(window, subject=subject, location=location)]
 
 
 @rule("window.placement", to="sbem")
@@ -678,6 +715,10 @@ def template_window(
     if not windows:
         return None, []
     chosen_group = _chosen_group(windows, chosen)
+    if windows[chosen_group] is None:
+        # The chosen group has no window: use the first group's that has one rather than
+        # writing a default window the archetype never had.
+        chosen_group = next((group for group, other in windows.items() if other is not None), chosen_group)
     window = windows[chosen_group]
     losses = [
         Loss(

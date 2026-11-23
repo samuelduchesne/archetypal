@@ -261,11 +261,15 @@ class _Ledgers:
         for i, name in enumerate(self.names):
             if name in by_zone:
                 matrix[i] = by_zone[name]
-        total = (self.mult[:, None] * matrix).sum(axis=0)
         self.delivered[mode] = matrix
+        # Shares follow non-negative delivery only: a negative delivery (a hot-water rise below
+        # zero) would make the building total a near-cancelling difference and the shares
+        # explode with opposite signs. The signed delivery is kept for the ledger.
+        positive = np.maximum(matrix, 0.0)
+        total = (self.mult[:, None] * positive).sum(axis=0)
         self.building[mode] = total
-        self.hourly_share[mode] = _divide(matrix, total)
-        annual = matrix.sum(axis=1)
+        self.hourly_share[mode] = _divide(positive, total)
+        annual = positive.sum(axis=1)
         weight = annual if float((self.mult * annual).sum()) > 0.0 else self.area
         self.annual_share[mode] = _divide(weight, np.array(float((self.mult * weight).sum())))
 
@@ -290,21 +294,25 @@ class _Ledgers:
         return idle
 
     def distribution_meter(self, fuel: Fuel, energy: _Array) -> float:
-        """Split a pump or heat-rejection meter by the hour's delivered modes; return the idle part."""
-        heat, cool = self.building["heating"], self.building["cooling"]
-        both = heat + cool
-        heat_fraction = _divide(heat, both)
-        cool_fraction = _divide(cool, both)
-        parts: tuple[tuple[Mode, _Array], ...] = (("heating", heat_fraction), ("cooling", cool_fraction))
-        for mode, fraction in parts:
-            per_zone = self.hourly_share[mode] * (energy * fraction)
+        """Split a pump or heat-rejection meter by the hour's delivered modes; return the idle part.
+
+        Hot water is one of the modes when it is delivered, so the pumps of a service-hot-water
+        loop are not charged to space conditioning.
+        """
+        candidates: tuple[Mode, ...] = ("heating", "cooling", "hot_water")
+        modes: list[Mode] = [mode for mode in candidates if mode in self.building]
+        delivered = {mode: self.building[mode] for mode in modes}
+        every = sum(delivered.values(), np.zeros(self.hours))
+        for mode in modes:
+            per_zone = self.hourly_share[mode] * (energy * _divide(delivered[mode], every))
             for i in range(len(self.names)):
                 self._add(self.distribution[mode][i], fuel, float(per_zone[i].sum()))
-        idle = float(energy[both <= 0.0].sum())
-        annual_heat, annual_cool = float(heat.sum()), float(cool.sum())
-        heating_part = annual_heat / (annual_heat + annual_cool) if annual_heat + annual_cool > 0.0 else 1.0
-        self.spread("heating", fuel, idle * heating_part)
-        self.spread("cooling", fuel, idle * (1.0 - heating_part))
+        idle = float(energy[every <= 0.0].sum())
+        annual = {mode: float(delivered[mode].sum()) for mode in modes}
+        annual_total = sum(annual.values())
+        for mode in modes:
+            part = annual[mode] / annual_total if annual_total > 0.0 else (1.0 if mode == "heating" else 0.0)
+            self.spread(mode, fuel, idle * part)
         return idle
 
     def totals(self, i: int, mode: Mode, rated: float | None, temperature: _Array) -> EnergyTotals:

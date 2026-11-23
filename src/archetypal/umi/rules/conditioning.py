@@ -806,6 +806,10 @@ def limits_to_umi(systems: ConditioningSystemsComponent, *, context: RuleContext
     for type_field, _, type_target, flow, capacity in _LIMITS:
         limit = IdealSystemLimit[getattr(systems, type_target)]
         uses = {flow: limit in _USES_FLOW, capacity: limit in _USES_CAPACITY}
+        # The limit type UMI receives, once every autosized limit is dropped: each loss below
+        # names this final type, not an intermediate one.
+        final = {key: used and getattr(systems, key[1]) is not None for key, used in uses.items()}
+        written = _limit_type(*final.values())
         for (field, target), used in list(uses.items()):
             value: float | None = getattr(systems, target)
             if value is not None:
@@ -822,15 +826,13 @@ def limits_to_umi(systems: ConditioningSystemsComponent, *, context: RuleContext
                     reason=f"UMI has no unset limit; {target}, which {type_target} does not use, takes Basilisk's default",
                 )
             if used:
-                uses[field, target] = False
                 context.lose(
                     target,
                     None,
-                    replacement=_limit_type(*uses.values()).name,
+                    replacement=written.name,
                     rule="conditioning.limits",
                     reason=f"UMI has no autosized limit; {target} is dropped from {type_target}",
                 )
-        written = _limit_type(*uses.values())
         if written is not limit:
             context.lose(
                 type_target,

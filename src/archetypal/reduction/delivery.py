@@ -238,6 +238,13 @@ def delivered_energy(
     inlet_flow = {
         name: sum((get(_NODE_VARIABLE, node) for node in nodes), zeros) for name, nodes in topology.inlet_nodes.items()
     }
+    # Each loop's coils are split by the flow that loop itself supplies (as the fans module
+    # does); the whole-zone inlet flow, which includes other loops, is the fallback for
+    # loops whose units cannot be traced.
+    loop_inlet_flow = {
+        loop: {name: sum((get(_NODE_VARIABLE, node) for node in nodes), zeros) for name, nodes in by_zone.items()}
+        for loop, by_zone in topology.loop_inlet_nodes.items()
+    }
     weights = {name: multipliers[name] * (floor_area or {}).get(name, 1.0) for name in multipliers}
     unassigned: list[str] = []
     for loop in doc["AirLoopHVAC"]:
@@ -246,7 +253,8 @@ def delivered_energy(
         if found and not served:
             unassigned.append(loop.name)
         elif found:
-            _split(totals, found, loop_shares(inlet_flow, weights, served, hours), served, get)
+            flows = loop_inlet_flow.get(loop.name.casefold()) or inlet_flow
+            _split(totals, found, loop_shares(flows, weights, served, hours), served, get)
     for mode_totals in totals.values():
         for name in mode_totals:
             mode_totals[name] /= multipliers[name]

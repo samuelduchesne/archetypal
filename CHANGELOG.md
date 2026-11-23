@@ -83,6 +83,29 @@ before upgrading.
 
 ### Fixed
 
+- `reduce` reads the hot-water temperature of equipment on a `WaterUse:Connections` from the
+  water heaters' setpoint before the equipment's own target schedule: the hot-water heat was
+  understated by a third for a 43 °C target drawn from a 60 °C plant.
+- `reduce` attributes the heat exchanger and the coils of an
+  `AirLoopHVAC:DedicatedOutdoorAirSystem` to the zones of the loops it feeds, and the heat
+  recovery of a `ZoneHVAC:EnergyRecoveryVentilator` or `ZoneHVAC:OutdoorAirUnit` to its zone.
+- `reduce` charges heat-rejection energy to cooling only; shares a `Heating` meter with hot water
+  only for the fuels of the boilers and district heating; and combines rated efficiencies as
+  output over input (two chillers of COP 2 and 6 are 3, not 4).
+- `reduce` no longer hangs on a building with a large cluster of adjacent excluded zones.
+- `reduce` counts storeys from the largest level, so a small lobby or partial basement under the
+  typical floors no longer multiplies `Geometry.Storeys`.
+- `reduce` handles a leap `RunPeriod` begin year that EnergyPlus ran on 365 days, reads
+  daylight-saving dates whatever the process's locale, truncates the thermostat control type as
+  EnergyPlus does, and clamps an "off" setpoint sentinel at each timestep, not on the hourly mean.
+- `reduce` gives a `DesignSpecification:OutdoorAir:SpaceList` that omits a space of the zone the
+  listed spaces' share of the zone, not all of it.
+- `reduce` reports a mode that is delivered energy without a metered consumption or rated
+  efficiency, a hot-water efficiency it had to assume, an economiser without a design
+  outdoor-air flow, and a heat exchanger of unknown effectiveness, instead of writing them
+  silently.
+- `write_umi` conserves the annual infiltration volume when it merges groups whose infiltration
+  schedules differ.
 - `reduce` refuses results without a weather-file run period, naming the `SimulationControl`
   switch, and its single run turns that switch on: a model set to run only its design days, such
   as many EnergyPlus example files, failed with a NumPy broadcast error.

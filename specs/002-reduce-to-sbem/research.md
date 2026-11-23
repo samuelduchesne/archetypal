@@ -289,8 +289,10 @@ totals exactly and makes merging commute with reducing.
   them since commit d1283ca (archetypal pins dee8d34), so the archetype writes the ratio of
   each orientation.
 - **Storeys** (FR-024). The number of storeys is the conditioned floor area divided by the
-  floor area of the lowest level: the conditioned zones whose `Zones.MinimumZ` is within
-  0.1 m of the lowest, multipliers applied. The archetype takes the ratio rounded to the
+  floor area of the largest level, multipliers applied. A level is the conditioned zones whose
+  `Zones.MinimumZ` is within 0.1 m of its lowest zone's; the largest one stands for the floor
+  plate, since the lowest can be a lobby or a partial basement (the lowest level counts with
+  its multipliers, each level above it as one copy). The archetype takes the ratio rounded to the
   nearest integer, halves up (at least 1); the report keeps the unrounded ratio. Dividing areas, rather
   than counting levels, stays right when one typical floor is drawn with a zone multiplier.
 - **Excluded zones.** An excluded zone's envelope (FR-013) is assigned to the conditioned

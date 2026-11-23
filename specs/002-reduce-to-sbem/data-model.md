@@ -222,7 +222,7 @@ identifier for every parameter.
 | Specific fan power (UP-8) | `fans.energy_per_volume` | R19: `energy / volume`; × detailed volume = detailed fan energy |
 | Ideal-loads supply-air temperature limits (UP-8) | `fans.effective_supply_delta` | R19: setpoint ± `delivered_in_mode / (ρ·c_p·volume_in_mode)` |
 | Attic and basement assumptions | `zone.attic`, `zone.basement` | R8 |
-| Number of storeys | `geometry.storeys` | R6: conditioned floor area ÷ floor area of the lowest level, rounded, at least 1 |
+| Number of storeys | `geometry.storeys` | R6: conditioned floor area ÷ floor area of the largest level, rounded, at least 1 |
 
 **Validation.** The result must validate as epinterface's archetype model (FR-003). A
 validation failure is a bug, raised as `ReductionError` with epinterface's message. It is never

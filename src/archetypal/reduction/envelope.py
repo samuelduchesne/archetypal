@@ -331,6 +331,9 @@ def _window_totals(surface: SurfaceRecord) -> WindowTotals:
 _CLASS_FILMS: Mapping[str, float] = {"WALL": 0.1197548, "DOOR": 0.1197548, "FLOOR": 0.1620212, "ROOF": 0.1074271}
 """EnergyPlus's nominal film of each surface class (`ComputeNominalUwithConvCoeffs`), upper case."""
 _OUTDOOR_FILM = 0.0299387
+_FACING_CLASS: Mapping[str, str] = {"FLOOR": "ROOF", "ROOF": "FLOOR"}
+"""The class of the surface an interzone surface faces, where it differs from its own."""
+_WINDOW_CLASS_NAMES = frozenset({"WINDOW", "GLASS DOOR", "GLASSDOOR", "TUBULARDAYLIGHTDOME", "TUBULARDAYLIGHTDIFFUSER"})
 # The films `inventory._with_films` adds to `Constructions.Uvalue` when the Envelope Summary has no U.
 _FALLBACK_INSIDE = 0.13
 _FALLBACK_OUTSIDE = 0.04
@@ -343,13 +346,27 @@ def _surface_films(surface: SurfaceRecord, klass: EnvelopeClass) -> float:
     the surface it faces: an adiabatic surface faces itself, so its own film twice. An interzone
     surface faces its companion, whose films `FILMS` holds for the class.
     """
-    if surface.u_source == "constructions":
-        return _FALLBACK_INSIDE + (_FALLBACK_OUTSIDE if surface.boundary == "outdoors" else _FALLBACK_INSIDE)
-    own = _CLASS_FILMS.get(surface.class_name.upper())
-    if surface.boundary == "adiabatic" and own is not None:
-        return 2.0 * own
     inside, outside = FILMS[klass]
-    return inside + outside
+    declared = surface.class_name.upper()
+    if surface.u_source == "constructions":
+        if declared in _WINDOW_CLASS_NAMES:
+            # A window construction's U already holds its films: `inventory._with_films` adds none.
+            return inside + outside
+        return _FALLBACK_INSIDE + (_FALLBACK_OUTSIDE if surface.boundary == "outdoors" else _FALLBACK_INSIDE)
+    own = _CLASS_FILMS.get(declared)
+    # The declared class sets the film, whatever class the tilt gives the surface here.
+    facing: Mapping[str, float] = (
+        {}
+        if own is None
+        else {
+            "adiabatic": own,
+            "outdoors": _OUTDOOR_FILM,
+            "interzone": _CLASS_FILMS[_FACING_CLASS.get(declared, declared)],
+        }
+    )
+    if own is None or surface.boundary not in facing:
+        return inside + outside
+    return own + facing[surface.boundary]
 
 
 def _class_u_factor(surface: SurfaceRecord, klass: EnvelopeClass) -> float:
@@ -470,9 +487,10 @@ class EnvelopeHook:
         self.shares: dict[str, dict[str, float]] = {}
         unassigned: list[str] = []
         self._incoming: dict[str, list[tuple[ClassifiedZone, float]]] = defaultdict(list)
+        resolved = self._resolve_all()
         for key in sorted(self._sources):
             source = self._sources[key]
-            targets = self._resolve(key, frozenset(), fallback=True)
+            targets = resolved.get(key) or self._fallback()
             if not targets:
                 unassigned.append(source.zone.name)
                 continue
@@ -482,31 +500,42 @@ class EnvelopeHook:
         self.unassigned: tuple[str, ...] = tuple(unassigned)
         self._carried: dict[str, ZoneEnvelope] = {}
 
-    def _resolve(self, key: str, visited: frozenset[str], *, fallback: bool) -> dict[str, float]:
-        shared = self._shared[key]
-        direct = {t: area for t, area in shared.items() if t in self._conditioned and area > 0}
-        if direct:
-            total = math.fsum(direct.values())
-            return {t: area / total for t, area in direct.items()}
-        via: list[tuple[float, dict[str, float]]] = []
-        for neighbour, area in sorted(shared.items()):
-            if neighbour in self._sources and neighbour not in visited and neighbour != key and area > 0:
-                resolved = self._resolve(neighbour, visited | {key}, fallback=False)
-                if resolved:
-                    via.append((area, resolved))
-        if via:
-            total = math.fsum(area for area, _ in via)
-            combined: dict[str, float] = defaultdict(float)
-            for area, resolved in via:
-                for target, share in resolved.items():
-                    combined[target] += area / total * share
-            return dict(combined)
-        if fallback:
-            weights = {t: z.zone.floor_area * z.zone.multiplier for t, z in self._conditioned.items()}
-            total = math.fsum(weights.values())
-            if total > 0:
-                return {t: w / total for t, w in weights.items() if w > 0}
-        return {}
+    def _resolve_all(self) -> dict[str, dict[str, float]]:
+        """Each source zone's shares, by layers of distance from the conditioned zones.
+
+        A zone touching conditioned zones shares by the shared area. Any other zone combines the
+        shares of its neighbours one layer closer, weighted by the area it shares with each. The
+        sweep visits each zone once, so its cost is linear in the number of shared surfaces.
+        """
+        resolved: dict[str, dict[str, float]] = {}
+        for key, shared in self._shared.items():
+            direct = {t: area for t, area in shared.items() if t in self._conditioned and area > 0}
+            if direct:
+                total = math.fsum(direct.values())
+                resolved[key] = {t: area / total for t, area in direct.items()}
+        layer = set(resolved)
+        while layer:
+            following: dict[str, dict[str, float]] = {}
+            for key in sorted(self._sources):
+                if key in resolved:
+                    continue
+                via = sorted((n, area) for n, area in self._shared[key].items() if n in layer and area > 0)
+                if not via:
+                    continue
+                total = math.fsum(area for _, area in via)
+                combined: dict[str, float] = defaultdict(float)
+                for neighbour, area in via:
+                    for target, share in resolved[neighbour].items():
+                        combined[target] += area / total * share
+                following[key] = dict(combined)
+            resolved.update(following)
+            layer = set(following)
+        return resolved
+
+    def _fallback(self) -> dict[str, float]:
+        weights = {t: z.zone.floor_area * z.zone.multiplier for t, z in self._conditioned.items()}
+        total = math.fsum(weights.values())
+        return {t: w / total for t, w in weights.items() if w > 0} if total > 0 else {}
 
     def _carried_envelope(self, source: ClassifiedZone) -> ZoneEnvelope:
         key = _key(source.zone.name)
@@ -703,7 +732,7 @@ def window_construction(
         return None
     u = total.ua / total.area
     glazing_type: Literal["Single", "Double", "Triple"] = (
-        "Single" if u >= _SINGLE_GLAZING_U else "Double" if u >= _DOUBLE_GLAZING_U else "Triple"
+        "Single" if u >= _SINGLE_GLAZING_U - 1e-9 else "Double" if u >= _DOUBLE_GLAZING_U - 1e-9 else "Triple"
     )
     return GlazingConstructionSimpleComponent(
         Name=name,

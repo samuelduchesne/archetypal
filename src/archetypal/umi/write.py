@@ -52,6 +52,7 @@ from archetypal.reduction.ledger import APPROXIMATE_PATHS, GainKind, GroupLedger
 from archetypal.reduction.options import Layout
 from archetypal.reduction.schedules import RunPeriodCalendar, calendar_year
 from archetypal.reduction.to_sbem import equipment, lighting, occupancy, thermostat, ventilation, water_use
+from archetypal.reduction.to_sbem import infiltration as infiltration_component
 from archetypal.umi._format import (
     BuildingTemplate,
     FormatModel,
@@ -385,7 +386,7 @@ class _ZoneMerger:
             return
         totals = self.ledger.infiltration
         infiltration = _get(self.zone, path)
-        update = {
+        update: dict[str, object] = {
             "IsOn": True,
             # epinterface reads only the field its method names, so the merged flow is given in ACH.
             "CalculationMethod": "AirChanges/Hour",
@@ -395,6 +396,16 @@ class _ZoneMerger:
             "WindVelocityCoefficient": totals.velocity_weighted / flow,
             "WindVelocitySquaredCoefficient": totals.velocity_squared_weighted / flow,
         }
+        if totals.hourly.size and _differ(self.members, f"{path}.Schedule"):
+            # Members with different schedules: the merged flow is the annual mean and its
+            # schedule the summed profile over that mean, so the annual volume is conserved.
+            derived = infiltration_component(self.ledger, _CALENDAR, name=_MERGED).value
+            mean = float(totals.hourly.mean())
+            if derived.Schedule is not None and mean > 0:
+                base = infiltration.Schedule
+                name = _merged_name(base.Name if base is not None else f"{infiltration.Name} schedule")
+                update["AirChangesPerHour"] = mean * _SECONDS_PER_HOUR / self.area
+                update["Schedule"] = _renamed(derived.Schedule, name)
         self.set(path, infiltration.model_copy(update=update))
 
     def assemblies(self) -> None:

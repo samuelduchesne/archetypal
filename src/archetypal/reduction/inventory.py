@@ -287,8 +287,21 @@ class ThermostatControl:
     cooling_schedule: str | None
 
 
-def _mean_set(setpoints: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    """Each hour's mean over the timesteps whose setpoint is set (not NaN); NaN where none is."""
+def _mean_set(setpoints: npt.NDArray[np.float64], band: tuple[float, float] | None = None) -> npt.NDArray[np.float64]:
+    """Each hour's mean over the timesteps whose setpoint is set (not NaN); NaN where none is.
+
+    With `band`, an hour that has a setpoint within the band takes its out-of-band timesteps
+    (an "off" sentinel such as -100 °C) at the band's nearer edge, so the sentinel's size does
+    not enter the mean. An hour without any setpoint in the band keeps its plain mean.
+    """
+    if band is not None:
+        low, high = band
+        with np.errstate(invalid="ignore"):
+            inside = (setpoints >= low) & (setpoints <= high)
+        mixed = inside.any(axis=1)
+        clamped = np.array(setpoints, dtype=np.float64)
+        clamped[mixed] = np.minimum(np.maximum(clamped[mixed], low), high)
+        setpoints = clamped
     set_steps = ~np.isnan(setpoints)
     count = set_steps.sum(axis=1)
     filled = np.array(setpoints, dtype=np.float64)
@@ -322,7 +335,9 @@ class ThermostatRecord:
     cooling_schedule: str | None
     controls: tuple[ThermostatControl, ...] = ()
 
-    def setpoints(self, evaluate: Callable[[str], Profile]) -> tuple[Profile, Profile]:
+    def setpoints(
+        self, evaluate: Callable[[str], Profile], *, band: tuple[float, float] | None = None
+    ) -> tuple[Profile, Profile]:
         """Return the hourly heating and cooling setpoints, NaN where no control sets that mode.
 
         At each timestep the control-type schedule selects the control whose `control_type` it
@@ -333,6 +348,8 @@ class ThermostatRecord:
         Args:
             evaluate: Returns a schedule's hourly profile by name; a `ScheduleEvaluator` (or a
                 design-day evaluator) also gives the values at the model's timestep by `steps`.
+            band: The setpoint range that conditions; out-of-band timesteps of an hour that has
+                a setpoint in the band count at the band's edge (`_mean_set`).
 
         Returns:
             The heating and cooling setpoints, °C.
@@ -344,7 +361,9 @@ class ThermostatRecord:
                 return np.asarray(steps(name), dtype=np.float64)
             return np.asarray(evaluate(name), dtype=np.float64).reshape(-1, 1)  # pyright: ignore[reportUnknownMemberType]
 
-        control = np.rint(at_steps(self.control_type_schedule))
+        # EnergyPlus casts the schedule value to an integer, truncating; values a rounding error
+        # below an integer are snapped to it first.
+        control = np.floor(at_steps(self.control_type_schedule) + 1e-9)
         heating = np.full(control.shape, np.nan)
         cooling = np.full(control.shape, np.nan)
         for item in self.controls:
@@ -355,7 +374,7 @@ class ThermostatRecord:
                 heating[active] = at_steps(item.heating_schedule)[active]
             if item.cooling_schedule is not None:
                 cooling[active] = at_steps(item.cooling_schedule)[active]
-        return _mean_set(heating), _mean_set(cooling)
+        return _mean_set(heating, band), _mean_set(cooling, band)
 
     def enabled(self, evaluate: Callable[[str], Profile]) -> dict[Mode, bool]:
         """Whether each mode's setpoint lies within `BAND` at some hour (research R8, R10).
@@ -375,7 +394,7 @@ class ThermostatRecord:
             }
 
 
-AllocationRule = Literal["zone", "occupant-hours", "floor-area"]
+AllocationRule = Literal["zone", "occupant-hours", "floor-area", "equal"]
 """How a `WaterUse:Equipment`'s volume was attributed to a zone (research R11)."""
 
 
@@ -393,7 +412,9 @@ class HotWaterRecord:
             the shares sum to 1.
         allocated: `True` when the equipment has no zone and was allocated.
         rule: How the volume reached the zone: `zone` (the equipment's own), `occupant-hours`, or
-            `floor-area` (no conditioned zone has occupant-hours).
+            `floor-area` (no conditioned zone has occupant-hours; the area of zones outside the
+            total area when no other has any), `equal` (no zone has floor area: equal shares per
+            copy).
     """
 
     equipment: str
@@ -859,23 +880,7 @@ def _outdoor_air_specs(doc: IDFDocumentSince22_1, zone_lists: Mapping[str, tuple
             per_zone=_coefficient(obj.outdoor_air_flow_per_zone, 0.0),
             air_changes=_coefficient(obj.outdoor_air_flow_air_changes_per_hour, 0.0),
         )
-    # A DesignSpecification:OutdoorAir:SpaceList gives each space its own specification; the zone
-    # takes them weighted by the spaces' floor areas (equal shares unless every area is given).
-    areas = {space.name.casefold(): _space_area(space) for space in doc.spaces}
-    space_lists: dict[str, _SpecShares] = {}
-    for obj in doc["DesignSpecification:OutdoorAir:SpaceList"]:
-        members = [
-            (areas.get(item.space_name.casefold(), 0.0), specs[name.casefold()])
-            for item in obj.space_specs
-            if (name := item.space_design_specification_outdoor_air_object_name) and name.casefold() in specs
-        ]
-        if not members:
-            continue
-        total = sum(area for area, _ in members)
-        given = all(area > 0 for area, _ in members)
-        space_lists[obj.name.casefold()] = tuple(
-            (area / total if given else 1.0 / len(members), spec) for area, spec in members
-        )
+    space_lists = _space_list_shares(doc, specs)
     by_zone: dict[str, _SpecShares] = {}
     for sizing in doc["Sizing:Zone"]:
         name = sizing.design_specification_outdoor_air_object_name
@@ -888,6 +893,40 @@ def _outdoor_air_specs(doc: IDFDocumentSince22_1, zone_lists: Mapping[str, tuple
         for zone in _expand(sizing.zone_or_zonelist_name, zone_lists):
             by_zone.setdefault(zone, shares)
     return by_zone
+
+
+def _space_list_shares(doc: IDFDocumentSince22_1, specs: Mapping[str, _OutdoorAirSpec]) -> dict[str, _SpecShares]:
+    """The specifications of each `DesignSpecification:OutdoorAir:SpaceList`, with their shares.
+
+    The list gives each space its own specification; the zone takes them weighted by the spaces'
+    floor areas (equal shares unless every area is given).
+    """
+    # A share is the space's part of its whole zone, so a list that omits a space of the zone, or
+    # names a specification the model lacks, leaves that space without outdoor air.
+    areas = {space.name.casefold(): _space_area(space) for space in doc.spaces}
+    zone_of = {space.name.casefold(): str(space.zone_name or "").casefold() for space in doc.spaces}
+    zone_spaces: dict[str, list[float]] = {}
+    for space, zone in zone_of.items():
+        zone_spaces.setdefault(zone, []).append(areas[space])
+    space_lists: dict[str, _SpecShares] = {}
+    for obj in doc["DesignSpecification:OutdoorAir:SpaceList"]:
+        listed = [item.space_name.casefold() for item in obj.space_specs]
+        members: list[tuple[float, _OutdoorAirSpec]] = []
+        for item in obj.space_specs:
+            name = item.space_design_specification_outdoor_air_object_name
+            if not name or name.casefold() not in specs:
+                continue
+            space = item.space_name.casefold()
+            siblings = zone_spaces.get(zone_of.get(space, ""), [])
+            if not siblings:
+                # A space the model lacks: its share among the listed members, as before.
+                siblings = [areas.get(other, 0.0) for other in listed]
+            given = all(area > 0 for area in siblings)
+            share = areas.get(space, 0.0) / sum(siblings) if given else 1.0 / len(siblings)
+            members.append((share, specs[name.casefold()]))
+        if members:
+            space_lists[obj.name.casefold()] = tuple(members)
+    return space_lists
 
 
 def _design_outdoor_air(
@@ -1041,6 +1080,7 @@ def _hot_water(
         if sum(weights[i] * multipliers[i] for i in weights) <= 0.0:
             weights = {row.index: row.floor_area for row in targets}
         if sum(weights[i] * multipliers[i] for i in weights) <= 0.0:
+            rule = "equal"
             weights = {row.index: 1.0 for row in targets}
     total = sum(weights[i] * multipliers[i] for i in weights)
     for name, volume, target in zoneless:

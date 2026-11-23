@@ -116,9 +116,11 @@ def setpoint_fields(zone: ClassifiedZone, evaluate: Callable[[str], Profile]) ->
     if record.thermostat is None:
         return fields
     thermostat = record.thermostat
-    heating, cooling = thermostat.setpoints(evaluate)
+    # The band applies at the model's timestep: an hour that mixes a setpoint with an "off"
+    # sentinel is the mean of the clamped timesteps, not the clamped mean.
+    heating, cooling = thermostat.setpoints(evaluate, band=BAND)
     design = design_day_evaluators(evaluate)
-    days = {kind: thermostat.setpoints(on) for kind, on in design.items()} if design is not None else None
+    days = {kind: thermostat.setpoints(on, band=BAND) for kind, on in design.items()} if design is not None else None
 
     def design_days(mode: Mode) -> DesignDays:
         if days is None:

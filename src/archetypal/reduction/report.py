@@ -442,7 +442,7 @@ class BuildingBlock(_Record):
 
     Attributes:
         conditioned_floor_area: Σ floor area of the conditioned zones, multipliers applied, m².
-        storey_ratio: Conditioned floor area ÷ floor area of the lowest level, unrounded.
+        storey_ratio: Conditioned floor area ÷ floor area of the largest level, unrounded.
         calendar: The run-period calendar of the profiles; `None` in a report that does not
             record it, which `merge` refuses.
         mains_temperature: The annual-mean mains water temperature, °C, or `None` without hot water.

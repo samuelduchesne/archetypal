@@ -190,7 +190,7 @@ EQUIPMENT_KINDS: tuple[GainKind, ...] = ("electric", "gas", "steam", "hot_water_
 _NON_ELECTRIC_KINDS: tuple[GainKind, ...] = ("gas", "steam", "hot_water_equipment")
 
 LOWEST_LEVEL_TOLERANCE = 0.1
-"""Conditioned zones whose `MinimumZ` is within this many metres of the lowest form the lowest level (R6)."""
+"""Conditioned zones whose `MinimumZ` is within this many metres of the lowest form one level, as do the zones within it of each next level up (R6)."""
 
 SLOT_CLASSES: Mapping[str, tuple[EnvelopeClass, ...]] = {
     "FacadeAssembly": ("exterior_wall", "ground_wall", "partition"),
@@ -292,7 +292,7 @@ class BuildingFacts:
 
     Attributes:
         calendar: The run-period calendar the ledgers' profiles follow.
-        storey_ratio: Conditioned floor area ÷ floor area of the lowest level (`storey_ratio`).
+        storey_ratio: Conditioned floor area ÷ floor area of the largest level (`storey_ratio`).
         mains_temperature: The annual-mean mains water temperature, °C, or `None` without hot water.
         air_density: The standard air density of the fan volumes, kg/m³.
     """
@@ -515,10 +515,12 @@ def floor_area_share(ledger: GroupLedger, total_floor_area: float) -> Derived[fl
 
 
 def storey_ratio(zones: Iterable[ClassifiedZone]) -> float:
-    """Conditioned floor area ÷ floor area of the lowest level, multipliers applied (R6).
+    """Conditioned floor area ÷ floor area of the largest level, multipliers applied (R6).
 
-    The lowest level is the conditioned zones whose `MinimumZ` is within
-    `LOWEST_LEVEL_TOLERANCE` of the lowest conditioned zone's.
+    A level is the conditioned zones whose `MinimumZ` is within `LOWEST_LEVEL_TOLERANCE` of its
+    lowest zone's. The largest level stands for the floor plate: the lowest one can be a lobby
+    or a partial basement. The lowest level counts with its multipliers, the levels above it as
+    one copy each (a multiplier there stacks storeys).
 
     Args:
         zones: The classified zones; only conditioned ones count.
@@ -533,13 +535,23 @@ def storey_ratio(zones: Iterable[ClassifiedZone]) -> float:
     if not conditioned:
         msg = "no conditioned zone to count storeys from"
         raise ValueError(msg)
-    lowest = min(z.min_z for z in conditioned)
     total = sum(z.floor_area * z.multiplier for z in conditioned)
+    # The floor plate is the largest level drawn: the lowest level alone can be a small lobby or
+    # a partial basement, which would count as many storeys as it fits in the building. A level
+    # above the lowest counts one copy of its zones, since a multiplier there stacks storeys.
+    levels: list[tuple[float, float]] = []
+    for z in sorted(conditioned, key=lambda item: item.min_z):
+        if levels and z.min_z <= levels[-1][0] + LOWEST_LEVEL_TOLERANCE:
+            levels[-1] = (levels[-1][0], levels[-1][1] + z.floor_area)
+        else:
+            levels.append((z.min_z, z.floor_area))
+    lowest = levels[0][0]
     ground = sum(z.floor_area * z.multiplier for z in conditioned if z.min_z <= lowest + LOWEST_LEVEL_TOLERANCE)
-    if not ground > 0:
-        msg = "the lowest conditioned level has no floor area"
+    plate = max(ground, *(area for _, area in levels))
+    if not plate > 0:
+        msg = "no conditioned level has floor area"
         raise ValueError(msg)
-    return total / ground
+    return total / plate
 
 
 def storeys(ratio: float) -> Derived[int]:
@@ -803,6 +815,10 @@ def _gain_parts_lost(ledger: GroupLedger, name: str) -> list[NotRepresented]:
 # --- thermostat ------------------------------------------------------------------------------------
 
 
+_SETPOINT_NOISE = 1e-6
+"""K: setpoint differences below this are round-off, not a heating setpoint above the cooling one."""
+
+
 def thermostat(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -> Derived[ThermostatComponent]:
     """`ThermostatComponent`: the floor-area-weighted mean setpoints (rule `setpoint.area_mean`, FR-020).
 
@@ -842,9 +858,11 @@ def thermostat(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -
     # The heating mean covers the heated members and the cooling mean the cooled ones, so a group
     # of heat-only and cool-only zones can heat above its cooling setpoint; EnergyPlus's dual
     # setpoint refuses that. The heating setpoint is capped at the cooling one.
-    crossed = heat > cool
+    # Two means over different members can differ in the last bit when the setpoints are equal:
+    # the cap always applies, and a crossing is reported only beyond that noise.
+    crossed = heat > cool + _SETPOINT_NOISE
+    heat = np.minimum(heat, cool)
     if crossed.any():
-        heat = np.minimum(heat, cool)
         lost.append(
             _entry(
                 ledger,
@@ -1058,8 +1076,23 @@ def dhw(
     # 45 K is only a placeholder for a component that is off.
     supply = inlet + (rise if rise is not None and rise > 0 else 45.0)
     efficiency = _efficiency(ledger, building, "hot_water", name, "Zone.Operations.DHW", "FuelType") if on else None
+    lost: list[NotRepresented]
     if efficiency is None:
         system, distribution, fuel, rule, lost = 1.0, 1.0, "Electricity", "efficiency.rated", []
+        if on:
+            lost.append(
+                _entry(
+                    ledger,
+                    name,
+                    "Hot-water efficiency unknown",
+                    "The results give the hot water neither a consumption nor a rated efficiency; it is written "
+                    "as electric with a COP of 1.",
+                    magnitude=float(np.sum(ledger.hot_water.heat)),
+                    unit="J",
+                    folded_into="Zone.Operations.DHW.SystemCOP",
+                    source="hotwater",
+                )
+            )
     else:
         system, distribution, fuel, rule, lost = efficiency
     lost.extend(unheated)
@@ -1333,6 +1366,23 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
                 source="airflow",
             )
         )
+    elif economiser != "NoEconomizer" and oa.design_flow <= 0 and hourly.size and float(hourly.max()) > 0:
+        # Without a design flow the minimum outdoor air cannot be told from the economiser's: the
+        # whole profile is written, so the archetype gets no economiser on top of it.
+        lost.append(
+            _entry(
+                ledger,
+                name,
+                "Economiser outdoor air",
+                "The group has no design outdoor-air flow, so the economiser's air cannot be separated from the "
+                "minimum: the whole reported profile is written as mechanical ventilation, without an economiser.",
+                magnitude=float(hourly.sum()) * _SECONDS_PER_HOUR,
+                unit="m3",
+                folded_into="Zone.Operations.HVAC.Ventilation.Economizer",
+                source="airflow",
+            )
+        )
+        economiser = "NoEconomizer"
     peak = float(hourly.max()) if hourly.size else 0.0
     schedule = _schedule(_ratio(hourly, peak), calendar, name=f"{name} ventilation", category="Window", design="monday")
     if peak <= 0:
@@ -1351,8 +1401,22 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
     hrv = _dominant(oa.hrv_weighted) or "NoHRV"
     recovered = sum(v for k, v in oa.hrv_weighted.items() if k != "NoHRV")
     extra: dict[str, object] = {}
-    if hrv != "NoHRV" and recovered > 0:
+    if hrv != "NoHRV" and recovered > 0 and oa.effectiveness_weighted > 0:
         extra["SensibleHeatRecoveryEffectiveness"] = min(max(oa.effectiveness_weighted / recovered, 0.0), 1.0)
+    elif hrv != "NoHRV" and recovered > 0:
+        # A flat-plate or desiccant exchanger: its effectiveness is not an input the model states.
+        lost.append(
+            _entry(
+                ledger,
+                name,
+                "Heat-recovery effectiveness unknown",
+                "The model's heat exchangers state no sensible effectiveness; epinterface's default applies.",
+                magnitude=recovered,
+                unit="m3",
+                folded_into="Zone.Operations.HVAC.Ventilation.SensibleHeatRecoveryEffectiveness",
+                source="airflow",
+            )
+        )
     mechanical = _schedule(
         _ratio(hourly, peak),
         calendar,
@@ -1440,7 +1504,23 @@ def thermal_system(
     label = "Heating" if mode == "heating" else "Cooling"
     found = _efficiency(ledger, building, mode, name, f"Zone.Operations.HVAC.ConditioningSystems.{label}")
     if found is None:
-        return Derived(None, "efficiency.delivered_over_consumed")
+        unserved = ledger.energy.get(mode)
+        dropped: tuple[NotRepresented, ...] = ()
+        if unserved is not None and unserved.delivered > 0:
+            # Energy was delivered, but the results give it neither a consumption nor a rated efficiency.
+            dropped = (
+                _entry(
+                    ledger,
+                    name,
+                    f"{label} without consumption",
+                    f"The group was delivered {mode} energy, but no metered consumption or rated efficiency "
+                    f"serves it; the archetype has no {mode} system, so the mode is off.",
+                    magnitude=unserved.delivered,
+                    unit="J",
+                    source="efficiency",
+                ),
+            )
+        return Derived(None, "efficiency.delivered_over_consumed", (), dropped)
     system, dist, fuel, rule, lost = found
     extra: dict[str, float] = {}
     totals = ledger.energy[mode]
@@ -1524,12 +1604,16 @@ def _supply_limits(ledger: GroupLedger, air_density: float, name: str) -> tuple[
     chosen = {k: v for k, (v, _) in candidates.items()}
     merged = {**defaults, **chosen}
     if merged["MaximumHeatingSupplyAirTemperature"] <= merged["MinimumCoolingSupplyAirTemperature"]:
-        keep = max(sorted(candidates), key=lambda k: candidates[k][1])
-        dropped = [k for k in candidates if k != keep] or [keep]
-        chosen = {keep: candidates[keep][0]} if dropped != [keep] else {}
-        merged = {**defaults, **chosen}
-        if merged["MaximumHeatingSupplyAirTemperature"] <= merged["MinimumCoolingSupplyAirTemperature"]:
-            chosen, dropped = {}, sorted(candidates)
+        # Keep one candidate with the other mode's default: the mode that delivers more first,
+        # then the other; neither when both still cross.
+        chosen, dropped = {}, sorted(candidates)
+        for keep in sorted(sorted(candidates), key=lambda k: candidates[k][1], reverse=True):
+            if len(candidates) == 1:
+                break
+            merged = {**defaults, keep: candidates[keep][0]}
+            if merged["MaximumHeatingSupplyAirTemperature"] > merged["MinimumCoolingSupplyAirTemperature"]:
+                chosen, dropped = {keep: candidates[keep][0]}, [k for k in candidates if k != keep]
+                break
         lost.extend(
             _entry(
                 ledger,

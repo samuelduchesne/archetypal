@@ -102,30 +102,32 @@ def supply_schedules(doc: IDFDocumentSince22_1) -> dict[str, str | None]:
     EnergyPlus ignores the equipment's own hot water supply schedule when the equipment is
     listed in a `WaterUse:Connections`: the connection's schedule overrides it, even when blank
     (Input Output Reference, Group Water Systems). That schedule is used when the connection has
-    one. A connection on a plant loop without one delivers at the plant's temperature, which is
-    not read here; the equipment's schedules then stand in for it, an approximation.
+    one. A connection without one delivers at the plant's temperature, the water heaters' shared
+    setpoint, which ranks before the equipment's own schedules: the reported hot volume is
+    already mixed down from that temperature to the target.
 
     Args:
         doc: The model.
 
     Returns:
-        The connection's hot water supply temperature schedule, else the equipment's hot water
-        supply temperature schedule, else its target temperature schedule, else the setpoint
-        schedule the model's water heaters share, else `None`.
+        For an equipment in a connection: the connection's hot water supply temperature
+        schedule, else the setpoint schedule the model's water heaters share, else the
+        equipment's schedules. For a stand-alone equipment: its hot water supply temperature
+        schedule, else its target temperature schedule, else the shared setpoint schedule.
+        `None` when there is none.
     """
     connections = _connections(doc)
     heater = _water_heater_schedule(doc)
     schedules: dict[str, str | None] = {}
     for item in doc.water_use_equipments:
         connection = connections.get(item.name.casefold())
-        connection_schedule = getattr(connection, "hot_water_supply_temperature_schedule_name", None)
-        schedules[item.name.casefold()] = (
-            connection_schedule
-            or item.hot_water_supply_temperature_schedule_name
-            or item.target_temperature_schedule_name
-            or heater
-            or None
-        )
+        own = item.hot_water_supply_temperature_schedule_name or item.target_temperature_schedule_name
+        if connection is not None:
+            connection_schedule = getattr(connection, "hot_water_supply_temperature_schedule_name", None)
+            chosen = connection_schedule or heater or own
+        else:
+            chosen = own or heater
+        schedules[item.name.casefold()] = chosen or None
     return schedules
 
 

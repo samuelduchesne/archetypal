@@ -60,7 +60,7 @@ from __future__ import annotations
 
 import weakref
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, TypedDict
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 import numpy as np
 
@@ -494,6 +494,70 @@ def _loop_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirControl]:
                 if category != "NoEconomizer" and economiser == "NoEconomizer":
                     economiser = category
         controls[loop.name] = OutdoorAirControl(hrv, economiser, effectiveness, loop.name)
+    _apply_dedicated_systems(doc, controls)
+    return controls
+
+
+def _apply_dedicated_systems(doc: IDFDocumentSince22_1, controls: dict[str, OutdoorAirControl]) -> None:
+    """Give the loops a dedicated outdoor-air system feeds its heat exchanger, where they have none.
+
+    The system's outdoor-air system is on no branch, so the loops' own branches do not show it.
+    """
+    systems = {s.name.casefold(): s for s in doc["AirLoopHVAC:OutdoorAirSystem"]}
+    equipment = _equipment_components(doc)
+    exchangers = _heat_exchangers(doc)
+    by_name = {name.casefold(): name for name in controls}
+    for doas in doc["AirLoopHVAC:DedicatedOutdoorAirSystem"]:
+        system = systems.get(_cf(doas.airloophvac_outdoorairsystem_name))
+        if system is None:
+            continue
+        components = equipment.get(_cf(system.outdoor_air_equipment_list_name), ())
+        exchanger = next((exchangers[c] for c in components if c in exchangers), None)
+        if exchanger is None:
+            continue
+        for fed in doas_loops(doas.data):
+            name = by_name.get(fed)
+            if name is not None and controls[name].hrv == "NoHRV":
+                current = controls[name]
+                controls[name] = OutdoorAirControl(exchanger[0], current.economiser, exchanger[1], name)
+
+
+def doas_loops(data: Mapping[str, object]) -> list[str]:
+    """Names (case-folded) of the air loops a dedicated outdoor-air system feeds."""
+    names: list[str] = []
+    for value in data.values():
+        if not isinstance(value, list):
+            continue
+        for entry in cast("list[object]", value):
+            if isinstance(entry, dict):
+                names += [str(v).casefold() for v in cast("dict[str, object]", entry).values() if v]
+    return names
+
+
+def _zone_unit_controls(doc: IDFDocumentSince22_1) -> dict[tuple[str, str], OutdoorAirControl]:
+    """The heat recovery of each zone-level outdoor-air unit, by case-folded (type, name)."""
+    exchangers = _heat_exchangers(doc)
+    by_exchanger_name: dict[str, tuple[HRVCategory, float | None]] = {}
+    for (_, name), exchanger in exchangers.items():
+        by_exchanger_name.setdefault(name, exchanger)
+    controls: dict[tuple[str, str], OutdoorAirControl] = {}
+    for unit in doc["ZoneHVAC:EnergyRecoveryVentilator"]:
+        exchanger = by_exchanger_name.get(_cf(unit.heat_exchanger_name))
+        if exchanger is not None:
+            key = ("zonehvac:energyrecoveryventilator", unit.name.casefold())
+            controls[key] = OutdoorAirControl(exchanger[0], "NoEconomizer", exchanger[1], unit.name)
+    lists: dict[str, list[tuple[str, str]]] = {}
+    for item in doc["ZoneHVAC:OutdoorAirUnit:EquipmentList"]:
+        pairs = [
+            (item.data.get(f"component_{i}_object_type"), item.data.get(f"component_{i}_name")) for i in range(1, 9)
+        ]
+        lists[item.name.casefold()] = [(_cf(kind), _cf(name)) for kind, name in pairs if kind and name]
+    for unit in doc["ZoneHVAC:OutdoorAirUnit"]:
+        components = lists.get(_cf(unit.outdoor_air_unit_list_name), [])
+        exchanger = next((exchangers[c] for c in components if c in exchangers), None)
+        if exchanger is not None:
+            key = ("zonehvac:outdoorairunit", unit.name.casefold())
+            controls[key] = OutdoorAirControl(exchanger[0], "NoEconomizer", exchanger[1], unit.name)
     return controls
 
 
@@ -527,7 +591,8 @@ def outdoor_air_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirContr
         doc: The model.
 
     Returns:
-        Zones served by an air loop or an ideal-loads system; other zones are absent (use
+        Zones served by an air loop, an ideal-loads system or a zone heat-recovery unit; other
+        zones are absent (use
         `NO_CONTROL`).
     """
     node_lists = {nl.name.casefold(): tuple(_cf(g.node_name) for g in nl.nodes) for nl in doc["NodeList"]}
@@ -544,11 +609,16 @@ def outdoor_air_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirContr
             if current is None or _treatment(candidate) > _treatment(current):
                 controls[zone] = candidate
     ideal = _ideal_loads_controls(doc)
+    units = _zone_unit_controls(doc)
     for conn in _zone_connections(doc, node_lists):
         for kind, name in conn.equipment:
             if kind == "zonehvac:idealloadsairsystem" and name in ideal:
                 controls[conn.zone] = ideal[name]
                 break
+            unit = units.get((kind, name))
+            current = controls.get(conn.zone)
+            if unit is not None and (current is None or _treatment(unit) > _treatment(current)):
+                controls[conn.zone] = unit
     return controls
 
 

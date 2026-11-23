@@ -201,6 +201,29 @@ def has_tabular_report(sql: SQLResult, report: str) -> bool:
     return bool(rows)
 
 
+def simulated_leap_day(sql: SQLResult) -> bool | None:
+    """Whether the weather-file run simulated 29 February.
+
+    EnergyPlus runs a leap year's 29 February only when the weather file allows leap years.
+
+    Args:
+        sql: The results.
+
+    Returns:
+        `True` or `False`, or `None` when the results' `Time` table cannot tell.
+    """
+    try:
+        rows = sql.query(
+            "SELECT COUNT(*), SUM(t.Month = 2 AND t.Day = 29) FROM Time t JOIN EnvironmentPeriods e "
+            "ON e.EnvironmentPeriodIndex = t.EnvironmentPeriodIndex WHERE e.EnvironmentType = 3"
+        )
+    except sqlite3.Error:
+        return None
+    if not rows or not rows[0][0]:
+        return None
+    return bool(rows[0][1])
+
+
 _FEET = 0.3048
 
 

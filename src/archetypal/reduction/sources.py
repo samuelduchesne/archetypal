@@ -43,6 +43,7 @@ from archetypal.reduction._sql_tables import (
     has_tabular_report,
     read_simulations,
     read_zones,
+    simulated_leap_day,
 )
 from archetypal.reduction.requirements import (
     ENERGYPLUS_FUELS,
@@ -160,16 +161,17 @@ class RunPeriodInfo:
         return self.calendar.holidays
 
     @classmethod
-    def from_document(cls, doc: IDFDocumentSince22_1) -> RunPeriodInfo:
+    def from_document(cls, doc: IDFDocumentSince22_1, *, leap_day: bool | None = None) -> RunPeriodInfo:
         """Read a model's first `RunPeriod`; without one, a whole year starting on a Sunday.
 
         Args:
             doc: The model.
+            leap_day: Whether the simulation ran 29 February (`RunPeriodCalendar.from_document`).
 
         Returns:
             The run period.
         """
-        calendar = RunPeriodCalendar.from_document(doc)
+        calendar = RunPeriodCalendar.from_document(doc, leap_day=leap_day)
         year = calendar.year
         name: str | None = None
         begin_month, begin_day, end_month, end_day = 1, 1, 12, 31
@@ -412,7 +414,11 @@ def load_sources(
 
 
 def _annual_run_period(
-    doc: IDFDocumentSince22_1, model_path: Path | None, results_subject: str, weather_runs: int
+    doc: IDFDocumentSince22_1,
+    model_path: Path | None,
+    results_subject: str,
+    weather_runs: int,
+    leap_day: bool | None = None,
 ) -> RunPeriodInfo:
     """The model's run period, refused unless it is one whole calendar year.
 
@@ -420,7 +426,7 @@ def _annual_run_period(
     around 1 January runs its January in the next year, and a shorter or longer one (or a second
     one, whose rows follow the first's) gives hourly series of another length than the schedules'.
     """
-    run_period = RunPeriodInfo.from_document(doc)
+    run_period = RunPeriodInfo.from_document(doc, leap_day=leap_day)
     if run_period.end.year != run_period.begin.year:
         message = (
             f"the RunPeriod {run_period.name or ''} runs from {run_period.begin:%d %B} to {run_period.end:%d %B} "
@@ -487,7 +493,9 @@ def _check(
         raise ModelResultsMismatch(results_subject, differences)
 
     # 4. One annual run period.
-    run_period = _annual_run_period(doc, model_path, results_subject, len(weather_runs))
+    run_period = _annual_run_period(
+        doc, model_path, results_subject, len(weather_runs), simulated_leap_day(sql) if weather_runs else None
+    )
 
     version = doc.version
     return SourceData(

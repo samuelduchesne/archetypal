@@ -189,14 +189,18 @@ class RunPeriodCalendar:
     daylight_saving: frozenset[date] = field(default_factory=frozenset[date])
 
     @classmethod
-    def from_document(cls, doc: IDFDocumentSince22_1) -> RunPeriodCalendar:
+    def from_document(cls, doc: IDFDocumentSince22_1, *, leap_day: bool | None = None) -> RunPeriodCalendar:
         """Build the calendar of a model's first `RunPeriod` and its `RunPeriodControl:SpecialDays`.
 
         Without a `RunPeriod` the calendar starts on a Sunday, EnergyPlus's default start
-        weekday.
+        weekday. EnergyPlus runs a leap begin year on 365 days when the weather file does not
+        allow leap years, the weekdays running on from 28 February to 1 March: the calendar is
+        then a year without 29 February that starts on the same weekday.
 
         Args:
             doc: The model.
+            leap_day: Whether the simulation ran 29 February; `None` when unknown (the begin
+                year decides).
 
         Returns:
             The calendar.
@@ -210,6 +214,8 @@ class RunPeriodCalendar:
             break
         if begin_year:
             year = int(begin_year)
+            if leap_day is False and calendar.isleap(year) and (begin_month, begin_day) != (2, 29):
+                year = calendar_year(begin_month, begin_day, date(year, begin_month, begin_day).weekday())
         else:
             year = calendar_year(begin_month, begin_day, WEEKDAYS.index(weekday or "Sunday"))
         return cls(
@@ -261,10 +267,25 @@ class RunPeriodCalendar:
         return np.asarray(weekdays, dtype=np.intp)
 
 
-_MONTHS = {name.casefold(): index for index, name in enumerate(calendar.month_name) if name}
-_MONTHS.update({name.casefold(): index for index, name in enumerate(calendar.month_abbr) if name})
-_DAY_NAMES = {name.casefold(): index for index, name in enumerate(calendar.day_name)}
-_DAY_NAMES.update({name.casefold(): index for index, name in enumerate(calendar.day_abbr)})
+# English names, whatever the process's locale (`calendar.month_name` follows `LC_TIME`).
+_MONTH_NAMES = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
+_MONTHS = {name.casefold(): index for index, name in enumerate(_MONTH_NAMES, start=1)}
+_MONTHS.update({name[:3].casefold(): index for index, name in enumerate(_MONTH_NAMES, start=1)})
+_DAY_NAMES = {name.casefold(): index for index, name in enumerate(WEEKDAYS)}
+_DAY_NAMES.update({name[:3].casefold(): index for index, name in enumerate(WEEKDAYS)})
 _ORDINAL = re.compile(r"^(\d+)(?:st|nd|rd|th)?\s+(\w+)\s+in\s+(\w+)$", re.IGNORECASE)
 _LAST = re.compile(r"^last\s+(\w+)\s+in\s+(\w+)$", re.IGNORECASE)
 _NUMERIC = re.compile(r"^(\d{1,2})\s*[/-]\s*(\d{1,2})$")
@@ -674,10 +695,31 @@ def project(
         msg = f"the profile has shape {hourly.shape}; the {calendar.year} calendar needs ({calendar.hours},)"
         raise ValueError(msg)
     slots = calendar.day_months * 7 + calendar.day_weekdays
+    means, _ = _slot_means(hourly.reshape(-1, 24), slots)  # pyright: ignore[reportUnknownMemberType]
+    return means.reshape(12, 7, 24)  # pyright: ignore[reportUnknownMemberType]
+
+
+def _slot_means(
+    by_day: npt.NDArray[np.float64], slots: npt.NDArray[np.intp]
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.bool_]]:
+    """The mean day of each of the 84 (month, weekday) slots, and which slots have a day.
+
+    Where a slot's days agree in an hour, the mean is that value exactly: a sum divided by a
+    count can differ from it in the last bit, and equal days would no longer be shared.
+    """
     sums = np.zeros((12 * 7, 24), dtype=np.float64)
-    np.add.at(sums, slots, hourly.reshape(-1, 24))  # pyright: ignore[reportUnknownMemberType]
+    np.add.at(sums, slots, by_day)  # pyright: ignore[reportUnknownMemberType]
     counts = np.bincount(slots, minlength=12 * 7).astype(np.float64)
-    return (sums / counts[:, None]).reshape(12, 7, 24)  # pyright: ignore[reportUnknownMemberType]
+    present = counts > 0
+    means = np.zeros((12 * 7, 24), dtype=np.float64)
+    means[present] = sums[present] / counts[present, None]
+    low = np.full((12 * 7, 24), np.inf)
+    high = np.full((12 * 7, 24), -np.inf)
+    np.minimum.at(low, slots, by_day)  # pyright: ignore[reportUnknownMemberType]
+    np.maximum.at(high, slots, by_day)  # pyright: ignore[reportUnknownMemberType]
+    same = present[:, None] & (low == high)
+    means[same] = low[same]
+    return means, present
 
 
 def _holiday_mask(calendar: RunPeriodCalendar) -> npt.NDArray[np.bool_]:
@@ -718,19 +760,17 @@ def project_holidays(
     holiday = _holiday_mask(calendar)
     slots = calendar.day_months * 7 + calendar.day_weekdays
     ordinary = ~holiday
-    sums = np.zeros((12 * 7, 24), dtype=np.float64)
-    np.add.at(sums, slots[ordinary], by_day[ordinary])  # pyright: ignore[reportUnknownMemberType]
-    counts = np.bincount(slots[ordinary], minlength=12 * 7).astype(np.float64)
-    days = np.zeros((12 * 7, 24), dtype=np.float64)
-    present = counts > 0
-    days[present] = sums[present] / counts[present, None]
+    days, present = _slot_means(by_day[ordinary], slots[ordinary])
     if not present.all():  # a weekday that is a holiday every time it occurs in a month
         inclusive = project(hourly, calendar).reshape(12 * 7, 24)  # pyright: ignore[reportUnknownMemberType]
         days[~present] = inclusive[~present]
     holidays: HolidayDays = {}
     for month in sorted({int(m) for m in calendar.day_months[holiday]}):
         chosen = holiday & (calendar.day_months == month)
-        holidays[month] = by_day[chosen].mean(axis=0)
+        mean = by_day[chosen].mean(axis=0)
+        low, high = by_day[chosen].min(axis=0), by_day[chosen].max(axis=0)
+        mean[low == high] = low[low == high]  # holidays that agree keep their value exactly
+        holidays[month] = mean
     return days.reshape(12, 7, 24), holidays  # pyright: ignore[reportUnknownMemberType]
 
 
@@ -752,8 +792,19 @@ def expand(days: RepresentativeDays, calendar: RunPeriodCalendar, *, holidays: H
     return by_day.ravel()
 
 
-def _apply_holidays(by_day: npt.NDArray[np.float64], calendar: RunPeriodCalendar, holidays: HolidayDays) -> None:
-    for index in np.flatnonzero(_holiday_mask(calendar)):  # pyright: ignore[reportUnknownMemberType]
+def _apply_holidays(
+    by_day: npt.NDArray[np.float64],
+    calendar: RunPeriodCalendar,
+    holidays: HolidayDays,
+    *,
+    custom_days_first: bool = False,
+) -> None:
+    mask = _holiday_mask(calendar)
+    if custom_days_first:
+        for day in calendar.custom_day_1 | calendar.custom_day_2:
+            if day.year == calendar.year:
+                mask[day.timetuple().tm_yday - 1] = False
+    for index in np.flatnonzero(mask):  # pyright: ignore[reportUnknownMemberType]
         month = int(calendar.day_months[index])
         if month in holidays:
             by_day[index] = holidays[month]
@@ -776,6 +827,8 @@ def year_values(year: YearComponent, calendar: RunPeriodCalendar) -> Profile:
 
     Each day takes its month's day for its weekday; a holiday takes the week's `Holiday` day,
     else Sunday's, and a custom day Monday's, as epinterface writes the schedule for EnergyPlus.
+    A date that is both a holiday and a custom day is a custom day, as in the evaluation of the
+    `Schedule:Compact` text (`schedule_compact`).
 
     Args:
         year: The schedule.
@@ -788,7 +841,7 @@ def year_values(year: YearComponent, calendar: RunPeriodCalendar) -> Profile:
     by_day = np.array(days[calendar.day_months, calendar.day_schedule_weekdays])
     holidays = holiday_days(year)
     if holidays:
-        _apply_holidays(by_day, calendar, holidays)
+        _apply_holidays(by_day, calendar, holidays, custom_days_first=True)
     return by_day.ravel()
 
 
@@ -921,7 +974,10 @@ def _design_slots(
 
 
 def _checked_values(array: npt.NDArray[np.float64], name: str, kind: ScheduleTypeLimitType) -> npt.NDArray[np.float64]:
-    """Refuse Fraction values outside [0, 1] beyond round-off, and clip the round-off."""
+    """Refuse values that are not finite, and Fraction values outside [0, 1] beyond round-off (clipped)."""
+    if not np.isfinite(array).all():
+        msg = f"{name}: a schedule value is not finite"
+        raise ValueError(msg)
     if kind != "Fraction" or array.size == 0:
         return array
     if (array < -_FRACTION_TOLERANCE).any() or (array > 1.0 + _FRACTION_TOLERANCE).any():

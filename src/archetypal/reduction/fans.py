@@ -97,7 +97,9 @@ __all__ = [
 AIR_SPECIFIC_HEAT = 1004.84
 """Specific heat of dry air, J/(kg·K) (EnergyPlus `PsyCpAirFnW(0)`)."""
 
-_GAS_CONSTANT = 287.042
+_GAS_CONSTANT = 287.0
+# EnergyPlus's `PsyRhoAirFnPbTdbW` at its humidity-ratio floor of 1e-5.
+_HUMIDITY_FACTOR = 1.0 + 1.6077687 * 1.0e-5
 _STANDARD_TEMPERATURE = 20.0
 _SECONDS_PER_HOUR = 3600.0
 _ENERGY_VARIABLE = "Fan Electricity Energy"
@@ -112,9 +114,9 @@ _Bool: TypeAlias = "npt.NDArray[np.bool_]"
 
 
 def standard_air_density(elevation: float) -> float:
-    """EnergyPlus's `StdRhoAir`: dry air at 20 °C and the standard pressure at `elevation` (m), kg/m³."""
+    """EnergyPlus's `StdRhoAir` (`PsyRhoAirFnPbTdbW(p, 20, 0)`): dry air at 20 °C and the standard pressure at `elevation` (m), kg/m³."""
     pressure = 101325.0 * (1.0 - 2.25577e-5 * elevation) ** 5.2559
-    return pressure / (_GAS_CONSTANT * (_STANDARD_TEMPERATURE + 273.15))
+    return pressure / (_GAS_CONSTANT * (_STANDARD_TEMPERATURE + 273.15) * _HUMIDITY_FACTOR)
 
 
 # --- data ----------------------------------------------------------------------------------------

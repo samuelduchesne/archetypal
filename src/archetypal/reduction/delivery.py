@@ -27,11 +27,12 @@ per copy, as everywhere in the ledger.
 from __future__ import annotations
 
 import itertools
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
+from archetypal.reduction.airflow import doas_loops
 from archetypal.reduction.efficiency import read_hourly
 from archetypal.reduction.fans import air_loops, loop_shares
 from archetypal.reduction.requirements import delivery_outputs
@@ -75,11 +76,16 @@ class EquipmentOutputs:
         zones: The outputs of each zone's own equipment, by case-folded zone name.
         loops: The outputs of each air loop's coils, by case-folded loop name.
         unmeasured: Zone equipment that conditions but reports no delivery reduction reads.
+        dedicated: The coil outputs of each dedicated outdoor-air system and the case-folded
+            names of the air loops it feeds, by the system's name.
     """
 
     zones: Mapping[str, tuple[Output, ...]]
     loops: Mapping[str, tuple[Output, ...]]
     unmeasured: tuple[str, ...] = ()
+    dedicated: Mapping[str, tuple[tuple[Output, ...], tuple[str, ...]]] = field(
+        default_factory=dict[str, tuple[tuple[Output, ...], tuple[str, ...]]]
+    )
 
 
 @dataclass(frozen=True)
@@ -88,7 +94,8 @@ class Delivery:
 
     Attributes:
         zones: Delivered energy each hour for one copy, J, by mode and zone name.
-        unassigned: Air loops whose coils deliver energy but serve no zone, by name.
+        unassigned: Air loops and dedicated outdoor-air systems whose coils deliver energy but
+            serve no zone, by name.
         unmeasured: Zone equipment whose delivery is not measured (`EquipmentOutputs`).
     """
 
@@ -178,7 +185,19 @@ def equipment_outputs(doc: IDFDocumentSince22_1) -> EquipmentOutputs:
             for component in branch.components if branch is not None else ():
                 found += walker.outputs(component.component_object_type, component.component_name)
         loops[loop.name.casefold()] = tuple(dict.fromkeys(found))
-    return EquipmentOutputs(zones=zones, loops=loops, unmeasured=tuple(dict.fromkeys(walker.unmeasured)))
+    # A dedicated outdoor-air system's coils are on no branch: they condition the outdoor air
+    # of the loops the system feeds.
+    dedicated: dict[str, tuple[tuple[Output, ...], tuple[str, ...]]] = {}
+    for doas in doc["AirLoopHVAC:DedicatedOutdoorAirSystem"]:
+        coils = tuple(
+            dict.fromkeys(walker.outputs("AirLoopHVAC:OutdoorAirSystem", doas.airloophvac_outdoorairsystem_name or ""))
+        )
+        fed = tuple(doas_loops(doas.data))
+        if coils:
+            dedicated[doas.name] = (coils, fed)
+    return EquipmentOutputs(
+        zones=zones, loops=loops, unmeasured=tuple(dict.fromkeys(walker.unmeasured)), dedicated=dedicated
+    )
 
 
 def _split(
@@ -195,6 +214,29 @@ def _split(
             totals[mode][name] += shares[i] * energy
 
 
+def _split_dedicated(
+    outputs: EquipmentOutputs,
+    topology: AirLoops,
+    totals: dict[AirMode, dict[str, Profile]],
+    flows: tuple[Mapping[str, Profile], Mapping[str, float], int],
+    get: Callable[[str, str], Profile],
+) -> list[str]:
+    """Split each dedicated outdoor-air system's coils over the zones of the loops it feeds.
+
+    Returns:
+        The systems that feed no served zone.
+    """
+    inlet_flow, weights, hours = flows
+    unassigned: list[str] = []
+    for name, (found, fed) in outputs.dedicated.items():
+        served = tuple(dict.fromkeys(zone for loop in fed for zone in topology.served.get(loop, ())))
+        if served:
+            _split(totals, found, loop_shares(inlet_flow, weights, served, hours), served, get)
+        else:
+            unassigned.append(name)
+    return unassigned
+
+
 def delivery_requests(doc: IDFDocumentSince22_1, zone_names: Iterable[str]) -> list[tuple[str, str]]:
     """The hourly series `delivered_energy` reads for the zones `zone_names` (model spelling)."""
     return _requests(equipment_outputs(doc), air_loops(doc, zone_names))
@@ -203,6 +245,7 @@ def delivery_requests(doc: IDFDocumentSince22_1, zone_names: Iterable[str]) -> l
 def _requests(outputs: EquipmentOutputs, topology: AirLoops) -> list[tuple[str, str]]:
     requests = [(variable, key) for found in outputs.zones.values() for _, variable, key in found]
     requests += [(variable, key) for found in outputs.loops.values() for _, variable, key in found]
+    requests += [(variable, key) for found, _ in outputs.dedicated.values() for _, variable, key in found]
     requests += [(_NODE_VARIABLE, node) for nodes in topology.inlet_nodes.values() for node in nodes]
     return requests
 
@@ -262,6 +305,7 @@ def delivered_energy(
         elif found:
             flows = loop_inlet_flow.get(loop.name.casefold()) or inlet_flow
             _split(totals, found, loop_shares(flows, weights, served, hours), served, get)
+    unassigned += _split_dedicated(outputs, topology, totals, (inlet_flow, weights, hours), get)
     for mode_totals in totals.values():
         for name in mode_totals:
             mode_totals[name] /= multipliers[name]

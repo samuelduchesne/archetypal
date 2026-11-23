@@ -63,7 +63,7 @@ LOOP = FanSeries("AHU fan", energy=_a(400.0, 200.0, 100.0), mass_flow=_a(4.0, 2.
 
 
 def test_standard_density_is_energyplus_std_rho_air() -> None:
-    assert pytest.approx(1.2041, abs=1e-4) == RHO
+    assert pytest.approx(1.204309, abs=1e-6) == RHO
     assert standard_air_density(1000.0) < RHO
 
 

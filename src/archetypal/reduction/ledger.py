@@ -1079,8 +1079,12 @@ def _approximate_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
     infiltration = envelope.Infiltration
     if infiltration.IsOn:
         flow = _infiltration_flow(infiltration, area)
+        schedule = infiltration.Schedule
         values["infiltration"] = AirflowTotals(
             design_flow=flow,
+            # The schedule's profile, so that a merge conserves the annual infiltration volume.
+            hourly=flow * (_profile(schedule) if schedule is not None else np.ones(_REFERENCE_HOURS)),
+            design_days=_design_days(schedule, flow) if schedule is not None else DesignDays(),
             constant_weighted=flow * infiltration.ConstantCoefficient,
             temperature_weighted=flow * infiltration.TemperatureCoefficient,
             velocity_weighted=flow * infiltration.WindVelocityCoefficient,

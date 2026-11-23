@@ -180,7 +180,11 @@ class BuildingEnergy:
         floor_area: Each zone's floor area (one copy), m².
         delivered: Delivered energy each hour for one copy, J, by mode and zone.
         consumed: Primary meters each hour, J, by mode and fuel (whole building).
-        distribution: Pumps and heat rejection each hour, J, by fuel (whole building).
+        distribution: Pumps each hour, J, by fuel (whole building), split between the modes
+            delivered in the hour.
+        heat_rejection: Heat rejection each hour, J, by fuel (whole building), charged to cooling.
+        joint_fuels: The case-folded fuels of the plant that can heat hot water metered as
+            `Heating` (boilers, district heating, plant-side water heaters); `None` for every fuel.
         rated: Rated efficiency by zone and mode, where known.
         unmeasured: Zone equipment whose delivery reduction does not measure (`Delivery`).
         unassigned: Air loops whose coils deliver energy to no zone (`Delivery`).
@@ -192,6 +196,8 @@ class BuildingEnergy:
     delivered: Mapping[Mode, Mapping[str, Profile]]
     consumed: Mapping[Mode, Mapping[Fuel, Profile]]
     distribution: Mapping[Fuel, Profile] = field(default_factory=dict[Fuel, "Profile"])
+    heat_rejection: Mapping[Fuel, Profile] = field(default_factory=dict[Fuel, "Profile"])
+    joint_fuels: frozenset[str] | None = None
     rated: Mapping[str, Mapping[Mode, float]] = field(default_factory=dict[str, Mapping[Mode, float]])
     unmeasured: tuple[str, ...] = ()
     unassigned: tuple[str, ...] = ()
@@ -279,6 +285,9 @@ class _Ledgers:
         self.hourly_share[mode] = _divide(positive, total)
         annual = positive.sum(axis=1)
         weight = annual if float((self.mult * annual).sum()) > 0.0 else self.area
+        if float((self.mult * weight).sum()) <= 0.0:
+            # No delivery and no floor area: equal shares per copy, so the zones still add up.
+            weight = np.ones(len(self.names))
         self.annual_share[mode] = _divide(weight, np.array(float((self.mult * weight).sum())))
 
     @staticmethod
@@ -301,12 +310,12 @@ class _Ledgers:
         self.spread(mode, fuel, idle)
         return idle
 
-    def joint_primary_meter(self, modes: Sequence[Mode], fuel: Fuel, meter: _Array) -> float:
+    def joint_primary_meter(self, modes: Sequence[Mode], fuel: Fuel, meter: _Array) -> dict[Mode, float]:
         """Attribute a primary meter that serves several modes, split by each hour's delivery.
 
         A boiler heating both the space and the service hot water is metered as heating only;
-        its consumption is split between the modes by what each delivers in the hour. Return the
-        consumption in hours without delivery, spread by the modes' annual delivery.
+        its consumption is split between the modes by what each delivers in the hour. Return each
+        mode's part of the consumption in hours without delivery, spread by annual delivery.
         """
         every = sum((self.building[mode] for mode in modes), np.zeros(self.hours))
         for mode in modes:
@@ -318,18 +327,22 @@ class _Ledgers:
         idle = float(meter[every <= 0.0].sum())
         annual = {mode: float(self.building[mode].sum()) for mode in modes}
         annual_total = sum(annual.values())
+        parts: dict[Mode, float] = {}
         for mode in modes:
             share = annual[mode] / annual_total if annual_total > 0.0 else (1.0 if mode == modes[0] else 0.0)
-            self.spread(mode, fuel, idle * share)
-        return idle
+            parts[mode] = idle * share
+            self.spread(mode, fuel, parts[mode])
+        return parts
 
-    def distribution_meter(self, fuel: Fuel, energy: _Array) -> float:
+    def distribution_meter(
+        self, fuel: Fuel, energy: _Array, candidates: tuple[Mode, ...] = ("heating", "cooling", "hot_water")
+    ) -> float:
         """Split a pump or heat-rejection meter by the hour's delivered modes; return the idle part.
 
         Hot water is one of the modes when it is delivered, so the pumps of a service-hot-water
-        loop are not charged to space conditioning.
+        loop are not charged to space conditioning. Heat rejection is passed `("cooling",)`:
+        towers and fluid coolers reject the heat of cooling only.
         """
-        candidates: tuple[Mode, ...] = ("heating", "cooling", "hot_water")
         modes: list[Mode] = [mode for mode in candidates if mode in self.building]
         delivered = {mode: self.building[mode] for mode in modes}
         every = sum(delivered.values(), np.zeros(self.hours))
@@ -341,7 +354,7 @@ class _Ledgers:
         annual = {mode: float(delivered[mode].sum()) for mode in modes}
         annual_total = sum(annual.values())
         for mode in modes:
-            part = annual[mode] / annual_total if annual_total > 0.0 else (1.0 if mode == "heating" else 0.0)
+            part = annual[mode] / annual_total if annual_total > 0.0 else (1.0 if mode == modes[0] else 0.0)
             self.spread(mode, fuel, idle * part)
         return idle
 
@@ -381,14 +394,20 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
     for mode in ledgers.modes:
         for fuel, series in data.consumed.get(mode, {}).items():
             meter = np.asarray(series, dtype=np.float64)
-            if joint and mode == "heating":
-                unattributed[mode][fuel] = ledgers.joint_primary_meter(("heating", "hot_water"), fuel, meter)
+            shared = data.joint_fuels is None or fuel.casefold() in data.joint_fuels
+            if joint and mode == "heating" and shared:
+                parts = ledgers.joint_primary_meter(("heating", "hot_water"), fuel, meter)
+                for part_mode, idle in parts.items():
+                    unattributed[part_mode][fuel] = unattributed[part_mode].get(fuel, 0.0) + idle
             else:
                 unattributed[mode][fuel] = ledgers.primary_meter(mode, fuel, meter)
     unattributed_distribution = {
         fuel: ledgers.distribution_meter(fuel, np.asarray(series, dtype=np.float64))
         for fuel, series in data.distribution.items()
     }
+    for fuel, series in data.heat_rejection.items():
+        idle = ledgers.distribution_meter(fuel, np.asarray(series, dtype=np.float64), ("cooling",))
+        unattributed_distribution[fuel] = unattributed_distribution.get(fuel, 0.0) + idle
     temperature = np.asarray(data.outdoor_temperature, dtype=np.float64)
     zones: dict[str, Mapping[Mode, EnergyTotals]] = {
         name: {mode: ledgers.totals(i, mode, data.rated.get(name, {}).get(mode), temperature) for mode in ledgers.modes}
@@ -592,15 +611,26 @@ def equipment_table(results: SQLResult, table: str) -> dict[str, dict[str, str]]
     return table_rows
 
 
-def _weighted_mean(pairs: Iterable[tuple[float | None, float | None]]) -> float | None:
-    total = weight_sum = 0.0
+def _weighted_mean(
+    pairs: Iterable[tuple[float | None, float | None]], *, weight_is_input: bool = False
+) -> float | None:
+    """The efficiency of the equipment taken together: total output over total input.
+
+    A weight is an output capacity (the harmonic mean, `sum(w) / sum(w / efficiency)`) unless
+    `weight_is_input`, where it is an input (the arithmetic mean).
+    """
+    output = consumed = 0.0
     for efficiency, weight in pairs:
         if efficiency is None or efficiency <= 0.0:
             continue
         w = weight if weight is not None and weight > 0.0 else 1.0
-        total += w * efficiency
-        weight_sum += w
-    return total / weight_sum if weight_sum > 0.0 else None
+        if weight_is_input:
+            output += w * efficiency
+            consumed += w
+        else:
+            output += w
+            consumed += w / efficiency
+    return output / consumed if consumed > 0.0 else None
 
 
 def _coil_mean(coils: Mapping[str, Mapping[str, str]], names: Iterable[str] | None = None) -> float | None:
@@ -699,6 +729,20 @@ def _hot_water_heat(
     return np.asarray(heat, dtype=np.float64) * WATER_VOLUMETRIC_HEAT
 
 
+def _plant_heating_fuels(doc: IDFDocumentSince22_1) -> frozenset[str] | None:
+    """The case-folded fuels of the equipment that can heat hot water metered as `Heating`.
+
+    Boilers and district heating on a plant loop meter their consumption as heating whatever the
+    loop serves. `None` when the model has none, so every heating fuel is shared.
+    """
+    fuels = {str(boiler.fuel_type).casefold() for boiler in doc["Boiler:HotWater"] if boiler.fuel_type}
+    fuels |= {str(boiler.fuel_type).casefold() for boiler in doc["Boiler:Steam"] if boiler.fuel_type}
+    district = any(obj.obj_type.casefold().startswith("districtheating") for obj in doc.all_objects)
+    if district:
+        fuels |= {"districtheating", "districtheatingwater", "districtheatingsteam", "steam"}
+    return frozenset(fuels) or None
+
+
 def building_energy(
     sources: SourceData,
     zones: Sequence[ClassifiedZone],
@@ -758,10 +802,8 @@ def building_energy(
             )
             for zone in conditioned
         }
-    distribution: dict[Fuel, Profile] = {}
-    for end_use in _DISTRIBUTION:
-        for meter, fuel in meters.get(end_use, []):
-            distribution[fuel] = distribution.get(fuel, zeros) + get(meter, "")
+    distribution: dict[Fuel, Profile] = {fuel: get(meter, "") for meter, fuel in meters.get("Pumps", [])}
+    heat_rejection: dict[Fuel, Profile] = {fuel: get(meter, "") for meter, fuel in meters.get("HeatRejection", [])}
     return BuildingEnergy(
         outdoor_temperature=get(OUTDOOR_VARIABLE, _ENVIRONMENT),
         multipliers={zone.zone.name: zone.zone.multiplier for zone in conditioned},
@@ -769,6 +811,8 @@ def building_energy(
         delivered=delivered,
         consumed=consumed,
         distribution=distribution,
+        heat_rejection=heat_rejection,
+        joint_fuels=_plant_heating_fuels(sources.model),
         rated=rated_efficiencies(sources, conditioned),
         unmeasured=tuple(sorted(set(equipment.unmeasured))),
         unassigned=tuple(sorted(set(equipment.unassigned))),

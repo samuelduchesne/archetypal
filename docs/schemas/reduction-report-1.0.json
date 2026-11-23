@@ -63,7 +63,7 @@
       "type": "object"
     },
     "BuildingBlock": {
-      "description": "Building facts `merge` needs without the model (R6).\n\nAttributes:\n    conditioned_floor_area: \u03a3 floor area of the conditioned zones, multipliers applied, m\u00b2.\n    storey_ratio: Conditioned floor area \u00f7 floor area of the lowest level, unrounded.\n    calendar: The run-period calendar of the profiles; `None` in a report that does not\n        record it, which `merge` refuses.\n    mains_temperature: The annual-mean mains water temperature, \u00b0C, or `None` without hot water.\n    air_density: The standard air density of the fan volumes, kg/m\u00b3, or `None` when not recorded.",
+      "description": "Building facts `merge` needs without the model (R6).\n\nAttributes:\n    conditioned_floor_area: \u03a3 floor area of the conditioned zones, multipliers applied, m\u00b2.\n    storey_ratio: Conditioned floor area \u00f7 floor area of the largest level, unrounded.\n    calendar: The run-period calendar of the profiles; `None` in a report that does not\n        record it, which `merge` refuses.\n    mains_temperature: The annual-mean mains water temperature, \u00b0C, or `None` without hot water.\n    air_density: The standard air density of the fan volumes, kg/m\u00b3, or `None` when not recorded.",
       "properties": {
         "conditioned_floor_area": {
           "exclusiveMinimum": 0.0,

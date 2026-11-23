@@ -519,8 +519,17 @@ def _exterior_equipment_energy(results: SQLResult) -> float | None:
     return total if found else None
 
 
+_WEEKS_PER_YEAR = 8760.0 / 168.0
+
+
 def _daylighting_saving(results: SQLResult, z: _Zones, zones: Iterable[str]) -> float | None:
-    """Lighting energy daylight saved in `zones`, J: `Consumption · (scheduled - full load) / full load`."""
+    """Lighting energy daylight saved in `zones`, J: `Total Power · (scheduled - full load hours)`.
+
+    The hours are the Lighting Summary's, per week, over the 8,760 / 168 weeks of the year. An
+    upper bound: EnergyPlus counts the scheduled hours on ordinary weekdays, so a schedule that
+    is lower on holidays adds to the gap without any dimming. Without the `Total Power` column
+    the saving is `Consumption · (scheduled - full load) / full load`.
+    """
     try:
         rows = results.get_tabular_data("LightingSummary", "Interior Lighting", report_for="Entire Facility")
     except ResultLookupError:
@@ -541,10 +550,19 @@ def _daylighting_saving(results: SQLResult, z: _Zones, zones: Iterable[str]) -> 
             full_load = float(values["Full Load Hours/Week"][0])
         except (KeyError, ValueError):
             continue
+        gap = max(scheduled - full_load, 0.0)
+        try:
+            power = float(values["Total Power"][0])
+        except (KeyError, ValueError):
+            power = None
+        if power is not None and power > 0.0:
+            total += power * gap * 3600.0 * _WEEKS_PER_YEAR
+            found = True
+            continue
         joules = _to_joules(consumption, units)
         if joules is None or full_load <= 0.0:
             continue
-        total += joules * max(scheduled - full_load, 0.0) / full_load
+        total += joules * gap / full_load
         found = True
     return total if found else None
 

@@ -83,6 +83,9 @@ before upgrading.
 
 ### Fixed
 
+- Archetypes translated from UMI are written with epinterface's `Archetype.to_json`, as reduced
+  ones are, and writing an archetype no longer encodes it a second time as indented JSON just to
+  check its floats: several times faster for large archetypes.
 - `reduce` refuses results without a weather-file run period, naming the `SimulationControl`
   switch, and its single run turns that switch on: a model set to run only its design days, such
   as many EnergyPlus example files, failed with a NumPy broadcast error.

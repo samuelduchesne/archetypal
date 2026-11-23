@@ -37,7 +37,7 @@ from epinterface.sbem.components.space_use import ZoneSpaceUseComponent
 from epinterface.sbem.components.systems import ZoneHVACComponent
 
 from archetypal.errors import InputError, Problem, UmiValidationError
-from archetypal.io import ARCHETYPE_SUFFIX, dumps, write_atomically
+from archetypal.io import ARCHETYPE_SUFFIX, model_text, write_atomically
 from archetypal.umi import dialects
 from archetypal.umi._format import (
     BuildingTemplate,
@@ -137,7 +137,7 @@ class UmiImport:
         """
         folder = Path(directory)
         stem = Path(self.report.source.path).stem if self.report.source.path else "library"
-        files = [(folder / f"{_file_stem(a.Name)}{ARCHETYPE_SUFFIX}", dumps(a)) for a in self.archetypes]
+        files = [(folder / f"{_file_stem(a.Name)}{ARCHETYPE_SUFFIX}", model_text(a)) for a in self.archetypes]
         files.append((folder / f"{stem}{LOSS_SUFFIX}", self.report.to_json()))
         seen: set[str] = set()
         for path, _ in files:

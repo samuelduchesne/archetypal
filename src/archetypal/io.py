@@ -47,6 +47,7 @@ __all__ = [
     "REPORT_SUFFIX",
     "EncodedProfile",
     "dumps",
+    "model_text",
     "read",
     "read_model",
     "report_path_for",
@@ -145,10 +146,31 @@ def dumps(model: BaseModel) -> str:
     return text + "\n"
 
 
-def _text(model: BaseModel) -> str:
-    """The file text of a model: the fork's `Archetype.to_json` for an archetype, else `dumps`."""
-    text = dumps(model)  # refuses non-finite floats, which `to_json` would write as null
-    return model.to_json() if isinstance(model, Archetype) else text
+def model_text(model: BaseModel) -> str:
+    """Return a model's file text: the fork's `Archetype.to_json` for an archetype, else `dumps`.
+
+    Every writer of an archetype file uses this, so reduced and translated archetypes are written
+    the same way.
+
+    Args:
+        model: The model to write: an SBEM archetype, a report.
+
+    Returns:
+        The file text, ending with a newline.
+
+    Raises:
+        ValueError: If the model holds a non-finite float (JSON cannot hold it).
+    """
+    if not isinstance(model, Archetype):
+        return dumps(model)
+    # `to_json` writes a non-finite float as null, so refuse one first. The check needs no indent:
+    # without it `json.dumps` uses its C encoder, where indenting falls back to the pure-Python one.
+    try:
+        json.dumps(model.model_dump(mode="json"), allow_nan=False)
+    except ValueError as exc:
+        msg = f"{type(model).__name__}: every float must be finite to be written as JSON ({exc})"
+        raise ValueError(msg) from exc
+    return model.to_json()
 
 
 def _refuse_existing(path: Path, overwrite: bool) -> None:
@@ -172,7 +194,7 @@ def write_model(model: BaseModel, path: str | os.PathLike[str], *, overwrite: bo
     """
     target = Path(path)
     _refuse_existing(target, overwrite)
-    text = _text(model)
+    text = model_text(model)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(text.encode("utf-8"))
     return target
@@ -217,7 +239,7 @@ def write(
     report_path = folder / f"{name}{REPORT_SUFFIX}"
     for path in (archetype_path, report_path):
         _refuse_existing(path, overwrite)
-    archetype_text, report_text = _text(archetype), _text(report)
+    archetype_text, report_text = model_text(archetype), model_text(report)
     folder.mkdir(parents=True, exist_ok=True)
     write_atomically([(archetype_path, archetype_text.encode("utf-8")), (report_path, report_text.encode("utf-8"))])
     return archetype_path, report_path

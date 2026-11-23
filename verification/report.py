@@ -581,14 +581,30 @@ def stand_in_buildings(models: Sequence[Path], cache: Path) -> list[Building]:
 # --- detailed run -----------------------------------------------------------------------------
 
 
+def cached_simulation(model: Any, epw: Path, cache: Any) -> Any:
+    """Simulate through the cache and return the cached result, leaving no temporary folder behind.
+
+    A fresh run happens in a temporary folder idfkit creates and never deletes on its own; the
+    cache keeps a copy of it. Reading that copy and deleting the folder keeps a run of the whole
+    set from filling the disk (about 400 MB per detailed run).
+    """
+    from idfkit.simulation import simulate  # noqa: PLC0415
+
+    result = simulate(model, epw, cache=cache)
+    result.raise_for_status()
+    if result.owns_run_dir:
+        result.cleanup()
+        result = simulate(model, epw, cache=cache)  # a cache hit: the stored copy, nothing to delete
+        result.raise_for_status()
+    return result
+
+
 def simulate_detailed(doc: Any, epw: Path, cache: Any) -> Path:
     """Simulate a copy of the model with every output reduction needs; return its SQLite file.
 
     Sub-hourly heating and cooling meters are dropped from the copy so that both runs' meters share
     the hourly frequency `RESULTS_REQUIREMENTS` asks for (FR-028).
     """
-    from idfkit.simulation import simulate  # noqa: PLC0415
-
     from archetypal.reduction.requirements import add_missing_outputs, single_run_facts  # noqa: PLC0415
     from archetypal.reduction.sources import model_facts  # noqa: PLC0415
 
@@ -601,8 +617,7 @@ def simulate_detailed(doc: Any, epw: Path, cache: Any) -> Path:
         }:
             model.removeidfobject(meter)
     add_missing_outputs(model, single_run_facts(model_facts(model, ())))
-    result = simulate(model, epw, cache=cache)
-    result.raise_for_status()
+    result = cached_simulation(model, epw, cache)
     if result.sql_path is None:
         msg = "the detailed run wrote no SQLite file"
         raise RuntimeError(msg)
@@ -899,15 +914,14 @@ def simulate_archetype(
     """Build the archetype with epinterface's builder, simulate it like the detailed model, post-process it."""
     import numpy as np  # noqa: PLC0415
     from epinterface.sbem.builder import Model, SimulationPathConfig  # noqa: PLC0415
-    from idfkit.simulation import SQLResult, simulate  # noqa: PLC0415
+    from idfkit.simulation import SQLResult  # noqa: PLC0415
 
     start = time.perf_counter()
     model = Model.from_archetype(archetype, geometry, Weather=building.weather_zip)  # pyright: ignore[reportUnknownMemberType]
     config = SimulationPathConfig(output_dir=work, weather_dir=building.weather_zip.parent / "epinterface")
     doc = model.build(config)
     align_settings(doc, detailed_doc)
-    result = simulate(doc, building.epw, cache=cache)
-    result.raise_for_status()
+    result = cached_simulation(doc, building.epw, cache)
     if result.sql_path is None:
         msg = "the archetype run wrote no SQLite file"
         raise RuntimeError(msg)

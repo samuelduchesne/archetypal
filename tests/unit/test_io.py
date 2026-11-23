@@ -7,7 +7,7 @@ import json
 import math
 import os
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import pytest
@@ -223,6 +223,30 @@ def test_an_sbem_archetype_is_written_with_the_forks_helper(tmp_path: Path) -> N
     assert json.loads(text)["SchemaVersion"] == ARCHETYPE_SCHEMA_VERSION
     assert io.read_model(SbemArchetype, archetype_path) == archetype
     assert io.read(SbemArchetype, Report, archetype_path)[0] == SbemArchetype.load(archetype_path)
+
+
+def _set_first_float(model: BaseModel, value: float) -> bool:
+    """Set the first float field found in *model* (depth first) to *value*, without validation."""
+    for name, field_value in model:
+        if isinstance(field_value, float):
+            object.__setattr__(model, name, value)
+            return True
+        children: list[object] = (
+            list(cast("list[object]", field_value)) if isinstance(field_value, (list, tuple)) else [field_value]
+        )
+        if any(isinstance(child, BaseModel) and _set_first_float(child, value) for child in children):
+            return True
+    return False
+
+
+def test_an_sbem_archetype_with_a_non_finite_float_is_refused(tmp_path: Path) -> None:
+    """`to_json` would write NaN as null, so the write refuses it and writes nothing."""
+    archetype = _sbem_archetype()
+    assert _set_first_float(archetype, math.nan)
+
+    with pytest.raises(ValueError, match="every float must be finite"):
+        io.write(archetype, _report(), tmp_path, "tiny")
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_an_sbem_archetype_of_an_unknown_schema_version_is_refused(tmp_path: Path) -> None:

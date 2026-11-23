@@ -993,11 +993,15 @@ def consumed_run(archetype_raw: Any, run: ArchetypeRun, detailed_run: Any) -> An
         fuel = _fuel_column(run.fuels.get(meter, "Electricity"), detailed_fuels)
         key = (_EP_END_USES[meter], fuel)
         end_uses[key] = end_uses.get(key, 0.0) + kwh * factor
+    peaks = {"Heating": run.heating_peak_w, "Cooling": run.cooling_peak_w}
     return dataclasses.replace(
         archetype_raw,
         total_site=math.fsum(end_uses.values()),
         end_uses=end_uses,
-        peaks={"Heating": run.heating_peak_w, "Cooling": run.cooling_peak_w},
+        peaks=peaks,
+        # `compare` reads peaks by frequency; left as the SQLite file's, it would judge the delivered
+        # (not consumed) peaks. These are hourly, so the detailed side is read hourly too.
+        peaks_by_frequency={"Hourly": peaks},
         to_heating={},
         to_cooling={},
     )

@@ -194,3 +194,49 @@ def test_air_side_control_of_central_systems_is_listed(
     (entry,) = entries
     assert served <= set(entry.affected_zones)
     assert entry.affected_groups
+
+
+# --- peaks --------------------------------------------------------------------------------------------
+
+
+def test_judged_archetype_peaks_are_consumed_not_delivered() -> None:
+    """The judged peak is the hourly delivered energy times the energy input ratio, at every frequency.
+
+    `compare` reads each run's peaks at the finest frequency both report. The archetype's SQLite
+    file holds delivered (district) energy at that frequency; left in place, it was judged instead
+    of the consumed peak the report computes.
+    """
+    from archetypal.comparison import AcceptanceTargets  # noqa: PLC0415
+    from archetypal.comparison import _rows as comparison_rows  # pyright: ignore[reportPrivateUsage]  # noqa: PLC0415
+    from archetypal.comparison.results import RunResults  # noqa: PLC0415
+
+    report = _verification_report()
+    delivered = {"Heating": 60_000.0, "Cooling": 66_000.0}
+    detailed = RunResults(
+        label="detailed",
+        units="GJ",
+        total_site=10.0,
+        end_uses={("Cooling", "Electricity"): 5.0},
+        frequency="Hourly",
+        peaks={"Heating": 3_000.0, "Cooling": 6_600.0},
+        peaks_by_frequency={"Hourly": {"Heating": 3_000.0, "Cooling": 6_600.0}},
+    )
+    raw = RunResults(
+        label="archetype",
+        units="GJ",
+        frequency="Hourly",
+        peaks=delivered,
+        peaks_by_frequency={"Hourly": delivered},
+    )
+    run = report.ArchetypeRun(
+        sql=Path("eplus.sql"),
+        end_uses_kwh={"Cooling": 1000.0},
+        fuels={"Cooling": "Electricity"},
+        heating_peak_w=2_000.0,
+        cooling_peak_w=20_000.0,
+        area=100.0,
+        seconds=0.0,
+    )
+    rows = comparison_rows(detailed, report.consumed_run(raw, run, detailed), AcceptanceTargets())
+    peaks = {row.end_use: row.archetype for row in rows if row.kind == "peak"}
+    assert peaks == {"Heating": 2_000.0, "Cooling": 20_000.0}

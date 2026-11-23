@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,8 +31,8 @@
 
 ## Notes
 
-- One clarification remains: SC-004's acceptance band for an hourly simulation against
-  TABULA's seasonal heating need. It needs the user's decision before `/speckit-plan`.
+- SC-004's band and the set-point question were decided on 2026-11-23 from the 54-building
+  experiment in `experiments/sc004/` (spec, Clarifications).
 - File names of the source workbooks (FR-001) are named because they are the data source the
   roadmap requires, not an implementation choice.
 - SC-006 names "a typical laptop", as spec 003's SC-007 does; the plan fixes the machine.

@@ -38,6 +38,29 @@ Two facts shape it:
   EPISCOPE (www.episcope.eu) is visibly mentioned as the source". Under roadmap C-15,
   archetypal therefore ships a reader, not the data.
 
+## Clarifications
+
+### Session 2026-11-23
+
+Both answers rest on a 54-building experiment (7 countries, single- and multi-family houses,
+old and recent construction periods, variants 1 and 3): one-zone EnergyPlus models built
+directly from TABULA's values, compared with TABULA's own seasonal method on the same weather
+file and with TABULA's published figures (`experiments/sc004/`).
+
+- Q: How is an hourly simulation of a TABULA archetype judged against TABULA's heating need
+  (SC-004)? → A: Within ±25 % of TABULA's method recomputed on the simulation's own weather
+  file (53 of 54 buildings passed; 44 of 54 at ±15 %). The difference from TABULA's
+  published figure is reported, split into a climate part and a method part, but does not
+  pass or fail: TABULA's national climates are 1 to 4.5 K colder than 2011–2025 weather files,
+  so against the published figure only 38 of 54 passed at ±25 %, a test of the weather file
+  rather than of archetypal.
+- Q: TABULA multiplies heat losses by a temperature-reduction factor (0.8 to 0.95) for partial
+  and intermittent heating. How does the archetype carry it? → A: The archetype heats to
+  TABULA's internal temperature (20 °C); the factor is recorded in the provenance, like the
+  national adaptation factors, for users to apply to results. Keeping 20 °C agreed best with
+  TABULA's method on the same weather (median −6 %); an equivalent constant lower set-point
+  under-predicted poorly insulated houses by 12 to 26 %.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Get an archetype for a country, building type and age band (Priority: P1)
@@ -209,10 +232,11 @@ boundary conditions and compare its annual heating need with TABULA's (SC-004).
   equipment split of the internal gains, cooling, schedules of the set-points) MUST be supplied
   as documented assumptions that keep TABULA's annual totals (FR-008), and MUST be marked as
   assumptions in the provenance record.
-- **FR-010**: National adaptation factors, which TABULA uses to scale calculated demand to
-  typical measured consumption, MUST NOT change the archetype (it describes the building, not
-  its occupants' behaviour). They MUST be recorded in the provenance record so users can apply
-  them to results.
+- **FR-010**: Two TABULA factors describe how the building is used, not the building, and MUST
+  NOT change the archetype: the temperature-reduction factor for partial and intermittent
+  heating (the archetype heats to TABULA's internal temperature, FR-008), and the national
+  adaptation factors that scale calculated demand to typical measured consumption. Both MUST be
+  recorded in the provenance record so users can apply them to results.
 - **FR-011**: Every SBEM field set from TABULA, and every TABULA field read, MUST appear in a
   published correspondence that states the rule linking them (copy, unit conversion, derived,
   assumption), in the manner of spec 003's UMI field correspondence.
@@ -272,9 +296,12 @@ boundary conditions and compare its annual heating need with TABULA's (SC-004).
   every archetype created, showing that nothing that drives the balance was lost.
 - **SC-004**: For a fixed reference set of TABULA buildings, chosen before results are known
   and covering several countries, size classes and variants, the archetype simulated with
-  TABULA's boundary conditions has an annual heating need within
-  [NEEDS CLARIFICATION: acceptance band for the hourly simulation against TABULA's seasonal
-  figure, e.g. ±15 %, ±25 %, or reported only] of TABULA's published value.
+  TABULA's boundary conditions has an annual heating need within ±25 % of TABULA's seasonal
+  method recomputed on the same weather file, for every building in the set. For each
+  building, the difference from TABULA's published figure is also reported, split into its
+  climate part (TABULA's method on the weather file against the published figure) and its
+  method part (the simulation against TABULA's method on the weather file); it does not pass
+  or fail.
 - **SC-005**: 100 % of archetype values appear in the provenance record with a TABULA source or a
   named assumption; 100 % of TABULA fields read and SBEM fields set appear in the field
   correspondence.
@@ -303,7 +330,9 @@ boundary conditions and compare its annual heating need with TABULA's (SC-004).
   Any other gap the plan finds is closed upstream (constitution I), not in archetypal.
 - Weather is not part of an archetype. The simulations of SC-004 use a representative weather
   file per country, chosen by the plan; TABULA's own seasonal climate data are recorded in the
-  provenance, not converted to hourly weather.
+  provenance, not converted to hourly weather. Recomputing TABULA's method on a weather file
+  takes the heating days as the days whose mean outdoor temperature is below TABULA's base
+  temperature (12 °C), as TABULA does.
 - Translating a TABULA archetype to UMI is spec 003's job and needs nothing from this spec
   beyond the provenance record (FR-013).
 

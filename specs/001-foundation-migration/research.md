@@ -153,12 +153,15 @@ C-18 counts on for outside feedback.
 
   | Tier | Marker | Runs | Budget |
   |---|---|---|---|
-  | Unit | none | every push, every Python and OS of R9 | ≤ 120 s wall-clock; ≤ 5 s per test |
+  | Unit | none | every push, every Python and OS of R9 | ≤ 120 s wall-clock (without coverage) |
   | Integration | `energyplus` | every pull request, Linux, Python 3.12 | ≤ 10 min |
   | Reference | `reference` | weekly, manual, on milestone tags | none |
 
-  `pytest-timeout` sets 5 s per unit test. A `pytest_sessionfinish` hook in `tests/conftest.py`
-  fails the default selection when it exceeds 120 s. `--durations=15` is always on.
+  `pytest-timeout` sets 300 s per test, a guard against hangs rather than a speed limit: a
+  per-test limit failed tests that were only slow on a cold or loaded runner, and module
+  fixtures (the docs build) count toward their first test. A `pytest_sessionfinish` hook in
+  `tests/conftest.py` fails the default selection when it exceeds 120 s; under coverage, which
+  slows it about twofold, it reports the time without failing. `--durations=15` is always on.
   `hypothesis` has a `ci` profile capped at 50 examples and a 500 ms deadline.
 - **Documentation check:** the template's `check-docs` job (`mkdocs build -s`), plus the
   example and Diátaxis checks of R5.

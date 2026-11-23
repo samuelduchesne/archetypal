@@ -2,6 +2,8 @@
 
 A library of 100 building templates, made from B2 by renaming its four templates, is read in
 under 3 s and written in under 3 s: SC-007's 5 s on a typical laptop, with a margin for slow CI.
+Under coverage, which slows the code about twofold, the library is still read and written but
+the times are not checked.
 """
 
 from __future__ import annotations
@@ -45,7 +47,7 @@ def hundred(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.mark.timeout(30)
-def test_100_templates_read_and_write_within_budget(hundred: Path, tmp_path: Path) -> None:
+def test_100_templates_read_and_write_within_budget(hundred: Path, tmp_path: Path, under_coverage: bool) -> None:
     start = time.perf_counter()
     imported = read_umi(hundred)
     read_s = time.perf_counter() - start
@@ -55,5 +57,7 @@ def test_100_templates_read_and_write_within_budget(hundred: Path, tmp_path: Pat
     write_umi(imported.archetypes, tmp_path / "written.json")
     write_s = time.perf_counter() - start
 
+    if under_coverage:
+        return
     assert read_s < BUDGET_S, f"reading took {read_s:.2f} s"
     assert write_s < BUDGET_S, f"writing took {write_s:.2f} s"

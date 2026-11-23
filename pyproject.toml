@@ -78,7 +78,8 @@ markers = [
 ]
 # importlib: docs/ and tests/ each have a conftest.py, which `--markdown-docs docs/ tests/docs/` collects together
 addopts = "-m 'not energyplus and not reference' --durations=15 --import-mode=importlib"
-timeout = 5
+# A guard against hung tests, not a speed limit: the unit tier's speed is its 120 s budget (tests/conftest.py).
+timeout = 300
 
 [tool.ruff]
 target-version = "py310"

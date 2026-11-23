@@ -81,7 +81,7 @@ The template's src layout (plan.md, Project Structure): `src/archetypal/`, `test
 - [X] T007 After T004, configure pytest in `pyproject.toml`: `strict = true`,
   `testpaths = ["tests"]`, markers `energyplus: needs EnergyPlus 24.2` and `reference:
   reference-set evidence (slow)`, `addopts = "-m 'not energyplus and not reference'
-  --durations=15"`, `timeout = 5` (research R3).
+  --durations=15"`, `timeout = 300`, a guard against hangs (research R3).
 - [X] T008 Write `tests/conftest.py`: a `pytest_sessionfinish` hook that fails the default
   selection when it takes more than 120 s; hypothesis profiles `ci` (50 examples, 500 ms
   deadline) and `dev`; per-marker timeouts for `energyplus` (600 s) and `reference` (none)

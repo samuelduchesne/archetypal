@@ -24,7 +24,8 @@ if TYPE_CHECKING:
     from archetypal.reduction.schedules import ScheduleEvaluator
     from archetypal.reduction.sources import SourceData
 
-# The unit tier (the default selection) must finish within this many seconds of wall-clock time.
+# The unit tier (the default selection) must finish within this many seconds of wall-clock time,
+# unless it runs under coverage, which slows it about twofold.
 UNIT_TIER_BUDGET_S = 120.0
 # Marker expression of the default selection, as set by `addopts` in pyproject.toml.
 DEFAULT_SELECTION = "not energyplus and not reference"
@@ -75,6 +76,16 @@ def save_library(request: pytest.FixtureRequest) -> Callable[[Path], Path | None
     return save
 
 
+@pytest.fixture(scope="session")
+def under_coverage(request: pytest.FixtureRequest) -> bool:
+    """Whether the run measures coverage (`--cov`), which slows code about twofold.
+
+    Tests that check a speed budget skip the timing check under coverage; the runs without it
+    check the budget.
+    """
+    return bool(request.config.getoption("cov_source", default=None))
+
+
 def pytest_sessionstart(session: pytest.Session) -> None:
     """Record when the session starts."""
     _session_start["t"] = time.perf_counter()
@@ -89,17 +100,25 @@ def pytest_collection_modifyitems(config: pytest.Config, items: Sequence[pytest.
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    """Fail the default selection when it takes longer than the unit-tier budget."""
+    """Fail the default selection when it takes longer than the unit-tier budget.
+
+    Under coverage (`--cov`) the time is reported but not enforced: coverage slows the tier about
+    twofold, so the budget is checked by the runs without it.
+    """
     start = _session_start.get("t")
     if start is None or session.config.getoption("markexpr") != DEFAULT_SELECTION:
         return
     elapsed = time.perf_counter() - start
-    if elapsed > UNIT_TIER_BUDGET_S:
-        reporter = session.config.pluginmanager.get_plugin("terminalreporter")
-        if reporter is not None:
-            reporter.write_line(
-                f"Unit tier took {elapsed:.1f} s, over its {UNIT_TIER_BUDGET_S:.0f} s budget.", red=True
-            )
+    if elapsed <= UNIT_TIER_BUDGET_S:
+        return
+    under_coverage = bool(session.config.getoption("cov_source", default=None))
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    if reporter is not None:
+        note = " (not enforced under coverage)" if under_coverage else ""
+        reporter.write_line(
+            f"Unit tier took {elapsed:.1f} s, over its {UNIT_TIER_BUDGET_S:.0f} s budget{note}.", red=not under_coverage
+        )
+    if not under_coverage:
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
 
 

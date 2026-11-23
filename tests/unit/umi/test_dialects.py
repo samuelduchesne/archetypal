@@ -180,7 +180,7 @@ def test_a_missing_file_is_a_format_error(tmp_path: Path) -> None:
         dialects.load(tmp_path / "absent.json")
 
 
-@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity", "1e999", "-1e999"])
 def test_non_finite_numbers_are_not_json(tmp_path: Path, constant: str) -> None:
     path = tmp_path / "nan.json"
     path.write_text(f'{{"OpaqueMaterials": [{{"$id": "1", "Conductivity": {constant}}}]}}', encoding="utf-8")

@@ -34,8 +34,9 @@ Annual energy comes from the results' tabular reports where they give it:
 
 `Site:GroundTemperature:BuildingSurface` has no energy: its magnitude is the conductance of
 the ground-contact surfaces it drives, W/K (`Surfaces` with a ground boundary, the nominal U of
-`Constructions` with ISO 6946's inside film: 0.17 m²K/W for floors, 0.13 otherwise; no outside
-film against the ground), counting every copy of a multiplied zone.
+`Constructions` with the inside film `envelope.FILMS` uses, EnergyPlus's nominal film: 0.1620212
+m²K/W for floors, 0.1197548 otherwise; no outside film against the ground), counting every copy
+of a multiplied zone.
 
 Other types have no per-object energy in the tabular reports, so their magnitude is `None`.
 
@@ -61,6 +62,7 @@ from archetypal.reduction._sql_tables import (
     read_surfaces,
     read_zones,
 )
+from archetypal.reduction.envelope import FILMS
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
@@ -156,7 +158,8 @@ UNSUPPORTED_FEATURES: tuple[UnsupportedFeature, ...] = (
     UnsupportedFeature(
         "WindowShadingControl",
         "Window shading control",
-        "Deploys shades, blinds or switchable glazing by schedule or condition; windows keep their unshaded properties.",
+        "Deploys shades, blinds or switchable glazing by schedule or condition; "
+        "windows keep their unshaded properties.",
     ),
     UnsupportedFeature("WindowMaterial:Shade", "Window shades", "Shade layers that change window transmittance."),
     UnsupportedFeature("WindowMaterial:Blind", "Window blinds", "Slat blinds that change window transmittance."),
@@ -241,10 +244,17 @@ UNSUPPORTED_FEATURES: tuple[UnsupportedFeature, ...] = (
 _GJ = 1.0e9
 _GROUND_BOUNDARY = -1
 """`Surfaces.ExtBoundCond` of a surface against the ground (`Site:GroundTemperature:BuildingSurface`)."""
-_INSIDE_FILM = {"Floor": 0.17}
-_INSIDE_FILM_DEFAULT = 0.13
-"""ISO 6946 inside surface resistances, m²K/W, as `envelope.FILMS` uses them for ground classes."""
-_ENERGY_UNITS: dict[str, float] = {"J": 1.0, "kJ": 1.0e3, "MJ": 1.0e6, "GJ": _GJ, "kWh": 3.6e6, "kBtu": 1055.05585262}
+_INSIDE_FILM = {"Floor": FILMS["ground_floor"][0]}
+_INSIDE_FILM_DEFAULT = FILMS["ground_wall"][0]
+"""Inside surface resistances, m²K/W, of the ground classes of `envelope.FILMS` (no outside film)."""
+_ENERGY_UNITS: dict[str, float] = {
+    "J": 1.0,
+    "kJ": 1.0e3,
+    "MJ": 1.0e6,
+    "GJ": _GJ,
+    "kWh": 3.6e6,
+    "kBtu": 1055.05585262e3,  # 1 Btu = 1055.05585262 J
+}
 
 
 # --- Zone resolution -------------------------------------------------------------------------------

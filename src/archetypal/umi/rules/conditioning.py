@@ -823,7 +823,9 @@ def limits_to_umi(systems: ConditioningSystemsComponent, *, context: RuleContext
                     None,
                     replacement=cast("float", fields[field]),
                     rule="conditioning.limits",
-                    reason=f"UMI has no unset limit; {target}, which {type_target} does not use, takes Basilisk's default",
+                    reason=(
+                        f"UMI has no unset limit; {target}, which {type_target} does not use, takes Basilisk's default"
+                    ),
                 )
             if used:
                 context.lose(

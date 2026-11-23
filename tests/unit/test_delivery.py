@@ -11,6 +11,7 @@ from archetypal.reduction.delivery import delivered_energy, equipment_outputs
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     from archetypal.reduction.sources import SourceData
 
@@ -110,3 +111,56 @@ def test_zone_equipment_delivers_its_own_coils_and_ideal_loads(
     # Outdoor air is part of what the equipment delivers: more than the zone air's sensible load.
     sensible = _raw(bar, "Zone Air System Sensible Heating Energy", "North_Perimeter")
     assert delivery.annual("North_Perimeter")["heating"] > 1.2 * sensible
+
+
+_OUTDOOR_AIR_UNIT = """Version, 24.2;
+Zone, Zone 1;
+ZoneHVAC:EquipmentConnections,
+  Zone 1, Zone 1 Equipment, Zone 1 Inlets, , Zone 1 Air Node, Zone 1 Return;
+ZoneHVAC:EquipmentList,
+  Zone 1 Equipment, SequentialLoad,
+  ZoneHVAC:OutdoorAirUnit, OA Unit 1, 1, 1, , ;
+ZoneHVAC:OutdoorAirUnit,
+  OA Unit 1, , Zone 1, 0.5, , OA Unit Fan, BlowThrough, , , , NeutralControl, , ,
+  OA Node, Zone 1 Inlets, OA Unit Return, Fan Outlet, OA Unit Equipment, ;
+ZoneHVAC:OutdoorAirUnit:EquipmentList,
+  OA Unit Equipment,
+  Coil:Heating:Electric, OA Unit Heating Coil,
+  Coil:Cooling:Water, OA Unit Cooling Coil;
+Coil:Heating:Electric,
+  OA Unit Heating Coil, , 1.0, 10000, Fan Outlet, Heating Outlet;
+Coil:Cooling:Water,
+  OA Unit Cooling Coil, , autosize, autosize, autosize, autosize, autosize, autosize, autosize,
+  CW Inlet, CW Outlet, Heating Outlet, Zone 1 Inlets;
+"""
+
+_EVAPORATIVE = """Version, 24.2;
+Zone, Zone 1;
+ZoneHVAC:EquipmentConnections,
+  Zone 1, Zone 1 Equipment, Zone 1 Inlets, , Zone 1 Air Node, Zone 1 Return;
+ZoneHVAC:EquipmentList,
+  Zone 1 Equipment, SequentialLoad,
+  ZoneHVAC:HybridUnitaryHVAC, Hybrid 1, 1, 1, , ;
+ZoneHVAC:HybridUnitaryHVAC,
+  Hybrid 1;
+"""
+
+
+def test_an_outdoor_air_unit_delivers_the_coils_of_its_equipment_list(tmp_path: Path) -> None:
+    from idfkit import load_idf  # noqa: PLC0415
+    from idfkit.versioned import as_version  # noqa: PLC0415
+
+    path = tmp_path / "oau.idf"
+    path.write_text(_OUTDOOR_AIR_UNIT)
+    outputs = equipment_outputs(as_version(load_idf(path), since="22.1"))
+    names = {name for _, _, name in outputs.zones["zone 1"]}
+    assert names == {"OA Unit Heating Coil", "OA Unit Cooling Coil"}
+
+
+def test_hybrid_units_are_listed_as_unmeasured(tmp_path: Path) -> None:
+    from idfkit import load_idf  # noqa: PLC0415
+    from idfkit.versioned import as_version  # noqa: PLC0415
+
+    path = tmp_path / "hybrid.idf"
+    path.write_text(_EVAPORATIVE)
+    assert equipment_outputs(as_version(load_idf(path), since="22.1")).unmeasured == ("Hybrid 1",)

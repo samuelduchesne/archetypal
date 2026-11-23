@@ -195,7 +195,8 @@ class Audit:
                 continue  # a difference at or below the loss
             if not any(_matches(loss, difference) for difference in differences):
                 self.problems.append(
-                    f"{what}: loss at {loss.location} (subject {loss.subject!r}, rule {loss.rule}) matches no difference"
+                    f"{what}: loss at {loss.location} (subject {loss.subject!r}, rule {loss.rule}) "
+                    "matches no difference"
                 )
 
 

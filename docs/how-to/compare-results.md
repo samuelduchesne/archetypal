@@ -27,8 +27,11 @@ If the detailed model has pumps or heat rejection, its results also need their m
 (`Zone Ideal Loads Supply Air Total Heating/Cooling Energy`, `Heating Coil Heating Energy`,
 `Cooling Coil Total Cooling Energy`, `Baseboard Total Heating Energy`, `Zone Radiant HVAC
 Heating/Cooling Energy`, for each object present), at the same frequency: pumps and heat
-rejection are split between heating and cooling as a reduction splits them. Results written
-for a reduction already have all of these.
+rejection are split between heating and cooling as a reduction splits them. A reduction also
+charges service-hot-water pumps to hot water, from delivery the results do not hold; the
+comparison splits them between heating and cooling, so in a building with such pumps the
+detailed rows with pumps run slightly high. Results written for a reduction already have all
+of these.
 
 ## Compare the results
 
@@ -136,7 +139,7 @@ except NotComparableError as error:
 ```
 
 ```text
-run period: 03-15 00:00 to 03-29 00:00 (336 hours) for detailed.sql, 03-29 00:00 to 04-12 00:00 (336 hours) for other-period.sql
+run period: 03-15 00:00 to 03-29 00:00 (336 hours, starting on a Wednesday) for detailed.sql, 03-29 00:00 to 04-12 00:00 (336 hours, starting on a Wednesday) for other-period.sql
 ```
 
 Run the model named in the message again with the other run's setting; the comparison has no

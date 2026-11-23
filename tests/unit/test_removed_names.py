@@ -147,3 +147,15 @@ def test_other_names_raise_attribute_error() -> None:
 def test_kept_names_still_work() -> None:
     assert isinstance(archetypal.__version__, str)
     importlib.import_module("archetypal.errors")
+
+
+def test_a_removed_module_run_with_python_m_raises_the_migration_error() -> None:
+    import subprocess  # noqa: PLC0415
+    import sys  # noqa: PLC0415
+
+    result = subprocess.run(
+        [sys.executable, "-m", "archetypal.utils"], capture_output=True, text=True, check=False, timeout=120
+    )
+    assert result.returncode != 0
+    assert "RemovedInArchetypal3Error" in result.stderr
+    assert "LookupError" not in result.stderr

@@ -42,6 +42,7 @@ from epinterface.sbem.archetype import Archetype
 from idfkit.simulation import SQLResult
 
 from archetypal import io
+from archetypal._sqlite import open_results
 from archetypal.errors import MissingResults, ReductionError
 from archetypal.reduction import efficiency as _efficiency
 from archetypal.reduction import fans as _fans
@@ -144,10 +145,16 @@ class Reduction:
             The reduction.
 
         Raises:
-            ReductionError: If the report is missing, or a file records a schema version this
-                version cannot read.
+            ReductionError: If the report is missing, a file does not validate or records a schema
+                version this version cannot read, or the report's groups are not the archetype's.
         """
         archetype, report = io.read(Archetype, ReductionReport, archetype_path, report_path)
+        groups = sorted(group.Name for group in archetype.Groups)
+        reported = sorted(group.name for group in report.groups)
+        if groups != reported:
+            report_file = io.report_path_for(archetype_path) if report_path is None else Path(report_path)
+            message = f"reports the groups {reported}, but the archetype {archetype_path} has {groups}"
+            raise ReductionError(report_file, message)
         return cls(archetype=archetype, report=report)
 
 
@@ -232,7 +239,7 @@ def _spec_key(spec: SeriesSpec) -> tuple[str, str, str | None]:
 
 def _open(results: str | os.PathLike[str] | SQLResult | None) -> SQLResult | None:
     if isinstance(results, (str, os.PathLike)):
-        return _ReadOnceSQLResult(results)
+        return open_results(results, _ReadOnceSQLResult)
     return results
 
 
@@ -259,13 +266,26 @@ def _load(
         path = Path(model)
         document = load_epjson(path) if path.suffix.casefold() == ".epjson" else load_idf(path)
         subject = str(path)
+        base_dir: Path | None = path.resolve().parent
     else:
         document, subject = model, "the model"
+        filepath = getattr(model, "filepath", None)
+        base_dir = Path(filepath).resolve().parent if filepath else None
     from idfkit.versioned import as_version  # noqa: PLC0415 - only for a single run
 
     narrowed = as_version(document, since="22.1")
-    sql_path = run_once(narrowed, model_facts(narrowed, ()), weather, energyplus=energyplus, subject=subject)
-    return load_sources(model, _ReadOnceSQLResult(sql_path), weather=weather)
+    sql_path, temporary = run_once(
+        narrowed, model_facts(narrowed, ()), weather, energyplus=energyplus, subject=subject, base_dir=base_dir
+    )
+    simulated = open_results(sql_path, _ReadOnceSQLResult)
+    # idfkit's SQLResult deletes a file it owns when closed: the temporary copy of the run.
+    simulated._owns_file = temporary  # pyright: ignore[reportPrivateUsage]
+    try:
+        return load_sources(model, simulated, weather=weather)
+    except BaseException:
+        # `load_sources` closes only results it opened; these would stay open with the error.
+        simulated.close()
+        raise
 
 
 def _model_name(sources: SourceData) -> str:
@@ -292,11 +312,14 @@ def _read_hourly_series(sources: SourceData) -> None:
 
 def _reduce(sources: SourceData, options: ReductionOptions) -> Reduction:
     _read_hourly_series(sources)
-    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
+    # A relative Schedule:File is found beside the model, as EnergyPlus finds it.
+    base_path = sources.model_path.parent if sources.model_path is not None else None
+    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar, base_path=base_path)
     zones = classify(
         build_inventory(sources, evaluate),
         evaluate,
         space_use_mapping=options.space_use_mapping,
+        subject=str(sources.model_path) if sources.model_path is not None else "the model",
     )
     conditioned = [z for z in zones if z.role == "conditioned"]
 
@@ -327,9 +350,11 @@ def _reduce(sources: SourceData, options: ReductionOptions) -> Reduction:
         *find_unsupported(sources),
         *simple_ventilation_not_represented(zones),
         *_excluded_loads(zones),
+        *_heat_sinks(zones),
         *_unassigned_envelope(envelope),
         *_allocated_hot_water(zones),
         *_unattributed_energy(energy, conditioned),
+        *_undelivered(energy),
         *_unattributed_fans(fans, conditioned),
     )
     building = sum((g.ledger for g in grouping.groups), GroupLedger())
@@ -411,6 +436,7 @@ def _assemble(  # noqa: PLR0913 - the facts reduce and merge each gather differe
             mains_temperature=facts.mains_temperature,
             air_density=facts.air_density,
         ),
+        notes=grouping.notes,
     )
     raise_for_invariants(
         report,
@@ -518,10 +544,14 @@ def _source_entries(report: ReductionReport, facts: BuildingFacts, name: str) ->
 
 
 def _sha256_of_results(sources: SourceData) -> str:
-    """The SHA-256 of an in-memory results database without a file (never for fixtures)."""
+    """The SHA-256 of an in-memory results database without a file: of its SQL dump, which equal data share."""
     import hashlib  # noqa: PLC0415 - rare path
 
-    return hashlib.sha256(repr(sources.results).encode("utf-8")).hexdigest()
+    digest = hashlib.sha256()
+    for line in sources.results._conn.iterdump():  # pyright: ignore[reportPrivateUsage]
+        digest.update(line.encode("utf-8"))
+        digest.update(b"\n")
+    return digest.hexdigest()
 
 
 # --- report pieces -------------------------------------------------------------------------------
@@ -588,7 +618,10 @@ def _excluded_loads(zones: Sequence[ClassifiedZone]) -> tuple[NotRepresented, ..
         entries.append(
             NotRepresented(
                 feature="Hot water of excluded zones",
-                effect="Hot water used in zones left out of every group is not carried by any group.",
+                effect="Hot water used in zones left out of every group is drawn by no group. The fuel that "
+                "heated it stays in the building's hot-water consumption, which the groups' hot-water "
+                "efficiency divides among their own draws: that fuel is kept, folded into the efficiency.",
+                folded_into="Zone.Operations.DHW.SystemCOP",
                 object_type="WaterUse:Equipment",
                 objects=tuple(sorted({r.equipment for _, r in water})),
                 affected_zones=tuple(sorted({zone.name for zone, _ in water})),
@@ -598,6 +631,52 @@ def _excluded_loads(zones: Sequence[ClassifiedZone]) -> tuple[NotRepresented, ..
             )
         )
     return tuple(entries)
+
+
+def _undelivered(energy: _efficiency.EnergyAttribution) -> tuple[NotRepresented, ...]:
+    """HVAC equipment whose delivered energy reaches no group (FR-026)."""
+    entries: list[NotRepresented] = []
+    if energy.unmeasured:
+        entries.append(
+            NotRepresented(
+                feature="Zone equipment without a measured delivery",
+                effect="These units report no delivered energy reduction reads (evaporative, radiant, beam, "
+                "panel and hybrid units); their heating and cooling count in no zone's delivery, so their "
+                "consumption is spread over the zones that do report delivery.",
+                objects=energy.unmeasured,
+                source="efficiency",
+            )
+        )
+    if energy.unassigned:
+        entries.append(
+            NotRepresented(
+                feature="Air loops serving no zone",
+                effect="These air loops' coils deliver energy that no zone's equipment connections receive, "
+                "so it counts in no zone's delivery.",
+                objects=energy.unassigned,
+                source="efficiency",
+            )
+        )
+    return tuple(entries)
+
+
+def _heat_sinks(zones: Sequence[ClassifiedZone]) -> tuple[NotRepresented, ...]:
+    """Gains of conditioned zones with a negative design level: SBEM's loads cannot be negative."""
+    sinks = [(z.zone, g) for z in zones if z.role == "conditioned" for g in z.zone.gains if g.design_level < 0.0]
+    if not sinks:
+        return ()
+    return (
+        NotRepresented(
+            feature="Internal heat sinks",
+            effect="Gains with a negative design level (for example an OtherEquipment that removes heat) "
+            "have no SBEM counterpart, whose loads are non-negative densities; the archetype leaves them out.",
+            objects=tuple(sorted({g.name for _, g in sinks})),
+            affected_zones=tuple(sorted({zone.name for zone, _ in sinks})),
+            magnitude=-math.fsum(g.design_level * zone.multiplier for zone, g in sinks),
+            unit="W",
+            source="to_sbem",
+        ),
+    )
 
 
 def _unassigned_envelope(hook: EnvelopeHook) -> tuple[NotRepresented, ...]:

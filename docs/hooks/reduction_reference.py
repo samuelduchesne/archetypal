@@ -106,14 +106,34 @@ def _default(name: str, spec: dict[str, Any], required: set[str]) -> str:
     return "required" if name in required else "—"
 
 
-def _object_table(name: str, definition: dict[str, Any], level: int, inline: dict[str, dict[str, Any]]) -> list[str]:
+def _inherited_docs(definition: dict[str, Any], definitions: dict[str, Any]) -> dict[str, str]:
+    """Field descriptions of the parent classes: the definitions whose fields are all `definition`'s."""
+    fields = set(definition.get("properties", {}))
+    docs: dict[str, str] = {}
+    for other in definitions.values():
+        own = set(other.get("properties", {}))
+        if other is definition or not own or not own < fields:
+            continue
+        for field, text in attribute_docs(other.get("description", "")).items():
+            docs.setdefault(field, text)
+    return docs
+
+
+def _object_table(
+    name: str,
+    definition: dict[str, Any],
+    level: int,
+    inline: dict[str, dict[str, Any]],
+    definitions: dict[str, Any] | None = None,
+) -> list[str]:
     description = definition.get("description", "")
     docs = attribute_docs(description)
+    inherited = _inherited_docs(definition, definitions or {})
     required = set(definition.get("required", ()))
     lines = [f"{'#' * level} {name}", "", _summary(description), ""]
     lines += ["| Field | Type | Default | Description |", "|---|---|---|---|"]
     for field, spec in definition["properties"].items():
-        text = docs.get(field) or " ".join(spec.get("description", "").split())
+        text = docs.get(field) or inherited.get(field) or " ".join(spec.get("description", "").split())
         lines.append(
             f"| `{field}` | {_cell(_type(spec, inline))} | {_default(field, spec, required)} | {_cell(text)} |"
         )
@@ -136,9 +156,9 @@ def render_report(schema: dict[str, Any], *, level: int = 3) -> str:
     inline: dict[str, dict[str, Any]] = {}
     parts: list[str] = [f"{'#' * (level - 1)} Objects", ""]
     for name in objects:
-        parts += _object_table(name, definitions[name], level, inline)
+        parts += _object_table(name, definitions[name], level, inline, definitions)
     for name in sorted(set(inline) - set(objects)):
-        parts += _object_table(name, inline[name], level, inline)
+        parts += _object_table(name, inline[name], level, inline, definitions)
     parts += [f"{'#' * (level - 1)} Enumerations", ""]
     for name in enums:
         values = ", ".join(f'`"{v}"`' for v in definitions[name]["enum"])

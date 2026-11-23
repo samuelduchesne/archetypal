@@ -5,7 +5,7 @@ file holds:
 
 | Dialect | Recognised by | Outcome |
 |---|---|---|
-| `core-json` | JSON with UMI's collections and any of `AdvancedModel`, `UseAdvancedModel` or a hot-water `FuelType` | Read. |
+| `core-json` | UMI's collections with `AdvancedModel`, `UseAdvancedModel` or a hot-water `FuelType` | Read. |
 | `core-json-pre-2023` | The same, with none of those fields | Read; each absent field takes Basilisk's default. |
 | `archsim-json` | Materials carrying `GasType`, `Life` or `Comment` | Read through the Archsim key map. |
 | Legacy or Core XML, a `.umi` project | An XML root, or a zip archive | Refused, naming the dialect. |
@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import math
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -72,6 +73,14 @@ class _NonFiniteError(ValueError):
 
 def _refuse_constant(constant: str) -> object:
     raise _NonFiniteError(constant)
+
+
+def _finite_float(literal: str) -> float:
+    """Read a JSON number; one too large for a float (`1e999`) would become infinite, so refuse it."""
+    value = float(literal)
+    if not math.isfinite(value):
+        raise _NonFiniteError(literal)
+    return value
 
 
 Json = dict[str, object]
@@ -261,7 +270,7 @@ def parse(data: bytes, subject: str | os.PathLike[str]) -> RawLibrary:
     if text.lstrip().startswith("<"):
         raise _refuse_xml(text, subject)
     try:
-        document: object = json.loads(text, parse_constant=_refuse_constant)
+        document: object = json.loads(text, parse_constant=_refuse_constant, parse_float=_finite_float)
     except _NonFiniteError as error:
         message = f"{error} is not a JSON number; a library holds finite numbers only"
         problem = Problem(pointer="", template=None, rule="format.json", message=message)

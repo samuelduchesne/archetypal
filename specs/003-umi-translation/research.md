@@ -280,7 +280,8 @@ model in archetypal.
   - Holiday and design-day slots (UP-2) that differ from the days they would replace are
     listed as lost, since UMI has none.
 - **Type.** A UMI `Type` of `Fraction`, `Temperature` or `AnyNumber` maps to the SBEM day type
-  of the same name. Any other value maps to `AnyNumber` and is noted. SBEM's year `Type` (the
+  of the same name. `On/Off` maps to `Fraction` when its values are 0 or 1, so availability
+  schedules keep their hours. Any other value maps to `AnyNumber` and is noted. SBEM's year `Type` (the
   schedule's role) is set from the field the schedule fills (`Occupancy`, `Lighting`, and so
   on). One UMI schedule used in several roles becomes one SBEM year per role, all with the
   UMI name. Their content is equal, so epinterface's name-based deduplication is harmless.
@@ -405,9 +406,10 @@ Each rule states what it conserves (constitution IV). The full table is in data-
     FlowRatePerPerson [m³/day/person] = FlowRatePerFloorArea [m³/h/m²] × Σ s(h) / (365 × ρ_p)
     ```
     Writing uses the inverse.
-  - A zone with hot water but no people (`ρ_p = 0` or people off) cannot be represented: it is
-    a range problem on reading and a loss on writing. With `ρ_p = 0` the flow per person
-    itself is lost on writing, even with hot water off.
+  - A zone with hot water but no people (`ρ_p = 0`) cannot be represented: it is a range
+    problem on reading and a loss on writing, where the flow per person itself is lost even with
+    hot water off. People off is not such a zone: epinterface draws the hot water by `ρ_p`
+    whether or not occupancy is on.
   - `CoefficientOfPerformance` maps to `SystemCOP` with `DistributionCOP = 1`. `FuelType` maps
     through the table; Basilisk's `Unset` is a range problem.
   - Inlet and supply temperatures map exactly.

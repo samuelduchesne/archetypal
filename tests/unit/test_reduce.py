@@ -366,6 +366,92 @@ def test_no_conditioned_zones_is_refused(in_tmp: Path, monkeypatch: pytest.Monke
     # A zone with no thermostat and no delivered energy is not conditioned (R8).
     monkeypatch.setattr(package, "build_inventory", unconditioned)
     model, results = _paths("bar_building")
-    with pytest.raises(NoConditionedZones):
+    with pytest.raises(NoConditionedZones) as caught:
         reduce(model, results)
+    assert str(model) in str(caught.value)  # the error names the model, not "the model"
     assert list(in_tmp.iterdir()) == []
+
+
+def test_relative_schedule_file_is_read_beside_the_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A relative `Schedule:File` is found in the model's folder, as EnergyPlus finds it, not the working one."""
+    doc = load_idf(MODELS / "bar_building.idf")
+    lighting = doc.getobject("Schedule:Compact", "Office Lighting")
+    assert lighting is not None
+    doc.removeidfobject(lighting)
+    doc.add(
+        "Schedule:File",
+        "Office Lighting",
+        schedule_type_limits_name="Fraction",
+        file_name="lights.csv",
+        column_number=1,
+        rows_to_skip_at_top=0,
+        number_of_hours_of_data=8760,
+        column_separator="Comma",
+    )
+    folder = tmp_path / "model"
+    folder.mkdir()
+    doc.save(folder / "bar_building.idf")
+    (folder / "lights.csv").write_text("0.5\n" * 8760)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    reduction = reduce(folder / "bar_building.idf", MODELS / "bar_building.sql")
+
+    assert reduction.archetype.Groups
+
+
+def test_read_refuses_a_report_of_another_reduction(reduced: Callable[..., Reduction], tmp_path: Path) -> None:
+    reduced("three_zone").write(tmp_path / "a", "x")
+    reduced("three_zone", ReductionOptions(layout=Layout.SINGLE_ZONE)).write(tmp_path / "b", "x")
+    shutil.copyfile(tmp_path / "b" / "x.report.json", tmp_path / "a" / "x.report.json")
+    with pytest.raises(ReductionError, match="reports the groups"):
+        Reduction.read(tmp_path / "a" / "x.sbem.json")
+
+
+def test_read_names_a_report_of_an_unknown_schema_version(reduced: Callable[..., Reduction], tmp_path: Path) -> None:
+    archetype, report = reduced("bar_building").write(tmp_path, "x")
+    document = json.loads(report.read_text())
+    document["schema_version"] = "2.0"
+    report.write_text(json.dumps(document))
+    with pytest.raises(ReductionError, match=r"schema version 2\.0") as caught:
+        Reduction.read(archetype)
+    assert str(report) in str(caught.value)
+
+
+def test_a_layout_without_core_zones_is_noted_in_the_report(reduced: Callable[..., Reduction]) -> None:
+    reduction = reduced("bar_building", ReductionOptions(layout=Layout.CORE_PERIMETER))
+    assert [group.key for group in reduction.report.groups] == [("perimeter",)]
+    assert any("no core zones" in note for note in reduction.report.notes)
+
+
+def test_in_memory_results_hash_the_same_data_the_same() -> None:
+    def in_memory() -> SQLResult:
+        results = SQLResult(MODELS / "three_zone.sql")
+        memory = sqlite3.connect(":memory:")
+        results._conn.backup(memory)  # pyright: ignore[reportPrivateUsage]
+        results.close()
+        results._conn = memory  # pyright: ignore[reportPrivateUsage]
+        return results
+
+    model = MODELS / "three_zone.idf"
+    first = reduce(model, in_memory()).report.reproducibility
+    second = reduce(model, in_memory()).report.reproducibility
+    assert first.results_sha256 == second.results_sha256
+
+
+def test_the_single_runs_results_are_closed_and_deleted_when_they_fail_the_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import archetypal.reduction as package  # noqa: PLC0415
+
+    copy = tmp_path / "archetypal-run.sql"
+    shutil.copyfile(MODELS / "bar_building.sql", copy)
+
+    def run(*args: object, **kwargs: object) -> tuple[Path, bool]:
+        return copy, True
+
+    monkeypatch.setattr(package, "run_once", run)
+    with pytest.raises((MissingResults, ModelResultsMismatch)):
+        reduce(MODELS / "three_zone.idf", weather=WEATHER, simulate=True)
+    assert not copy.exists()  # closed, and the temporary copy deleted

@@ -129,3 +129,11 @@ def test_not_represented_is_frozen_and_strict() -> None:
     with pytest.raises(ValidationError):
         NotRepresented(feature="x", effect="y", unknown=1)  # type: ignore[call-arg]
     assert NotRepresented.model_validate_json(entry.model_dump_json()) == entry
+
+
+def test_energy_units_convert_to_joules() -> None:
+    from archetypal.reduction.features import _to_joules  # noqa: PLC0415  # pyright: ignore[reportPrivateUsage]
+
+    assert _to_joules(1.0, "kBtu") == pytest.approx(1.05505585262e6)
+    assert _to_joules(1.0, "kWh") == pytest.approx(3.6e6)
+    assert _to_joules(1.0, "GJ") == pytest.approx(1e9)

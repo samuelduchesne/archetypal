@@ -227,6 +227,14 @@ def test_unknown_zone_in_mapping() -> None:
         classify([zone], evaluate, space_use_mapping={"Nowhere": "Lab"})
 
 
+def test_a_mapping_that_names_one_zone_twice_with_two_uses_is_refused() -> None:
+    zone = _zone("Z1", OUTDOOR_WALL, thermostat=_thermostat())
+    with pytest.raises(ValueError, match="two space uses"):
+        classify([zone], evaluate, space_use_mapping={"Z1": "Office", "z1": "Lobby"})
+    (same,) = classify([zone], evaluate, space_use_mapping={"Z1": "Office", "z1": "Office"})
+    assert same.space_use == "Office"
+
+
 def test_rounding_noise_does_not_split_a_space_use() -> None:
     SCHEDULES["NOISY"] = np.ones(HOURS) * (1.0 - 1e-9)
     zones = [

@@ -52,12 +52,22 @@ jobs:
           tools/basilisk-check/fetch-basilisk.sh
           dotnet build tools/basilisk-check --nologo -v q
 
+      - name: Fetch, migrate and run the reference set
+        # The evidence tests read the results this writes; without it every one of them skips.
+        # The full EnergyPlus Linux archive ships the transition programs --migrate needs.
+        run: |
+          echo "ARCHETYPAL_REFERENCE_CACHE=${RUNNER_TEMP}/reference-set" >> "${GITHUB_ENV}"
+          ARCHETYPAL_REFERENCE_CACHE="${RUNNER_TEMP}/reference-set" \
+            uv run python verification/report.py --fetch --migrate --run
+
       - name: Run the reference tier
-        # Exit status 5 means no reference test is written yet. The UMI round trips (spec 003,
-        # tests/reference/test_umi_round_trip.py) save each library they write.
+        # Missing evidence fails here (ARCHETYPAL_REFERENCE_REQUIRED) instead of skipping. The UMI
+        # round trips (spec 003, tests/reference/test_umi_round_trip.py) save each library they write.
+        env:
+          ARCHETYPAL_REFERENCE_REQUIRED: "1"
         run: |
           mkdir -p out/reference-libraries
-          uv run pytest -m reference --write-libraries out/reference-libraries || test $? -eq 5
+          uv run pytest -m reference --write-libraries out/reference-libraries
 
       - name: Check the written reference libraries with Basilisk
         # SC-002: Basilisk, UMI's own code, loads the library of each of the 49 reference
@@ -69,7 +79,7 @@ jobs:
             echo "No reference library written: nothing to check"
           else
             echo "Checking ${#libraries[@]} libraries"
-            dotnet run --no-build --project tools/basilisk-check -- "${libraries[@]}"
+            dotnet run --no-build --project tools/basilisk-check -- --no-unused "${libraries[@]}"
           fi
 
       - name: Upload the verification output
@@ -78,6 +88,6 @@ jobs:
         with:
           name: verification
           path: |
-            verification/
+            ${{ runner.temp }}/reference-set/results/
             out/reference-libraries/
           if-no-files-found: warn

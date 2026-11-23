@@ -72,7 +72,7 @@ from archetypal.umi.rules.building import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from epinterface.sbem.components.zones import ZoneComponent
 
@@ -281,7 +281,7 @@ def test_up9_template_rules_are_registered(rule_id: str, to_sbem: object, to_umi
 # --- groups and shares (R4) --------------------------------------------------------------------
 
 
-def _translate_counting(calls: list[_format.ZoneDefinition]):
+def _translate_counting(calls: list[_format.ZoneDefinition]) -> Callable[[_format.ZoneDefinition], ZoneComponent]:
     def translate(definition: _format.ZoneDefinition) -> ZoneComponent:
         calls.append(definition)
         return make_zone(definition.name or "unnamed", lighting=float(len(calls)))

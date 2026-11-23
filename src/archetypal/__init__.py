@@ -82,12 +82,18 @@ _LAZY: dict[str, str] = {
 }
 
 
+def __dir__() -> list[str]:
+    """List the package's names, lazy ones included, for `dir()`, `help()` and tab completion."""
+    return sorted({*globals(), *_LAZY})
+
+
 def __getattr__(name: str) -> Any:
     """Import a lazy name on first use; raise the migration error for a v2 name (PEP 562, FR-016).
 
-    Each name of `_LAZY` (`read_umi`, `write_umi`, `reduce`, `merge`, `Layout`, `ReductionOptions` and the
-    errors of spec 002) is imported from its module on first use and kept. `archetypal.IDF` and `from archetypal import IDF` raise `RemovedInArchetypal3Error`, which
-    names the replacement and the migration guide's section. Because that error is an
+    Each name of `_LAZY` (`read_umi`, `write_umi`, `reduce`, `merge`, `Layout`,
+    `ReductionOptions` and the errors of spec 002) is imported from its module on first use and
+    kept. `archetypal.IDF` and `from archetypal import IDF` raise `RemovedInArchetypal3Error`,
+    which names the replacement and the migration guide's section. Because that error is an
     `ImportError`, not an `AttributeError`, `hasattr(archetypal, "IDF")` raises it too instead
     of returning `False`. Any other unknown name raises `AttributeError`.
 

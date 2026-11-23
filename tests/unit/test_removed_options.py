@@ -98,3 +98,22 @@ def test_transition_is_hidden_from_the_command_list() -> None:
     result = CliRunner().invoke(main, ["--help"])
     assert "transition" not in result.output
     assert "--all_zones" not in CliRunner().invoke(main, ["reduce", "--help"]).output
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--data-folder=/tmp/x", "reduce", "m.idf"],
+        ["--ep_version=9-2-0", "reduce", "m.idf"],
+        ["reduce", "--version=9-2-0", "m.idf"],
+    ],
+)
+def test_a_removed_option_with_its_value_attached_gets_the_migration_message(args: list[str]) -> None:
+    from click.testing import CliRunner  # noqa: PLC0415
+
+    from archetypal.cli import main  # noqa: PLC0415
+
+    result = CliRunner().invoke(main, args)
+    assert result.exit_code == 2
+    assert "does not take a value" not in result.output
+    assert "removed" in result.output.casefold() or "archetypal 3" in result.output.casefold()

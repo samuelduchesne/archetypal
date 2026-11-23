@@ -332,3 +332,36 @@ def test_fixture_without_fans_bar_building(
     hook = fans_hook(sources, zones)
     assert all(totals == FanTotals() for totals in hook.zones.values())
     assert hook.unattributed_fans == ()
+
+
+def test_the_elevation_is_the_one_energyplus_ran_with(tmp_path: Path) -> None:
+    """The results' elevation (the weather file's for an annual run) wins over Site:Location's."""
+    import shutil  # noqa: PLC0415
+    import sqlite3  # noqa: PLC0415
+
+    from idfkit import new_document  # noqa: PLC0415
+    from idfkit.simulation import SQLResult  # noqa: PLC0415
+
+    from archetypal.reduction.fans import _elevation  # noqa: PLC0415  # pyright: ignore[reportPrivateUsage]
+
+    doc = new_document()
+    doc.add("Site:Location", "Here", validate=False, elevation=0.0)
+    results = SQLResult(MODELS / "three_zone.sql")
+    try:
+        assert _elevation(doc, results) == pytest.approx(201.0)
+    finally:
+        results.close()
+    assert _elevation(doc) == 0.0
+    copy = tmp_path / "ip.sql"
+    shutil.copyfile(MODELS / "three_zone.sql", copy)
+    with sqlite3.connect(copy) as conn:
+        conn.execute(
+            "UPDATE Strings SET Value = 'ft' WHERE StringIndex IN (SELECT UnitsIndex FROM TabularData td "
+            "JOIN Strings r ON td.RowNameIndex = r.StringIndex WHERE r.Value = 'Elevation')"
+        )
+    conn.close()
+    results = SQLResult(copy)
+    try:
+        assert _elevation(doc, results) == pytest.approx(201.0 * 0.3048)
+    finally:
+        results.close()

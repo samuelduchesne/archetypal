@@ -27,6 +27,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeVar, cast
 
@@ -50,6 +51,7 @@ __all__ = [
     "read_model",
     "report_path_for",
     "write",
+    "write_atomically",
     "write_model",
 ]
 
@@ -86,7 +88,8 @@ class EncodedProfile(BaseModel):
     def _check_length(self) -> EncodedProfile:
         size = len(base64.b64decode(self.data, validate=True))
         if size != self.length * _FLOAT64_LE.itemsize:
-            msg = f"profile data holds {size} bytes, not the {self.length * _FLOAT64_LE.itemsize} its length {self.length} needs"
+            needed = self.length * _FLOAT64_LE.itemsize
+            msg = f"profile data holds {size} bytes, not the {needed} its length {self.length} needs"
             raise ValueError(msg)
         return self
 
@@ -216,9 +219,44 @@ def write(
         _refuse_existing(path, overwrite)
     archetype_text, report_text = _text(archetype), _text(report)
     folder.mkdir(parents=True, exist_ok=True)
-    archetype_path.write_bytes(archetype_text.encode("utf-8"))
-    report_path.write_bytes(report_text.encode("utf-8"))
+    write_atomically([(archetype_path, archetype_text.encode("utf-8")), (report_path, report_text.encode("utf-8"))])
     return archetype_path, report_path
+
+
+def _file_mode(target: Path) -> int:
+    """The mode a new file gets from the umask, or the mode of the file it replaces."""
+    try:
+        return target.stat().st_mode & 0o777
+    except FileNotFoundError:
+        umask = os.umask(0)
+        os.umask(umask)
+        return 0o666 & ~umask
+
+
+def write_atomically(files: Sequence[tuple[Path, bytes]]) -> None:
+    """Write files together: each to a temporary file beside it, then all renamed into place.
+
+    No file is replaced until every one is written, so a failure while writing (a full disk)
+    leaves the previous files as they were and no temporary file behind. Each file gets the
+    mode the umask gives a new file, or the mode of the file it replaces.
+
+    Args:
+        files: Each target path and its content; their folders must exist.
+    """
+    staged: list[tuple[Path, Path]] = []
+    try:
+        for target, data in files:
+            handle, name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
+            temporary = Path(name)
+            staged.append((temporary, target))
+            with os.fdopen(handle, "wb") as stream:
+                stream.write(data)
+            temporary.chmod(_file_mode(target))
+        for temporary, target in staged:
+            temporary.replace(target)
+    finally:
+        for temporary, _ in staged:
+            temporary.unlink(missing_ok=True)
 
 
 def read_model(model_type: type[ModelT], path: str | os.PathLike[str]) -> ModelT:
@@ -232,7 +270,8 @@ def read_model(model_type: type[ModelT], path: str | os.PathLike[str]) -> ModelT
         The validated model.
 
     Raises:
-        ReductionError: If an SBEM archetype file records a schema version the fork cannot read.
+        ReductionError: If the file does not validate as `model_type`, or records a schema
+            version this version cannot read.
     """
     data = Path(path).read_bytes()
     if issubclass(model_type, Archetype):
@@ -240,8 +279,32 @@ def read_model(model_type: type[ModelT], path: str | os.PathLike[str]) -> ModelT
             archetype = model_type.from_json(data)
         except ArchetypeSchemaVersionError as exc:
             raise ReductionError(path, str(exc)) from exc
+        except ValueError as exc:  # pydantic's ValidationError and JSON errors
+            raise ReductionError(path, f"is not an SBEM archetype this version can read ({exc})") from exc
         return cast("ModelT", archetype)
-    return model_type.model_validate_json(data)
+    try:
+        return model_type.model_validate_json(data)
+    except ValueError as exc:  # pydantic's ValidationError
+        version = _schema_version(data)
+        if version is not None and not version.startswith(_REPORT_MAJOR):
+            message = f"records schema version {version}; this version reads {_REPORT_MAJOR}x"
+        else:
+            message = f"is not a {model_type.__name__} this version can read ({exc})"
+        raise ReductionError(path, message) from exc
+
+
+# The major version of the reduction report this version reads.
+_REPORT_MAJOR = "1."
+
+
+def _schema_version(data: bytes) -> str | None:
+    """The `schema_version` a JSON object records, or `None`."""
+    try:
+        document = json.loads(data)
+    except ValueError:
+        return None
+    version = cast("dict[str, object]", document).get("schema_version") if isinstance(document, dict) else None
+    return version if isinstance(version, str) else None
 
 
 def report_path_for(archetype_path: str | os.PathLike[str]) -> Path:

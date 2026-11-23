@@ -10,6 +10,7 @@ rebuilt ledgers with 002's grouping to core and perimeter.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -278,3 +279,42 @@ def test_merged_infiltration_is_given_in_air_changes(office: ZoneComponent) -> N
     infiltration = zone.Envelope.Infiltration
     assert infiltration.CalculationMethod == "AirChanges/Hour"
     assert infiltration.AirChangesPerHour > 0
+
+
+def test_a_merged_zone_is_named_once_and_its_parts_follow_it(office: ZoneComponent) -> None:
+    from archetypal.umi import to_umi  # noqa: PLC0415
+
+    export = to_umi([three_groups(office)])
+    names = [zone["Name"] for zone in json.loads(export.text)["Zones"]]
+    assert not any("(merged) (merged)" in name for name in names)
+    spurious = [
+        loss
+        for loss in export.report.losses
+        if loss.rule == "names.component" and loss.location.endswith((".Operations.Name", ".Envelope.Name"))
+    ]
+    assert spurious == []
+
+
+def test_natural_ventilation_keeps_a_window_schedule_not_the_mechanical_profile(office: ZoneComponent) -> None:
+    ventilation = office.Operations.HVAC.Ventilation
+    windows = ventilation.Schedule.model_copy(update={"Name": "Windows open"})
+    natural = replace(
+        office,
+        "Operations.HVAC.Ventilation",
+        ventilation.model_copy(update={"Provider": "Natural", "Schedule": windows}),
+    )
+    natural = replace(natural, "Operations.SpaceUse.Lighting.PowerDensity", 20.0)  # so the groups differ
+    archetype = Archetype(
+        Name="natural",
+        Groups=[
+            group(natural, "perimeter natural", 0.3, "perimeter"),
+            group(office, "perimeter mechanical", 0.2, "perimeter"),
+            group(office, "core office", 0.5, "core"),
+        ],
+    )
+    merged = approximate_merge(archetype)
+    (perimeter,) = [g for g in merged.archetype.Groups if g.Exposure == "perimeter"]
+    merged_ventilation = perimeter.Zone.Operations.HVAC.Ventilation
+    assert merged_ventilation.Provider == "Both"
+    assert merged_ventilation.Schedule.Name == "Windows open"
+    assert any(loss.location.endswith("Operations.HVAC.Ventilation.Schedule") for loss in merged.losses)

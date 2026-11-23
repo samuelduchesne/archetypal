@@ -31,6 +31,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, cast, get_args
 
+from epinterface.interface import PROTECTED_SCHEDULE_NAMES
 from epinterface.sbem.components.schedules import (
     DayComponent,
     ScheduleTypeLimitType,
@@ -45,6 +46,8 @@ from archetypal.umi.report import LossKind
 from archetypal.umi.rules._common import REFERENCE_CALENDAR
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import numpy as np
     from epinterface.sbem.common import MetadataMixin
     from epinterface.sbem.components.schedules import YearScheduleCategory
@@ -128,8 +131,14 @@ def _path(location: str, key: str) -> str:
 # --- schedule.type ------------------------------------------------------------------------
 
 
+_ON_OFF = frozenset({"on/off", "onoff"})
+"""The spellings of EnergyPlus's On/Off schedule type, lower case and without spaces."""
+
+
 @rule("schedule.type", to="sbem")
-def type_to_sbem(umi_type: str, subject: str, location: str, findings: Findings) -> ScheduleTypeLimitType:
+def type_to_sbem(
+    umi_type: str, subject: str, location: str, findings: Findings, values: Sequence[float] | None = None
+) -> ScheduleTypeLimitType:
     """Return the SBEM day type of a UMI schedule type.
 
     Args:
@@ -137,13 +146,27 @@ def type_to_sbem(umi_type: str, subject: str, location: str, findings: Findings)
         subject: The template being read.
         location: The JSON pointer of the schedule that holds the type.
         findings: Collects a note when the type is not one of SBEM's three.
+        values: A day's values, when known: an On/Off day with a value outside [0, 1] is not a
+            fraction, so it is read as AnyNumber.
 
     Returns:
-        `Fraction`, `Temperature` or `AnyNumber`.
+        `Fraction`, `Temperature` or `AnyNumber`; `On/Off` (0 or 1) is read as `Fraction`.
     """
     kind = _TYPE_BY_LOWER.get(umi_type.lower())
     if kind is not None:
         return kind
+    fractions = values is None or all(0.0 <= value <= 1.0 for value in values)
+    if umi_type.lower().replace(" ", "") in _ON_OFF and fractions:
+        # EnergyPlus's availability type, 0 or 1: a fraction, so availability and outdoor-air
+        # schedules keep their hours instead of reading as always on.
+        findings.assume(
+            subject,
+            _pointer(location, "Type"),
+            umi_type,
+            "schedule.type",
+            f"SBEM's day types are {', '.join(_TYPES)}; type {umi_type!r} (0 or 1) is read as Fraction.",
+        )
+        return "Fraction"
     findings.assume(
         subject,
         _pointer(location, "Type"),
@@ -173,7 +196,7 @@ def day_to_sbem(day: DaySchedule, subject: str, location: str, findings: Finding
     if len(day.values) != _HOURS:
         msg = f"{location}: a day schedule needs 24 values, not {len(day.values)}"
         raise ValueError(msg)
-    kind = type_to_sbem(day.type, subject, location, findings)
+    kind = type_to_sbem(day.type, subject, location, findings, day.values)
     hours = {f"Hour_{hour:02d}": value for hour, value in enumerate(day.values)}
     return DayComponent.model_validate({"Name": day.name or "", "Type": kind, **metadata_to_sbem(day), **hours})
 
@@ -432,7 +455,8 @@ def year_to_sbem(
     projected: np.ndarray | None = None
     months: dict[str, WeekComponent] = {}
     for month, parts in enumerate(by_month):
-        if len(set(parts)) == 1:
+        # Parts that use one week (a converter's split periods with deduplicated weeks) are one week.
+        if len({id(weeks[index]) for index in parts}) == 1:
             months[MONTHS[month]] = weeks[parts[0]]
             continue
         if projected is None:
@@ -458,8 +482,22 @@ def year_to_sbem(
             "representative week that conserves the month's sum over the reference year.",
             replacement=week.Name,
         )
+    name = year.name or ""
+    if name in PROTECTED_SCHEDULE_NAMES or "Activity_Schedule" in name:
+        # epinterface keeps these names for its own schedules (AllOn, AlwaysOn, ...).
+        renamed = f"{name} (UMI)".replace("Activity_Schedule", "Activity Schedule")
+        findings.lose(
+            LossKind.RENAMED,
+            subject,
+            _pointer(location, "Name"),
+            name,
+            "names.collision",
+            f"epinterface keeps the schedule name {name!r} for its own schedules.",
+            replacement=renamed,
+        )
+        name = renamed
     component = YearComponent.model_validate({
-        "Name": year.name or "",
+        "Name": name,
         "Type": role,
         **metadata_to_sbem(year),
         **months,

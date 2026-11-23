@@ -58,6 +58,7 @@ explicitly.
 
 from __future__ import annotations
 
+import weakref
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, TypedDict
 
@@ -76,6 +77,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "NO_CONTROL",
+    "TERMINAL_INLET_FIELDS",
     "AirflowFields",
     "AirflowHook",
     "EconomiserCategory",
@@ -250,17 +252,33 @@ def _nodes(name: str | None, node_lists: Mapping[str, tuple[str, ...]]) -> tuple
     return node_lists.get(key, (key,))
 
 
-def _terminal_inlets(doc: IDFDocumentSince22_1) -> dict[tuple[str, str], str]:
-    """Air inlet node of each single-duct terminal, by (object type, name), case-folded."""
-    inlets: dict[tuple[str, str], str] = {}
-    for obj in doc["AirTerminal:SingleDuct:VAV:Reheat"]:
-        inlets["airterminal:singleduct:vav:reheat", obj.name.casefold()] = _cf(obj.air_inlet_node_name)
-    for obj in doc["AirTerminal:SingleDuct:VAV:NoReheat"]:
-        inlets["airterminal:singleduct:vav:noreheat", obj.name.casefold()] = _cf(obj.air_inlet_node_name)
-    for obj in doc["AirTerminal:SingleDuct:ConstantVolume:Reheat"]:
-        inlets["airterminal:singleduct:constantvolume:reheat", obj.name.casefold()] = _cf(obj.air_inlet_node_name)
-    for obj in doc["AirTerminal:SingleDuct:ConstantVolume:NoReheat"]:
-        inlets["airterminal:singleduct:constantvolume:noreheat", obj.name.casefold()] = _cf(obj.air_inlet_node_name)
+TERMINAL_INLET_FIELDS = (
+    "air_inlet_node_name",
+    "supply_air_inlet_node_name",
+    "primary_air_inlet_node_name",
+    "hot_air_inlet_node_name",
+    "cold_air_inlet_node_name",
+)
+"""The fields of an air terminal that name an inlet node fed by an air loop (single duct, PIU,
+induction, beams, dual duct)."""
+
+
+def _terminal_inlets(doc: IDFDocumentSince22_1) -> dict[tuple[str, str], frozenset[str]]:
+    """Air inlet nodes fed by an air loop of each air distribution unit's terminal.
+
+    Keyed by the terminal's (object type, name), case-folded.
+    """
+    inlets: dict[tuple[str, str], frozenset[str]] = {}
+    for adu in doc["ZoneHVAC:AirDistributionUnit"]:
+        kind, name = adu.air_terminal_object_type, adu.air_terminal_name
+        if not kind or not name:
+            continue
+        # The terminal's type is data (single duct, PIU, beam, dual duct), read through its inlet fields.
+        terminal = doc[kind].get(name)
+        if terminal is None:
+            continue
+        nodes = frozenset(str(terminal.data[f]).casefold() for f in TERMINAL_INLET_FIELDS if terminal.data.get(f))
+        inlets[_cf(kind), _cf(name)] = nodes
     return inlets
 
 
@@ -354,12 +372,14 @@ def air_loop_zones(doc: IDFDocumentSince22_1) -> dict[str, frozenset[str]]:
         returns = _return_nodes(doc, _cf(loop.demand_side_outlet_node_name))
         zones: set[str] = set()
         for conn in connections:
-            terminal_inlets = {
-                terminals.get(adus[name], "")
-                for kind, name in conn.equipment
-                if kind == "zonehvac:airdistributionunit" and name in adus
-            }
-            if conn.returns & returns or conn.inlets & supply or (terminal_inlets - {""}) & supply:
+            terminal_inlets: frozenset[str] = frozenset[str]().union(
+                *(
+                    terminals.get(adus[name], frozenset())
+                    for kind, name in conn.equipment
+                    if kind == "zonehvac:airdistributionunit" and name in adus
+                )
+            )
+            if conn.returns & returns or conn.inlets & supply or terminal_inlets & supply:
                 zones.add(conn.zone)
         served[loop.name] = frozenset(zones)
     return served
@@ -437,7 +457,7 @@ def _outdoor_air_controllers(doc: IDFDocumentSince22_1) -> dict[str, tuple[str, 
             (item.controller_8_object_type, item.controller_8_name),
         )
         lists[item.name.casefold()] = tuple(
-            _cf(name) for kind, name in pairs if kind == "Controller:OutdoorAir" and name
+            _cf(name) for kind, name in pairs if _cf(kind) == "controller:outdoorair" and name
         )
     return lists
 
@@ -482,11 +502,15 @@ def _treatment(control: OutdoorAirControl) -> tuple[bool, bool, float]:
     return (control.hrv != "NoHRV", control.economiser != "NoEconomizer", control.effectiveness or 0.0)
 
 
+_IDEAL_RECOVERY: Mapping[str, HRVCategory] = {"none": "NoHRV", "sensible": "Sensible", "enthalpy": "Enthalpy"}
+"""SBEM's category of each `ZoneHVAC:IdealLoadsAirSystem` heat recovery type, case-folded."""
+
+
 def _ideal_loads_controls(doc: IDFDocumentSince22_1) -> dict[str, OutdoorAirControl]:
     controls: dict[str, OutdoorAirControl] = {}
     for system in doc["ZoneHVAC:IdealLoadsAirSystem"]:
-        recovery = system.heat_recovery_type or "None"
-        hrv: HRVCategory = "NoHRV" if recovery == "None" else recovery
+        # Case-folded: a document loaded without `normalize_choices` keeps the spelling as written.
+        hrv = _IDEAL_RECOVERY.get(str(system.heat_recovery_type or "None").casefold(), "NoHRV")
         effectiveness = 0.0
         if hrv != "NoHRV":
             sensible = system.sensible_heat_recovery_effectiveness
@@ -568,24 +592,29 @@ class AirflowHook:
         )
 
 
-_cache: list[tuple[object, AirflowHook]] = []
+_hooks: weakref.WeakKeyDictionary[object, AirflowHook] = weakref.WeakKeyDictionary()
+"""The hook of each evaluator's model, kept while the evaluator lives (one per reduction)."""
 
 
-def _hook_for(doc: IDFDocumentSince22_1 | None) -> AirflowHook:
+def _hook_for(schedules: object) -> AirflowHook:
+    doc: IDFDocumentSince22_1 | None = getattr(schedules, "doc", None)
     if doc is None:
         return AirflowHook({})
-    if _cache and _cache[0][0] is doc:
-        return _cache[0][1]
-    hook = AirflowHook.from_model(doc)
-    _cache[:] = [(doc, hook)]
+    try:
+        hook = _hooks.get(schedules)
+    except TypeError:  # an evaluator that cannot be weakly referenced
+        return AirflowHook.from_model(doc)
+    if hook is None:
+        hook = AirflowHook.from_model(doc)
+        _hooks[schedules] = hook
     return hook
 
 
 def ledger_fields(zone: ClassifiedZone, schedules: ScheduleEvaluator) -> AirflowFields:
     """The airflow domain hook of `GroupLedger.from_zone` (one copy, multiplier not applied).
 
-    The outdoor-air controls are read from `schedules.doc`, memoised for the last model; an
-    evaluator without a model attributes no heat recovery or economiser.
+    The outdoor-air controls are read from `schedules.doc`, once per evaluator; an evaluator
+    without a model attributes no heat recovery or economiser.
 
     Args:
         zone: The classified zone.
@@ -594,5 +623,4 @@ def ledger_fields(zone: ClassifiedZone, schedules: ScheduleEvaluator) -> Airflow
     Returns:
         `infiltration` (`AirflowTotals`) and `outdoor_air` (`OutdoorAirTotals`).
     """
-    doc: IDFDocumentSince22_1 | None = getattr(schedules, "doc", None)
-    return _hook_for(doc)(zone, schedules)
+    return _hook_for(schedules)(zone, schedules)

@@ -246,8 +246,11 @@ def upstream_defaults(model: type[FormatModel], rule_id: str, context: RuleConte
 
 
 def identity_to_sbem(component: LibraryComponent) -> dict[str, str | None]:
-    """Return the SBEM `Name` and metadata of a UMI component (`names.metadata`, in `building`)."""
-    return {"Name": component.name, **metadata_to_sbem(component)}
+    """Return the SBEM `Name` and metadata of a UMI component (`names.metadata`, in `building`).
+
+    A component without a name (UMI does not require one) gets `""`, as the other rules give it.
+    """
+    return {"Name": component.name or "", **metadata_to_sbem(component)}
 
 
 def identity_to_umi(component: MetadataMixin, context: RuleContext) -> dict[str, object]:

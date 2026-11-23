@@ -18,6 +18,7 @@ from __future__ import annotations
 import glob
 import multiprocessing
 import os
+import sys
 import traceback
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ from archetypal.errors import ArchetypalError, InputError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from concurrent.futures import Future
 
     from archetypal.reduction import Reduction
     from archetypal.reduction.options import ReductionOptions
@@ -68,7 +70,12 @@ def expand_models(arguments: Sequence[str]) -> list[Path]:
         if path.is_file():
             found = [path]
         elif path.is_dir():
-            found = sorted(p for p in path.iterdir() if p.is_file() and p.suffix.casefold() in MODEL_SUFFIXES)
+            # Hidden files (macOS's `._office.idf` beside `office.idf`) are skipped, as a glob does.
+            found = sorted(
+                p
+                for p in path.iterdir()
+                if p.is_file() and not p.name.startswith(".") and p.suffix.casefold() in MODEL_SUFFIXES
+            )
             if not found:
                 raise InputError(path, "holds no model; give a folder with .idf or .epJSON files")
         else:
@@ -108,13 +115,29 @@ def _run(job: _Job) -> Reduction | tuple[Failure, str]:
         return Failure(job.model, type(error).__name__, str(error) or repr(error)), traceback.format_exc()
 
 
+# Windows' process pool waits on at most 61 workers.
+_MAX_WINDOWS_WORKERS = 61
+
+
 def _run_all(jobs: Sequence[_Job], parallel: int) -> list[Reduction | tuple[Failure, str]]:
     workers = (os.cpu_count() or 1) if parallel == -1 else parallel
     if workers <= 1 or len(jobs) <= 1:
         return [_run(job) for job in jobs]
+    if sys.platform == "win32":
+        workers = min(workers, _MAX_WINDOWS_WORKERS)
     context = multiprocessing.get_context("spawn")  # the same on every OS, and safe with threads
     with ProcessPoolExecutor(max_workers=min(workers, len(jobs)), mp_context=context) as pool:
-        return list(pool.map(_run, jobs))
+        futures = [pool.submit(_run, job) for job in jobs]
+        return [_result(job, future) for job, future in zip(jobs, futures, strict=True)]
+
+
+def _result(job: _Job, future: Future[Reduction | tuple[Failure, str]]) -> Reduction | tuple[Failure, str]:
+    """A job's outcome; a worker that died (`BrokenProcessPool`) fails its model only."""
+    try:
+        return future.result()
+    except Exception as error:
+        failure = Failure(job.model, type(error).__name__, str(error) or repr(error))
+        return failure, "".join(traceback.format_exception(error))
 
 
 def _refuse_existing(paths: Sequence[Path], force: bool) -> None:
@@ -126,11 +149,29 @@ def _refuse_existing(paths: Sequence[Path], force: bool) -> None:
 
 
 def _check_unique(models: Sequence[Path]) -> None:
+    # Letter case aside: macOS and Windows file systems would write both to the same files.
     seen: dict[str, Path] = {}
     for model in models:
-        if model.stem in seen:
-            raise InputError(model, f"has the same name as {seen[model.stem]}; their outputs would collide")
-        seen[model.stem] = model
+        key = model.stem.casefold()
+        if key in seen:
+            raise InputError(model, f"has the same name as {seen[key]}; their outputs would collide")
+        seen[key] = model
+
+
+def library_path(output: Path | None) -> Path:
+    """The UMI library file for `--output`: a path without a `.json` suffix is a folder for the default name.
+
+    Args:
+        output: The `--output` value, or `None`.
+
+    Returns:
+        The library file.
+    """
+    if output is None:
+        return UMI_DEFAULT
+    if output.is_dir() or output.suffix.casefold() != ".json":
+        return output / UMI_DEFAULT.name
+    return output
 
 
 @click.command(
@@ -149,7 +190,10 @@ def _check_unique(models: Sequence[Path]) -> None:
     "-o",
     "--output",
     type=click.Path(path_type=Path),
-    help="UMI library file (default myumitemplate.json), or folder for SBEM archetypes (default: here).",
+    help=(
+        "UMI library .json file (default myumitemplate.json, also in a folder given here), "
+        "or folder for SBEM archetypes (default: here)."
+    ),
 )
 @click.option(
     "--to",
@@ -217,7 +261,7 @@ def reduce_command(  # noqa: PLR0913 - one argument per option of the contract
 
     if target == "umi":
         chosen = Layout.CORE_PERIMETER
-        output = UMI_DEFAULT if output is None else output
+        output = library_path(output)
         planned = [output, _loss_path(output), *(_umi_report(output, m) for m in found)]
     else:
         chosen = Layout(layout.replace("-", "_").casefold()) if layout else Layout.SPACE_USE_EXPOSURE
@@ -284,7 +328,7 @@ def _write_umi(library: Path, done: Sequence[tuple[Path, Reduction]], summary: R
     from archetypal import io  # noqa: PLC0415 - only when a command runs
     from archetypal.umi import Loss, LossKind, TranslationReport, UmiExport, to_umi  # noqa: PLC0415
 
-    export = to_umi([reduction for _, reduction in done])
+    export = to_umi([reduction for _, reduction in done], path=library)
     losses, approximations = count_translation(export.report)
     for _, reduction in done:
         more_losses, more_approximations = count_reduction(reduction.report)

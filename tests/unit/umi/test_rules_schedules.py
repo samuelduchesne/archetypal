@@ -99,7 +99,15 @@ def test_types_map_by_name(umi: str, sbem: str) -> None:
     assert type_to_umi(sbem) == sbem  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("umi", ["On/Off", "Humidity", ""])
+@pytest.mark.parametrize("umi", ["On/Off", "ON/OFF", "OnOff"])
+def test_on_off_becomes_fraction_with_a_note(umi: str) -> None:
+    findings = Findings()
+    assert type_to_sbem(umi, subject="T", location="/d", findings=findings) == "Fraction"
+    (note,) = findings.notes
+    assert (note.kind, note.location, note.value, note.rule) == (NoteKind.ASSUMED, "/d/Type", umi, "schedule.type")
+
+
+@pytest.mark.parametrize("umi", ["Humidity", ""])
 def test_other_types_become_anynumber_with_a_note(umi: str) -> None:
     findings = Findings()
     assert type_to_sbem(umi, subject="T", location="/d", findings=findings) == "AnyNumber"
@@ -216,6 +224,14 @@ def test_split_month_is_projected_conserving_its_sum() -> None:
     assert sbem.November.Name == "Office week"
     assert sbem.March.Name not in {"Office week", "All on"}
     assert sbem.March.Type == "Fraction"
+
+
+def test_a_month_split_between_parts_of_one_week_is_copied_exactly() -> None:
+    findings = Findings()
+    split = year("Split", part(1, 1, 1, 15, OFFICE_WEEK), part(1, 16, 12, 31, OFFICE_WEEK))
+    sbem = year_to_sbem(split, "Occupancy", **kw(findings))
+    assert sbem.January.Name == "Office week"
+    assert not findings.losses
 
 
 def test_split_month_is_listed_as_approximate() -> None:

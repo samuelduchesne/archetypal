@@ -554,3 +554,17 @@ def test_gas_carbon_not_per_kg_is_lost(rate_unit: str | None) -> None:
     assert material is not None
     assert material.embodied_carbon == 0.0
     assert [(loss.location, loss.value) for loss in losses] == [("w.Layers.1.GasMaterial.EmbodiedCarbon", 5.0)]
+
+
+@pytest.mark.parametrize(("u_value", "shgf", "tvis"), [(7.5, 0.5, 0.5), (0.0, 0.5, 0.5), (2.0, 1.0, 0.0)])
+def test_simple_glazing_outside_energyplus_range_is_written_approximately(
+    u_value: float, shgf: float, tvis: float
+) -> None:
+    from epinterface.sbem.components.envelope import GlazingConstructionSimpleComponent  # noqa: PLC0415
+
+    from archetypal.umi.rules.windows import equivalent_layer  # noqa: PLC0415
+
+    window = GlazingConstructionSimpleComponent(Name="Edge", UValue=u_value, SHGF=shgf, TVis=tvis, Type="Single")
+    construction, losses = equivalent_layer(window, subject="T", location="perimeter.Envelope.Window")
+    assert construction.layers
+    assert any("strictly between" in (loss.reason or "") for loss in losses)

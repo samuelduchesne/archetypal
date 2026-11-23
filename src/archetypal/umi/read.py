@@ -27,9 +27,8 @@ from __future__ import annotations
 
 import copy
 import json
-import os
+import pickle
 import re
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final, TypeVar, cast
@@ -38,9 +37,10 @@ from epinterface.sbem.components.space_use import ZoneSpaceUseComponent
 from epinterface.sbem.components.systems import ZoneHVACComponent
 
 from archetypal.errors import InputError, Problem, UmiValidationError
-from archetypal.io import ARCHETYPE_SUFFIX, dumps
+from archetypal.io import ARCHETYPE_SUFFIX, dumps, write_atomically
 from archetypal.umi import dialects
 from archetypal.umi._format import (
+    BuildingTemplate,
     LibraryComponent,
     UmiLibrary,
     YearSchedule,
@@ -67,6 +67,7 @@ from archetypal.umi.rules.windows import SbemWindow, layers_to_sbem, settings_to
 from archetypal.umi.validate import LibraryIndex, template_problems
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Callable, Hashable, Iterable
 
     from epinterface.sbem.archetype import Archetype
@@ -146,18 +147,7 @@ class UmiImport:
             if not overwrite and path.exists():
                 raise InputError(path, "already exists; pass overwrite=True to replace it")
         folder.mkdir(parents=True, exist_ok=True)
-        staged: list[tuple[Path, Path]] = []
-        try:
-            for target, text in files:
-                handle, temporary = tempfile.mkstemp(dir=folder, prefix=f".{target.name}.", suffix=".tmp")
-                os.close(handle)
-                staged.append((Path(temporary), target))
-                Path(temporary).write_bytes(text.encode("utf-8"))
-            for temporary, target in staged:
-                temporary.replace(target)
-        finally:
-            for temporary, _ in staged:
-                temporary.unlink(missing_ok=True)
+        write_atomically([(target, text.encode("utf-8")) for target, text in files])
         return tuple(path for path, _ in files)
 
 
@@ -308,6 +298,7 @@ class _Reader:
     def __init__(self, index: LibraryIndex) -> None:
         self.index = index
         self._cache: dict[tuple[object, ...], tuple[object, tuple[_Finding, ...]]] = {}
+        self._issued: set[int] = set()  # the zones earlier archetypes hold
 
     def _at(self, item: FormatModel, context: RuleContext) -> RuleContext:
         """A context at a component's pointer, sharing `context`'s findings."""
@@ -496,6 +487,13 @@ class _Reader:
             name=name,
         )
         context.findings.extend(losses)
+        # Zones are memoised across templates: an archetype whose zone an earlier one holds gets a
+        # deep copy, so editing one archetype does not edit the other (core and perimeter that are
+        # one zone stay one object).
+        if any(id(group.Zone) in self._issued for group in archetype.Groups):
+            # A pickle round trip is a deep copy, several times faster than `model_copy(deep=True)`.
+            archetype = pickle.loads(pickle.dumps(archetype))  # noqa: S301 - our own object
+        self._issued.update(id(group.Zone) for group in archetype.Groups)
         return archetype, list(context.findings)
 
 
@@ -526,7 +524,8 @@ def _unused(index: LibraryIndex, skipped: set[int]) -> list[Loss]:
             reason=only_skipped if id(item) in reached else none,
         )
         for item, pointer in index.components()
-        if id(item) not in used
+        # A skipped template is reported as `skipped_template`, not also as unused.
+        if id(item) not in used and not isinstance(item, BuildingTemplate)
     ]
 
 

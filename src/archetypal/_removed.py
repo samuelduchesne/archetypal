@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 import re
+import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
@@ -844,6 +845,10 @@ def raise_removed(v2_path: str) -> NoReturn:
         RemovedInArchetypal3Error: Always, naming the replacement and the migration guide's section.
         LookupError: `v2_path` is not in `REMOVED`.
     """
+    if v2_path == "__main__":
+        # A stub run as `python -m archetypal.utils` is `__main__`; its spec keeps its name.
+        spec = getattr(sys.modules.get("__main__"), "__spec__", None)
+        v2_path = getattr(spec, "name", v2_path)
     rows = {row.v2_path: row for row in REMOVED}
     if v2_path not in rows:
         msg = f"{v2_path} is not a removed v2 capability"

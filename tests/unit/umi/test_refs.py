@@ -372,3 +372,26 @@ def test_written_library_resolves_to_an_equal_library(name: str) -> None:
     dumped = _refs.dump_library(library)
     assert _refs.scan_references(dumped) == []
     assert _refs.resolve(dumped, "again").library == library
+
+
+def test_a_reference_to_an_object_under_an_unknown_key_says_so(tmp_path: Path) -> None:
+    from archetypal.errors import UmiFormatError  # noqa: PLC0415
+    from archetypal.umi import read_umi  # noqa: PLC0415
+
+    library = Path(__file__).parents[2] / "fixtures" / "umi" / "BostonTemplateLibrary_2.json"
+    document = json.loads(library.read_text(encoding="utf-8"))
+    schedule = document["YearSchedules"][0]
+    moved: dict[str, object] = {}
+    for key, value in document.items():
+        if key == "YearSchedules":  # just before it, after the weeks it refers to
+            moved["ExtraSchedules"] = [schedule]
+            moved[key] = [{"$ref": schedule["$id"]}, *value[1:]]
+        else:
+            moved[key] = value
+    path = tmp_path / "moved.json"
+    path.write_text(json.dumps(moved), encoding="utf-8")
+    with pytest.raises(UmiFormatError) as caught:
+        read_umi(path)
+    messages = [problem.message for problem in caught.value.problems]
+    assert any("ExtraSchedules" in message for message in messages)
+    assert not any("encloses it" in message for message in messages)

@@ -29,7 +29,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
-import tomllib  # pyright: ignore[reportMissingTypeStubs]  # Python 3.11+
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # Python 3.10: the same parser, as the tomli package (a dependency of pytest there)
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]
 
 if TYPE_CHECKING:
     from collections.abc import Callable

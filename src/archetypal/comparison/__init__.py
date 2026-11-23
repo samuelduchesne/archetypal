@@ -19,7 +19,16 @@ from typing import TYPE_CHECKING, Literal
 
 from idfkit.simulation import SQLResult
 
-from archetypal.comparison.results import DISTRIBUTION_END_USES, RunResults, differences, label_of, read_run, sha256
+from archetypal._sqlite import open_results
+from archetypal.comparison.results import (
+    DISTRIBUTION_END_USES,
+    RunResults,
+    common_peak_frequency,
+    differences,
+    label_of,
+    read_run,
+    sha256,
+)
 from archetypal.errors import NotComparableError
 
 if TYPE_CHECKING:
@@ -227,16 +236,21 @@ def _rows(detailed: RunResults, archetype: RunResults, targets: AcceptanceTarget
                 judged=total > 0 and value / total >= targets.end_use_min_share,
             )
         )
-    larger = max(detailed.peaks.values(), default=0.0)
+    # Both runs' peaks at the finest frequency they share (an Hourly run against one with
+    # Zone Timestep and Hourly meters compares hourly peaks).
+    common = common_peak_frequency(detailed, archetype)
+    detailed_peaks = detailed.peaks_by_frequency.get(common, detailed.peaks) if common else detailed.peaks
+    archetype_peaks = archetype.peaks_by_frequency.get(common, archetype.peaks) if common else archetype.peaks
+    larger = max(detailed_peaks.values(), default=0.0)
     for mode in ("Heating", "Cooling"):
-        value = detailed.peaks.get(mode, 0.0)
+        value = detailed_peaks.get(mode, 0.0)
         rows.append(
             _row(
                 f"Peak {mode.lower()} demand",
                 "peak",
                 "W",
                 value,
-                archetype.peaks.get(mode, 0.0),
+                archetype_peaks.get(mode, 0.0),
                 end_use=mode,
                 target=targets.peak,
                 judged=larger > 0 and value / larger >= targets.peak_min_share,
@@ -268,7 +282,7 @@ def _open(results: str | os.PathLike[str] | SQLResult) -> tuple[SQLResult, str, 
     path = Path(results)
     if not path.is_file():
         raise FileNotFoundError(path)
-    return SQLResult(path), str(path), True
+    return open_results(path, SQLResult), str(path), True
 
 
 def compare(
@@ -284,8 +298,8 @@ def compare(
     (`SimpleAndTabular`), with the *AllSummary* tabular reports and the `Heating:<fuel>` and
     `Cooling:<fuel>` meters; a result with pumps or heat rejection also needs their meters
     and the energy its HVAC equipment delivered (ideal loads, coils, baseboards, radiant
-    systems), at the same frequency, to share them between heating and cooling. Results written for reduction (`RESULTS_REQUIREMENTS`)
-    have all of these.
+    systems), at the same frequency, to share them between heating and cooling. Results
+    written for reduction (`RESULTS_REQUIREMENTS`) have all of these.
 
     Args:
         detailed: The detailed model's results: a path, or an open `SQLResult`.

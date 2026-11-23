@@ -82,9 +82,12 @@ import warnings
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
-import tomllib  # pyright: ignore[reportMissingTypeStubs]  # Python 3.11+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # Python 3.10: the same parser, as the tomli package (a dependency of pytest there)
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
@@ -377,12 +380,39 @@ def _cpu_model() -> str:
 
 
 def _memory_gb() -> float | None:
+    if sys.platform == "win32":
+        return _windows_memory_gb()
     try:
         pages = os.sysconf("SC_PHYS_PAGES")
         size = os.sysconf("SC_PAGE_SIZE")
     except (ValueError, OSError, AttributeError):
         return None
     return round(pages * size / 1024**3, 1)
+
+
+def _windows_memory_gb() -> float | None:
+    """Physical memory on Windows, which has no `os.sysconf` (`GlobalMemoryStatusEx`)."""
+    import ctypes  # noqa: PLC0415 - Windows only
+
+    class MemoryStatus(ctypes.Structure):
+        _fields_: ClassVar = [
+            ("dwLength", ctypes.c_ulong),
+            ("dwMemoryLoad", ctypes.c_ulong),
+            ("ullTotalPhys", ctypes.c_ulonglong),
+            ("ullAvailPhys", ctypes.c_ulonglong),
+            ("ullTotalPageFile", ctypes.c_ulonglong),
+            ("ullAvailPageFile", ctypes.c_ulonglong),
+            ("ullTotalVirtual", ctypes.c_ulonglong),
+            ("ullAvailVirtual", ctypes.c_ulonglong),
+            ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+        ]
+
+    status = MemoryStatus()
+    status.dwLength = ctypes.sizeof(MemoryStatus)
+    windll = getattr(ctypes, "windll", None)
+    if windll is None or not windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        return None
+    return round(status.ullTotalPhys / 1024**3, 1)
 
 
 def _git_commit() -> str | None:
@@ -402,7 +432,8 @@ def machine() -> dict[str, Any]:
     """Describe the machine the run is timed on, and whether it meets `BENCHMARK`."""
     cpus = os.cpu_count()
     memory = _memory_gb()
-    meets = (cpus or 0) >= BENCHMARK["min_cpus"] and (memory or 0.0) >= BENCHMARK["min_memory_gb"]
+    # Unknown memory leaves the benchmark unknown rather than failing it.
+    meets = None if memory is None else (cpus or 0) >= BENCHMARK["min_cpus"] and memory >= BENCHMARK["min_memory_gb"]
     return {
         "platform": platform.platform(),
         "cpu": _cpu_model(),
@@ -535,7 +566,7 @@ def reference_buildings(reference: dict[str, Any], cache: Path, only: Sequence[s
         if not model.exists() or not source_zip.exists():
             continue
         wzip, epw = epinterface_weather(source_zip, cache / "epinterface-weather")
-        out.append(Building(b["id"], model, epw, wzip, b["climate_zone"], b.get("type")))
+        out.append(Building(b["id"], model, epw, wzip, b["climate_zone"], b.get("building_type")))
     return out
 
 
@@ -806,7 +837,14 @@ def shoebox(archetype: Any) -> Any:
     # A core only when the archetype has one: a perimeter-only archetype gives every zone a facade.
     zoning = "core/perim" if any(g.Exposure == "core" for g in archetype.Groups) else "by_storey"
     return ShoeboxGeometry(
-        x=0.0, y=0.0, w=width, d=depth, h=height, num_stories=storeys, zoning=zoning, perim_depth=min(4.5, depth / 3)
+        x=0.0,
+        y=0.0,
+        w=width,
+        d=depth,
+        h=height,
+        num_stories=storeys,
+        zoning=zoning,
+        perim_depth=min(4.5, depth / 3, width / 3),
     )
 
 
@@ -1160,12 +1198,22 @@ def _fraction(values: Sequence[bool | None]) -> dict[str, Any]:
     return {"passed": sum(judged), "judged": len(judged), "all": bool(judged) and all(judged)}
 
 
+def _benchmark_verdict(meets: object) -> str:
+    """How the evidence page states whether the machine meets the benchmark (unknown memory aside)."""
+    if meets is None:
+        return "may meet (its memory is unknown)"
+    return "meets" if meets else "does **not** meet"
+
+
 def summarise(records: Sequence[Mapping[str, Any]], machine_info: Mapping[str, Any], expected: int) -> dict[str, Any]:
     """SC-001 to SC-008 for the set, from the per-building records."""
     out: dict[str, Any] = {"buildings": len(records), "expected": expected}
-    default = [r["layouts"].get(DEFAULT_LAYOUT, {}).get("sc", {}) for r in records]
+    # The criteria hold "for every building": one never compared (its run or comparison failed)
+    # fails them, while a criterion its comparison did not judge (an end use too small) is left out.
+    default = [r["layouts"].get(DEFAULT_LAYOUT, {}).get("sc") for r in records]
     for sc in ("SC-001", "SC-002", "SC-003"):
-        out[sc] = _fraction([d.get(sc) for d in default])
+        out[sc] = _fraction([cast("dict[str, Any]", d).get(sc) if isinstance(d, dict) else False for d in default])
+        out[sc]["all"] = out[sc]["all"] and len(records) == expected
 
     sc004: list[bool] = []
     v3_errors: list[float] = []
@@ -1177,6 +1225,8 @@ def summarise(records: Sequence[Mapping[str, Any]], machine_info: Mapping[str, A
             v3_errors.append(v3)
             v2_errors.append(v2)
             sc004.append(v3 < v2)
+        elif v2 is not None:  # v2 reduced and compared this building, v3 did not: not better
+            sc004.append(False)
     if sc004:
         v3_mean, v2_mean = math.fsum(v3_errors) / len(v3_errors), math.fsum(v2_errors) / len(v2_errors)
         share = sum(sc004) / len(sc004)
@@ -1416,9 +1466,10 @@ def render_results(payload: Mapping[str, Any]) -> str:
         "## Results",
         "",
         f"Run on {payload['created']} with EnergyPlus {payload['energyplus_version']}, archetypal "
-        f"{v.get('archetypal')} (commit `{(v.get('git_commit') or 'unknown')[:12]}`), epinterface {v.get('epinterface')} "
+        f"{v.get('archetypal')} (commit `{(v.get('git_commit') or 'unknown')[:12]}`), "
+        f"epinterface {v.get('epinterface')} "
         f"and idfkit {v.get('idfkit')}, on {m['cpu']} ({m['cpu_count']} CPUs, {m['memory_gb']} GB, {m['platform']}); "
-        f"this machine {'meets' if m.get('meets_benchmark') else 'does **not** meet'} the benchmark. "
+        f"this machine {_benchmark_verdict(m.get('meets_benchmark'))} the benchmark. "
         f"{s['buildings']} of {s['expected']} buildings ran.",
         "",
         "| Criterion | Target | Outcome |",
@@ -1465,7 +1516,8 @@ def render_results(payload: Mapping[str, Any]) -> str:
         "Relative differences of the archetype at the default layout (space use and exposure); "
         "SC-005 to SC-007 over every layout.",
         "",
-        "| Building | Zones | Reduce (s) | Total | Heating | Cooling | Peak heat | Peak cool | SC-001 to 003 | SC-005 to 007 |",
+        "| Building | Zones | Reduce (s) | Total | Heating | Cooling | Peak heat | Peak cool "
+        "| SC-001 to 003 | SC-005 to 007 |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---|---|",
     ]
     for r in payload["buildings"]:
@@ -1502,7 +1554,9 @@ def render_page(payload: Mapping[str, Any] | None) -> str:
 def run_write_page(args: argparse.Namespace, cache: Path) -> int:
     """`--write-page`: render the page from the results JSON, or the pending page."""
     page: Path = args.page or DEFAULT_PAGE
-    results: Path = args.results or default_results(cache)
+    # With --stand-in, the page shows the stand-in results --run wrote beside the reference ones.
+    stand_in = cache / "results" / "stand-in.json" if getattr(args, "stand_in", None) else None
+    results: Path = args.results or stand_in or default_results(cache)
     payload: dict[str, Any] | None = None
     if args.pending:
         payload = None
@@ -1510,7 +1564,8 @@ def run_write_page(args: argparse.Namespace, cache: Path) -> int:
         payload = json.loads(results.read_text())
         if payload is not None and payload.get("kind") != "reference" and page.resolve() == DEFAULT_PAGE.resolve():
             print(
-                f"{results} holds {payload.get('kind')} results, which are not evidence; pass --page to render them elsewhere.",
+                f"{results} holds {payload.get('kind')} results, which are not evidence; "
+                "pass --page to render them elsewhere.",
                 file=sys.stderr,
             )
             return 1

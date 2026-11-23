@@ -23,6 +23,7 @@ from archetypal.reduction.envelope import (
     ledger_fields,
     orientation,
     window_construction,
+    zone_envelope,
 )
 from archetypal.reduction.inventory import LayerRecord, SurfaceRecord, ZoneRecord, surface_class
 from archetypal.reduction.ledger import EnvelopeTotals, GroupLedger
@@ -536,3 +537,15 @@ def test_fixture_conserves_exterior_envelope_of_conditioned_plenums_and_attic(
             totals.capacity_inner + totals.capacity_outer,
             rel_tol=1e-9,
         )
+
+
+def test_adiabatic_floors_and_ceilings_keep_their_layers_under_the_class_films() -> None:
+    """EnergyPlus gives an adiabatic surface its own film twice; an interzone one its companion's."""
+    layers = 0.5  # m²K/W
+    floor_film, ceiling_film = 0.1620212, 0.1074271
+    interzone = _surface("F1", "Floor", 180.0, "interzone", u=1.0 / (layers + floor_film + ceiling_film))
+    adiabatic_floor = _surface("F2", "Floor", 180.0, "adiabatic", u=1.0 / (layers + 2.0 * floor_film))
+    adiabatic_ceiling = _surface("C1", "Roof", 0.0, "adiabatic", u=1.0 / (layers + 2.0 * ceiling_film))
+    for surface in (interzone, adiabatic_floor, adiabatic_ceiling):
+        totals = zone_envelope(_zone("Z", surface)).envelope["floor_ceiling"]
+        assert totals.ua / totals.area == pytest.approx(interzone.u_factor, rel=1e-12)

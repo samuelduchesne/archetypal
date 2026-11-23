@@ -14,7 +14,10 @@ For each run this module reads:
   (the outputs of `requirements.delivery_outputs`: ideal loads, coils, baseboards and
   low-temperature radiant systems, which EnergyPlus reports for every copy of a multiplied
   zone). Energy in intervals with no delivery is shared by the run's total delivery in each
-  mode, and all of it to heating when nothing was delivered;
+  mode, and all of it to heating when nothing was delivered. Reduction also gives service hot
+  water its share (its delivery is computed from the model's schedules, which results alone
+  do not hold), so in a building with service-hot-water pumps the detailed model's rows with
+  pumps also count those pumps;
 - **the conditions comparability depends on** (FR-028): the weather file named in the
   *Input Verification and Results Summary*, with its location; the run period, from the
   meters' first and last intervals; the tabular energy unit; the timesteps per hour (the
@@ -47,6 +50,7 @@ if TYPE_CHECKING:
 __all__ = [
     "DISTRIBUTION_END_USES",
     "RunResults",
+    "common_peak_frequency",
     "differences",
     "epw_location",
     "read_run",
@@ -91,9 +95,11 @@ class RunResults:
         weather_name: The weather file's name alone (`<city> <state> <country> <source> WMO#=<n>`).
         timesteps_per_hour: The zone timesteps per hour.
         frequency: The finest peak frequency (Zone Timestep, Hourly, Daily) at which every heating
-            and cooling meter is reported; else their finest reporting frequency.
+            and cooling meter is reported; empty when there is none.
         period: The run period as `(start, end)`, from the meters' first and last intervals.
-        peaks: Peak demand by mode (`Heating`, `Cooling`), in W.
+        peaks: Peak demand by mode (`Heating`, `Cooling`), in W, at `frequency`.
+        peaks_by_frequency: Peak demand by mode at each peak frequency at which every heating and
+            cooling meter is reported, so two runs compare at the finest one they share.
         to_heating: For each distribution end use, the fraction of its energy that served
             heating.
         to_cooling: For each distribution end use, the fraction that served cooling.
@@ -110,6 +116,7 @@ class RunResults:
     frequency: str = ""
     period: tuple[datetime, datetime] | None = None
     peaks: dict[str, float] = field(default_factory=dict[str, float])
+    peaks_by_frequency: dict[str, dict[str, float]] = field(default_factory=dict[str, dict[str, float]])
     to_heating: dict[str, float] = field(default_factory=dict[str, float])
     to_cooling: dict[str, float] = field(default_factory=dict[str, float])
     problems: tuple[str, ...] = ()
@@ -192,6 +199,30 @@ def _tabular(sql: SQLResult, report: str, table: str, row: str, column: str) -> 
     return rows[0].value, rows[0].units
 
 
+_JOULES = {
+    "J": 1.0,
+    "kJ": 1e3,
+    "MJ": 1e6,
+    "GJ": 1e9,
+    "kWh": 3.6e6,
+    "MWh": 3.6e9,
+    "kBtu": 1.05505585262e6,
+    "MBtu": 1.05505585262e9,
+}
+"""Joules per tabular energy unit, as EnergyPlus writes the unit."""
+
+
+def _converter(cell_units: str, units: str) -> float:
+    """The factor from a cell's energy unit to the total's (`InchPoundExceptElectricity` mixes them)."""
+    cell, total = cell_units.strip(), units.strip()
+    if not cell or cell == total:
+        return 1.0
+    if cell not in _JOULES or total not in _JOULES:
+        msg = f"an End Uses cell is in {cell}, the total in {total}"
+        raise ValueError(msg)
+    return _JOULES[cell] / _JOULES[total]
+
+
 def _read_energy(sql: SQLResult) -> tuple[str, float, dict[tuple[str, str], float]]:
     text, units = _tabular(sql, ABUPS, "Site and Source Energy", "Total Site Energy", "Total Energy")
     total = float(text)
@@ -199,7 +230,7 @@ def _read_energy(sql: SQLResult) -> tuple[str, float, dict[tuple[str, str], floa
     for row in sql.get_tabular_data(report_name=ABUPS, table_name="End Uses"):
         if row.row_name == "Total End Uses" or row.column_name == "Water" or not row.value:
             continue
-        value = row.as_float()
+        value = row.as_float() * _converter(row.units or "", units)
         if value != 0:
             end_uses[row.row_name, row.column_name] = value
     return units, total, end_uses
@@ -234,18 +265,26 @@ def _rank(frequency: str) -> int:
     return _FREQUENCIES.index(frequency) if frequency in _FREQUENCIES else len(_FREQUENCIES)
 
 
-def _finest(frequencies: Iterable[str]) -> str | None:
-    ranked = sorted(set(frequencies), key=_rank)
-    return ranked[0] if ranked else None
-
-
-def _peak_frequency(meters: Sequence[VariableInfo]) -> str | None:
-    """The finest peak frequency at which every heating and cooling meter is reported, if any."""
+def _peak_frequencies(meters: Sequence[VariableInfo]) -> list[str]:
+    """The peak frequencies at which every heating and cooling meter is reported, finest first."""
     names = {v.name for v in meters}
-    for frequency in _PEAK_FREQUENCIES:
-        if names <= {v.name for v in meters if v.frequency == frequency}:
-            return frequency
-    return None
+    return [
+        frequency for frequency in _PEAK_FREQUENCIES if names <= {v.name for v in meters if v.frequency == frequency}
+    ]
+
+
+def common_peak_frequency(detailed: RunResults, archetype: RunResults) -> str | None:
+    """The finest peak frequency at which both runs report every heating and cooling meter, if any.
+
+    Args:
+        detailed: The detailed model's run.
+        archetype: The archetype's run.
+
+    Returns:
+        The frequency, or `None` when the runs share none.
+    """
+    shared = set(detailed.peaks_by_frequency) & set(archetype.peaks_by_frequency)
+    return next((frequency for frequency in _PEAK_FREQUENCIES if frequency in shared), None)
 
 
 def _interval(frequency: str, timesteps_per_hour: int) -> timedelta:
@@ -276,22 +315,26 @@ class _Reader:
         timesteps = self._timesteps()
         meters = _end_use_meters(self.sql.list_variables())
         mode_meters = meters["Heating"] + meters["Cooling"]
-        frequency = _peak_frequency(mode_meters) or _finest(v.frequency for v in mode_meters)
+        frequencies = _peak_frequencies(mode_meters)
         period: tuple[datetime, datetime] | None = None
-        peaks: dict[str, float] = {}
-        if frequency is None:
+        by_frequency: dict[str, dict[str, float]] = {}
+        if not mode_meters:
             self.problems.append(
                 f"missing: {self.label} report no Heating:<fuel> or Cooling:<fuel> meter; "
                 "add Output:Meter objects for them to the model and run it again"
             )
-        elif frequency not in _PEAK_FREQUENCIES:
+        elif not frequencies:
+            # Peaks from the meters at one frequency only would leave the others out.
             reported = ", ".join(sorted({v.frequency for v in mode_meters}, key=_rank))
             self.problems.append(
                 f"reporting frequency: {self.label} report the heating and cooling meters {reported}; "
                 f"peak demand needs every one of them at one of {', '.join(_PEAK_FREQUENCIES)}"
             )
-        else:
-            period, peaks = self._peaks(meters, frequency, timesteps)
+        for index, peak_frequency in enumerate(frequencies):
+            at, by_frequency[peak_frequency] = self._peaks(meters, peak_frequency, timesteps)
+            if index == 0:
+                period = at
+        frequency = frequencies[0] if frequencies else None
         to_heating, to_cooling = self._distribution(meters, end_uses)
         return RunResults(
             label=self.label,
@@ -303,7 +346,8 @@ class _Reader:
             timesteps_per_hour=timesteps,
             frequency=frequency or "",
             period=period,
-            peaks=peaks,
+            peaks=by_frequency.get(frequency, {}) if frequency else {},
+            peaks_by_frequency=by_frequency,
             to_heating=to_heating,
             to_cooling=to_cooling,
             problems=tuple(self.problems),
@@ -442,12 +486,23 @@ def read_run(sql: SQLResult, label: str) -> RunResults:
     return _Reader(sql, label).read()
 
 
+def _calendar(period: tuple[datetime, datetime]) -> tuple[object, ...]:
+    """What makes two run periods the same calendar: dates and times, start weekday and length.
+
+    Two years whose 1 January falls on the same weekday, both leap or neither, run the same
+    calendar: EnergyPlus places epinterface's Sunday-start run in such a year, not the detailed
+    model's.
+    """
+    start, end = period
+    return (start.strftime("%m-%d %H:%M"), end.strftime("%m-%d %H:%M"), start.weekday(), end - start)
+
+
 def _format_period(period: tuple[datetime, datetime] | None) -> str:
     if period is None:
         return "unknown"
     start, end = period
     hours = (end - start).total_seconds() / 3600
-    return f"{start:%m-%d %H:%M} to {end:%m-%d %H:%M} ({hours:g} hours)"
+    return f"{start:%m-%d %H:%M} to {end:%m-%d %H:%M} ({hours:g} hours, starting on a {start:%A})"
 
 
 def differences(detailed: RunResults, archetype: RunResults, *, weather: str | Path | None = None) -> list[str]:
@@ -475,7 +530,11 @@ def differences(detailed: RunResults, archetype: RunResults, *, weather: str | P
         )
     elif _normal(detailed.weather) != _normal(archetype.weather):
         found.append(f"weather: {detailed.weather} for {detailed.label}, {archetype.weather} for {archetype.label}")
-    if detailed.period is not None and archetype.period is not None and detailed.period != archetype.period:
+    if (
+        detailed.period is not None
+        and archetype.period is not None
+        and _calendar(detailed.period) != _calendar(archetype.period)
+    ):
         found.append(
             f"run period: {_format_period(detailed.period)} for {detailed.label}, "
             f"{_format_period(archetype.period)} for {archetype.label}"
@@ -489,7 +548,7 @@ def differences(detailed: RunResults, archetype: RunResults, *, weather: str | P
             f"timestep: {detailed.timesteps_per_hour} per hour for {detailed.label}, "
             f"{archetype.timesteps_per_hour} per hour for {archetype.label}"
         )
-    if detailed.frequency and archetype.frequency and detailed.frequency != archetype.frequency:
+    if detailed.frequency and archetype.frequency and common_peak_frequency(detailed, archetype) is None:
         found.append(
             f"reporting frequency: heating and cooling meters {detailed.frequency} for {detailed.label}, "
             f"{archetype.frequency} for {archetype.label}"

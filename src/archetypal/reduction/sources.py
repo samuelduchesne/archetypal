@@ -16,14 +16,15 @@ Which fuels each end use meters (`ModelFacts.end_use_fuels`) is read from the re
 *Annual Building Utility Performance Summary*, End Uses, which the run conditions of
 `contracts/results-requirements.md` require: a fuel is needed where that table reports
 non-zero energy, or where the results already hold its hourly `<end use>:<fuel>` meter (the
-table rounds a fuel under 5 MJ a year to zero). Reading it from the model would mean following every coil, boiler and plant
-loop to its fuel, which EnergyPlus has already done.
+table rounds a fuel under 5 MJ a year to zero). Reading it from the model would mean following
+every coil, boiler and plant loop to its fuel, which EnergyPlus has already done.
 """
 
 from __future__ import annotations
 
 import hashlib
 import os
+import sqlite3
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -34,8 +35,15 @@ from idfkit.exceptions import ResultLookupError
 from idfkit.simulation import SQLResult
 from idfkit.versioned import as_version
 
+from archetypal._sqlite import open_results
 from archetypal.errors import MissingResults, ModelResultsMismatch, ReductionError, UnsupportedEnergyPlusVersion
-from archetypal.reduction._sql_tables import database_path, read_simulations, read_zones
+from archetypal.reduction._sql_tables import (
+    SQLTableError,
+    database_path,
+    has_tabular_report,
+    read_simulations,
+    read_zones,
+)
 from archetypal.reduction.requirements import (
     ENERGYPLUS_FUELS,
     RESULTS_REQUIREMENTS,
@@ -358,6 +366,8 @@ def load_sources(
             idfkit's latest release.
         ModelResultsMismatch: The model and results differ in EnergyPlus release or zone names.
         MissingResults: The results lack an output or tabular report that reduction reads.
+        ReductionError: The model holds HVACTemplate objects, its run period is not one whole
+            calendar year, or the results cannot be read as EnergyPlus SQLite results.
     """
     doc, model_path, model_sha256 = _load_model(model)
     model_subject = _subject(model_path, "the model")
@@ -366,6 +376,17 @@ def load_sources(
     if not _supported(doc.version):
         raise UnsupportedEnergyPlusVersion(model_subject, _release(doc.version), supported_versions())
     narrowed = as_version(doc, since="22.1")
+    templates = sorted({
+        obj.obj_type for obj in narrowed.all_objects if obj.obj_type.casefold().startswith("hvactemplate:")
+    })
+    if templates:
+        # Reduction reads the HVAC objects EnergyPlus simulates; HVACTemplate objects are only
+        # expanded into them (by ExpandObjects) when EnergyPlus runs, so the model holds none.
+        message = (
+            f"holds {', '.join(templates)} objects; reduction reads the objects EnergyPlus simulates: reduce the "
+            "expanded model (expanded.idf, written by EnergyPlus's ExpandObjects) with its results"
+        )
+        raise ReductionError(model_subject, message)
     if model_sha256 is None:
         model_sha256 = hashlib.sha256(write_idf(narrowed).encode("utf-8")).hexdigest()
 
@@ -374,15 +395,52 @@ def load_sources(
         missing = [text for r in RESULTS_REQUIREMENTS if r.applies_to(no_fuels) for text in r.idf_objects(no_fuels)]
         raise MissingResults(model_subject, [*missing, *TABULAR_OUTPUTS])
 
-    sql = results if isinstance(results, SQLResult) else SQLResult(Path(results))
+    sql = results if isinstance(results, SQLResult) else open_results(results, SQLResult)
     results_path = database_path(sql) if isinstance(results, SQLResult) else Path(results).resolve()
     results_subject = _subject(results_path, "the results")
     try:
         return _check(sql, narrowed, model_path, model_sha256, results_path, results_subject, weather)
+    except (SQLTableError, sqlite3.Error) as error:
+        if sql is not results:
+            sql.close()
+        message = f"cannot be read as EnergyPlus SQLite results ({error})"
+        raise ReductionError(results_subject, message) from error
     except BaseException:
         if sql is not results:
             sql.close()
         raise
+
+
+def _annual_run_period(
+    doc: IDFDocumentSince22_1, model_path: Path | None, results_subject: str, weather_runs: int
+) -> RunPeriodInfo:
+    """The model's run period, refused unless it is one whole calendar year.
+
+    Schedules and results are read on one calendar year from 1 January: a run period that wraps
+    around 1 January runs its January in the next year, and a shorter or longer one (or a second
+    one, whose rows follow the first's) gives hourly series of another length than the schedules'.
+    """
+    run_period = RunPeriodInfo.from_document(doc)
+    if run_period.end.year != run_period.begin.year:
+        message = (
+            f"the RunPeriod {run_period.name or ''} runs from {run_period.begin:%d %B} to {run_period.end:%d %B} "
+            "across 1 January; reduction reads one calendar year from 1 January: run the model from 1 January "
+            "to 31 December"
+        )
+        raise ReductionError(model_path or "the model", message)
+    if (run_period.begin.month, run_period.begin.day, run_period.end.month, run_period.end.day) != (1, 1, 12, 31):
+        message = (
+            f"the RunPeriod {run_period.name or ''} runs from {run_period.begin:%d %B} to {run_period.end:%d %B}; "
+            "reduction reads one whole calendar year: run the model from 1 January to 31 December"
+        )
+        raise ReductionError(model_path or "the model", message)
+    if weather_runs > 1:
+        message = (
+            f"the results hold {weather_runs} weather-file run periods; reduction reads one annual run period: "
+            "run the model with one RunPeriod from 1 January to 31 December"
+        )
+        raise ReductionError(results_subject, message)
+    return run_period
 
 
 def _check(
@@ -409,9 +467,12 @@ def _check(
     fuels = end_use_fuels(sql)
     facts = model_facts(doc, fuels or ())
     missing = [text for requirement in check_results(sql, facts) for text in requirement.idf_objects(facts)]
-    if fuels is None:
-        missing.extend(TABULAR_OUTPUTS)
-    if not any(env.environment_type == _WEATHER_FILE_RUN_PERIOD for env in sql.list_environments()):
+    if fuels is None or not has_tabular_report(sql, "EnvelopeSummary"):
+        # The End Uses table (fuels) and the Envelope Summary (U-factors, SHGC) both come from
+        # the summary reports.
+        missing.extend(text for text in TABULAR_OUTPUTS if text not in missing)
+    weather_runs = [env for env in sql.list_environments() if env.environment_type == _WEATHER_FILE_RUN_PERIOD]
+    if not weather_runs:
         missing.append(WEATHER_FILE_RUN)
     if missing:
         raise MissingResults(results_subject, missing)
@@ -425,17 +486,8 @@ def _check(
     if differences:
         raise ModelResultsMismatch(results_subject, differences)
 
-    # 4. A run period that wraps around 1 January: EnergyPlus reports it from its begin date and
-    # runs its January in the next year, while schedules and results are read on one calendar
-    # year from 1 January, so every hourly series would be out of step with the schedules.
-    run_period = RunPeriodInfo.from_document(doc)
-    if run_period.end.year != run_period.begin.year:
-        message = (
-            f"the RunPeriod {run_period.name or ''} runs from {run_period.begin:%d %B} to {run_period.end:%d %B} "
-            "across 1 January; reduction reads one calendar year from 1 January: run the model from 1 January "
-            "to 31 December"
-        )
-        raise ReductionError(model_path or "the model", message)
+    # 4. One annual run period.
+    run_period = _annual_run_period(doc, model_path, results_subject, len(weather_runs))
 
     version = doc.version
     return SourceData(

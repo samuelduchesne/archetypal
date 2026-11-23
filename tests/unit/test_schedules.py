@@ -731,3 +731,98 @@ def test_schedule_compact_without_slots_is_unchanged() -> None:
 
     assert "For: Monday SummerDesignDay WinterDesignDay CustomDay1 CustomDay2" in text
     assert "For: Sunday Holiday" in text
+
+
+# --- daylight saving time and timestep (EnergyPlus `LookUpScheduleValue`) ---------------------
+
+
+def _daylight_saving_doc(tmp_path: Path, *, adjust_file: str) -> IDFDocument:
+    """A 2018 year (1 January a Monday), daylight saving time from 1 March to 31 October."""
+    doc = _doc(weekday="Monday", year=2018)
+    doc.add(
+        "RunPeriodControl:DaylightSavingTime",
+        validate=False,
+        start_date="3/1",
+        end_date="10/31",
+    )
+    doc.schedule_compacts.add(
+        "Workdays",
+        data=[
+            {"field": "Through: 12/31"},
+            {"field": "For: Weekdays"},
+            {"field": "Until: 24:00"},
+            {"field": "5"},
+            {"field": "For: AllOtherDays"},
+            {"field": "Until: 24:00"},
+            {"field": "0"},
+        ],
+    )
+    (tmp_path / "hours.csv").write_text("".join(f"{hour % 24 + 1}\n" for hour in range(8760)))
+    doc.add(
+        "Schedule:File",
+        "Hours",
+        validate=False,
+        file_name="hours.csv",
+        column_number=1,
+        rows_to_skip_at_top=0,
+        number_of_hours_of_data=8760,
+        column_separator="Comma",
+        adjust_schedule_for_daylight_savings=adjust_file,
+    )
+    return doc
+
+
+def test_daylight_saving_takes_the_next_days_first_hour_for_the_last(tmp_path: Path) -> None:
+    doc = _daylight_saving_doc(tmp_path, adjust_file="Yes")
+    cal = RunPeriodCalendar.from_document(doc)
+    evaluate = ScheduleEvaluator(doc, cal, base_path=tmp_path)
+    friday = (date(2018, 6, 1).timetuple().tm_yday - 1) * 24  # a Friday in daylight saving time
+    thursday = friday - 24
+    workdays = evaluate("Workdays")
+    # EnergyPlus takes the last hour from Saturday's first hour, not Friday's first.
+    np.testing.assert_array_equal(workdays[friday : friday + 24], [5.0] * 23 + [0.0])
+    np.testing.assert_array_equal(workdays[thursday : thursday + 24], [5.0] * 24)
+    hours = evaluate("Hours")
+    np.testing.assert_array_equal(hours[friday : friday + 24], [*range(2, 25), 1])
+    january = 9 * 24  # outside daylight saving time
+    np.testing.assert_array_equal(hours[january : january + 24], range(1, 25))
+
+
+def test_a_schedule_file_that_opts_out_of_daylight_saving_is_not_shifted(tmp_path: Path) -> None:
+    doc = _daylight_saving_doc(tmp_path, adjust_file="No")
+    evaluate = ScheduleEvaluator(doc, RunPeriodCalendar.from_document(doc), base_path=tmp_path)
+    june_15 = (date(2018, 6, 15).timetuple().tm_yday - 1) * 24
+    np.testing.assert_array_equal(evaluate("Hours")[june_15 : june_15 + 24], range(1, 25))
+
+
+def test_a_design_day_that_observes_daylight_saving_is_shifted() -> None:
+    doc = _design_day_doc()
+    evaluate = ScheduleEvaluator(doc, RunPeriodCalendar.from_document(doc))
+    before = evaluate.design_day("Design", "summer")
+    doc.add(
+        "SizingPeriod:DesignDay",
+        "Summer with daylight saving",
+        validate=False,
+        month=7,
+        day_of_month=21,
+        day_type="SummerDesignDay",
+        maximum_dry_bulb_temperature=30.0,
+        barometric_pressure=101325.0,
+        wind_speed=0.0,
+        daylight_saving_time_indicator="Yes",
+    )
+    shifted = ScheduleEvaluator(doc, RunPeriodCalendar.from_document(doc))
+    assert shifted.design_daylight_saving == {"summer"}
+    rolled = np.array([*before[1:], before[0]], dtype=np.float64)
+    np.testing.assert_array_equal(shifted.design_day("Design", "summer"), rolled)
+    assert (before != rolled).any()
+
+
+def test_steps_average_to_the_hourly_profile() -> None:
+    doc = _schedule_doc()
+    doc.add("Timestep", validate=False, number_of_timesteps_per_hour=4)
+    evaluate = ScheduleEvaluator(doc, RunPeriodCalendar.from_document(doc))
+    steps = evaluate.steps("Office")
+    assert steps.shape == (8760, 4)
+    assert not steps.flags.writeable
+    np.testing.assert_allclose(steps.mean(axis=1), evaluate("Office"))

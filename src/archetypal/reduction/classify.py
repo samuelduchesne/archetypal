@@ -261,6 +261,16 @@ def _signature_labels(zones: Sequence[ZoneRecord], evaluate: Callable[[str], Pro
 # --- Classification -------------------------------------------------------------------------------
 
 
+def _casefolded(space_use_mapping: Mapping[str, str]) -> dict[str, str]:
+    """The mapping by case-folded zone name; one zone named in two letter cases must get one use."""
+    mapping: dict[str, str] = {}
+    for key, value in sorted(space_use_mapping.items()):
+        if mapping.setdefault(key.casefold(), value) != value:
+            msg = f"the space-use mapping gives zone {key} two space uses, in two letter cases of its name"
+            raise ValueError(msg)
+    return mapping
+
+
 def classify(
     zones: Iterable[ZoneRecord],
     evaluate: Callable[[str], Profile],
@@ -281,10 +291,11 @@ def classify(
 
     Raises:
         NoConditionedZones: No zone is conditioned.
-        ValueError: The mapping names a zone the model does not have.
+        ValueError: The mapping names a zone the model does not have, or gives one zone two
+            space uses under two letter cases of its name.
     """
     ordered = sorted(zones, key=lambda zone: zone.name)
-    mapping = {key.casefold(): value for key, value in (space_use_mapping or {}).items()}
+    mapping = _casefolded(space_use_mapping or {})
     unknown = sorted(set(mapping) - {zone.name.casefold() for zone in ordered})
     if unknown:
         names = sorted(key for key in (space_use_mapping or {}) if key.casefold() in unknown)

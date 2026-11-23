@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from epinterface.sbem.archetype import Archetype
 from epinterface.sbem.components.envelope import GlazingConstructionLayeredComponent
 
 import archetypal
+from archetypal import io as archetypal_io
 from archetypal.errors import InputError, LossyTranslationError, UmiValidationError
 from archetypal.umi import TranslationReport, UmiImport, _refs, read_umi
 from archetypal.umi.report import LossKind
@@ -288,17 +290,19 @@ def test_write_makes_names_portable_file_names(b2: UmiImport, tmp_path: Path) ->
 
 
 def test_write_leaves_no_file_when_one_fails(b2: UmiImport, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    write_bytes = Path.write_bytes
-    calls: list[Path] = []
+    fdopen = os.fdopen
+    calls: list[int] = []
 
-    def failing(self: Path, data: bytes) -> int:
-        calls.append(self)
+    def failing(handle: int, mode: str) -> Any:
+        calls.append(handle)
+        stream = fdopen(handle, mode)
         if len(calls) == 2:
+            stream.close()
             message = "disk full"
             raise OSError(message)
-        return write_bytes(self, data)
+        return stream
 
-    monkeypatch.setattr(Path, "write_bytes", failing)
+    monkeypatch.setattr(archetypal_io.os, "fdopen", failing)
     with pytest.raises(OSError, match="disk full"):
         b2.write(tmp_path)
     assert list(tmp_path.iterdir()) == []
@@ -309,6 +313,8 @@ def test_components_of_skipped_templates_are_unused() -> None:
     unused = {loss.location: loss for loss in losses(result, LossKind.UNUSED)}
     assert "/OpaqueMaterials/2" in unused
     assert "skipped" in unused["/OpaqueMaterials/2"].reason
+    # The skipped template itself is reported once, as skipped, not also as unused.
+    assert not [location for location in unused if location.startswith("/BuildingTemplates/")]
 
 
 def _base() -> Json:
@@ -337,3 +343,74 @@ def test_references_to_equal_components_are_not_different_content(tmp_path: Path
     path = tmp_path / "lib.json"
     path.write_text(json.dumps(document), encoding="utf-8")
     assert losses(read_umi(path), LossKind.RENAMED) == []
+
+
+def test_archetypes_do_not_share_mutable_zones(tmp_path: Path) -> None:
+    """Two templates naming the same zones (by `$ref`) give archetypes with their own zones."""
+    document = json.loads(B2.read_text(encoding="utf-8"))
+    original = document["BuildingTemplates"][0]
+    twin = {"$id": "twin", **{k: v for k, v in original.items() if k != "$id"}}
+    twin["Name"] = "Twin"
+    twin["Windows"] = {"$ref": original["Windows"]["$id"]}
+    document["BuildingTemplates"].append(twin)
+    path = tmp_path / "twins.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    result = read_umi(path)
+    first, second = result.archetypes[0], result.archetypes[-1]
+    assert first.Groups[0].Zone is not second.Groups[0].Zone
+    first.Groups[0].Zone.Operations.SpaceUse.Lighting.PowerDensity = 99.0
+    assert second.Groups[0].Zone.Operations.SpaceUse.Lighting.PowerDensity != 99.0
+
+
+@pytest.mark.parametrize("collection", ["WindowSettings", "VentilationSettings", "DomesticHotWaterSettings"])
+def test_a_component_without_a_name_is_read(tmp_path: Path, collection: str) -> None:
+    document = json.loads((UMI / "BostonTemplateLibrary_nodup.json").read_text(encoding="utf-8"))
+    for item in document[collection]:
+        item.pop("Name", None)
+    path = tmp_path / "nameless.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    assert read_umi(path).archetypes
+
+
+@pytest.mark.parametrize(
+    ("collection", "key"),
+    [("OpaqueMaterials", "EmbodiedCarbon"), ("GlazingMaterials", "EmbodiedCarbon"), ("GlazingMaterials", "Cost")],
+)
+def test_a_negative_cost_or_carbon_is_lost_not_refused(tmp_path: Path, collection: str, key: str) -> None:
+    document = json.loads((UMI / "BostonTemplateLibrary_nodup.json").read_text(encoding="utf-8"))
+    for item in document[collection]:
+        item[key] = -0.5
+    path = tmp_path / "negative.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    result = read_umi(path)
+    assert any(loss.location.endswith(f"/{key}") for loss in result.report.losses)
+    # A window keeps its layers: a life-cycle value does not turn it into simple glazing.
+    assert not any(
+        type(group.Zone.Envelope.Window).__name__ == "GlazingConstructionSimpleComponent"
+        for archetype in result.archetypes
+        for group in archetype.Groups
+    )
+
+
+def test_a_live_loading_preset_sbem_lacks_and_a_negative_mass_ratio_are_lost(tmp_path: Path) -> None:
+    document = json.loads((UMI / "BostonTemplateLibrary_nodup.json").read_text(encoding="utf-8"))
+    structure = document["StructureDefinitions"][0]
+    structure["AdvancedModel"] = {"LoadingSettings": {"LiveLoadingPreset": "WarehouseHeavyStorage"}}
+    structure["MassRatios"][0]["NormalRatio"] = -5
+    path = tmp_path / "structure.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    result = read_umi(path)
+    lost = {loss.location for loss in result.report.losses if loss.rule == "structure.component"}
+    assert any(location.endswith("LiveLoadingPreset") for location in lost)
+    assert any("/MassRatios/0" in location for location in lost)
+
+
+def test_a_schedule_named_as_epinterface_protects_is_renamed(tmp_path: Path) -> None:
+    document = json.loads((UMI / "BostonTemplateLibrary_2.json").read_text(encoding="utf-8"))
+    conditioning = document["ZoneConditionings"][0]
+    all_on = next(s for s in document["YearSchedules"] if s.get("Name") == "AllOn")
+    conditioning["MechVentSchedule"] = {"$ref": all_on["$id"]}
+    path = tmp_path / "all_on.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    result = read_umi(path)
+    assert any(loss.kind == LossKind.RENAMED and loss.value == "AllOn" for loss in result.report.losses)

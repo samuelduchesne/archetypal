@@ -693,7 +693,8 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         ("DayComponent.Type",),
         "schedule.type",
         E,
-        "Fraction, Temperature and AnyNumber map by name; any other type becomes AnyNumber, noted.",
+        "Fraction, Temperature and AnyNumber map by name; On/Off (0 or 1) becomes Fraction and any other "
+        "type AnyNumber, noted.",
     ),
     _row(
         "WeekSchedule",

@@ -30,12 +30,12 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, NamedTuple, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, cast, get_args
 
 from epinterface.sbem.archetype import ORIENTATIONS, Archetype, BuildingGeometry, ZoneGroup
 from epinterface.sbem.components.envelope import ZoneEnvelopeComponent
 from epinterface.sbem.components.operations import ZoneOperationsComponent
-from epinterface.sbem.components.structure import StructureComponent
+from epinterface.sbem.components.structure import LiveLoadingPresetName, StructureComponent
 from epinterface.sbem.components.zones import ZoneComponent
 
 from archetypal.umi._format import (
@@ -524,6 +524,10 @@ _SYSTEM_SLOTS: tuple[tuple[str, str], ...] = (
 )
 
 
+_DEFAULT_LIVE_LOADING = "Offices"
+"""SBEM's live-loading preset by default, written for a UMI preset SBEM lacks."""
+
+
 @rule("structure.component", to="sbem")
 def structure_to_sbem(
     structure: StructureInformation, *, pointer: str, subject: str
@@ -557,12 +561,35 @@ def structure_to_sbem(
                 "An SBEM mass ratio needs a material.",
             )
             continue
+        if ratio.normal_ratio < 0 or ratio.high_load_ratio < 0:
+            findings.lose(
+                LossKind.LOST,
+                subject,
+                where,
+                ratio.model_dump(mode="json", by_alias=True),
+                "structure.component",
+                "SBEM's mass ratios cannot be negative.",
+            )
+            continue
         ratios.append({
             "Material": material_to_sbem(ratio.material, subject, f"{where}/Material", findings),
             "NormalRatio": ratio.normal_ratio,
             "HighLoadRatio": ratio.high_load_ratio,
         })
     advanced = structure.advanced_model
+    preset = advanced.loading_settings.live_loading_preset.value
+    if preset not in get_args(LiveLoadingPresetName):
+        # SBEM's presets lack some of UMI's; the live load itself is kept.
+        findings.lose(
+            LossKind.LOST,
+            subject,
+            f"{pointer}/AdvancedModel/LoadingSettings/LiveLoadingPreset",
+            preset,
+            "structure.component",
+            f"SBEM has no live-loading preset {preset!r}; its default is written and the live load kept.",
+            replacement=_DEFAULT_LIVE_LOADING,
+        )
+        preset = _DEFAULT_LIVE_LOADING
     systems = advanced.construction_systems
     assembly_life_cycle_losses(structure, subject, pointer, findings)
     component = StructureComponent.model_validate({
@@ -593,7 +620,7 @@ def structure_to_sbem(
                 "FoundationSoilValue": advanced.foundation_soil_settings.foundation_soil_value,
             },
             "LoadingSettings": {
-                "LiveLoadingPreset": advanced.loading_settings.live_loading_preset.value,
+                "LiveLoadingPreset": preset,
                 "LiveLoadingValue": advanced.loading_settings.live_loading_value,
             },
         },
@@ -858,6 +885,9 @@ def umi_names(zone: ZoneComponent, *, subject: str, group: str) -> ZoneNames:
     losses: list[Loss] = []
     for path, umi_class, suffix in DERIVED_NAMES:
         component = _get(zone, path)
+        # The operations carry the zone definition's metadata (`zone_to_sbem`): written, not lost.
+        if component is not None and path != "Operations":
+            losses.extend(_derived_metadata_losses(component, _get(zone, NAMED_FROM[umi_class]), subject, group, path))
         expected = _expected(names, umi_class, suffix)
         if component is not None and component.Name != expected:
             losses.append(
@@ -872,6 +902,33 @@ def umi_names(zone: ZoneComponent, *, subject: str, group: str) -> ZoneNames:
                 )
             )
     return ZoneNames(names, tuple(losses))
+
+
+_METADATA_FIELDS = ("Category", "Comment", "DataSource", "Version")
+
+
+def _derived_metadata_losses(component: Any, parent: Any, subject: str, group: str, path: str) -> list[Loss]:
+    """A loss for each metadata value of a sub-component that is not its UMI parent's (`names.metadata`).
+
+    UMI has no component of its own for it, so only what its parent carries is written; reading
+    gives it its parent's metadata or none.
+    """
+    losses: list[Loss] = []
+    for key in _METADATA_FIELDS:
+        value = getattr(component, key, None)
+        if value is None or value == getattr(parent, key, None):
+            continue
+        losses.append(
+            Loss(
+                kind=LossKind.LOST,
+                subject=subject,
+                location=f"{group}.{path}.{key}",
+                value=value,
+                rule="names.metadata",
+                reason=f"UMI has no component of its own here; only its parent's {key} is written.",
+            )
+        )
+    return losses
 
 
 class UniqueNames:

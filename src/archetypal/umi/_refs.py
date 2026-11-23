@@ -188,6 +188,16 @@ def _collection_classes() -> dict[str, tuple[str, type[FormatModel]]]:
 _COLLECTIONS = _collection_classes()
 
 
+def _holds_id(value: object, ref: str) -> bool:
+    """Whether a raw JSON value defines the `$id` `ref` anywhere inside it."""
+    if isinstance(value, dict):
+        obj = cast("_Json", value)
+        return obj.get("$id") == ref or any(_holds_id(item, ref) for item in obj.values())
+    if isinstance(value, list):
+        return any(_holds_id(item, ref) for item in cast("list[object]", value))
+    return False
+
+
 class _Builder:
     """Builds format models from raw JSON in file order, following `$ref` to built objects."""
 
@@ -229,7 +239,14 @@ class _Builder:
             return _FAILED
         target = self.index.get(ref)
         if target is None:
-            self.problem(pointer, "refs.enclosing", f'"$ref" "{ref}" points to an object that encloses it')
+            # The scan saw the `$id` earlier; either it encloses this reference, or it sits under
+            # a key the format does not know, which is not built.
+            unknown = next((where for where, value in self.unknown if _holds_id(value, ref)), None)
+            if unknown is not None:
+                message = f'"$ref" "{ref}" points to an object under {unknown}, a key the format does not know'
+                self.problem(pointer, "refs.dangling", message)
+            else:
+                self.problem(pointer, "refs.enclosing", f'"$ref" "{ref}" points to an object that encloses it')
             return _FAILED
         if not isinstance(target, classes):
             expected = " or ".join(c.__name__ for c in classes)

@@ -49,6 +49,8 @@ before upgrading.
 - A removed archetypal 2 name, module, command or option raises `RemovedInArchetypal3Error` (an
   `ImportError`), or exit status 2 on the command line, naming its replacement.
 - A documentation site with a tutorial, how-to guides, explanations and reference pages.
+- The reduction report holds `notes`, the grouping's remarks; `to_umi(..., path=...)` records
+  the library's file in the loss report, as `write_umi` does.
 
 ### Changed
 
@@ -172,6 +174,72 @@ before upgrading.
     response are reported.
   - A run period that crosses 1 January is refused with an explanation instead of reduced out
     of step with its schedules.
+- `reduce` follows EnergyPlus more closely:
+  - A relative `Schedule:File` is read from the model's folder, not the working directory, and
+    `simulate=True` names it by its absolute path so that the single run finds it.
+  - Daylight saving time takes the last hour of each day from the next day's first, skips a
+    `Schedule:File` that opts out, and shifts design days that observe it; thermostat control
+    types are read at the model's timestep, so an hour that changes type no longer takes a type
+    that never applied.
+  - The hot-water efficiency uses the cold-water schedule the ledger uses, and hot water
+    heated by the heating plant (no `WaterSystems` meter) shares the heating meter instead of
+    taking its efficiency from pump energy alone. An equipment without a temperature schedule
+    draws at the water heaters' shared setpoint.
+  - The hot-water volume per person follows the occupants `occupancy` writes when the people
+    schedule exceeds 1.
+  - Adiabatic floors and ceilings keep their layers' resistance (EnergyPlus gives them their
+    own film twice); a glass door is a window; ground conductance uses EnergyPlus's films.
+  - A heating setpoint above the cooling setpoint is capped at it and reported.
+  - Fan air density uses the elevation EnergyPlus ran with, from the results.
+  - A `DesignSpecification:OutdoorAir:SpaceList` adds each space's per-zone flow.
+  - Air loops without a return path serve their zones through PIU, beam, induction and
+    dual-duct terminals; outdoor air units deliver their coils' energy; unmeasured units and
+    loops that serve no zone are reported.
+  - Exterior lights and equipment reported in kBtu are converted correctly (they were 1000 times
+    too small).
+- `reduce` refuses, with a `ReductionError` naming the input: a run period that is not one
+  whole year, results with two weather-file run periods, a file that is not EnergyPlus SQLite
+  results, and a model holding HVACTemplate objects. Results without the Envelope Summary
+  raise `MissingResults`. A path holding `#`, `?` or `%` opens that file instead of creating
+  another. Design objects and radiant surface groups are no longer taken for equipment, and
+  the single run meters district heating under its names before EnergyPlus 23.2.
+- `reduce` no longer fails on a negative OtherEquipment (a heat sink, now reported), or on a
+  building without the surfaces of SBEM's basement ceiling; a space-use mapping that names one
+  zone in two letter cases with two uses is refused.
+- The report records the grouping's notes (such as a layout without core zones); in-memory
+  results hash the same data the same way; `Reduction.read` refuses a report of another
+  reduction and names a report of an unknown schema version. The archetype and its report are
+  written together, so a failed write leaves the previous files.
+- `compare` refuses meters that share no peak frequency instead of reporting a 0 W peak,
+  compares two runs at the finest frequency they share, converts End Uses cells in mixed units,
+  and accepts run periods of two years with the same calendar.
+- CLI: `-o` may name a folder for the UMI library; a worker that dies fails its own model only;
+  model names that differ only in case are refused; hidden files in a folder are skipped; a
+  removed archetypal 2 option given as `--opt=value` gets the migration message; the loss
+  report records the library's file name.
+- `dir(archetypal)` lists the lazily imported API; a removed v2 module run with `python -m`
+  raises the migration error.
+- UMI translation:
+  - Written files follow the umask (they were owner-only); a failed write leaves no
+    temporary file.
+  - Archetypes read from one library no longer share zone objects.
+  - Numbers too large for a float are refused; values the rules lose (an illuminance target of
+    0, a heat-recovery efficiency above 1, negative life-cycle values, ...) are lost as the
+    correspondence notes say instead of refusing the template; a glass without conductivity is
+    a validation problem.
+  - A schedule named as epinterface reserves (`AllOn`, `AlwaysOn`, ...) is renamed; an
+    `On/Off` schedule is a fraction, not always on; a month split between parts of one week is
+    copied exactly.
+  - Nameless window, ventilation and hot-water settings, negative cost or carbon, a live-loading
+    preset SBEM lacks and negative mass ratios no longer refuse the template; simple glazing
+    outside EnergyPlus's range is written approximately.
+  - Hot water in a zone with people off is read: epinterface draws it by the people density.
+  - Writing: the attic floor keeps a name of its own (it replaced the floor/ceiling
+    construction in epinterface); a merged zone is named once and its natural ventilation keeps
+    its window schedule; the window and its settings come from one group; a renamed duplicate
+    archetype keeps its own losses; metadata of components UMI has no place for is reported.
+  - `diff_umi` and `diff_archetypes` rate list elements by their list, compare unused
+    components only with unused ones, and match renamed duplicates after a skipped template.
 
 ## [2.18.11] - 2026-10-25
 

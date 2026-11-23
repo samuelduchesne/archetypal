@@ -507,6 +507,16 @@ def test_gain_without_schedule_is_always_on() -> None:
     np.testing.assert_array_equal(totals["other"].hourly, [7.0, 7.0, 7.0])
 
 
+def test_a_heat_sink_is_left_out_of_the_gains() -> None:
+    sink = GainRecord("other", "Sink", -50.0, None, 0.0, 0.0, 0.0)
+    source = GainRecord("other", "Source", 100.0, None, 0.0, 0.0, 0.0)
+    zone = FakeZone(FakeRecord("Z", 1, 1.0, (sink, source)))
+    fields = gain_fields(zone, schedule_lookup({"x": np.zeros(3)}), hours=3)  # pyright: ignore[reportArgumentType]
+    totals = cast("dict[str, GainTotals]", fields["gains"])
+    assert totals["other"].installed == 100.0
+    np.testing.assert_array_equal(totals["other"].hourly, [100.0, 100.0, 100.0])
+
+
 # --- design days ----------------------------------------------------------------------------
 
 
@@ -705,3 +715,22 @@ def test_approximate_outdoor_air_follows_the_mechanical_schedule_not_natural() -
         pytest.skip("the fixture's ventilation schedule is not a Fraction schedule")
     oa = GroupLedger.approximate_from_group(group, 0.4).ledger.outdoor_air
     np.testing.assert_allclose(oa.hourly, oa.design_flow * natural)
+
+
+def test_approximate_outdoor_air_has_no_per_person_part_without_occupancy() -> None:
+    """Without occupancy epinterface writes no People: the outdoor air is the per-area part alone."""
+
+    def mechanical(zone: Any, occupied: bool) -> Any:
+        zone = _with(zone, "Operations.SpaceUse.Occupancy.IsOn", occupied)
+        zone = _with(zone, "Operations.HVAC.Ventilation.Provider", "Mechanical")
+        return _with(zone, "Operations.HVAC.Ventilation.FreshAirPerPerson", 0.01)
+
+    off_group = _office_group(lambda z: mechanical(z, False))
+    on_group = _office_group(lambda z: mechanical(z, True))
+    off = GroupLedger.approximate_from_group(off_group, 0.4).ledger
+    on = GroupLedger.approximate_from_group(on_group, 0.4).ledger
+    zone = on_group.Zone
+    area = off.floor_area
+    assert off.outdoor_air.design_flow == pytest.approx(zone.Operations.HVAC.Ventilation.FreshAirPerFloorArea * area)
+    people = zone.Operations.SpaceUse.Occupancy.PeopleDensity * area
+    assert on.outdoor_air.design_flow - off.outdoor_air.design_flow == pytest.approx(0.01 * people)

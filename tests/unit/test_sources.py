@@ -236,6 +236,75 @@ def test_missing_tabular_reports_are_named(tmp_path: Path) -> None:
     assert "Output:Table:SummaryReports,AllSummary;" in caught.value.missing
 
 
+def _three_zone_with_run_period(tmp_path: Path, **fields: object) -> Path:
+    doc = load_idf(THREE_IDF)
+    for run_period in doc.run_periods:
+        for key, value in fields.items():
+            setattr(run_period, key, value)
+    path = tmp_path / "three_zone.idf"
+    doc.save(path)
+    return path
+
+
+def test_a_run_period_shorter_than_a_year_is_refused(tmp_path: Path) -> None:
+    model = _three_zone_with_run_period(tmp_path, end_month=6, end_day_of_month=30)
+    with pytest.raises(ReductionError, match="one whole calendar year"):
+        load_sources(model, THREE_SQL)
+
+
+def test_a_run_period_across_1_january_is_refused(tmp_path: Path) -> None:
+    model = _three_zone_with_run_period(tmp_path, begin_month=7, end_month=6, end_day_of_month=30)
+    with pytest.raises(ReductionError, match="across 1 January"):
+        load_sources(model, THREE_SQL)
+
+
+def test_results_with_two_weather_file_run_periods_are_refused(tmp_path: Path) -> None:
+    results = _results_copy(
+        tmp_path,
+        "INSERT INTO EnvironmentPeriods (EnvironmentPeriodIndex, SimulationIndex, EnvironmentName, EnvironmentType) "
+        "SELECT MAX(EnvironmentPeriodIndex) + 1, 1, 'SECOND RUN', 3 FROM EnvironmentPeriods",
+    )
+    with pytest.raises(ReductionError, match="2 weather-file run periods"):
+        load_sources(THREE_IDF, results)
+
+
+def test_a_file_that_is_not_sqlite_is_a_reduction_error(tmp_path: Path) -> None:
+    results = tmp_path / "eplusout.sql"
+    results.write_text("not a database")
+    with pytest.raises(ReductionError, match="cannot be read as EnergyPlus SQLite results") as caught:
+        load_sources(THREE_IDF, results)
+    assert str(results.resolve()) in str(caught.value)
+
+
+def test_a_results_path_with_uri_characters_opens_that_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    folder = tmp_path / "run #1 ?a=%41"
+    folder.mkdir()
+    results = folder / "eplusout.sql"
+    shutil.copyfile(THREE_SQL, results)
+    monkeypatch.chdir(tmp_path)
+    sources = load_sources(THREE_IDF, Path("run #1 ?a=%41") / "eplusout.sql")
+    sources.results.close()
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["run #1 ?a=%41"]
+
+
+def test_a_model_with_hvac_templates_is_refused() -> None:
+    doc = load_idf(THREE_IDF)
+    doc.add("HVACTemplate:Thermostat", "Office", validate=False, constant_heating_setpoint=21.0)
+    with pytest.raises(ReductionError, match="HVACTemplate:Thermostat"):
+        load_sources(doc, THREE_SQL)
+
+
+def test_results_without_the_envelope_summary_are_missing_results(tmp_path: Path) -> None:
+    results = _results_copy(
+        tmp_path,
+        "DELETE FROM TabularData WHERE ReportNameIndex IN "
+        "(SELECT StringIndex FROM Strings WHERE Value = 'EnvelopeSummary')",
+    )
+    with pytest.raises(MissingResults) as caught:
+        load_sources(THREE_IDF, results)
+    assert "Output:Table:SummaryReports,AllSummary;" in caught.value.missing
+
+
 def test_zone_names_must_agree(tmp_path: Path) -> None:
     results = _results_copy(tmp_path, "UPDATE Zones SET ZoneName = 'ATTIC' WHERE ZoneName = 'CORE'")
     with pytest.raises(ModelResultsMismatch) as caught:

@@ -27,11 +27,12 @@ from archetypal.umi._format import (
 from archetypal.umi.correspondence import get_rule
 from archetypal.umi.report import LossKind
 from archetypal.umi.rules import conditioning as module
-from archetypal.umi.rules._common import constant_year_schedule
+from archetypal.umi.rules._common import RuleContext, constant_year_schedule
 from archetypal.umi.rules.conditioning import (
     ALWAYS_ON,
     FRESH_AIR_CAP,
     FUEL_TABLE,
+    ConditioningParts,
     combined_cop,
     conditioning_to_sbem,
     conditioning_to_umi,
@@ -77,7 +78,7 @@ def settings(natural: bool = False) -> ZoneVentilation:
     })
 
 
-def read(original: ZoneConditioning, natural: bool = False):
+def read(original: ZoneConditioning, natural: bool = False) -> tuple[ConditioningParts, RuleContext]:
     context = reading(POINTER)
     parts = conditioning_to_sbem(
         original,

@@ -5,8 +5,9 @@ from __future__ import annotations
 import base64
 import json
 import math
+import os
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytest
@@ -232,3 +233,39 @@ def test_an_sbem_archetype_of_an_unknown_schema_version_is_refused(tmp_path: Pat
 
     with pytest.raises(ReductionError, match=r"9\.0"):
         io.read_model(SbemArchetype, path)
+
+
+def test_write_replaces_nothing_when_a_file_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The archetype and report are written together: a failure leaves both previous files."""
+    (tmp_path / "x.sbem.json").write_text("old archetype")
+    (tmp_path / "x.report.json").write_text("old report")
+    fdopen = os.fdopen
+    calls: list[int] = []
+
+    def failing(handle: int, mode: str) -> Any:
+        calls.append(handle)
+        stream = fdopen(handle, mode)
+        if len(calls) == 2:
+            stream.close()
+            message = "disk full"
+            raise OSError(message)
+        return stream
+
+    monkeypatch.setattr(io.os, "fdopen", failing)
+    with pytest.raises(OSError, match="disk full"):
+        io.write_atomically([
+            (tmp_path / "x.sbem.json", b"new archetype"),
+            (tmp_path / "x.report.json", b"new report"),
+        ])
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["x.report.json", "x.sbem.json"]
+    assert (tmp_path / "x.sbem.json").read_text() == "old archetype"
+
+
+def test_written_files_follow_the_umask(tmp_path: Path) -> None:
+    """Every output (archetypes, reports, UMI libraries) is written through `write_atomically`."""
+    umask = os.umask(0o022)
+    try:
+        io.write_atomically([(tmp_path / "a.json", b"{}"), (tmp_path / "b.json", b"{}")])
+    finally:
+        os.umask(umask)
+    assert {(tmp_path / name).stat().st_mode & 0o777 for name in ("a.json", "b.json")} == {0o644}

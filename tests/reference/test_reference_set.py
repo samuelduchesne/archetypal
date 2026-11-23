@@ -27,7 +27,7 @@ import os
 import sys
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 import pytest
 
@@ -52,6 +52,13 @@ def results_path() -> Path:
     return Path(env).expanduser() if env else report.default_results(report.default_cache())
 
 
+def _missing(reason: str) -> NoReturn:
+    """Skip a test whose evidence is missing; fail it where the evidence is required (the CI tier)."""
+    if os.environ.get("ARCHETYPAL_REFERENCE_REQUIRED"):
+        pytest.fail(reason)
+    pytest.skip(reason)
+
+
 @cache
 def results() -> dict[str, Any]:
     """The reference results, or skip with the step that is missing."""
@@ -60,12 +67,12 @@ def results() -> dict[str, Any]:
     if not path.is_file():
         migrated = cache_dir / "migrated"
         if not migrated.is_dir() or not any(migrated.glob("*.idf")):
-            pytest.skip(
+            _missing(
                 f"no migrated reference models in {migrated}: the prototypes are published for EnergyPlus "
                 "22.1/23.1 and must be migrated to 24.2 first (verification/report.py --fetch --migrate, which "
                 "needs EnergyPlus's transition programs), then run (--run)"
             )
-        pytest.skip(f"no reference results at {path}: run verification/report.py --run")
+        _missing(f"no reference results at {path}: run verification/report.py --run")
     payload: dict[str, Any] = json.loads(path.read_text())
     if payload.get("kind") != "reference":
         pytest.skip(f"{path} holds {payload.get('kind')} results, which are not reference evidence")

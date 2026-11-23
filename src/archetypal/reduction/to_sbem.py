@@ -22,13 +22,13 @@ the groups into the fork's `Archetype`, validates it, and returns the archetype 
 | `Ventilation.HRV`, `Economizer`, `*HeatRecoveryEffectiveness` | `ventilation` | `airflow.dominant_category` |
 | `WaterUse` | `water_use` | `dhw.volume_per_person` |
 | `DHW` temperatures | `dhw` | `dhw.mains_plus_rise` |
-| `ThermalSystemComponent` and `DHW` COPs and fuel | `thermal_system`, `dhw` | `efficiency.delivered_over_consumed` or `efficiency.rated` |
-| `ThermalSystemComponent.EIRTemperatureSlope`, `EIRReferenceTemperature` (UP-8) | `thermal_system` | `efficiency.eir_linear` |
+| `ThermalSystemComponent`, `DHW` COPs, fuel | `thermal_system`, `dhw` | `efficiency.delivered_over_consumed`, `rated` |
+| `ThermalSystemComponent.EIRTemperatureSlope`, `EIRReferenceTemperature` | `thermal_system` | `efficiency.eir_linear` |
 | `ConditioningSystems.SpecificFanPower` (UP-8) | `conditioning_systems` | `fans.energy_per_volume` |
 | `ConditioningSystems.*SupplyAirTemperature` (UP-8) | `conditioning_systems` | `fans.effective_supply_delta` |
-| `Attic`, `AtticInfiltration` / `Basement`, `BasementInfiltration` | `attic`, `basement` | `zone.attic` / `zone.basement` |
+| `Attic`, `Basement` and their infiltration | `attic`, `basement` | `zone.attic`, `zone.basement` |
 | `Geometry.Storeys` | `storeys` | `geometry.storeys` |
-| `Geometry.FacadeAreaPerFloorArea`, `Roof…`, `ExposedFloor…`, `GroundContact…` | `geometry` | `envelope.equivalent` |
+| `Geometry.Facade…`, `Roof…`, `ExposedFloor…`, `GroundContact…` | `geometry` | `envelope.equivalent` |
 
 Decisions of this module (spec gaps)
 ------------------------------------
@@ -61,9 +61,10 @@ Decisions of this module (spec gaps)
   heating limit at or below the cooling limit keeps the mode with more delivered energy and
   leaves the other at epinterface's default, listing it as not represented.
 - **Assemblies** take the first class of `SLOT_CLASSES` the group has, else the building
-  has (the group's own surfaces first for each class): every slot of SBEM's `EnvelopeAssemblyComponent` is required, and a
-  slot without area changes no conserved total. Attics' and plenums' envelope is already
-  carried by the conditioned zones (FR-013), so the attic and basement are unused and
+  has (the group's own surfaces first for each class): every slot of SBEM's
+  `EnvelopeAssemblyComponent` is required, and a slot without area changes no conserved total.
+  Attics' and plenums' envelope is already carried by the conditioned zones (FR-013), so the
+  attic and basement are unused and
   unconditioned (`zone.attic`, `zone.basement`), and their infiltration is off.
 - **Fuels** map to SBEM's names; district heating becomes `Steam` and other fuels `CustomFuel`,
   which is listed as not represented.
@@ -196,14 +197,15 @@ SLOT_CLASSES: Mapping[str, tuple[EnvelopeClass, ...]] = {
     "FlatRoofAssembly": ("roof", "floor_ceiling"),
     "AtticRoofAssembly": ("roof", "floor_ceiling"),
     "FloorCeilingAssembly": ("floor_ceiling", "partition", "ground_floor", "exposed_floor"),
-    "AtticFloorAssembly": ("floor_ceiling", "partition", "roof"),
+    "AtticFloorAssembly": ("floor_ceiling", "partition", "roof", "exterior_wall"),
     "PartitionAssembly": ("partition", "floor_ceiling", "exterior_wall"),
     "ExternalFloorAssembly": ("exposed_floor", "ground_floor", "floor_ceiling"),
     "GroundSlabAssembly": ("ground_floor", "exposed_floor", "floor_ceiling"),
     "GroundWallAssembly": ("ground_wall", "exterior_wall"),
-    "BasementCeilingAssembly": ("floor_ceiling", "partition", "ground_floor"),
+    "BasementCeilingAssembly": ("floor_ceiling", "partition", "ground_floor", "exposed_floor", "roof", "exterior_wall"),
 }
-"""The surface classes each SBEM assembly slot is built from, in order of preference."""
+"""The surface classes each SBEM assembly slot is built from, in order of preference. Each list
+ends with a class every building has, so a slot the building does not use still gets an assembly."""
 
 _SLOT_TYPES: Mapping[str, str] = {
     "FacadeAssembly": "Facade",
@@ -626,6 +628,22 @@ def _gain_design(ledger: GroupLedger, kinds: Sequence[GainKind]) -> DesignValues
     return _design(days, installed)
 
 
+def _gain_factor(installed: float, hourly: npt.NDArray[np.float64], design: DesignValues | None) -> float:
+    """The factor of the installed level that keeps the gain's schedule a fraction: its peak, at least 1."""
+    peaks = [float(_ratio(hourly, installed).max()) if hourly.size else 0.0]
+    if design is not None:
+        peaks.extend(float(day.max()) for day in design)
+    return max(1.0, *peaks)
+
+
+def _people_level(ledger: GroupLedger, calendar: RunPeriodCalendar) -> float:
+    """The occupants `occupancy` writes: the installed people times `_gain_factor`."""
+    if "people" not in ledger.gains:
+        return 0.0
+    installed, hourly = _gain(ledger, ("people",), calendar)
+    return installed * _gain_factor(installed, hourly, _gain_design(ledger, ("people",)))
+
+
 def _gain_schedule(
     ledger: GroupLedger,
     kinds: Sequence[GainKind],
@@ -643,10 +661,7 @@ def _gain_schedule(
     """
     installed, hourly = _gain(ledger, kinds, calendar)
     design = _gain_design(ledger, kinds)
-    peaks = [float(_ratio(hourly, installed).max()) if hourly.size else 0.0]
-    if design is not None:
-        peaks.extend(float(day.max()) for day in design)
-    factor = max(1.0, *peaks)
+    factor = _gain_factor(installed, hourly, design)
     level = installed * factor
     if design is not None and factor > 1.0:
         design = (design[0] / factor, design[1] / factor)
@@ -792,7 +807,9 @@ def thermostat(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -
     """`ThermostatComponent`: the floor-area-weighted mean setpoints (rule `setpoint.area_mean`, FR-020).
 
     A group without heated (cooled) members keeps the mode off with a constant 5 °C (35 °C), the
-    thermostats module's mode-off edge, design days included. The scalar setpoints are the
+    thermostats module's mode-off edge, design days included. A heating setpoint above the cooling
+    setpoint (heat-only and cool-only members) is capped at it and listed as not represented. The
+    scalar setpoints are the
     schedules' annual means. The design-day slots hold the area-weighted design-day setpoints;
     set, they take precedence over the constant extremes epinterface's builder would give its
     design days for sizing (`HeatingSchedule`'s highest and `CoolingSchedule`'s lowest value).
@@ -822,6 +839,25 @@ def thermostat(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -
 
     heat_design = design(ledger.heating_setpoint, _HEATING_OFF, "heating setpoint")
     cool_design = design(ledger.cooling_setpoint, _COOLING_OFF, "cooling setpoint")
+    # The heating mean covers the heated members and the cooling mean the cooled ones, so a group
+    # of heat-only and cool-only zones can heat above its cooling setpoint; EnergyPlus's dual
+    # setpoint refuses that. The heating setpoint is capped at the cooling one.
+    crossed = heat > cool
+    if crossed.any():
+        heat = np.minimum(heat, cool)
+        lost.append(
+            _entry(
+                ledger,
+                name,
+                "Heating setpoint above cooling setpoint",
+                "The group's heated members' mean heating setpoint exceeds its cooled members' mean cooling "
+                "setpoint in these hours; the archetype heats to the cooling setpoint instead.",
+                magnitude=float(crossed.sum()),
+                unit="h",
+            )
+        )
+    if heat_design is not None and cool_design is not None:
+        heat_design = (np.minimum(heat_design[0], cool_design[0]), np.minimum(heat_design[1], cool_design[1]))
     value = ThermostatComponent(
         Name=f"{name} thermostat",
         IsOn=heating is not None or cooling is not None,
@@ -844,11 +880,12 @@ def water_use(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
     """`WaterUseComponent`: annual volume ÷ occupant-days (rule `dhw.volume_per_person`, FR-021).
 
     epinterface draws `FlowRatePerPerson · PeopleDensity · floor area` each day, so the
-    occupant-days are the installed occupants times the days of the run period, and the daily
-    volume is conserved: over a 365-day run period, the annual volume too. epinterface runs a
-    365-day year, so a run period of another length (a leap year) is listed as not represented. The schedule is the projected volume profile divided by its peak; the
-    volume comes from run-period results, so its design-day slots repeat each month's Monday
-    (`design_days_from_results`).
+    occupant-days are the occupants `occupancy` writes (the installed people, times the people
+    schedule's peak when it exceeds 1) times the days of the run period, and the daily volume is
+    conserved: over a 365-day run period, the annual volume too. epinterface runs a 365-day year,
+    so a run period of another length (a leap year) is listed as not represented. The schedule is
+    the projected volume profile divided by its peak; the volume comes from run-period results, so
+    its design-day slots repeat each month's Monday (`design_days_from_results`).
 
     Args:
         ledger: The group's ledger.
@@ -860,7 +897,7 @@ def water_use(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
     """
     volume = _profile(ledger.hot_water.volume, calendar)
     total = float(volume.sum())
-    people = ledger.gains["people"].installed if "people" in ledger.gains else 0.0
+    people = _people_level(ledger, calendar)
     lost: list[NotRepresented] = []
     if total > 0 and people > 0:
         per_person = total / (people * calendar.days)
@@ -1068,7 +1105,7 @@ def _class_source(slot: str, ledger: GroupLedger, building: GroupLedger) -> tupl
 
 
 def assemblies(ledger: GroupLedger, building: GroupLedger, *, name: str) -> Derived[EnvelopeAssemblyComponent]:
-    """`EnvelopeAssemblyComponent`: the equivalent assemblies (`envelope.equivalent`) and internal mass (`mass.internal`).
+    """`EnvelopeAssemblyComponent`: equivalent assemblies (`envelope.equivalent`), internal mass (`mass.internal`).
 
     Args:
         ledger: The group's ledger.

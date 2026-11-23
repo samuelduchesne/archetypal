@@ -127,10 +127,14 @@ first layer on the lower (occupied) side, so the slab's layers are reversed for 
 
 
 def _filled_from(source: ConstructionAssemblyComponent, sbem_slot: str) -> ConstructionAssemblyComponent:
-    """The assembly a filled slot takes from its source slot: the same layers, or reversed."""
+    """The assembly a filled slot takes from its source slot: the same layers, or reversed.
+
+    A reversed assembly keeps epinterface's `<Name>_Reversed` name: epinterface writes one IDF
+    Construction per name, so a reversed copy under the source's name would replace the source's.
+    """
     if sbem_slot not in REVERSED_FILLED_SLOTS:
         return source
-    return source.reversed.model_copy(update={"Name": source.Name})
+    return source.reversed
 
 
 SLOT_SURFACE_TYPES: Mapping[str, ConstructionComponentSurfaceType] = MappingProxyType({
@@ -276,6 +280,36 @@ def cost_from_sbem(cost: float | None, rate_unit: str | None, density: float) ->
 
 
 # --- Life-cycle fields (UP-9) ----------------------------------------------------------------
+
+
+def lose_version(component: object, location: str, subject: str, findings: Findings) -> None:
+    """Record an SBEM component's `Version` as lost on writing: UMI components have no version."""
+    version = getattr(component, "Version", None)
+    if version is not None:
+        findings.lose(
+            LossKind.LOST, subject, f"{location}.Version", version, "names.metadata", "UMI components have no version."
+        )
+
+
+def non_negative(
+    value: float | None, key: str, pointer: str, subject: str, findings: Findings, rule: str
+) -> float | None:
+    """`value`, or `None` (SBEM's unset) with a loss when it is negative, which SBEM refuses.
+
+    Negative embodied carbon (biogenic storage in timber) or cost is common in life-cycle data;
+    SBEM's environmental fields are `ge=0`.
+    """
+    if value is None or value >= 0:
+        return value
+    findings.lose(
+        LossKind.LOST,
+        subject,
+        _pointer(pointer, key),
+        value,
+        rule,
+        f"SBEM's {key} cannot be negative; it is left unset.",
+    )
+    return None
 
 
 def _negative(value: object) -> bool:
@@ -537,8 +571,8 @@ def material_to_sbem(
         VisibleAbsorptance=material.visible_absorptance,
         TemperatureCoefficientThermalConductivity=0.0,
         Type=kind,
-        Cost=cost_per_m3(material.cost),
-        EmbodiedCarbon=carbon,
+        Cost=non_negative(cost_per_m3(material.cost), "Cost", location, subject, findings, "material.cost_per_m3"),
+        EmbodiedCarbon=non_negative(carbon, "EmbodiedCarbon", location, subject, findings, "material.carbon_per_m3"),
         RateUnit=_PER_VOLUME,
         **life_cycle_to_sbem(material, subject, location, findings),  # pyright: ignore[reportArgumentType]
     )
@@ -632,6 +666,7 @@ def material_to_umi(
     Returns:
         The UMI material.
     """
+    lose_version(component, location, subject, findings)
     category = component.Category if component.Category is not None else component.Type
     read_back = _TYPE_BY_LOWER.get(category.lower(), "Other")
     if read_back != component.Type:
@@ -747,6 +782,7 @@ def construction_to_umi(
     Returns:
         The construction.
     """
+    lose_version(assembly, location, subject, findings)
     if assembly.VegetationLayer is not None:
         findings.lose(
             LossKind.LOST,
@@ -870,6 +906,7 @@ def assemblies_to_umi(
     Returns:
         The construction set, named as the assemblies.
     """
+    lose_version(envelope, location, subject, findings)
     for sbem_slot, umi_slot in FILLED_SLOTS.items():
         filled = cast("ConstructionAssemblyComponent", getattr(envelope, sbem_slot))
         source = cast("ConstructionAssemblyComponent", getattr(envelope, SET_SLOTS[umi_slot]))

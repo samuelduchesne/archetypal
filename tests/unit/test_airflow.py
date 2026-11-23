@@ -270,3 +270,84 @@ def test_fixture_outdoor_air_is_conserved(
     assert sum(total.outdoor_air.economiser_weighted.values()) == pytest.approx(volume)
     # The default hook reads the same model through the evaluator.
     assert ledger_fields(zones[0], evaluator)["outdoor_air"] == hook(zones[0], evaluator)["outdoor_air"]
+
+
+def _outdoor_air_loop(terminal_type: str, inlet_field: str) -> Any:
+    """A 100 % outdoor-air loop without a return path feeding Z1 and Z2 through `terminal_type`, and a second loop."""
+    from idfkit import new_document  # noqa: PLC0415
+
+    doc = new_document(version=(24, 2, 0))
+
+    def add(kind: str, **fields: Any) -> None:
+        doc.add(kind, validate=False, **fields)
+
+    for zone in ("Z1", "Z2"):
+        add("Zone", name=zone)
+    add(
+        "AirLoopHVAC",
+        name="DOAS",
+        branch_list_name="DOAS Branches",
+        demand_side_inlet_node_names="DOAS Supply",
+        supply_side_inlet_node_name="DOAS In",
+        supply_side_outlet_node_names="DOAS Out",
+    )
+    add(
+        "AirLoopHVAC:SupplyPath",
+        name="DOAS SP",
+        supply_air_path_inlet_node_name="DOAS Supply",
+        components=[{"component_object_type": "AirLoopHVAC:ZoneSplitter", "component_name": "DOAS Splitter"}],
+    )
+    add(
+        "AirLoopHVAC:ZoneSplitter",
+        name="DOAS Splitter",
+        inlet_node_name="DOAS Supply",
+        nodes=[{"outlet_node_name": "Z1 Primary"}, {"outlet_node_name": "Z2 Primary"}],
+    )
+    add(
+        "AirLoopHVAC",
+        name="Other",
+        branch_list_name="Other Branches",
+        demand_side_inlet_node_names="Other Supply",
+        supply_side_inlet_node_name="Other In",
+        supply_side_outlet_node_names="Other Out",
+    )
+    for zone in ("Z1", "Z2"):
+        add(terminal_type, name=f"{zone} Terminal", **{inlet_field: f"{zone} Primary"})
+        add(
+            "ZoneHVAC:AirDistributionUnit",
+            name=f"{zone} ADU",
+            air_distribution_unit_outlet_node_name=f"{zone} Inlet",
+            air_terminal_object_type=terminal_type,
+            air_terminal_name=f"{zone} Terminal",
+        )
+        add(
+            "ZoneHVAC:EquipmentList",
+            name=f"{zone} Eq",
+            equipment=[
+                {"zone_equipment_object_type": "ZoneHVAC:AirDistributionUnit", "zone_equipment_name": f"{zone} ADU"}
+            ],
+        )
+        add(
+            "ZoneHVAC:EquipmentConnections",
+            zone_name=zone,
+            zone_conditioning_equipment_list_name=f"{zone} Eq",
+            zone_air_inlet_node_or_nodelist_name=f"{zone} Inlet",
+            zone_air_node_name=f"{zone} Air",
+        )
+    return doc
+
+
+@pytest.mark.parametrize(
+    ("terminal_type", "inlet_field"),
+    [
+        ("AirTerminal:SingleDuct:VAV:NoReheat", "air_inlet_node_name"),
+        ("AirTerminal:SingleDuct:SeriesPIU:Reheat", "supply_air_inlet_node_name"),
+        ("AirTerminal:SingleDuct:ConstantVolume:FourPipeBeam", "primary_air_inlet_node_name"),
+    ],
+)
+def test_a_loop_without_return_serves_zones_through_any_terminal(terminal_type: str, inlet_field: str) -> None:
+    from archetypal.reduction.airflow import air_loop_zones  # noqa: PLC0415
+
+    zones = air_loop_zones(_outdoor_air_loop(terminal_type, inlet_field))
+    assert zones["DOAS"] == {"z1", "z2"}
+    assert zones["Other"] == frozenset()

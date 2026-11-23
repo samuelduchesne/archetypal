@@ -54,6 +54,7 @@ from archetypal.reduction.schedules import ScheduleEvaluator
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 
+    import numpy.typing as npt
     from idfkit.simulation import SQLResult
     from idfkit.versioned import IDFDocumentSince22_1
 
@@ -106,7 +107,8 @@ _WALL_TILT = (60.0, 120.0)
 # coefficients or conditions, -5 ground by F/C-factor, -6 Kiva foundation.
 _OUTDOORS = 0
 _GROUND = frozenset({-1, -5, -6})
-_WINDOW_CLASSES = frozenset({"WINDOW", "GLASSDOOR", "TUBULARDAYLIGHTDOME", "TUBULARDAYLIGHTDIFFUSER"})
+_WINDOW_CLASSES = frozenset({"WINDOW", "GLASS DOOR", "GLASSDOOR", "TUBULARDAYLIGHTDOME", "TUBULARDAYLIGHTDIFFUSER"})
+"""The fenestration classes, upper case: EnergyPlus's `cSurfaceClass` writes "Glass Door" in `Surfaces`."""
 _INTERNAL_MASS = "INTERNAL MASS"
 # Film resistances (m²K/W) used only when a surface is missing from the Envelope Summary: the
 # ISO 6946 inside film plus an outside film (still air for any boundary but outdoors).
@@ -285,6 +287,23 @@ class ThermostatControl:
     cooling_schedule: str | None
 
 
+def _mean_set(setpoints: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """Each hour's mean over the timesteps whose setpoint is set (not NaN); NaN where none is."""
+    set_steps = ~np.isnan(setpoints)
+    count = set_steps.sum(axis=1)
+    filled = np.array(setpoints, dtype=np.float64)
+    filled[~set_steps] = 0.0
+    total = filled.sum(axis=1)
+    hourly: npt.NDArray[np.float64] = np.full(setpoints.shape[0], np.nan)
+    some = count > 0
+    hourly[some] = total[some] / count[some]
+    # An hour whose timesteps are all set and agree keeps that value exactly.
+    first = setpoints[:, 0]
+    exact = set_steps.all(axis=1) & (setpoints.min(axis=1) == setpoints.max(axis=1))
+    hourly[exact] = first[exact]
+    return hourly
+
+
 @dataclass(frozen=True)
 class ThermostatRecord:
     """A zone's thermostat (research R10).
@@ -306,18 +325,26 @@ class ThermostatRecord:
     def setpoints(self, evaluate: Callable[[str], Profile]) -> tuple[Profile, Profile]:
         """Return the hourly heating and cooling setpoints, NaN where no control sets that mode.
 
-        At each hour the control-type schedule selects the control whose `control_type` it
-        equals (0 leaves the zone uncontrolled).
+        At each timestep the control-type schedule selects the control whose `control_type` it
+        equals (0 leaves the zone uncontrolled), as EnergyPlus does. Each hour's setpoint is the
+        mean over the timesteps at which a control sets that mode; an hour in which none does is
+        NaN. An evaluator without `steps` (a plain callable) is read hour by hour.
 
         Args:
-            evaluate: Returns a schedule's hourly profile by name.
+            evaluate: Returns a schedule's hourly profile by name; a `ScheduleEvaluator` (or a
+                design-day evaluator) also gives the values at the model's timestep by `steps`.
 
         Returns:
             The heating and cooling setpoints, °C.
         """
-        # EnergyPlus sees only the integer control types at its own timestep; an hour averaged
-        # across a change is taken at the nearest type.
-        control = np.rint(np.asarray(evaluate(self.control_type_schedule), dtype=np.float64))
+        steps = getattr(evaluate, "steps", None)
+
+        def at_steps(name: str) -> npt.NDArray[np.float64]:
+            if callable(steps):
+                return np.asarray(steps(name), dtype=np.float64)
+            return np.asarray(evaluate(name), dtype=np.float64).reshape(-1, 1)  # pyright: ignore[reportUnknownMemberType]
+
+        control = np.rint(at_steps(self.control_type_schedule))
         heating = np.full(control.shape, np.nan)
         cooling = np.full(control.shape, np.nan)
         for item in self.controls:
@@ -325,10 +352,10 @@ class ThermostatRecord:
             if not active.any():
                 continue
             if item.heating_schedule is not None:
-                heating[active] = np.asarray(evaluate(item.heating_schedule), dtype=np.float64)[active]
+                heating[active] = at_steps(item.heating_schedule)[active]
             if item.cooling_schedule is not None:
-                cooling[active] = np.asarray(evaluate(item.cooling_schedule), dtype=np.float64)[active]
-        return heating, cooling
+                cooling[active] = at_steps(item.cooling_schedule)[active]
+        return _mean_set(heating), _mean_set(cooling)
 
     def enabled(self, evaluate: Callable[[str], Profile]) -> dict[Mode, bool]:
         """Whether each mode's setpoint lies within `BAND` at some hour (research R8, R10).
@@ -833,7 +860,7 @@ def _outdoor_air_specs(doc: IDFDocumentSince22_1, zone_lists: Mapping[str, tuple
             air_changes=_coefficient(obj.outdoor_air_flow_air_changes_per_hour, 0.0),
         )
     # A DesignSpecification:OutdoorAir:SpaceList gives each space its own specification; the zone
-    # takes them weighted by the spaces' floor areas (equal shares when the areas are computed).
+    # takes them weighted by the spaces' floor areas (equal shares unless every area is given).
     areas = {space.name.casefold(): _space_area(space) for space in doc.spaces}
     space_lists: dict[str, _SpecShares] = {}
     for obj in doc["DesignSpecification:OutdoorAir:SpaceList"]:
@@ -845,8 +872,9 @@ def _outdoor_air_specs(doc: IDFDocumentSince22_1, zone_lists: Mapping[str, tuple
         if not members:
             continue
         total = sum(area for area, _ in members)
+        given = all(area > 0 for area, _ in members)
         space_lists[obj.name.casefold()] = tuple(
-            (area / total if total > 0 else 1.0 / len(members), spec) for area, spec in members
+            (area / total if given else 1.0 / len(members), spec) for area, spec in members
         )
     by_zone: dict[str, _SpecShares] = {}
     for sizing in doc["Sizing:Zone"]:
@@ -869,14 +897,15 @@ def _design_outdoor_air(
 
     `Maximum` keeps only the largest of the four design flows, given the zone's design `people`,
     as EnergyPlus does; `Sum` adds them; the proportional-control and IAQ methods add the
-    per-person and per-area rates. Several specifications (a space list) are weighted by
-    their floor-area shares.
+    per-person and per-area rates. Several specifications (a space list) are each evaluated on
+    their space, with its share of the zone's floor area, volume and people, and their flows
+    summed, as EnergyPlus does: a per-zone flow then counts once per space, not by its share.
     """
     if not specs:
         return 0.0, 0.0
     per_area = per_person = 0.0
     for share, spec in specs:
-        area, person = _one_design_outdoor_air(spec, floor_area, volume, people)
+        area, person = _one_design_outdoor_air(spec, share * floor_area, share * volume, share * people)
         per_area += share * area
         per_person += share * person
     return per_area, per_person

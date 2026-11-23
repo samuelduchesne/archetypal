@@ -13,12 +13,14 @@ metered fuels read from the results' End Uses table.
 
 from __future__ import annotations
 
+import os
+import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    import os
     from collections.abc import Callable
 
     from idfkit.simulation import EnergyPlusConfig, SQLResult
@@ -71,6 +73,9 @@ def delivery_outputs(object_type: str) -> tuple[tuple[Literal["heating", "coolin
     """
     t = object_type.casefold()
     outputs: tuple[tuple[Literal["heating", "cooling"], str], ...] = ()
+    if t.endswith(":design") or t == "zonehvac:lowtemperatureradiant:surfacegroup":
+        # Design-parameter objects and radiant surface groups deliver nothing themselves.
+        return outputs
     if t == "zonehvac:idealloadsairsystem":
         outputs = (("heating", IDEAL_HEATING_VARIABLE), ("cooling", IDEAL_COOLING_VARIABLE))
     elif t.startswith("coil:heating:"):
@@ -79,7 +84,7 @@ def delivery_outputs(object_type: str) -> tuple[tuple[Literal["heating", "coolin
         outputs = (("cooling", COOLING_COIL_VARIABLE),)
     elif t.startswith("zonehvac:baseboard:"):
         outputs = (("heating", BASEBOARD_VARIABLE),)
-    elif t.startswith("zonehvac:lowtemperatureradiant:") and not t.endswith(":design"):
+    elif t.startswith("zonehvac:lowtemperatureradiant:"):
         outputs = (("heating", RADIANT_HEATING_VARIABLE),)
         if not t.endswith(":electric"):
             outputs = (("heating", RADIANT_HEATING_VARIABLE), ("cooling", RADIANT_COOLING_VARIABLE))
@@ -360,9 +365,13 @@ ENERGYPLUS_FUELS: tuple[str, ...] = (
     "DistrictHeatingWater",
     "DistrictHeatingSteam",
     "DistrictCooling",
+    "DistrictHeating",
+    "Steam",
 )
 """Every fuel EnergyPlus meters by end use. Before a run, the fuels a model uses are unknown, so
-the single run requests a meter for each; EnergyPlus only warns about a meter that does not exist."""
+the single run requests a meter for each; EnergyPlus only warns about a meter that does not exist.
+`DistrictHeating` and `Steam` are the names before EnergyPlus 23.2, which renamed them
+`DistrictHeatingWater` and `DistrictHeatingSteam`."""
 
 _METERED_END_USES = ("Heating", "Cooling", "HeatRejection", "WaterSystems")
 
@@ -460,6 +469,24 @@ def _request_tabular_reports(doc: IDFDocumentSince22_1) -> int:
     return changed
 
 
+def _absolute_file_paths(model: IDFDocumentSince22_1, base_dir: Path) -> None:
+    """Name each file `model` names by a relative path, found in `base_dir`, by its absolute path."""
+    # idfkit lists the fields that name files from the model's schema (Schedule:File, weather
+    # data files, ...); the module is internal to idfkit's simulation package.
+    from idfkit.simulation._external_files import external_file_refs  # noqa: PLC0415  # pyright: ignore[reportPrivateUsage]
+
+    for ref in external_file_refs(model):
+        path = Path(ref.value.replace("\\", "/"))
+        if path.is_absolute() or not (base_dir / path).is_file():
+            continue
+        for obj in model.all_objects:
+            if obj.obj_type != ref.obj_type:
+                continue
+            value = obj.data.get(ref.field)
+            if value is not None and str(value).strip() == ref.value:
+                obj[ref.field] = str((base_dir / path).resolve())
+
+
 def run_once(
     doc: IDFDocumentSince22_1,
     facts: ModelFacts,
@@ -467,11 +494,14 @@ def run_once(
     *,
     energyplus: EnergyPlusConfig | None = None,
     subject: str = "the model",
-) -> Path:
+    base_dir: Path | None = None,
+) -> tuple[Path, bool]:
     """Run a copy of the model once with the outputs reduction needs (FR-002).
 
     The run goes through `idfkit.simulation.simulate` with a `SimulationCache`, so running the
-    same model and weather again reuses the stored results.
+    same model and weather again reuses the stored results. EnergyPlus runs in another folder,
+    so each file the model names by a relative path found in `base_dir` is named by its
+    absolute path in the copy, as EnergyPlus would find it beside the model.
 
     Args:
         doc: The model; it is not changed.
@@ -479,9 +509,11 @@ def run_once(
         weather: The weather file of the run.
         energyplus: The EnergyPlus installation; `None` lets idfkit find it.
         subject: How to name the model in errors.
+        base_dir: The model's folder, against which relative file paths are resolved.
 
     Returns:
-        The SQLite file of the run.
+        The SQLite file of the run, and whether it is a temporary copy the caller deletes once
+        read (the run's own temporary folder is deleted); a file in the cache is kept.
 
     Raises:
         ReductionError: If EnergyPlus cannot run or fails.
@@ -492,6 +524,8 @@ def run_once(
     from archetypal.errors import ReductionError  # noqa: PLC0415 - keeps this module light
 
     model = doc.copy()
+    if base_dir is not None:
+        _absolute_file_paths(model, base_dir)
     add_missing_outputs(model, single_run_facts(facts))
     try:
         result = simulate(model, Path(weather), energyplus=energyplus, cache=SimulationCache())
@@ -500,5 +534,13 @@ def run_once(
     except (IdfKitError, OSError) as exc:
         raise ReductionError(subject, f"the single EnergyPlus run failed: {exc}") from exc
     if sql_path is None:
+        result.cleanup()
         raise ReductionError(subject, "the single EnergyPlus run wrote no SQLite file")
-    return Path(sql_path)
+    if not result.owns_run_dir:  # a cache entry, kept for the next run
+        return Path(sql_path), False
+    # A run in idfkit's own temporary folder: keep the SQLite file alone, and delete the rest.
+    handle, name = tempfile.mkstemp(prefix="archetypal-", suffix=".sql")
+    os.close(handle)
+    shutil.copyfile(sql_path, name)
+    result.cleanup()
+    return Path(name), True

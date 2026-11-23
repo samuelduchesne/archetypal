@@ -168,3 +168,39 @@ def test_three_zone_fixture(
         assert fields["cooling_setpoint"].weight == zone.zone.floor_area
         assert bool((fields["cooling_setpoint"].weighted / zone.zone.floor_area <= 35.0).all())
         assert cooling.size == weighted.size
+
+
+@dataclass
+class _StepEvaluator:
+    """Schedules given at 6 timesteps per hour over one day; hourly values are their means."""
+
+    table: dict[str, np.ndarray[Any, np.dtype[np.float64]]]
+
+    def __call__(self, name: str) -> Profile:
+        return self.table[name].mean(axis=1)
+
+    def steps(self, name: str) -> np.ndarray[Any, np.dtype[np.float64]]:
+        return self.table[name]
+
+
+def test_a_control_type_change_within_an_hour_is_read_at_each_timestep() -> None:
+    """Half an hour uncontrolled (0) and half dual (4) is not a single-cooling hour (2)."""
+    control = np.full((HOURS, 6), 4.0)
+    control[6, :3] = 0.0  # 06:00-06:30 uncontrolled
+    dual = ThermostatControl(4, "ThermostatSetpoint:DualSetpoint", "dual", "heat", "cool")
+    single_cooling = ThermostatControl(2, "ThermostatSetpoint:SingleCooling", "single", None, "cool high")
+    thermostat = ThermostatRecord("T", "control", "heat", "cool", (dual, single_cooling))
+    evaluator = _StepEvaluator({
+        "control": control,
+        "heat": np.full((HOURS, 6), 21.0),
+        "cool": np.full((HOURS, 6), 24.0),
+        "cool high": np.full((HOURS, 6), 30.0),
+    })
+    heating, cooling = thermostat.setpoints(evaluator)
+    # Hour 6 is dual for half of it: its setpoints are the dual control's, never single cooling's.
+    assert heating[6] == 21.0
+    assert cooling[6] == 24.0
+    control[6, :] = 0.0
+    heating, cooling = thermostat.setpoints(_StepEvaluator({**evaluator.table, "control": control}))
+    assert np.isnan(heating[6])
+    assert np.isnan(cooling[6])

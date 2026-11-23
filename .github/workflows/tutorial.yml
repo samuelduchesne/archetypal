@@ -44,7 +44,7 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             tag="${GITHUB_REF_NAME}"
           else
-            tag="$(git tag --list 'v3.*' --sort=-v:refname | head -n 1)"
+            tag="$(git -c versionsort.suffix=a -c versionsort.suffix=b -c versionsort.suffix=rc tag --list 'v3.*' --sort=-v:refname | head -n 1)"
           fi
           if [ -z "${tag}" ]; then
             echo "No v3 tag yet: nothing to check"
@@ -107,7 +107,7 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             echo "name=${GITHUB_REF_NAME}" >> "${GITHUB_OUTPUT}"
           else
-            echo "name=$(git tag --list 'v3.*' --sort=-v:refname | head -n 1)" >> "${GITHUB_OUTPUT}"
+            echo "name=$(git -c versionsort.suffix=a -c versionsort.suffix=b -c versionsort.suffix=rc tag --list 'v3.*' --sort=-v:refname | head -n 1)" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Set up Python 3.13

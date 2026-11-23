@@ -110,9 +110,11 @@ def supply_schedules(doc: IDFDocumentSince22_1) -> dict[str, str | None]:
 
     Returns:
         The connection's hot water supply temperature schedule, else the equipment's hot water
-        supply temperature schedule, else its target temperature schedule, else `None`.
+        supply temperature schedule, else its target temperature schedule, else the setpoint
+        schedule the model's water heaters share, else `None`.
     """
     connections = _connections(doc)
+    heater = _water_heater_schedule(doc)
     schedules: dict[str, str | None] = {}
     for item in doc.water_use_equipments:
         connection = connections.get(item.name.casefold())
@@ -121,9 +123,32 @@ def supply_schedules(doc: IDFDocumentSince22_1) -> dict[str, str | None]:
             connection_schedule
             or item.hot_water_supply_temperature_schedule_name
             or item.target_temperature_schedule_name
+            or heater
             or None
         )
     return schedules
+
+
+def _water_heater_schedule(doc: IDFDocumentSince22_1) -> str | None:
+    """The setpoint schedule every water heater of the model shares, or `None` without one shared.
+
+    An equipment without a temperature schedule draws at the plant's temperature, the water
+    heater's setpoint when one heater (or several with one setpoint) serves the model.
+    """
+    names = {
+        str(heater.setpoint_temperature_schedule_name).casefold(): str(heater.setpoint_temperature_schedule_name)
+        for heater in doc["WaterHeater:Mixed"]
+        if heater.setpoint_temperature_schedule_name
+    }
+    names.update(
+        (
+            str(heater.heater_1_setpoint_temperature_schedule_name).casefold(),
+            str(heater.heater_1_setpoint_temperature_schedule_name),
+        )
+        for heater in doc["WaterHeater:Stratified"]
+        if heater.heater_1_setpoint_temperature_schedule_name
+    )
+    return next(iter(names.values())) if len(names) == 1 else None
 
 
 def cold_schedules(doc: IDFDocumentSince22_1) -> dict[str, str | None]:

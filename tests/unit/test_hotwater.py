@@ -188,3 +188,20 @@ def test_allocations_report_the_rule_the_inventory_used() -> None:
     zone = SimpleNamespace(zone=SimpleNamespace(name="A", multiplier=1, gains=(people,), hot_water=(record,)))
     (entry,) = allocations([zone])  # pyright: ignore[reportArgumentType]
     assert entry.rule == "floor-area"
+
+
+def test_an_equipment_without_a_temperature_schedule_draws_at_the_water_heater_setpoint() -> None:
+    from idfkit import load_idf  # noqa: PLC0415
+    from idfkit.versioned import as_version  # noqa: PLC0415
+
+    from archetypal.reduction.hotwater import supply_schedules  # noqa: PLC0415
+
+    doc = as_version(load_idf(MODELS / "ten_zone_multipliers.idf"), since="22.1")
+    for connection in doc["WaterUse:Connections"]:
+        connection.hot_water_supply_temperature_schedule_name = None
+    for equipment in doc.water_use_equipments:
+        equipment.hot_water_supply_temperature_schedule_name = None
+        equipment.target_temperature_schedule_name = None
+    (heater,) = doc["WaterHeater:Mixed"]
+    schedules = supply_schedules(doc)
+    assert set(schedules.values()) == {heater.setpoint_temperature_schedule_name}

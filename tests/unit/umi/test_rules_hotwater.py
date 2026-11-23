@@ -145,15 +145,23 @@ def test_writing_inverts_reading() -> None:
     assert context.losses == []
 
 
-@pytest.mark.parametrize("fields", [{"PeopleDensity": 0.0}, {"IsPeopleOn": False}])
-def test_hot_water_without_people_is_a_range_problem_on_reading(fields: dict[str, object]) -> None:
+def test_hot_water_without_people_is_a_range_problem_on_reading() -> None:
+    fields: dict[str, object] = {"PeopleDensity": 0.0}
     [problem] = range_problems(settings(), loads(**fields), pointer=POINTER, template="T")
     assert (problem.pointer, problem.rule) == (f"{POINTER}/FlowRatePerFloorArea", "dhw.per_person")
     assert range_problems(settings(IsOn=False), loads(**fields), pointer=POINTER, template="T") == []
     assert range_problems(settings(), loads(), pointer=POINTER, template="T") == []
 
 
-@pytest.mark.parametrize(("density", "on"), [(0.0, True), (0.055, False)])
+def test_hot_water_with_people_off_is_carried_by_the_people_density() -> None:
+    """epinterface draws hot water by the people density, whether or not occupancy is on."""
+    assert range_problems(settings(), loads(IsPeopleOn=False), pointer=POINTER, template="T") == []
+    context = writing()
+    dhw_to_umi(dhw(), water_use(0.01), occupancy(0.055, on=False), schedule=write_schedule, context=context)
+    assert context.losses == []
+
+
+@pytest.mark.parametrize(("density", "on"), [(0.0, True)])
 def test_hot_water_without_people_is_a_loss_on_writing(density: float, on: bool) -> None:
     context = writing()
     dhw_to_umi(dhw(), water_use(0.01), occupancy(density, on=on), schedule=write_schedule, context=context)

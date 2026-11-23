@@ -73,7 +73,10 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-import tomllib  # pyright: ignore[reportMissingTypeStubs]  # Python 3.11+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # Python 3.10: the same parser, as the tomli package (a dependency of pytest there)
+    import tomli as tomllib  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_SET = HERE / "reference_set.toml"
@@ -211,7 +214,8 @@ def reduce_one(idf_path: Path, epw: Path, out_json: Path, ep_version: str) -> di
         record["error"] = str(exc)[:2000]
         record["traceback"] = traceback.format_exc()[-4000:]
     times["total"] = time.perf_counter() - start
-    times["total_excluding_simulation"] = times["total"] - times.get("simulate", 0.0)
+    # v3 is timed with archetypal already imported: leave out v2's import (one per process) too.
+    times["total_excluding_simulation"] = times["total"] - times.get("simulate", 0.0) - times.get("import", 0.0)
     return record
 
 

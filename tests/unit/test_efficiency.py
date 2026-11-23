@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from archetypal.reduction.efficiency import (
+    WATER_VOLUMETRIC_HEAT,
     BuildingEnergy,
     EnergyAttribution,
     _coil_mean,  # pyright: ignore[reportPrivateUsage]
@@ -23,6 +24,8 @@ from archetypal.reduction.ledger import EirSums, GroupLedger
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from idfkit.simulation import SQLResult
 
     from archetypal.reduction.classify import ClassifiedZone
     from archetypal.reduction.ledger import Mode
@@ -67,6 +70,22 @@ def test_consumption_follows_each_hours_delivery_in_the_mode() -> None:
     assert a.delivered == pytest.approx(14.0)
     assert b.delivered == pytest.approx(8.0)
     assert result.zones["A"]["cooling"].consumed_by_fuel == pytest.approx({"Electricity": 3.0})
+
+
+def test_hot_water_without_its_own_meter_shares_the_heating_meter() -> None:
+    """A boiler heats the space and the hot water and meters as Heating: both modes share its gas."""
+    delivered = {
+        "heating": {"A": _a(10.0, 0.0, 4.0, 0.0), "B": _a(0.0, 0.0, 0.0, 0.0)},
+        "cooling": {"A": _a(0.0, 0.0, 0.0, 0.0), "B": _a(0.0, 0.0, 0.0, 0.0)},
+        "hot_water": {"A": _a(10.0, 2.0, 0.0, 0.0), "B": _a(0.0, 0.0, 0.0, 0.0)},
+    }
+    consumed = {"heating": {"NaturalGas": _a(25.0, 2.5, 5.0, 1.0)}}
+    result = attribute_energy(_data(delivered=delivered, consumed=consumed, distribution={}))
+    heating, hot_water = result.zones["A"]["heating"], result.zones["A"]["hot_water"]
+    # hour 0: 25 J for 10 + 10 delivered; hour 1: hot water only; hour 2: heating only.
+    assert heating.consumed_by_fuel == pytest.approx({"NaturalGas": 12.5 + 5.0})
+    assert hot_water.consumed_by_fuel == pytest.approx({"NaturalGas": 12.5 + 2.5})
+    assert hot_water.delivered / hot_water.consumed_by_fuel["NaturalGas"] == pytest.approx(0.8)
 
 
 def test_standby_is_reported_not_attributed() -> None:
@@ -333,3 +352,31 @@ def test_coil_mean_excludes_supplementary_heaters_as_energyplus_writes_them() ->
         },
     }
     assert _coil_mean(coils) == pytest.approx(3.2)
+
+
+def test_hot_water_delivery_uses_the_cold_water_schedule_the_ledger_uses(
+    fixture_results: Callable[[str], SQLResult],
+) -> None:
+    """The efficiency divides consumption by the heat the ledger's rise gives back (cold schedule, not mains)."""
+    from idfkit import load_idf  # noqa: PLC0415
+
+    from archetypal.reduction.classify import classify  # noqa: PLC0415
+    from archetypal.reduction.hotwater import HotWaterHook  # noqa: PLC0415
+    from archetypal.reduction.inventory import build_inventory  # noqa: PLC0415
+    from archetypal.reduction.schedules import ScheduleEvaluator  # noqa: PLC0415
+    from archetypal.reduction.sources import load_sources  # noqa: PLC0415
+
+    doc = load_idf(MODELS / "ten_zone_multipliers.idf")
+    doc.add("Schedule:Constant", "Cold Water 5C", hourly_value=5.0)
+    for connection in doc["WaterUse:Connections"]:
+        connection.cold_water_supply_temperature_schedule_name = "Cold Water 5C"
+    sources = load_sources(doc, fixture_results("ten_zone_multipliers"))
+    evaluate = ScheduleEvaluator(sources.model, sources.run_period.calendar)
+    zones = classify(build_inventory(sources, evaluate), evaluate)
+    energy = building_energy(sources, zones, evaluate)
+    hook = HotWaterHook.from_sources(sources)
+    for zone in zones:
+        if not zone.conditioned or not zone.zone.hot_water:
+            continue
+        ledger_heat = np.sum(hook(zone, evaluate)["hot_water"].heat) * WATER_VOLUMETRIC_HEAT
+        assert np.sum(energy.delivered["hot_water"][zone.zone.name]) == pytest.approx(ledger_heat, rel=1e-9)

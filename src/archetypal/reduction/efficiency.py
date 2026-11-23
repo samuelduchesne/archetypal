@@ -182,6 +182,8 @@ class BuildingEnergy:
         consumed: Primary meters each hour, J, by mode and fuel (whole building).
         distribution: Pumps and heat rejection each hour, J, by fuel (whole building).
         rated: Rated efficiency by zone and mode, where known.
+        unmeasured: Zone equipment whose delivery reduction does not measure (`Delivery`).
+        unassigned: Air loops whose coils deliver energy to no zone (`Delivery`).
     """
 
     outdoor_temperature: Profile
@@ -191,6 +193,8 @@ class BuildingEnergy:
     consumed: Mapping[Mode, Mapping[Fuel, Profile]]
     distribution: Mapping[Fuel, Profile] = field(default_factory=dict[Fuel, "Profile"])
     rated: Mapping[str, Mapping[Mode, float]] = field(default_factory=dict[str, Mapping[Mode, float]])
+    unmeasured: tuple[str, ...] = ()
+    unassigned: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -203,11 +207,15 @@ class EnergyAttribution:
             (whole building; FR-022's standby list).
         unattributed_distribution: Pump and heat-rejection energy in hours with no delivery, by
             fuel, J (whole building).
+        unmeasured: Zone equipment whose delivery is not measured, so not attributed to.
+        unassigned: Air loops whose coils deliver energy to no zone.
     """
 
     zones: Mapping[str, Mapping[Mode, EnergyTotals]]
     unattributed: Mapping[Mode, Mapping[Fuel, float]]
     unattributed_distribution: Mapping[Fuel, float]
+    unmeasured: tuple[str, ...] = ()
+    unassigned: tuple[str, ...] = ()
 
     def __call__(self, zone: ClassifiedZone, schedules: ScheduleEvaluator, /) -> dict[str, object]:
         """Return `{"energy": ...}` for one copy of `zone`; `{}` for a zone not attributed to."""
@@ -293,6 +301,28 @@ class _Ledgers:
         self.spread(mode, fuel, idle)
         return idle
 
+    def joint_primary_meter(self, modes: Sequence[Mode], fuel: Fuel, meter: _Array) -> float:
+        """Attribute a primary meter that serves several modes, split by each hour's delivery.
+
+        A boiler heating both the space and the service hot water is metered as heating only;
+        its consumption is split between the modes by what each delivers in the hour. Return the
+        consumption in hours without delivery, spread by the modes' annual delivery.
+        """
+        every = sum((self.building[mode] for mode in modes), np.zeros(self.hours))
+        for mode in modes:
+            part = meter * _divide(self.building[mode], every)
+            per_zone = self.hourly_share[mode] * part
+            self.primary[mode] += per_zone
+            for i in range(len(self.names)):
+                self._add(self.consumed[mode][i], fuel, float(per_zone[i].sum()))
+        idle = float(meter[every <= 0.0].sum())
+        annual = {mode: float(self.building[mode].sum()) for mode in modes}
+        annual_total = sum(annual.values())
+        for mode in modes:
+            share = annual[mode] / annual_total if annual_total > 0.0 else (1.0 if mode == modes[0] else 0.0)
+            self.spread(mode, fuel, idle * share)
+        return idle
+
     def distribution_meter(self, fuel: Fuel, energy: _Array) -> float:
         """Split a pump or heat-rejection meter by the hour's delivered modes; return the idle part.
 
@@ -334,6 +364,9 @@ class _Ledgers:
 def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
     """Attribute the building's consumption to its conditioned zones (R12).
 
+    Hot water delivered without a `WaterSystems` meter shares the `Heating` meters with space
+    heating, hour by hour by delivery (`_Ledgers.joint_primary_meter`).
+
     Args:
         data: The hourly data.
 
@@ -342,9 +375,16 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
     """
     ledgers = _Ledgers(data)
     unattributed: dict[Mode, dict[Fuel, float]] = {mode: {} for mode in ledgers.modes}
+    # Hot water delivered without a WaterSystems meter is heated by the heating plant (a boiler on
+    # a plant loop meters as Heating): the Heating meters then serve both modes.
+    joint = "hot_water" in ledgers.modes and not data.consumed.get("hot_water")
     for mode in ledgers.modes:
         for fuel, series in data.consumed.get(mode, {}).items():
-            unattributed[mode][fuel] = ledgers.primary_meter(mode, fuel, np.asarray(series, dtype=np.float64))
+            meter = np.asarray(series, dtype=np.float64)
+            if joint and mode == "heating":
+                unattributed[mode][fuel] = ledgers.joint_primary_meter(("heating", "hot_water"), fuel, meter)
+            else:
+                unattributed[mode][fuel] = ledgers.primary_meter(mode, fuel, meter)
     unattributed_distribution = {
         fuel: ledgers.distribution_meter(fuel, np.asarray(series, dtype=np.float64))
         for fuel, series in data.distribution.items()
@@ -358,6 +398,8 @@ def attribute_energy(data: BuildingEnergy) -> EnergyAttribution:
         zones=zones,
         unattributed={mode: _nonzero(values) for mode, values in unattributed.items()},
         unattributed_distribution=_nonzero(unattributed_distribution),
+        unmeasured=data.unmeasured,
+        unassigned=data.unassigned,
     )
 
 
@@ -458,7 +500,10 @@ def _packaged_units(doc: IDFDocumentSince22_1, units: dict[tuple[str, str], Zone
 
 
 def _other_units(doc: IDFDocumentSince22_1, units: dict[tuple[str, str], ZoneEquipment]) -> None:
-    """Unit heaters and ventilators, window units, ERVs, evaporative coolers, VRF terminals, unitary systems, exhaust fans."""
+    """Add the other zone units: unit heaters and ventilators, window units, ERVs, and more.
+
+    Evaporative coolers, VRF terminals, unitary systems and exhaust fans too.
+    """
     for o in doc["ZoneHVAC:UnitHeater"]:
         _add(units, o.obj_type, o.name, ZoneEquipment(_names(o.supply_air_fan_name), _names(o.heating_coil_name)))
     for o in doc["ZoneHVAC:UnitVentilator"]:
@@ -636,17 +681,19 @@ def _hot_water_heat(
     evaluate: Callable[[str], Profile],
     hours: int,
     supply_schedules: Mapping[str, str | None],
+    cold_schedules: Mapping[str, str | None],
 ) -> Profile:
     """Heat of one copy's hot water, J per hour: the hot-water module's `volume · rise · rho·c`.
 
-    The rise follows the equipment's hot-water supply temperature (its target temperature
-    without one), as `hotwater.hot_water_totals` does, so that the efficiency divides the
-    consumption by the same heat the archetype's supply temperature gives back.
+    The rise runs from the cold-water supply temperature (mains without a cold schedule) to the
+    equipment's hot-water supply temperature (its target temperature without one), as
+    `hotwater.hot_water_totals` does, so that the efficiency divides the consumption by the same
+    heat the archetype's supply temperature gives back.
     """
     # Imported here: `hotwater` is a sibling domain module, loaded only with hot water.
     from archetypal.reduction.hotwater import hot_water_totals  # noqa: PLC0415
 
-    heat = hot_water_totals(zone, evaluate, mains, supply_schedules).heat
+    heat = hot_water_totals(zone, evaluate, mains, supply_schedules, cold_schedules).heat
     if not heat.size:
         return np.zeros(hours)
     return np.asarray(heat, dtype=np.float64) * WATER_VOLUMETRIC_HEAT
@@ -699,14 +746,15 @@ def building_energy(
         for meter, fuel in meters.get(end_use, []):
             consumed.setdefault(mode, {})[fuel] = get(meter, "")
     if "hot_water" in consumed or any(zone.zone.hot_water for zone in conditioned):
-        from archetypal.reduction.hotwater import supply_schedules  # noqa: PLC0415
+        from archetypal.reduction.hotwater import cold_schedules, supply_schedules  # noqa: PLC0415
 
         schedules = supply_schedules(sources.model)
+        cold = cold_schedules(sources.model)
         delivered["hot_water"] = {
             zone.zone.name: (
                 np.asarray(hot_water_heat[zone.zone.name], dtype=np.float64)
                 if hot_water_heat is not None and zone.zone.name in hot_water_heat
-                else _hot_water_heat(zone, mains, evaluate, hours, schedules)
+                else _hot_water_heat(zone, mains, evaluate, hours, schedules, cold)
             )
             for zone in conditioned
         }
@@ -722,6 +770,8 @@ def building_energy(
         consumed=consumed,
         distribution=distribution,
         rated=rated_efficiencies(sources, conditioned),
+        unmeasured=tuple(sorted(set(equipment.unmeasured))),
+        unassigned=tuple(sorted(set(equipment.unassigned))),
     )
 
 

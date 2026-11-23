@@ -64,7 +64,7 @@ def usage_error(row: RemovedCapability, ctx: click.Context | None) -> click.Usag
 def _rejecter(row: RemovedCapability) -> Callable[[click.Context, click.Parameter, Any], None]:
     def reject(ctx: click.Context, param: click.Parameter, value: Any) -> None:
         del param
-        if value:
+        if value is not None:
             raise usage_error(row, ctx)
 
     return reject
@@ -73,8 +73,9 @@ def _rejecter(row: RemovedCapability) -> Callable[[click.Context, click.Paramete
 def removed_options(command: str) -> list[click.Option]:
     """Return a hidden, eager option for each removed flag of a command.
 
-    Every option is a flag: a value given after it in v2 style is left to the parser, which
-    never gets to use it because the callback stops the command first.
+    Every option takes an optional value, so a v2 flag (`--use-cache`), a v2 option with its
+    value (`--data-folder x`, `--data-folder=x`, `-lfile`) all reach the callback, which stops
+    the command first with the migration message.
 
     Args:
         command: The command path, `archetypal` for the group.
@@ -89,7 +90,10 @@ def removed_options(command: str) -> list[click.Option]:
         options.append(
             click.Option(
                 [*row.aliases, flag, name],
-                is_flag=True,
+                is_flag=False,
+                flag_value=True,
+                type=click.UNPROCESSED,
+                default=None,
                 hidden=True,
                 is_eager=True,
                 expose_value=False,

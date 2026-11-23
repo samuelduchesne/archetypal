@@ -31,17 +31,16 @@ from __future__ import annotations
 
 import json
 import math
-import os
-import tempfile
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, cast
+from typing import TYPE_CHECKING, Any, Final, NamedTuple, Protocol, TypeVar, cast
 
 from epinterface.sbem.archetype import Archetype, ZoneGroup
 from epinterface.sbem.components.envelope import GlazingConstructionSimpleComponent
 
 from archetypal.errors import InputError
+from archetypal.io import write_atomically
 from archetypal.reduction.envelope import (
     ASSEMBLY_TYPES,
     equivalent_construction,
@@ -65,10 +64,12 @@ from archetypal.umi.report import Findings, Loss, LossKind, Note, SourceInfo, Tr
 from archetypal.umi.rules._common import RuleContext, identity_to_umi
 from archetypal.umi.rules.building import (
     CORE_GROUP,
+    DERIVED_NAMES,
     NAMED_FROM,
     PERIMETER_GROUP,
     UniqueNames,
     collision_loss,
+    derived_name,
     partition_ratio_to_umi,
     structure_to_umi,
     template_metadata_notes,
@@ -87,7 +88,8 @@ from archetypal.umi.rules.windows import layers_to_umi, settings_to_umi, templat
 from archetypal.umi.serialise import NAME_GROUPS, serialise
 
 if TYPE_CHECKING:
-    from collections.abc import Hashable, Sequence
+    import os
+    from collections.abc import Hashable, Iterable, Sequence
 
     from epinterface.sbem.archetype import ExposureType
     from epinterface.sbem.components.schedules import YearComponent
@@ -200,6 +202,10 @@ def _largest_with(members: Sequence[ZoneGroup], path: str) -> Any:
     return None
 
 
+def _derived(parent: str, suffix: str | None) -> str:
+    return parent if suffix is None else derived_name(parent, suffix)
+
+
 class _ZoneMerger:
     """Derives one zone definition from the summed ledger of several groups (research R12)."""
 
@@ -224,10 +230,22 @@ class _ZoneMerger:
         self.assemblies()
         self.window()
         merged = self.zone
-        for path in ("", *NAMED_FROM.values(), "Operations", "Envelope"):
+        for path in NAMED_FROM.values():
             component = _get(merged, path)
             if component is not None and _dump(component) != _dump(_get(base, path)):
                 merged = _replace(merged, f"{path}.Name" if path else "Name", _merged_name(component.Name))
+        # A sub-component named after its UMI parent keeps following it, so reading the library
+        # back finds the names it derives; one named otherwise is renamed as the others.
+        before = {umi_class: _get(base, path).Name for umi_class, path in NAMED_FROM.items()}
+        after = {umi_class: _get(merged, path).Name for umi_class, path in NAMED_FROM.items()}
+        for path, umi_class, suffix in DERIVED_NAMES:
+            component, original = _get(merged, path), _get(base, path)
+            if component is None or original is None:
+                continue
+            if original.Name == _derived(before[umi_class], suffix):
+                merged = _replace(merged, f"{path}.Name", _derived(after[umi_class], suffix))
+            elif _dump(component) != _dump(original):
+                merged = _replace(merged, f"{path}.Name", _merged_name(component.Name))
         return merged
 
     def gains(self) -> None:
@@ -308,13 +326,20 @@ class _ZoneMerger:
             return
         current = _get(self.zone, path)
         derived = ventilation(self.ledger, _CALENDAR, name=_MERGED).value
-        natural = any(_get(m.Zone, path).Provider in {"Natural", "Both"} for m in self.members)
+        natural_members = [m for m in self.members if _get(m.Zone, path).Provider in {"Natural", "Both"}]
+        natural = bool(natural_members)
         mechanical = next((m.Zone for m in self.members if _get(m.Zone, f"{path}.MechVentSchedule") is not None), None)
-        schedule = _renamed(derived.Schedule, _merged_name(current.Schedule.Name))
+        if natural:
+            # `Schedule` opens the windows: the largest naturally ventilated member's, not the
+            # mechanical outdoor-air profile (`approximate_merge` reports a difference).
+            schedule = _get(natural_members[0].Zone, f"{path}.Schedule")
+        else:
+            derived_schedule = _renamed(derived.Schedule, _merged_name(current.Schedule.Name))
+            schedule = derived_schedule.model_copy(update={"Type": current.Schedule.Type})
         update = {
             "FreshAirPerFloorArea": derived.FreshAirPerFloorArea,
             "FreshAirPerPerson": derived.FreshAirPerPerson,
-            "Schedule": schedule.model_copy(update={"Type": current.Schedule.Type}),
+            "Schedule": schedule,
             "MechVentSchedule": None
             if mechanical is None
             else _renamed(
@@ -482,10 +507,36 @@ def approximate_merge(archetype: Archetype) -> CorePerimeter:
                 for path in APPROXIMATE_PATHS
                 if path in approximate and _differ(members, path)
             )
+            losses.extend(_natural_schedule_losses(members, zone, subject=subject, name=name))
         share = result.ledger.floor_area if len(grouping.groups) > 1 else None
         merged_groups.append(ZoneGroup(Name=name, Zone=zone, FloorAreaShare=share, Exposure=exposure))
     merged = archetype.model_copy(update={"Groups": merged_groups})
     return CorePerimeter(merged, tuple(losses))
+
+
+_NATURAL_SCHEDULE = "Operations.HVAC.Ventilation.Schedule"
+
+
+def _natural_schedule_losses(
+    members: Sequence[ZoneGroup], zone: ZoneComponent, *, subject: str, name: str
+) -> list[Loss]:
+    """An `approximate` loss when the members open their windows differently, or only some of them do."""
+    natural = [m for m in members if _get(m.Zone, "Operations.HVAC.Ventilation").Provider in {"Natural", "Both"}]
+    schedules = {json.dumps(_json(_get(m.Zone, _NATURAL_SCHEDULE)), sort_keys=True) for m in natural}
+    if not natural or (len(schedules) <= 1 and len(natural) == len(members)):
+        return []
+    return [
+        Loss(
+            kind=LossKind.APPROXIMATE,
+            subject=subject,
+            location=f"{name}.{_NATURAL_SCHEDULE}",
+            value=cast("JsonValue", {m.Name: _get(m.Zone, _NATURAL_SCHEDULE).Name for m in natural}),
+            replacement=_get(zone, _NATURAL_SCHEDULE).Name,
+            rule="layout.merged",
+            reason="The groups open their windows on different schedules, or only some of them have natural "
+            "ventilation; the merged group opens its windows on the largest naturally ventilated group's.",
+        )
+    ]
 
 
 def _json(value: Any) -> JsonValue:
@@ -599,10 +650,12 @@ class _TemplateWriter:
             {g.Name: g.Zone.Envelope.Window for g in archetype.Groups}, subject=self.subject, chosen=group
         )
         self.context.findings.extend(losses)
-        location = next(
-            (f"{g.Name}.Envelope.Window" for g in archetype.Groups if g.Zone.Envelope.Window is chosen),
-            "Envelope.Window",
+        # The settings go with the window: from the group whose window was chosen (another group's
+        # when the perimeter has none).
+        window_group = next(
+            (g.Name for g in archetype.Groups if chosen is not None and g.Zone.Envelope.Window is chosen), group
         )
+        location = f"{window_group}.Envelope.Window" if chosen is not None else "Envelope.Window"
         if chosen is None:
             construction, _ = layers_to_umi(_DEFAULT_WINDOW, subject=self.subject, location=location)
             self.context.note(
@@ -620,16 +673,18 @@ class _TemplateWriter:
             {
                 g.Name: g.Zone.Envelope.WindowSettings
                 for g in archetype.Groups
-                if g.Name == group or g.Zone.Envelope.Window is not None or g.Zone.Envelope.WindowSettings is not None
+                if g.Name in {group, window_group}
+                or g.Zone.Envelope.Window is not None
+                or g.Zone.Envelope.WindowSettings is not None
             },
             subject=self.subject,
-            chosen=group,
+            chosen=window_group,
         )
         self.context.findings.extend(settings_losses)
         for other in archetype.Groups:
             # Reading back gives every group the template's window and settings: a group without
             # them (a core with no facade) gains them, which changes nothing it simulates.
-            if other.Name == group or other.Zone.Envelope.Window is not None:
+            if other.Name in {group, window_group} or other.Zone.Envelope.Window is not None:
                 continue
             for key in ("Window", "WindowSettings"):
                 if getattr(other.Zone.Envelope, key) is None:
@@ -644,8 +699,9 @@ class _TemplateWriter:
 
     def template(self, archetype: Archetype) -> BuildingTemplate:
         zones = template_zones(archetype)
-        self.context.findings.extend(zones.losses)
-        self.context.findings.extend(template_metadata_notes(archetype))
+        # These name the archetype by its own name; a renamed duplicate (`X #2`) is the subject.
+        self.context.findings.extend(_as_subject(zones.losses, self.subject))
+        self.context.findings.extend(_as_subject(template_metadata_notes(archetype), self.subject))
         names = {id(g.Zone): g.Name for g in archetype.Groups}
         core = self.zone(zones.core, names.get(id(zones.core), CORE_GROUP))
         perimeter = core if zones.perimeter is zones.core else self.zone(zones.perimeter, names[id(zones.perimeter)])
@@ -813,18 +869,7 @@ class UmiExport:
                 if target.exists():
                     raise InputError(target, "already exists; pass overwrite=True to replace it")
         library.parent.mkdir(parents=True, exist_ok=True)
-        staged: list[tuple[Path, Path]] = []
-        try:
-            for target, text in ((library, self.text), (loss, self.report.to_json())):
-                handle, temporary = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.", suffix=".tmp")
-                with os.fdopen(handle, "wb") as stream:
-                    stream.write(text.encode("utf-8"))
-                staged.append((Path(temporary), target))
-            for temporary, target in staged:
-                temporary.replace(target)
-        finally:
-            for temporary, _ in staged:
-                temporary.unlink(missing_ok=True)
+        write_atomically([(library, self.text.encode("utf-8")), (loss, self.report.to_json().encode("utf-8"))])
         return library, loss
 
 
@@ -871,6 +916,13 @@ def _export(items: Sequence[ArchetypeLike], *, strict: bool, path: str | os.Path
     return UmiExport(text=text, report=report)
 
 
+_FindingT = TypeVar("_FindingT", Loss, Note)
+
+
+def _as_subject(findings: Iterable[_FindingT], subject: str) -> list[_FindingT]:
+    return [f if f.subject == subject else f.model_copy(update={"subject": subject}) for f in findings]
+
+
 def _unique(findings: Sequence[Loss | Note]) -> list[Loss | Note]:
     seen: set[str] = set()
     kept: list[Loss | Note] = []
@@ -882,7 +934,9 @@ def _unique(findings: Sequence[Loss | Note]) -> list[Loss | Note]:
     return kept
 
 
-def to_umi(archetypes: Sequence[ArchetypeLike], *, strict: bool = False) -> UmiExport:
+def to_umi(
+    archetypes: Sequence[ArchetypeLike], *, strict: bool = False, path: str | os.PathLike[str] | None = None
+) -> UmiExport:
     """Translate SBEM archetypes into one UMI template library, without writing it.
 
     One building template per archetype, named after it (a repeated name gets ` #2`, …).
@@ -904,6 +958,8 @@ def to_umi(archetypes: Sequence[ArchetypeLike], *, strict: bool = False) -> UmiE
         archetypes: SBEM archetypes or 002 reductions, in the order their templates are written.
         strict: Raise `LossyTranslationError` when anything is lost, after the whole
             translation.
+        path: The library file the text will be written to, recorded in the report's source
+            (`write_umi` passes it); `None` records none.
 
     Returns:
         The library text and the report.
@@ -913,7 +969,7 @@ def to_umi(archetypes: Sequence[ArchetypeLike], *, strict: bool = False) -> UmiE
             shares.
         LossyTranslationError: `strict` is set and the report lists losses.
     """
-    return _export(archetypes, strict=strict, path=None)
+    return _export(archetypes, strict=strict, path=path)
 
 
 def write_umi(

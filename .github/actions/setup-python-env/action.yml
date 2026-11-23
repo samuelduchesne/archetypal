@@ -26,5 +26,9 @@ runs:
         cache-suffix: ${{ matrix.python-version }}
 
     - name: Install Python dependencies
-      run: uv sync --frozen
+      # `.python-version` would make uv build every leg on 3.12: pin the leg's version, here and
+      # for the later `uv run` steps.
+      run: |
+        echo "UV_PYTHON=${{ inputs.python-version }}" >> "${GITHUB_ENV}"
+        uv sync --frozen --python "${{ inputs.python-version }}"
       shell: bash

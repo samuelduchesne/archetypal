@@ -328,13 +328,48 @@ def _window_totals(surface: SurfaceRecord) -> WindowTotals:
     )
 
 
-def _opaque_totals(surface: SurfaceRecord) -> EnvelopeTotals:
+_CLASS_FILMS: Mapping[str, float] = {"WALL": 0.1197548, "DOOR": 0.1197548, "FLOOR": 0.1620212, "ROOF": 0.1074271}
+"""EnergyPlus's nominal film of each surface class (`ComputeNominalUwithConvCoeffs`), upper case."""
+_OUTDOOR_FILM = 0.0299387
+# The films `inventory._with_films` adds to `Constructions.Uvalue` when the Envelope Summary has no U.
+_FALLBACK_INSIDE = 0.13
+_FALLBACK_OUTSIDE = 0.04
+
+
+def _surface_films(surface: SurfaceRecord, klass: EnvelopeClass) -> float:
+    """The films in a surface's U-factor: EnergyPlus's for its class and boundary, or the fallback's.
+
+    EnergyPlus's Envelope Summary gives a surface its class's inside film and, outside, the film of
+    the surface it faces: an adiabatic surface faces itself, so its own film twice. An interzone
+    surface faces its companion, whose films `FILMS` holds for the class.
+    """
+    if surface.u_source == "constructions":
+        return _FALLBACK_INSIDE + (_FALLBACK_OUTSIDE if surface.boundary == "outdoors" else _FALLBACK_INSIDE)
+    own = _CLASS_FILMS.get(surface.class_name.upper())
+    if surface.boundary == "adiabatic" and own is not None:
+        return 2.0 * own
+    inside, outside = FILMS[klass]
+    return inside + outside
+
+
+def _class_u_factor(surface: SurfaceRecord, klass: EnvelopeClass) -> float:
+    """The surface's U-factor with its class's `FILMS` instead of its own: its layers' resistance kept."""
+    u = surface.u_factor
+    films = _surface_films(surface, klass)
+    inside, outside = FILMS[klass]
+    if not u > 0 or abs(films - inside - outside) < 1e-12:  # noqa: PLR2004 - equal films
+        return u
+    layers = 1.0 / u - films
+    return 1.0 / (layers + inside + outside) if layers > 0 else u
+
+
+def _opaque_totals(surface: SurfaceRecord, klass: EnvelopeClass) -> EnvelopeTotals:
     area = surface.area
     split = _surface_split(surface)
     by_orientation: dict[Orientation, float] = {} if _horizontal(surface.tilt) else {orientation(surface.azimuth): area}
     return EnvelopeTotals(
         area=area,
-        ua=area * surface.u_factor,
+        ua=area * _class_u_factor(surface, klass),
         capacity_inner=area * split.inner,
         capacity_outer=area * split.outer,
         area_by_orientation=by_orientation,
@@ -375,7 +410,7 @@ def zone_envelope(
         klass = envelope_class(surface)
         if klass is None or (wanted is not None and klass not in wanted):
             continue
-        result.add_envelope(klass, _opaque_totals(surface))
+        result.add_envelope(klass, _opaque_totals(surface, klass))
     return result
 
 

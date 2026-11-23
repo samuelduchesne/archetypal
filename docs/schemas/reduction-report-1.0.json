@@ -1375,7 +1375,7 @@
   },
   "$id": "https://samuelduchesne.github.io/archetypal/schemas/reduction-report-1.0.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "description": "The report of a reduction (data-model.md, ReductionReport; contracts/reduction-report.md).\n\nAttributes:\n    schema_version: The file format's version, `MAJOR.MINOR`; `\"1.0\"` when written.\n    reproducibility: Versions, input hashes and options.\n    groups: The zone groups, sorted by key.\n    pre_threshold_groups: Ledgers at the finest key before thresholding, sorted by key.\n    parameters: Every SBEM value with its rule, sorted by group then path.\n    excluded_zones: Zones in no group, sorted by name.\n    small_group_merges: Small groups merged, sorted by key.\n    not_represented: Features and values SBEM cannot hold (FR-026), sorted.\n    merged_distinctions: For a coarser layout, the finest keys each group merges.\n    unattributed_energy: Standby and pilot consumption by fuel, J (FR-022).\n    building: Conditioned floor area and the unrounded storey ratio.",
+  "description": "The report of a reduction (data-model.md, ReductionReport; contracts/reduction-report.md).\n\nAttributes:\n    schema_version: The file format's version, `MAJOR.MINOR`; `\"1.0\"` when written.\n    reproducibility: Versions, input hashes and options.\n    groups: The zone groups, sorted by key.\n    pre_threshold_groups: Ledgers at the finest key before thresholding, sorted by key.\n    parameters: Every SBEM value with its rule, sorted by group then path.\n    excluded_zones: Zones in no group, sorted by name.\n    small_group_merges: Small groups merged, sorted by key.\n    not_represented: Features and values SBEM cannot hold (FR-026), sorted.\n    merged_distinctions: For a coarser layout, the finest keys each group merges.\n    unattributed_energy: Standby and pilot consumption by fuel, J (FR-022).\n    building: Conditioned floor area and the unrounded storey ratio.\n    notes: Remarks on the grouping, for example a layout with exposure in a building with no\n        core zones (US2 scenario 3).",
   "properties": {
     "schema_version": {
       "default": "1.0",
@@ -1449,6 +1449,14 @@
     },
     "building": {
       "$ref": "#/$defs/BuildingBlock"
+    },
+    "notes": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
     }
   },
   "required": [

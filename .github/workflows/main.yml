@@ -232,14 +232,11 @@ jobs:
         run: dotnet build tools/basilisk-check --nologo -v q
 
       - name: Write libraries from the unit tests
-        # Exit status 5 means no UMI unit test is written yet.
+        # Every unit test that writes a library saves it: the UMI tests and the CLI's
+        # `reduce --to umi` and `translate` libraries.
         run: |
           mkdir -p out/libraries
-          if [ -d tests/unit/umi ]; then
-            uv run pytest tests/unit/umi --write-libraries out/libraries || test $? -eq 5
-          else
-            echo "tests/unit/umi not written yet"
-          fi
+          uv run pytest tests/unit --write-libraries out/libraries
 
       - name: Check the written libraries with Basilisk
         run: |
@@ -248,7 +245,7 @@ jobs:
           if [ ${#libraries[@]} -eq 0 ]; then
             echo "No library written yet: nothing to check"
           else
-            dotnet run --no-build --project tools/basilisk-check -- "${libraries[@]}"
+            dotnet run --no-build --project tools/basilisk-check -- --no-unused "${libraries[@]}"
           fi
 
       - name: Compare Basilisk's fields with tests/data/basilisk_fields.json

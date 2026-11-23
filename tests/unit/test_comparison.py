@@ -424,3 +424,90 @@ def test_peaks_use_the_finest_frequency_every_mode_meter_shares(tmp_path: Path, 
     result = compare(base, extra)
     assert result.row("Peak heating demand").archetype == result.row("Peak heating demand").detailed > 0.0
     assert result.row("Peak cooling demand").archetype == result.row("Peak cooling demand").detailed > 0.0
+
+
+def test_meters_at_different_frequencies_are_not_compared_on_some_of_them(tmp_path: Path) -> None:
+    """Hourly heating and Monthly cooling meters give no peak frequency: refused, not a 0 W cooling peak."""
+    copy = tmp_path / "monthly_cooling.sql"
+    shutil.copyfile(COMPARISON / "base.sql", copy)
+    with sqlite3.connect(copy) as db:
+        db.execute(
+            "UPDATE ReportDataDictionary SET ReportingFrequency = 'Monthly' WHERE IsMeter = 1 AND Name LIKE 'Cooling:%'"
+        )
+    db.close()
+    with pytest.raises(NotComparableError, match="reporting frequency"):
+        compare(copy, copy)
+
+
+def test_two_runs_compare_peaks_at_the_finest_frequency_they_share() -> None:
+    from archetypal.comparison.results import RunResults, common_peak_frequency, differences  # noqa: PLC0415
+
+    detailed = RunResults(
+        label="detailed",
+        frequency="Zone Timestep",
+        peaks={"Heating": 2000.0, "Cooling": 1000.0},
+        peaks_by_frequency={
+            "Zone Timestep": {"Heating": 2000.0, "Cooling": 1000.0},
+            "Hourly": {"Heating": 1800.0, "Cooling": 900.0},
+        },
+    )
+    archetype = RunResults(
+        label="archetype",
+        frequency="Hourly",
+        peaks={"Heating": 1800.0, "Cooling": 900.0},
+        peaks_by_frequency={"Hourly": {"Heating": 1800.0, "Cooling": 900.0}},
+    )
+    assert common_peak_frequency(detailed, archetype) == "Hourly"
+    assert not [d for d in differences(detailed, archetype) if d.startswith("reporting frequency")]
+    daily = RunResults(label="daily", frequency="Daily", peaks_by_frequency={"Daily": {}})
+    assert any(d.startswith("reporting frequency") for d in differences(detailed, daily))
+
+
+def test_end_uses_in_mixed_units_are_converted_to_the_totals_unit(tmp_path: Path) -> None:
+    """`InchPoundExceptElectricity` writes electricity in kWh and the other fuels and total in kBtu."""
+    mixed = tmp_path / "mixed.sql"
+    shutil.copyfile(COMPARISON / "ip_units.sql", mixed)
+    factor = 1.05505585262e6 / 3.6e6  # kBtu to kWh
+    with sqlite3.connect(mixed) as db:
+        (kwh,) = db.execute("SELECT COALESCE(MAX(StringIndex), 0) + 1 FROM Strings").fetchone()
+        (type_index,) = db.execute("SELECT StringTypeIndex FROM Strings WHERE Value = 'kBtu' LIMIT 1").fetchone()
+        db.execute("INSERT INTO Strings (StringIndex, StringTypeIndex, Value) VALUES (?, ?, 'kWh')", (kwh, type_index))
+        cells = (
+            "SELECT td.TabularDataIndex FROM TabularData td "
+            "JOIN Strings r ON td.ReportNameIndex = r.StringIndex "
+            "JOIN Strings t ON td.TableNameIndex = t.StringIndex "
+            "JOIN Strings c ON td.ColumnNameIndex = c.StringIndex "
+            "WHERE r.Value = 'AnnualBuildingUtilityPerformanceSummary' AND t.Value = 'End Uses' "
+            "AND c.Value = 'Electricity'"
+        )
+        for (index,) in db.execute(cells).fetchall():
+            (value,) = db.execute("SELECT Value FROM TabularData WHERE TabularDataIndex = ?", (index,)).fetchone()
+            converted = f"{float(value) * factor:.6f}" if value.strip() else value
+            db.execute(
+                "UPDATE TabularData SET Value = ?, UnitsIndex = ? WHERE TabularDataIndex = ?", (converted, kwh, index)
+            )
+    db.close()
+    result = compare(COMPARISON / "ip_units.sql", mixed)
+    for row in result.rows:
+        assert row.archetype == pytest.approx(row.detailed, rel=1e-4, abs=1e-3), row.metric
+
+
+def test_run_periods_of_two_years_with_the_same_calendar_are_comparable() -> None:
+    from datetime import datetime, timezone  # noqa: PLC0415
+
+    from archetypal.comparison.results import RunResults, differences  # noqa: PLC0415
+
+    # 2006 and 2017 both start on a Sunday and have no 29 February.
+    first = RunResults(
+        label="a", period=(datetime(2006, 1, 1, tzinfo=timezone.utc), datetime(2007, 1, 1, tzinfo=timezone.utc))
+    )
+    same = RunResults(
+        label="b", period=(datetime(2017, 1, 1, tzinfo=timezone.utc), datetime(2018, 1, 1, tzinfo=timezone.utc))
+    )
+    other = RunResults(
+        label="c", period=(datetime(2018, 1, 1, tzinfo=timezone.utc), datetime(2019, 1, 1, tzinfo=timezone.utc))
+    )  # Monday
+    assert not [d for d in differences(first, same) if d.startswith("run period")]
+    (found,) = [d for d in differences(first, other) if d.startswith("run period")]
+    assert "Sunday" in found
+    assert "Monday" in found

@@ -41,6 +41,7 @@ __all__ = [
     "SurfaceRow",
     "ZoneRow",
     "database_path",
+    "has_tabular_report",
     "read_construction_layers",
     "read_constructions",
     "read_environment_periods",
@@ -49,6 +50,7 @@ __all__ = [
     "read_nominal_loads",
     "read_nominal_ventilation",
     "read_simulations",
+    "read_site_elevation",
     "read_surfaces",
     "read_zones",
 ]
@@ -177,6 +179,54 @@ def _select(
         raise SQLTableError(table, None, f"cannot be read ({error})") from error
     names = [column.rsplit(".", 1)[-1].split(" AS ")[-1] for column in columns]
     return [_Row(table, names, record) for record in records]
+
+
+def has_tabular_report(sql: SQLResult, report: str) -> bool:
+    """Whether the results hold any row of a tabular report.
+
+    Args:
+        sql: The results.
+        report: The report's name, as `TabularDataWithStrings.ReportName` writes it.
+
+    Returns:
+        `True` when the report has at least one row.
+
+    Raises:
+        SQLTableError: If the table cannot be read.
+    """
+    try:
+        rows = sql.query("SELECT 1 FROM TabularDataWithStrings WHERE ReportName = ? LIMIT 1", (report,))
+    except sqlite3.Error as error:
+        raise SQLTableError("TabularDataWithStrings", None, f"cannot be read ({error})") from error
+    return bool(rows)
+
+
+_FEET = 0.3048
+
+
+def read_site_elevation(sql: SQLResult) -> float | None:
+    """The site elevation EnergyPlus ran with, m (Input Verification and Results Summary, General).
+
+    Args:
+        sql: The results.
+
+    Returns:
+        The elevation, or `None` when the results do not report it.
+    """
+    try:
+        rows = sql.query(
+            "SELECT Value, Units FROM TabularDataWithStrings WHERE ReportName = "
+            "'InputVerificationandResultsSummary' AND TableName = 'General' AND RowName = 'Elevation'"
+        )
+    except sqlite3.Error:
+        return None
+    for value, units in rows:
+        try:
+            elevation = float(str(value).strip())
+        except ValueError:
+            continue
+        return elevation * _FEET if str(units).strip().casefold() == "ft" else elevation
+    return None
 
 
 def database_path(sql: SQLResult) -> Path | None:

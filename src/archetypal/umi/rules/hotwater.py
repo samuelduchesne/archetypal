@@ -10,7 +10,7 @@
   ```
 
   which conserves the annual hot-water volume per m². Hot water in a zone without people
-  (`rho_p = 0` or people off) cannot be represented per person: it is a range problem on reading
+  (`rho_p = 0`) cannot be represented per person: it is a range problem on reading
   and a loss on writing.
 - **Schedule** (`dhw.schedule`) and **settings** (`dhw.settings`: `IsOn`, supply and inlet
   temperatures) map exactly.
@@ -154,16 +154,15 @@ def _flow_to_umi(
             )
         return 0.0
     result = flow_per_area(flow, schedule_sum, occupancy.PeopleDensity)
-    # Density 0 loses the flow itself; people off only the hot water simulated, which matters
-    # only when hot water is on.
-    if flow != 0 and (occupancy.PeopleDensity == 0 or (dhw.IsOn and not occupancy.IsOn)):
+    # Density 0 loses the flow itself. People off does not: epinterface draws the hot water by
+    # the people density whether or not occupancy is on.
+    if flow != 0 and occupancy.PeopleDensity == 0:
         context.lose(
             "Operations.SpaceUse.WaterUse.FlowRatePerPerson",
             flow,
             replacement=result,
             rule="dhw.per_person",
-            reason="hot water per person in a zone without people (density 0 or people off) has no UMI "
-            "counterpart that reads back",
+            reason="hot water per person in a zone without people (density 0) has no UMI counterpart that reads back",
         )
     return result
 
@@ -331,7 +330,7 @@ def range_problems(
 
     `Unset` fuel; for hot water that is on, a COP of 0 or less, a supply temperature not above
     the inlet temperature, temperatures outside SBEM's [0, 100] °C, a negative flow, and a
-    flow in a zone without people (`rho_p = 0` or people off).
+    flow in a zone without people (`rho_p = 0`).
 
     Args:
         dhw: The UMI hot-water settings.
@@ -367,15 +366,12 @@ def range_problems(
             "cop.system",
             f"hot water is on with a COP of {dhw.coefficient_of_performance!r}; it must be above 0",
         )
-    if (
-        loads is not None
-        and dhw.is_on
-        and dhw.flow_rate_per_floor_area > 0
-        and (loads.people_density <= 0 or not loads.is_people_on)
-    ):
+    if loads is not None and dhw.is_on and dhw.flow_rate_per_floor_area > 0 and loads.people_density <= 0:
+        # epinterface draws FlowRatePerPerson · PeopleDensity · area whether or not occupancy is
+        # on, so only a zero density cannot carry the hot water.
         problem(
             "FlowRatePerFloorArea",
             "dhw.per_person",
-            "the zone has hot water but no people (people density 0 or people off); SBEM gives hot water per person",
+            "the zone has hot water but no people (people density 0); SBEM gives hot water per person",
         )
     return problems

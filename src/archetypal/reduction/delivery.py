@@ -57,6 +57,8 @@ _NODE_VARIABLE = "System Node Mass Flow Rate"
 _CONTAINERS = ("zonehvac:", "airterminal:", "airloophvac:unitary", "coilsystem:", "airloophvac:outdoorairsystem")
 _UNMEASURED = (
     "zonehvac:evaporativecoolerunit",
+    "zonehvac:hybridunitaryhvac",
+    "evaporativecooler:",
     "zonehvac:hightemperatureradiant",
     "zonehvac:ventilatedslab",
     "zonehvac:coolingpanel:",
@@ -134,6 +136,11 @@ class _Walker:
             # The equipment list is named without its type.
             equipment = obj.outdoor_air_equipment_list_name
             yield from self.outputs("AirLoopHVAC:OutdoorAirSystem:EquipmentList", equipment or "", seen)
+            return
+        if key[0] == "zonehvac:outdoorairunit":
+            # So is an outdoor air unit's; its other fields name nodes and schedules.
+            equipment = obj.outdoor_air_unit_list_name
+            yield from self.outputs("ZoneHVAC:OutdoorAirUnit:EquipmentList", equipment or "", seen)
             return
         for first, second in itertools.pairwise(values):
             if first.casefold() in self.types and first.casefold() != key[0]:

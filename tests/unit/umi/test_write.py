@@ -399,3 +399,37 @@ def test_equal_components_with_nan_are_shared_not_renamed() -> None:
     second = assembler.component(material(), "/b", "S")
     assert first is second
     assert assembler.losses == []
+
+
+def test_a_renamed_duplicate_keeps_its_own_losses() -> None:
+    from archetypal.umi import read_umi, to_umi  # noqa: PLC0415
+
+    archetype = read_umi(Path(__file__).parents[2] / "fixtures" / "umi" / "BostonTemplateLibrary_2.json").archetypes[0]
+    shared = [g.model_copy(update={"Name": "Core zone" if g.Exposure == "core" else g.Name}) for g in archetype.Groups]
+    renamed = archetype.model_copy(update={"Groups": shared})
+    export = to_umi([renamed, renamed])
+    first, second = export.report.subjects
+    group_losses = {loss.subject for loss in export.report.losses if loss.rule == "building.groups"}
+    assert {first, second} <= group_losses
+
+
+def test_the_window_and_its_settings_come_from_one_group() -> None:
+    """A perimeter without a window takes the core's window; the settings come with it."""
+    from archetypal.umi import read_umi, to_umi  # noqa: PLC0415
+
+    archetype = read_umi(Path(__file__).parents[2] / "fixtures" / "umi" / "BostonTemplateLibrary_2.json").archetypes[0]
+    groups: list[ZoneGroup] = []
+    for g in archetype.Groups:
+        envelope = g.Zone.Envelope
+        if g.Exposure == "perimeter":
+            envelope = envelope.model_copy(update={"Window": None, "WindowSettings": None})
+        else:
+            settings = envelope.WindowSettings or archetype.Groups[0].Zone.Envelope.WindowSettings
+            assert settings is not None
+            envelope = envelope.model_copy(
+                update={"WindowSettings": settings.model_copy(update={"Name": "Core settings", "OperableArea": 0.3})}
+            )
+        groups.append(g.model_copy(update={"Zone": g.Zone.model_copy(update={"Envelope": envelope})}))
+    export = to_umi([archetype.model_copy(update={"Groups": groups})])
+    (template,) = json.loads(export.text)["BuildingTemplates"]
+    assert template["Windows"]["OperableArea"] == 0.3

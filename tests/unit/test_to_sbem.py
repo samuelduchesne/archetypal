@@ -240,6 +240,22 @@ def test_setpoint_area_mean() -> None:
     np.testing.assert_array_equal(year_values(unheated.value.HeatingSchedule, CAL), np.full(HOURS, 5.0))
 
 
+def test_a_heating_setpoint_above_cooling_is_capped_and_reported() -> None:
+    """A heat-only member at 21 °C and a cool-only member at 20 °C: heating would exceed cooling."""
+    ledger = _ledger().model_copy(
+        update={
+            "heating_setpoint": WeightedProfile(weight=900.0, weighted=np.full(HOURS, 900.0 * 21.0)),
+            "cooling_setpoint": WeightedProfile(weight=100.0, weighted=np.full(HOURS, 100.0 * 20.0)),
+        }
+    )
+    derived = thermostat(ledger, CAL, name="g")
+    heating = year_values(derived.value.HeatingSchedule, CAL)
+    cooling = year_values(derived.value.CoolingSchedule, CAL)
+    assert (heating <= cooling).all()
+    (entry,) = [e for e in derived.not_represented if e.feature == "Heating setpoint above cooling setpoint"]
+    assert entry.magnitude == HOURS
+
+
 def test_envelope_equivalent_and_internal_mass() -> None:
     ledger = _ledger()
     derived = assemblies(ledger, ledger, name="g")
@@ -257,6 +273,21 @@ def test_envelope_equivalent_and_internal_mass() -> None:
     rules = {leaf.path: leaf.rule for leaf in derived.leaves}
     assert rules["InternalMassAssembly"] == rules["InternalMassExposedAreaPerArea"] == "mass.internal"
     assert rules["FacadeAssembly"] == "envelope.equivalent"
+
+
+def test_every_slot_has_an_assembly_in_a_building_on_stilts() -> None:
+    """No partition, interzone or ground surface: the unused slots still get an assembly."""
+    full = _ledger()
+    ledger = full.model_copy(
+        update={
+            "envelope": {
+                "exterior_wall": full.envelope["exterior_wall"],
+                "roof": full.envelope["roof"],
+                "exposed_floor": full.envelope["ground_floor"],
+            }
+        }
+    )
+    assert assemblies(ledger, ledger, name="g").value.BasementCeilingAssembly is not None
 
 
 def test_assembly_slots_a_group_lacks_come_from_the_building() -> None:
@@ -341,6 +372,24 @@ def test_hot_water_volume_per_person_and_mains_plus_rise() -> None:
     rules = {leaf.path: leaf.rule for leaf in hw.leaves}
     assert rules["SystemCOP"] == "efficiency.delivered_over_consumed"
     assert rules["WaterSupplyTemperature"] == "dhw.mains_plus_rise"
+
+
+def test_hot_water_volume_follows_the_occupants_occupancy_writes() -> None:
+    """A people schedule above 1 raises PeopleDensity; the volume per person falls so the volume is kept."""
+    hour = np.arange(CAL.hours)
+    daytime = ((hour % 24 >= 8) & (hour % 24 < 18)).astype(np.float64)
+    people = 50.0 * daytime * (1.0 + 0.5 * (hour % 24 == 12))
+    volume = 0.01 * daytime
+    ledger = GroupLedger(
+        members=("a",),
+        floor_area=1000.0,
+        gains={"people": GainTotals(installed=50.0, hourly=people)},
+        hot_water=HotWaterTotals(volume=volume, heat=volume * 45.0),
+    )
+    occupants = occupancy(ledger, CAL, name="g").value.PeopleDensity * 1000.0
+    use = water_use(ledger, CAL, name="g").value
+    assert occupants == pytest.approx(75.0)
+    assert use.FlowRatePerPerson * occupants * CAL.days == pytest.approx(float(volume.sum()), rel=1e-12)
 
 
 def test_efficiency_delivered_over_consumed_with_eir_slope() -> None:

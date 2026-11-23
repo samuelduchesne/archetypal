@@ -325,12 +325,47 @@ class _Bound:
         return f"{self.key} is {value!r}; SBEM's {self.sbem_path} needs a value {' and '.join(needs)}"
 
 
+_LOST_WHEN_OUT_OF_RANGE: Final = frozenset({
+    ("BuildingTemplate", "Lifespan"),
+    ("ConstructionBase", "AssemblyCarbon"),
+    ("ConstructionBase", "AssemblyCost"),
+    ("ConstructionBase", "AssemblyEnergy"),
+    ("ConstructionBase", "DisassemblyCarbon"),
+    ("ConstructionBase", "DisassemblyEnergy"),
+    ("MaterialBase", "SubstitutionTimestep"),
+    ("MaterialBase", "TransportDistance"),
+    ("OpaqueMaterial", "MoistureDiffusionResistance"),
+    ("WindowSettings", "OperableArea"),
+    ("WindowSettings", "ShadingSystemSetpoint"),
+    ("WindowSettings", "ShadingSystemTransmittance"),
+    ("ZoneConditioning", "HeatRecoveryEfficiencyLatent"),
+    ("ZoneConditioning", "HeatRecoveryEfficiencySensible"),
+    ("ZoneConditioning", "MaxCoolFlow"),
+    ("ZoneConditioning", "MaxCoolingCapacity"),
+    ("ZoneConditioning", "MaxHeatFlow"),
+    ("ZoneConditioning", "MaxHeatingCapacity"),
+    ("ZoneDefinition", "DaylightMeshResolution"),
+    ("ZoneDefinition", "DaylightWorkplaneHeight"),
+    ("ZoneLoads", "IlluminanceTarget"),
+    ("ZoneVentilation", "NatVentMaxOutdoorAirTemp"),
+    ("ZoneVentilation", "NatVentMaxRelHumidity"),
+    ("ZoneVentilation", "NatVentMinOutdoorAirTemp"),
+    ("ZoneVentilation", "NatVentZoneTempSetpoint"),
+    ("ZoneVentilation", "ScheduledVentilationAch"),
+    ("ZoneVentilation", "ScheduledVentilationSetpoint"),
+})
+"""Fields whose translation rule loses a value SBEM refuses, keeping SBEM's default, as the
+correspondence notes say: validation leaves them to the rule instead of refusing the template."""
+
+
 def _bounds() -> dict[str, list[_Bound]]:
     """The SBEM bounds of each UMI class's numeric fields that map exactly, by class name."""
     classes = _sbem_classes()
     found: dict[str, list[_Bound]] = {}
     for row in CORRESPONDENCE:
         if row.status is not MappingStatus.EXACT or not row.sbem_paths:
+            continue
+        if (row.umi_class, row.umi_key) in _LOST_WHEN_OUT_OF_RANGE:
             continue
         info = _sbem_field(row.sbem_paths[0], classes)
         if info is None:
@@ -490,6 +525,12 @@ def _glazing(item: GlazingMaterial, pointer: str, template: str) -> list[Problem
             key = _alias(GlazingMaterial, name)
             message = f"{key} is {value!r}; it must be in [0, 1]"
             problems.append(Problem(f"{pointer}/{key}", template, "window.layers", message))
+    # Opaque materials may have a conductivity of 0 (SBEM's `ge=0`); glass may not (`gt=0`),
+    # and Basilisk writes 0 for a glazing material without one.
+    if not item.conductivity > 0:
+        key = _alias(GlazingMaterial, "conductivity")
+        message = f"{key} is {item.conductivity!r}; a glazing material's must be above 0"
+        problems.append(Problem(f"{pointer}/{key}", template, "window.layers", message))
     return problems
 
 

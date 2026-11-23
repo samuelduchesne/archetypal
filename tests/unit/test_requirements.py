@@ -18,6 +18,7 @@ from archetypal.reduction.requirements import (
     ResultRequirement,
     check_results,
     delivery_outputs,
+    single_run_facts,
 )
 from archetypal.reduction.sources import end_use_fuels, model_facts
 
@@ -300,3 +301,34 @@ def test_fixture_results_meet_every_requirement_of_their_models() -> None:
             facts = model_facts(doc, end_use_fuels(sql) or ())
             assert facts.hvac_outputs, name
             assert check_results(sql, facts) == (), name
+
+
+def test_design_objects_and_radiant_surface_groups_deliver_nothing() -> None:
+    assert delivery_outputs("ZoneHVAC:Baseboard:RadiantConvective:Water:Design") == ()
+    assert delivery_outputs("ZoneHVAC:Baseboard:RadiantConvective:Steam:Design") == ()
+    assert delivery_outputs("ZoneHVAC:LowTemperatureRadiant:VariableFlow:Design") == ()
+    assert delivery_outputs("ZoneHVAC:LowTemperatureRadiant:SurfaceGroup") == ()
+    assert delivery_outputs("ZoneHVAC:Baseboard:RadiantConvective:Water") != ()
+
+
+def test_the_single_run_meters_district_heating_under_its_names_before_23_2() -> None:
+    pairs = set(single_run_facts(ModelFacts()).end_use_fuels)
+    for fuel in ("DistrictHeating", "Steam", "DistrictHeatingWater", "DistrictHeatingSteam"):
+        assert ("Heating", fuel) in pairs
+
+
+def test_the_single_run_names_files_beside_the_model_by_absolute_path(tmp_path: Path) -> None:
+    from idfkit import new_document  # noqa: PLC0415
+
+    from archetypal.reduction.requirements import _absolute_file_paths  # noqa: PLC0415  # pyright: ignore[reportPrivateUsage]
+
+    (tmp_path / "occ.csv").write_text("1\n")
+    doc = new_document()
+    doc.add("Schedule:File", "Beside", validate=False, file_name="occ.csv", column_number=1)
+    doc.add("Schedule:File", "Missing", validate=False, file_name="elsewhere.csv", column_number=1)
+    _absolute_file_paths(doc, tmp_path)
+    beside, missing = doc.getobject("Schedule:File", "Beside"), doc.getobject("Schedule:File", "Missing")
+    assert beside is not None
+    assert missing is not None
+    assert beside.file_name == str((tmp_path / "occ.csv").resolve())
+    assert missing.file_name == "elsewhere.csv"

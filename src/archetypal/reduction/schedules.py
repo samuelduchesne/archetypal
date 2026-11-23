@@ -76,6 +76,7 @@ __all__ = [
     "calendar_year",
     "design_dates",
     "design_day_evaluators",
+    "design_daylight_saving",
     "expand",
     "holiday_days",
     "project",
@@ -377,10 +378,13 @@ class ScheduleEvaluator:
 
     Calling the evaluator with a schedule name returns its read-only hourly `Profile`. Results
     are memoised by upper-case name, so a schedule referenced by many objects is evaluated
-    once (research R5).
+    once (research R5). `steps` returns the values at the model's timestep, from which each
+    hourly value is the mean.
     """
 
-    def __init__(self, doc: IDFDocumentSince22_1, calendar: RunPeriodCalendar, *, base_path: Path | str | None = None):
+    def __init__(
+        self, doc: IDFDocumentSince22_1, calendar: RunPeriodCalendar, *, base_path: Path | str | None = None
+    ) -> None:
         """Prepare to evaluate the schedules of `doc`.
 
         Args:
@@ -394,11 +398,14 @@ class ScheduleEvaluator:
         self.base_path = base_path
         self.index = schedule_index(doc)
         self.design_dates = design_dates(doc, calendar.year)
+        self.design_daylight_saving = design_daylight_saving(doc)
         self.timestep = model_timestep(doc)
         days = sorted(d.timetuple().tm_yday - 1 for d in calendar.daylight_saving if d.year == calendar.year)
         self._daylight_saving = np.asarray(days, dtype=np.intp)
         self._profiles: dict[str, Profile] = {}
+        self._steps: dict[str, npt.NDArray[np.float64]] = {}
         self._design_days: dict[tuple[str, DesignDayKind], Profile] = {}
+        self._design_steps: dict[tuple[str, DesignDayKind], npt.NDArray[np.float64]] = {}
 
     def _object(self, name: str) -> AnySchedule:
         try:
@@ -420,49 +427,54 @@ class ScheduleEvaluator:
         cached = self._profiles.get(key)
         if cached is not None:
             return cached
+        profile = _hourly(self._evaluate_steps(name))
+        profile.flags.writeable = False
+        self._profiles[key] = profile
+        return profile
+
+    def steps(self, name: str) -> npt.NDArray[np.float64]:
+        """Return the values of the schedule called `name` at the model's timestep.
+
+        Args:
+            name: The schedule's name (case-insensitive).
+
+        Returns:
+            A read-only array of shape (hours, timesteps per hour); each hour's mean is the
+            value `__call__` returns.
+
+        Raises:
+            KeyError: If the model has no whole-year schedule of that name.
+        """
+        key = name.upper()
+        cached = self._steps.get(key)
+        if cached is None:
+            cached = self._evaluate_steps(name)
+            cached.flags.writeable = False
+            self._steps[key] = cached
+        return cached
+
+    def _evaluate_steps(self, name: str) -> npt.NDArray[np.float64]:
+        obj = self._object(name)
         evaluate = cast("Callable[..., list[float]]", values)
         steps = evaluate(
-            self._object(name),
+            obj,
             year=self.calendar.year,
             timestep=self.timestep,
             document=self.doc,
             base_path=self.base_path,
         )
-        profile: Profile = self._hourly(steps)
-        if self._daylight_saving.size:
-            # EnergyPlus reports in standard time and, on a daylight saving day, takes each
-            # schedule's value of the next hour of the same day (the last hour wraps to the first).
-            days: npt.NDArray[np.float64] = profile.reshape(-1, 24)  # pyright: ignore[reportUnknownMemberType]
-            clock: npt.NDArray[np.float64] = days[self._daylight_saving]
-            shifted = np.array(clock, dtype=np.float64)
-            shifted[:, :-1] = clock[:, 1:]
-            shifted[:, -1] = clock[:, 0]
-            days[self._daylight_saving] = shifted
-            profile = days.ravel()
-        profile.flags.writeable = False
-        self._profiles[key] = profile
-        return profile
-
-    def _hourly(self, steps: list[float]) -> npt.NDArray[np.float64]:
-        """Each hour's mean of the model's timesteps: the value EnergyPlus applies over the hour."""
-        array: npt.NDArray[np.float64] = np.array(steps, dtype=np.float64)
-        if self.timestep == 1:
-            return array
-        hours: npt.NDArray[np.float64] = array.reshape(-1, self.timestep)  # pyright: ignore[reportUnknownMemberType]
-        # An hour whose timesteps agree keeps that value exactly (a mean of equal floats can
-        # differ in the last bit, and equal days are shared by comparing values).
-        hourly = hours.mean(axis=1)
-        same = hours.min(axis=1) == hours.max(axis=1)
-        hourly[same] = hours[same, 0]
-        return hourly
+        array: npt.NDArray[np.float64] = np.array(steps, dtype=np.float64).reshape(-1, self.timestep)  # pyright: ignore[reportUnknownMemberType]
+        if self._daylight_saving.size and _follows_daylight_saving(obj):
+            array = _shift_daylight_saving(array, self._daylight_saving)
+        return array
 
     def design_day(self, name: str, kind: DesignDayKind) -> Profile:
         """Return the 24 hourly values of the schedule called `name` on a design day.
 
         The day is evaluated as the run-period profiles are (each hour the mean of the model's
-        timesteps, default interpolation), on
-        the date `design_dates[kind]`, with the design day's type, so a `For: SummerDesignDay`
-        or `For: WinterDesignDay` day applies as in EnergyPlus.
+        timesteps, default interpolation), on the date `design_dates[kind]`, with the design
+        day's type, so a `For: SummerDesignDay` or `For: WinterDesignDay` day applies as in
+        EnergyPlus; a design day that observes daylight saving time is shifted as a run-period day.
 
         Args:
             name: The schedule's name (case-insensitive).
@@ -478,10 +490,33 @@ class ScheduleEvaluator:
         cached = self._design_days.get(key)
         if cached is not None:
             return cached
+        profile = _hourly(self.design_day_steps(name, kind))
+        profile.flags.writeable = False
+        self._design_days[key] = profile
+        return profile
+
+    def design_day_steps(self, name: str, kind: DesignDayKind) -> npt.NDArray[np.float64]:
+        """Return the values of the schedule called `name` on a design day at the model's timestep.
+
+        Args:
+            name: The schedule's name (case-insensitive).
+            kind: `summer` or `winter`.
+
+        Returns:
+            A read-only array of shape (24, timesteps per hour).
+
+        Raises:
+            KeyError: If the model has no whole-year schedule of that name.
+        """
+        key = (name.upper(), kind)
+        cached = self._design_steps.get(key)
+        if cached is not None:
+            return cached
         date_ = self.design_dates[kind]
+        obj = self._object(name)
         evaluate = cast("Callable[..., list[float]]", values)
         steps = evaluate(
-            self._object(name),
+            obj,
             year=self.calendar.year,
             timestep=self.timestep,
             start_date=date_,
@@ -490,10 +525,72 @@ class ScheduleEvaluator:
             document=self.doc,
             base_path=self.base_path,
         )
-        profile = self._hourly(steps)
-        profile.flags.writeable = False
-        self._design_days[key] = profile
-        return profile
+        array: npt.NDArray[np.float64] = np.array(steps, dtype=np.float64).reshape(-1, self.timestep)  # pyright: ignore[reportUnknownMemberType]
+        if kind in self.design_daylight_saving and _follows_daylight_saving(obj):
+            # A design day repeats, so its last hour takes the same day's first.
+            array = _shift_daylight_saving(array, np.zeros(1, dtype=np.intp), wrap_to_same_day=True)
+        array.flags.writeable = False
+        self._design_steps[key] = array
+        return array
+
+
+def _hourly(steps: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """Each hour's mean of the model's timesteps: the value EnergyPlus applies over the hour."""
+    if steps.shape[1] == 1:
+        return np.array(steps[:, 0], dtype=np.float64)
+    # An hour whose timesteps agree keeps that value exactly (a mean of equal floats can
+    # differ in the last bit, and equal days are shared by comparing values).
+    hourly: npt.NDArray[np.float64] = steps.mean(axis=1)
+    same = steps.min(axis=1) == steps.max(axis=1)
+    hourly[same] = steps[same, 0]
+    return hourly
+
+
+def _follows_daylight_saving(obj: AnySchedule) -> bool:
+    """Whether EnergyPlus shifts `obj` on daylight saving days: all but a `Schedule:File` that opts out."""
+    if obj.obj_type != "Schedule:File":
+        return True
+    adjust = getattr(obj, "adjust_schedule_for_daylight_savings", None)
+    return str(adjust or "Yes").casefold() != "no"
+
+
+def _shift_daylight_saving(
+    steps: npt.NDArray[np.float64], days: npt.NDArray[np.intp], *, wrap_to_same_day: bool = False
+) -> npt.NDArray[np.float64]:
+    """Shift the clock hours of `days` by one hour, as EnergyPlus does on daylight saving days.
+
+    EnergyPlus reports in standard time and, on a daylight saving day, takes each schedule's
+    value of the next clock hour (`LookUpScheduleValue`): the last hour takes the first hour of
+    the next day, with that day's type (31 December takes 1 January).
+    """
+    timestep = steps.shape[1]
+    clock = steps.reshape(-1, 24 * timestep)  # pyright: ignore[reportUnknownMemberType]
+    shifted = np.array(clock, dtype=np.float64)
+    following = days if wrap_to_same_day else (days + 1) % clock.shape[0]
+    shifted[days, :-timestep] = clock[days, timestep:]
+    shifted[days, -timestep:] = clock[following, :timestep]
+    return shifted.reshape(-1, timestep)  # pyright: ignore[reportUnknownMemberType]
+
+
+def design_daylight_saving(doc: IDFDocumentSince22_1) -> frozenset[DesignDayKind]:
+    """Return the design day kinds whose first `SizingPeriod:DesignDay` observes daylight saving time.
+
+    Args:
+        doc: The model.
+
+    Returns:
+        The kinds whose design day sets `Daylight Saving Time Indicator` to Yes.
+    """
+    found: set[DesignDayKind] = set()
+    observes: set[DesignDayKind] = set()
+    for design_day in doc.sizing_period_design_days:
+        kind = _DESIGN_DAY_TYPES.get(str(design_day.day_type or "").casefold())
+        if kind is None or kind in found:
+            continue
+        found.add(kind)
+        if str(design_day.daylight_saving_time_indicator or "No").casefold() == "yes":
+            observes.add(kind)
+    return frozenset(observes)
 
 
 def design_dates(doc: IDFDocumentSince22_1, year: int) -> dict[DesignDayKind, tuple[int, int]]:
@@ -522,7 +619,23 @@ def design_dates(doc: IDFDocumentSince22_1, year: int) -> dict[DesignDayKind, tu
     return dates
 
 
-def design_day_evaluators(schedules: object) -> dict[DesignDayKind, Callable[[str], Profile]] | None:
+@dataclass(frozen=True)
+class DesignDayEvaluator:
+    """Evaluate schedules on one design day: hourly by calling it, at the model's timestep by `steps`."""
+
+    evaluator: ScheduleEvaluator
+    kind: DesignDayKind
+
+    def __call__(self, name: str) -> Profile:
+        """Return the 24 hourly values of the schedule called `name` on the design day."""
+        return self.evaluator.design_day(name, self.kind)
+
+    def steps(self, name: str) -> npt.NDArray[np.float64]:
+        """Return the design day's values of the schedule called `name` at the model's timestep."""
+        return self.evaluator.design_day_steps(name, self.kind)
+
+
+def design_day_evaluators(schedules: object) -> dict[DesignDayKind, DesignDayEvaluator] | None:
     """Return one evaluator per design day kind, when `schedules` evaluates design days.
 
     Args:
@@ -534,12 +647,7 @@ def design_day_evaluators(schedules: object) -> dict[DesignDayKind, Callable[[st
     """
     if not isinstance(schedules, ScheduleEvaluator):
         return None
-    evaluator = schedules
-
-    def on(kind: DesignDayKind) -> Callable[[str], Profile]:
-        return lambda name: evaluator.design_day(name, kind)
-
-    return {kind: on(kind) for kind in DESIGN_DAY_KINDS}
+    return {kind: DesignDayEvaluator(schedules, kind) for kind in DESIGN_DAY_KINDS}
 
 
 def project(

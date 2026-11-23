@@ -308,7 +308,9 @@ def test_set_to_sbem_fills_the_five_other_slots_and_notes_them() -> None:
     assert envelope.FlatRoofAssembly.Type == "FlatRoof"
     assert envelope.AtticRoofAssembly.Name == "Roof"
     assert envelope.AtticRoofAssembly.Type == "AtticRoof"
-    assert envelope.AtticFloorAssembly.Name == "Slab"
+    # Reversed, so under epinterface's reversed name: one IDF Construction per name.
+    assert envelope.AtticFloorAssembly.Name == "Slab_Reversed"
+    assert envelope.AtticFloorAssembly.Name != envelope.FloorCeilingAssembly.Name
     assert envelope.ExternalFloorAssembly.Name == "Slab"
     assert envelope.BasementCeilingAssembly.Name == "Slab"
     assert envelope.GroundWallAssembly.Name == "Ground"
@@ -560,3 +562,14 @@ def test_material_to_umi_no_cost_or_carbon_per_area_loses_nothing(rate_unit: str
 def test_cost_from_sbem_of_no_cost_per_area_is_zero() -> None:
     assert cost_from_sbem(0.0, "m2", 50.0) == 0.0
     assert cost_from_sbem(2.0, "kg", 0.0) is None
+
+
+def test_a_versioned_material_and_assembly_lose_their_version_on_writing() -> None:
+    findings = Findings()
+    material = material_to_sbem(brick(), subject="T", location="/m", findings=Findings()).model_copy(
+        update={"Version": "v3"}
+    )
+    material_to_umi(material, "T", "a.Material", findings)
+    assert [(loss.location, loss.value) for loss in findings.losses if loss.rule == "names.metadata"] == [
+        ("a.Material.Version", "v3")
+    ]

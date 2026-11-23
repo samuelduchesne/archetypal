@@ -76,3 +76,9 @@ def test_the_command_line_module_exports_only_its_entry_point() -> None:
     from archetypal import cli  # noqa: PLC0415
 
     assert cli.__all__ == ["main"]
+
+
+def test_dir_lists_the_lazily_imported_names() -> None:
+    import archetypal  # noqa: PLC0415
+
+    assert set(archetypal.__all__) <= set(dir(archetypal))

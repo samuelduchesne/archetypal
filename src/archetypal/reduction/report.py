@@ -17,6 +17,7 @@ data-model.md, section ReductionReport:
 | `merged_distinctions[]` | `MergedDistinction` (coarser layouts, US2) |
 | `unattributed_energy` | standby and pilot energy by fuel, J |
 | `building` | `BuildingBlock`: conditioned floor area, unrounded storey ratio |
+| `notes` | remarks on the grouping (a layout with exposure in a building with no core zones) |
 
 Ledgers are `GroupLedger`s, whose profiles are written as `archetypal.io.EncodedProfile`
 (base64 little-endian float64 with their length), so the report reads back exactly.
@@ -487,6 +488,8 @@ class ReductionReport(_Record):
         merged_distinctions: For a coarser layout, the finest keys each group merges.
         unattributed_energy: Standby and pilot consumption by fuel, J (FR-022).
         building: Conditioned floor area and the unrounded storey ratio.
+        notes: Remarks on the grouping, for example a layout with exposure in a building with no
+            core zones (US2 scenario 3).
     """
 
     model_config = ConfigDict(
@@ -507,6 +510,7 @@ class ReductionReport(_Record):
     merged_distinctions: tuple[MergedDistinction, ...] = ()
     unattributed_energy: dict[Fuel, float] = Field(default_factory=dict[Fuel, float])
     building: BuildingBlock
+    notes: tuple[str, ...] = ()
 
     @field_validator("groups", mode="after")
     @classmethod
@@ -665,7 +669,8 @@ def check_area(report: ReductionReport, *, conditioned_floor_area: float | None 
     for group in report.groups:
         if not _close(group.floor_area, group.ledger.floor_area, AREA_RTOL):
             texts.append(
-                f"group {group.name!r} floor area {group.floor_area!r} differs from its ledger's {group.ledger.floor_area!r}"
+                f"group {group.name!r} floor area {group.floor_area!r} "
+                f"differs from its ledger's {group.ledger.floor_area!r}"
             )
         from_members = math.fsum(m.multiplier * m.floor_area for m in group.members)
         if not _close(group.floor_area, from_members, LEDGER_RTOL):
@@ -888,7 +893,8 @@ def _distinction_mismatches(
             )
         if not set(entry.lost) <= possible:
             texts.append(
-                f"group {entry.into_key!r} loses {list(entry.lost)}; layout {layout.value!r} can only lose {sorted(possible)}"
+                f"group {entry.into_key!r} loses {list(entry.lost)}; "
+                f"layout {layout.value!r} can only lose {sorted(possible)}"
             )
     return texts
 

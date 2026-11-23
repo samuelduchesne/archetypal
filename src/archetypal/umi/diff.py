@@ -400,9 +400,16 @@ def _match_templates(
         index for index, template in enumerate(originals) if any(t.name == template.name for t in originals[:index])
     }
     for index in range(len(originals)):
-        if matched[index] is None and index in repeated and index in free:
-            free.remove(index)
-            matched[index] = results[index]
+        if matched[index] is not None or index not in repeated:
+            continue
+        # A repeated name was renamed `<name> #k` on reading; templates skipped before it shift
+        # the positions, so the renamed result is found by name first, then by place.
+        name = originals[index].name
+        renamed = next((i for i in free if (results[i].name or "").startswith(f"{name} #")), None)
+        found = renamed if renamed is not None else (index if index in free else None)
+        if found is not None:
+            free.remove(found)
+            matched[index] = results[found]
     return matched
 
 
@@ -469,7 +476,8 @@ def _unused(first: LibraryIndex, second: LibraryIndex, comparer: _UmiComparer) -
     """
     by_name: dict[tuple[type, str | None], FormatModel] = {}
     for item, _ in second.components():
-        if isinstance(item, LibraryComponent):
+        # Only the result's unused components: a used one is compared through its template.
+        if isinstance(item, LibraryComponent) and not second.users(item):
             by_name.setdefault((type(item), item.name), item)
     matched: set[int] = set()
     for item, pointer in first.components():
@@ -520,7 +528,12 @@ _DESCRIPTIVE_FIELDS: Final = frozenset({
 
 
 def _sbem_relevance(path: str) -> Relevance:
-    field = path.rsplit(".", 1)[-1].split("[", 1)[0]
+    # A list element (`archetype.Authors.0`) has its list's relevance.
+    parts = path.split(".")
+    while len(parts) > 1 and parts[-1].isdigit():
+        parts.pop()
+    path = ".".join(parts)
+    field = parts[-1].split("[", 1)[0]
     if field in _DESCRIPTIVE_FIELDS:
         return Relevance.DESCRIPTIVE
     table = _sbem_relevance_table()

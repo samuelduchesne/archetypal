@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import click
 
+from archetypal.cli._reduce import library_path
 from archetypal.cli._summary import RunSummary, count_translation
 from archetypal.errors import InputError
 
@@ -55,7 +56,7 @@ def _sbem_sources(source: Path) -> list[Path] | None:
     "--output",
     type=click.Path(path_type=Path),
     required=True,
-    help="Folder for the SBEM archetypes (from UMI), or the UMI library file (from SBEM).",
+    help="Folder for the SBEM archetypes (from UMI), or the UMI library .json file, or its folder (from SBEM).",
 )
 @click.option("--strict", is_flag=True, help="Fail, writing nothing, when anything would be lost.")
 @click.option("--force", is_flag=True, help="Overwrite existing outputs and reports.")
@@ -83,8 +84,9 @@ def translate_command(
         outputs, reports, report = list(written[:-1]), [written[-1]], imported.report
         count, noun = len(imported.archetypes), "template"
     else:
-        export = to_umi([_read_archetype(path) for path in archetypes], strict=strict)
-        library, loss = export.write(output, overwrite=force)
+        target = library_path(output)
+        export = to_umi([_read_archetype(path) for path in archetypes], strict=strict, path=target)
+        library, loss = export.write(target, overwrite=force)
         outputs, reports, report = [library], [loss], export.report
         count, noun = len(archetypes), "archetype"
     losses, approximations = count_translation(report)

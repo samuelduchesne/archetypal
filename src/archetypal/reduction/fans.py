@@ -60,7 +60,8 @@ from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import numpy as np
 
-from archetypal.reduction.airflow import air_loop_zones
+from archetypal.reduction._sql_tables import read_site_elevation
+from archetypal.reduction.airflow import TERMINAL_INLET_FIELDS, air_loop_zones
 from archetypal.reduction.efficiency import equipment_table, read_hourly, zone_equipment
 from archetypal.reduction.ledger import FanTotals, Mode
 
@@ -68,6 +69,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping, Sequence
 
     import numpy.typing as npt
+    from idfkit.simulation import SQLResult
     from idfkit.versioned import IDFDocumentSince22_1
 
     from archetypal.reduction.classify import ClassifiedZone
@@ -386,7 +388,17 @@ def _loop_zones(doc: IDFDocumentSince22_1, node_lists: Mapping[str, tuple[str, .
     return loops
 
 
-def _elevation(doc: IDFDocumentSince22_1) -> float:
+def _elevation(doc: IDFDocumentSince22_1, results: SQLResult | None = None) -> float:
+    """The site elevation EnergyPlus ran with, m.
+
+    For a weather-file run EnergyPlus takes the weather file's location unless `Site:Location`
+    keeps its own, so the elevation the results report (`read_site_elevation`) is read first;
+    `Site:Location`'s elevation, else 0, without it.
+    """
+    if results is not None:
+        reported = read_site_elevation(results)
+        if reported is not None:
+            return reported
     for location in doc["Site:Location"]:
         return float(location.elevation or 0.0)
     return 0.0
@@ -407,14 +419,7 @@ def _adu_nodes(
     return adu_nodes
 
 
-_TERMINAL_INLETS = (
-    "air_inlet_node_name",
-    "supply_air_inlet_node_name",
-    "primary_air_inlet_node_name",
-    "hot_air_inlet_node_name",
-    "cold_air_inlet_node_name",
-)
-"""The fields of an air terminal that name an inlet node fed by an air loop (single duct, PIU, dual duct)."""
+_TERMINAL_INLETS = TERMINAL_INLET_FIELDS
 
 
 def _supply_outlets(doc: IDFDocumentSince22_1) -> dict[str, set[str]]:
@@ -598,7 +603,7 @@ def building_fans(sources: SourceData, zones: Sequence[ClassifiedZone]) -> Build
             "cooling": {zone.zone.name: get(COOLING_VARIABLE, zone.zone.name) for zone in zones},
         },
         outdoor_air={zone.zone.name: zone.zone.outdoor_air for zone in zones},
-        air_density=standard_air_density(_elevation(doc)),
+        air_density=standard_air_density(_elevation(doc, results)),
     )
 
 

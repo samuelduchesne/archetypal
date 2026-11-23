@@ -60,7 +60,7 @@ them and they can import the totals types from here. Each domain module defines:
 | Module (`archetypal.reduction.*`) | Function | Fields it returns |
 |---|---|---|
 | (this module) | `gain_fields` | `gains` |
-| `envelope` (T049) | `ledger_fields` | `envelope`, `window_by_orientation`, `internal_mass_capacity`, `internal_mass_area`, `excluded_envelope` |
+| `envelope` (T049) | `ledger_fields` | `envelope`, `window_by_orientation`, internal mass, `excluded_envelope` |
 | `airflow` (T050) | `ledger_fields` | `infiltration`, `outdoor_air` |
 | `thermostats` (T051) | `ledger_fields` | `heating_setpoint`, `cooling_setpoint`, `unheated_area`, `uncooled_area` |
 | `hotwater` (T052) | `ledger_fields` | `hot_water` |
@@ -226,7 +226,10 @@ def _add_profiles(a: NDArray[np.float64], b: NDArray[np.float64]) -> NDArray[np.
     if b.size == 0:
         return a
     if a.size != b.size:
-        msg = f"cannot add profiles of length {a.size} and {b.size}; every profile of a reduction has the run period's length"
+        msg = (
+            f"cannot add profiles of length {a.size} and {b.size}; "
+            "every profile of a reduction has the run period's length"
+        )
         raise ValueError(msg)
     return a + b
 
@@ -974,7 +977,9 @@ def _exact_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
 
     ventilation = hvac.Ventilation
     if ventilation.Provider in {"Mechanical", "Both"}:
-        design = area * ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * people
+        # Without occupancy epinterface writes no People, so per-person outdoor air is zero.
+        occupants = people if space_use.Occupancy.IsOn else 0.0
+        design = area * ventilation.FreshAirPerFloorArea + ventilation.FreshAirPerPerson * occupants
         # The mechanical outdoor air follows `MechVentSchedule` (UP-9), constant without one, as
         # epinterface's ideal loads; `Schedule` opens the windows of natural ventilation.
         mechanical = ventilation.MechVentSchedule
@@ -1168,8 +1173,9 @@ def gain_fields(
 ) -> dict[str, object]:
     """The `gains` hook: installed level, hourly profile and annual parts per gain kind, one copy.
 
-    For each `GainRecord` of the zone, the hourly profile is design level · its schedule (a
-    gain without a schedule is always on), and so are its design days when `schedules` is a
+    For each `GainRecord` of the zone with a non-negative design level (a heat sink has no SBEM
+    counterpart), the hourly profile is design level · its schedule (a gain without a schedule is
+    always on), and so are its design days when `schedules` is a
     `ScheduleEvaluator` (`schedule_design_days`). Annual radiant, latent and lost energy are the
     annual energy (Σ hourly · 3600 s) times the record's fractions; lights' return-air fraction
     counts as lost. People's parts are 0: their heat follows an activity level the record does
@@ -1193,10 +1199,17 @@ def gain_fields(
     record = zone.zone
     design = design_day_evaluators(schedules)
     for gain in record.gains:
+        if gain.design_level < 0.0:
+            # A heat sink (a negative OtherEquipment): SBEM's loads are non-negative densities, so
+            # it is listed as not represented (`reduction._heat_sinks`) instead.
+            continue
         if gain.schedule is None:
             length = hours if hours is not None else getattr(getattr(schedules, "calendar", None), "hours", None)
             if length is None:
-                msg = f"gain of kind {gain.kind!r} in zone {record.name!r} has no schedule and the run period's length is unknown"
+                msg = (
+                    f"gain of kind {gain.kind!r} in zone {record.name!r} has no schedule "
+                    "and the run period's length is unknown"
+                )
                 raise ValueError(msg)
             fraction = np.ones(int(length))
         else:

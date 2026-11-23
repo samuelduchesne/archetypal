@@ -253,3 +253,24 @@ def test_a_missing_group_is_a_difference(office: Archetype) -> None:
     diff = diff_archetypes(office, other)
     missing = [d for d in diff.differences if d.result is None and d.original == office.Groups[1].Name]
     assert missing
+
+
+def test_a_list_element_has_its_lists_relevance() -> None:
+    office = read_umi(B2).archetypes[0]
+    first = office.model_copy(update={"Country": ["CA"], "Authors": ["Alice"]})
+    second = office.model_copy(update={"Country": ["US"], "Authors": ["Bob"]})
+    result = diff_archetypes(first, second)
+    assert result.differences
+    assert {d.relevance for d in result.differences} == {Relevance.DESCRIPTIVE}
+    assert result.within_tolerance
+
+
+def test_a_repeated_template_after_a_skipped_one_is_compared(tmp_path: Path) -> None:
+    from archetypal.umi import write_umi  # noqa: PLC0415
+
+    imported = read_umi(UMI / "edge" / "out_of_range.json", skip_invalid_templates=True)
+    written = tmp_path / "written.json"
+    write_umi(imported.archetypes, written)
+    result = diff_umi(UMI / "edge" / "out_of_range.json", written)
+    missing = [d for d in result.differences if d.result is None and "/BuildingTemplates/" in d.location]
+    assert [d.location for d in missing] == ["/BuildingTemplates/0"]  # the skipped one only

@@ -365,3 +365,42 @@ def test_non_finite_numbers_are_range_problems(collection: str, name: str, key: 
     index, item = by_name(document, collection, name)
     item[key] = value
     assert (f"/{collection}/{index}/{key}", "Office") in where(problems_of(document))
+
+
+@pytest.mark.parametrize(
+    ("collection", "key", "value", "rule"),
+    [
+        ("ZoneLoads", "IlluminanceTarget", 0.0, "loads.daylighting"),
+        ("ZoneConditionings", "HeatRecoveryEfficiencySensible", 1.2, "conditioning.heat_recovery_efficiency"),
+        ("VentilationSettings", "NatVentMaxRelHumidity", 150.0, "vent.natural_limits"),
+        ("OpaqueConstructions", "AssemblyCarbon", -12.5, "construction.environmental"),
+        ("BuildingTemplates", "Lifespan", -5, "building.metadata"),
+    ],
+)
+def test_a_value_the_rules_lose_is_lost_not_refused(
+    tmp_path: Path, collection: str, key: str, value: float, rule: str
+) -> None:
+    """The correspondence notes promise these out-of-range values are lost, SBEM's default kept."""
+    from archetypal.umi import read_umi  # noqa: PLC0415
+
+    library = Path(__file__).parents[2] / "fixtures" / "umi" / "BostonTemplateLibrary_nodup.json"
+    document = json.loads(library.read_text(encoding="utf-8"))
+    document[collection][0][key] = value
+    path = tmp_path / "library.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    result = read_umi(path)
+    assert any(loss.rule == rule and key in loss.location for loss in result.report.losses)
+
+
+def test_a_glazing_material_without_conductivity_is_a_validation_problem(tmp_path: Path) -> None:
+    from archetypal.errors import UmiValidationError  # noqa: PLC0415
+    from archetypal.umi import read_umi  # noqa: PLC0415
+
+    library = Path(__file__).parents[2] / "fixtures" / "umi" / "BostonTemplateLibrary_nodup.json"
+    document = json.loads(library.read_text(encoding="utf-8"))
+    document["GlazingMaterials"][0]["Conductivity"] = 0.0
+    path = tmp_path / "library.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    with pytest.raises(UmiValidationError) as caught:
+        read_umi(path)
+    assert any(problem.pointer.endswith("/Conductivity") for problem in caught.value.problems)

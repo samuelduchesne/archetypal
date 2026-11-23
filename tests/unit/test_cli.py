@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from click.testing import CliRunner
@@ -211,6 +211,7 @@ def test_to_umi_writes_one_library_with_a_template_per_model_and_the_reports(
     assert [t["Name"] for t in data["BuildingTemplates"]] == list(FAST)
     loss = json.loads((tmp_path / "campus.loss.json").read_text(encoding="utf-8"))
     assert loss["subjects"] == list(FAST)
+    assert loss["source"]["path"] == library.name
     assert "campus.loss.json" in err
     assert "2 models reduced" in err
 
@@ -225,6 +226,75 @@ def test_to_umi_is_the_default_with_v2s_output_name(
     assert (tmp_path / "myumitemplate.json").is_file()
     assert (tmp_path / "myumitemplate.loss.json").is_file()
     assert (tmp_path / "myumitemplate.bar_building.report.json").is_file()
+
+
+@pytest.mark.parametrize("folder", [".", "newdir"])
+def test_to_umi_into_a_folder_writes_the_default_library_there(
+    tmp_path: Path, cli_reductions: list[tuple[str, str]], monkeypatch: pytest.MonkeyPatch, folder: str
+) -> None:
+    del cli_reductions
+    monkeypatch.chdir(tmp_path)
+    code, _, err = run("reduce", MODELS / "bar_building.idf", *results_args("bar_building"), "-o", folder)
+    assert code == 4, err
+    assert (tmp_path / folder / "myumitemplate.json").is_file()
+    assert (tmp_path / folder / "myumitemplate.loss.json").is_file()
+
+
+def test_reduce_refuses_two_models_named_alike_but_for_case(tmp_path: Path) -> None:
+    for folder, name in (("a", "Office.idf"), ("b", "office.idf")):
+        (tmp_path / folder).mkdir()
+        (tmp_path / folder / name).write_text("Version, 24.2;\n")
+    code, _, err = run(
+        "reduce", tmp_path / "a" / "Office.idf", tmp_path / "b" / "office.idf", "-w", WEATHER, "-o", tmp_path / "x.json"
+    )
+    assert code != 0
+    assert "same name" in err
+
+
+def test_a_folder_of_models_skips_hidden_files(tmp_path: Path) -> None:
+    from archetypal.cli._reduce import expand_models  # noqa: PLC0415
+
+    (tmp_path / "office.idf").write_text("Version, 24.2;\n")
+    (tmp_path / "._office.idf").write_text("resource fork")
+    assert [p.name for p in expand_models([str(tmp_path)])] == ["office.idf"]
+
+
+def test_a_worker_that_dies_fails_its_model_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    from concurrent.futures.process import BrokenProcessPool  # noqa: PLC0415
+
+    from archetypal.cli import _reduce  # noqa: PLC0415
+    from archetypal.reduction.options import ReductionOptions  # noqa: PLC0415
+
+    class Future:
+        def __init__(self, job: Any) -> None:
+            self.job = job
+
+        def result(self) -> Any:
+            if self.job.model.name == "dies.idf":
+                raise BrokenProcessPool
+            return "reduced"
+
+    class Pool:
+        def __init__(self, **kwargs: Any) -> None:
+            del kwargs
+
+        def __enter__(self) -> Pool:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def submit(self, function: Any, job: Any) -> Future:
+            del function
+            return Future(job)
+
+    monkeypatch.setattr(_reduce, "ProcessPoolExecutor", Pool)
+    jobs = [_reduce._Job(Path(name), None, None, ReductionOptions()) for name in ("ok.idf", "dies.idf")]  # pyright: ignore[reportPrivateUsage]
+    done = _reduce._run_all(jobs, 2)  # pyright: ignore[reportPrivateUsage]
+    assert done[0] == "reduced"
+    failed = done[1]
+    assert isinstance(failed, tuple)
+    assert failed[0].error == "BrokenProcessPool"
 
 
 def test_layout_with_to_umi_is_refused(tmp_path: Path, cli_reductions: list[tuple[str, str]]) -> None:

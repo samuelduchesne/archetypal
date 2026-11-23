@@ -440,3 +440,17 @@ def test_airflow_zone_list_copy_strips_the_zone_name() -> None:
     coefficients = {"INF": (1.0, 0.0, 0.0, 0.0), "BIG INF": (0.5, 0.1, 0.2, 0.0)}
     record = _airflow(NominalInfiltrationRow(1, "CORE BIG INF", 1, None, 0.1), coefficients, "Core Big")
     assert record.constant == 1.0
+
+
+def test_a_glass_door_is_a_window() -> None:
+    # EnergyPlus writes the class as "Glass Door" in the Surfaces table.
+    assert surface_class("Glass Door", 90.0, "outdoors") == "window"
+    assert surface_class("GlassDoor", 90.0, "outdoors") == "window"
+
+
+def test_design_outdoor_air_adds_each_spaces_flow_per_zone() -> None:
+    """Two 50 m² spaces, each 0.05 m³/s by `Flow/Zone`: EnergyPlus sizes the zone for 0.10 m³/s."""
+    spec = _OutdoorAirSpec(method="Flow/Zone", per_person=0.0, per_area=0.0, per_zone=0.05, air_changes=0.0)
+    per_area, per_person = _design_outdoor_air(((0.5, spec), (0.5, spec)), 100.0, 300.0, 10.0)
+    assert per_area * 100.0 == pytest.approx(0.10)
+    assert per_person == 0.0

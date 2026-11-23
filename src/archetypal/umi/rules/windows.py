@@ -42,10 +42,11 @@ from epinterface.sbem.components.envelope import (
     WindowSettingsComponent,
 )
 from idfkit import new_document
+from idfkit.exceptions import IdfKitError
 from idfkit.thermal import calculate_shgc, calculate_u_value, calculate_visible_transmittance
 from pydantic import ValidationError
 
-from archetypal.umi._bridges import equivalent_glazing_layer
+from archetypal.umi._bridges import MAX_U_FACTOR, equivalent_glazing_layer
 from archetypal.umi._format import (
     GasMaterial,
     GlazingMaterial,
@@ -71,6 +72,8 @@ from archetypal.umi.rules.materials import (
     assembly_life_cycle_to_umi,
     life_cycle_to_sbem,
     life_cycle_to_umi,
+    lose_version,
+    non_negative,
 )
 
 if TYPE_CHECKING:
@@ -220,10 +223,15 @@ def simple_from_layers(
             has no EnergyPlus gas type (such as SF6).
     """
     glazings = _glazings(construction)
-    idf = _idfkit_construction(construction)
-    u_value = calculate_u_value(idf)
-    shgc = calculate_shgc(idf)
-    visible = calculate_visible_transmittance(idf)
+    try:
+        idf = _idfkit_construction(construction)
+        u_value = calculate_u_value(idf)
+        shgc = calculate_shgc(idf)
+        visible = calculate_visible_transmittance(idf)
+    except IdfKitError as error:
+        # idfkit refuses a layer EnergyPlus would refuse; the reader reports a ValueError.
+        msg = f"window construction {construction.name!r}: {error}"
+        raise ValueError(msg) from error
     if shgc is None or visible is None:  # pragma: no cover - every layer is glazing or gas
         msg = f"idfkit.thermal cannot compute SHGC and VT of window construction {construction.name!r}"
         raise ValueError(msg)
@@ -292,6 +300,12 @@ def _window_life_cycle_losses(window: SbemWindow, *, subject: str, location: str
     ]
 
 
+_SIMPLE_U_MIN = 0.01
+"""The lowest U, W/m2-K, written for a simple-glazing window (EnergyPlus refuses 0)."""
+_SIMPLE_FRACTION_MIN = 0.001
+"""The margin kept from 0 and 1 for SHGC and VT (EnergyPlus refuses both ends)."""
+
+
 def equivalent_layer(
     window: GlazingConstructionSimpleComponent, *, subject: str, location: str
 ) -> tuple[WindowConstruction, list[Loss]]:
@@ -312,7 +326,12 @@ def equivalent_layer(
         The UMI window construction and its loss: the window, written in another form
         (approximate).
     """
-    layer = equivalent_glazing_layer(window.UValue, window.SHGF, window.TVis)
+    # EnergyPlus's simple window model takes U in (0, 7] and SHGC and VT strictly between 0 and
+    # 1; SBEM allows any U >= 0 and the closed [0, 1]. Values outside are moved inside.
+    u_value = min(max(window.UValue, _SIMPLE_U_MIN), MAX_U_FACTOR)
+    shgc = min(max(window.SHGF, _SIMPLE_FRACTION_MIN), 1.0 - _SIMPLE_FRACTION_MIN)
+    visible = min(max(window.TVis, _SIMPLE_FRACTION_MIN), 1.0 - _SIMPLE_FRACTION_MIN)
+    layer = equivalent_glazing_layer(u_value, shgc, visible)
     glass = GlazingMaterial(
         Name=f"{window.Name} glazing",
         Category=window.Category or "Uncategorized",
@@ -341,6 +360,12 @@ def equivalent_layer(
         "UMI has no simple glazing: the window is written as the single glazing layer EnergyPlus's "
         "simple window model derives from U, SHGC and VT."
     )
+    if (u_value, shgc, visible) != (window.UValue, window.SHGF, window.TVis):
+        reason += (
+            f" EnergyPlus's simple window model takes U in (0, {MAX_U_FACTOR}] and SHGC and VT strictly between "
+            f"0 and 1, so U, SHGC and VT {window.UValue:g}, {window.SHGF:g}, {window.TVis:g} were written as "
+            f"{u_value:g}, {shgc:g}, {visible:g}."
+        )
     if window.UValue > LAYER_U_MAX:
         reason += f" EnergyPlus computes at most {LAYER_U_MAX} W/m2-K for a glazing layer, so U is not reproduced."
     loss = Loss(
@@ -352,7 +377,9 @@ def equivalent_layer(
         rule=_LAYERS,
         reason=reason,
     )
-    return construction, [loss, *_window_life_cycle_losses(window, subject=subject, location=location)]
+    version = Findings()
+    lose_version(window, location, subject, version)
+    return construction, [loss, *_window_life_cycle_losses(window, subject=subject, location=location), *version.losses]
 
 
 # --- Layered windows (window.layers, UP-9) ---------------------------------------------------------
@@ -400,8 +427,17 @@ def _glass_to_sbem(
         "IREmissivityBack": material.ir_emissivity_back,
         "DirtFactor": material.dirt_factor,
         "RateUnit": _PER_MASS,
-        "Cost": _cost_per_kg(material.cost, material.density, pointer, subject, findings),
-        "EmbodiedCarbon": material.embodied_carbon,
+        "Cost": non_negative(
+            _cost_per_kg(material.cost, material.density, pointer, subject, findings),
+            "Cost",
+            pointer,
+            subject,
+            findings,
+            "material.cost_per_m3",
+        ),
+        "EmbodiedCarbon": non_negative(
+            material.embodied_carbon, "EmbodiedCarbon", pointer, subject, findings, "material.carbon_per_m3"
+        ),
         **life_cycle_to_sbem(material, subject, pointer, findings, per_volume=False),
     })
 
@@ -432,7 +468,9 @@ def _gas_to_sbem(material: GasMaterial, pointer: str, subject: str, findings: Fi
         "DataSource": material.data_source,
         "GasType": _gas_type(material),
         "RateUnit": _PER_MASS,
-        "EmbodiedCarbon": material.embodied_carbon,
+        "EmbodiedCarbon": non_negative(
+            material.embodied_carbon, "EmbodiedCarbon", pointer, subject, findings, "material.carbon_per_m3"
+        ),
         **life_cycle_to_sbem(material, subject, pointer, findings, per_volume=False),
     })
 
@@ -530,6 +568,7 @@ def _first_error(error: ValidationError) -> str:
 def _glass_to_umi(
     material: GlazingMaterialComponent, location: str, subject: str, findings: Findings
 ) -> GlazingMaterial:
+    lose_version(material, location, subject, findings)
     # An unset RateUnit is per m3, as for opaque materials (`material.cost_per_m3`).
     density = material.Density or 0.0
     per_volume = material.RateUnit in (None, "m3")
@@ -546,7 +585,8 @@ def _glass_to_umi(
                 f"{location}.Cost",
                 material.Cost,
                 "material.cost_per_m3",
-                f"UMI holds cost per m3; a cost per {material.RateUnit} needs a density or thickness the material lacks.",
+                f"UMI holds cost per m3; a cost per {material.RateUnit} needs a density or thickness "
+                "the material lacks.",
                 replacement=0.0,
             )
     carbon = material.EmbodiedCarbon or 0.0
@@ -589,6 +629,7 @@ def _glass_to_umi(
 
 
 def _gas_to_umi(material: GasMaterialComponent, location: str, subject: str, findings: Findings) -> GasMaterial:
+    lose_version(material, location, subject, findings)
     if material.Cost is not None:
         findings.lose(
             LossKind.LOST,

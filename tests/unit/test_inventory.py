@@ -276,7 +276,7 @@ def test_hot_water_conserves_volume(ten: dict[str, ZoneRecord], ten_sources: Sou
     zoned = _raw_series(ten_sources, variable, "TYPICAL_CORE RESTROOM HOT WATER")
     (record,) = [r for r in ten["Typical_Core"].hot_water if not r.allocated]
     assert isinstance(record, HotWaterRecord)
-    assert record.share == 1.0
+    assert record.share * ten["Typical_Core"].multiplier == pytest.approx(1.0)
     assert record.target_temperature_schedule == "SHW Target Temperature"
     np.testing.assert_allclose(record.volume * ten["Typical_Core"].multiplier, zoned)
 
@@ -319,8 +319,8 @@ def test_records_are_frozen(three: dict[str, ZoneRecord]) -> None:
 
 
 def test_design_outdoor_air_maximum_keeps_only_the_largest_component() -> None:
-    def spec(method: str) -> _OutdoorAirSpec:
-        return _OutdoorAirSpec(method=method, per_person=0.01, per_area=0.001, per_zone=0.05, air_changes=0.0)
+    def spec(method: str) -> tuple[tuple[float, _OutdoorAirSpec], ...]:
+        return ((1.0, _OutdoorAirSpec(method=method, per_person=0.01, per_area=0.001, per_zone=0.05, air_changes=0.0)),)
 
     # 100 m², 10 people: per person 0.1, per area 0.1 + per zone 0.05 = 0.15 m³/s summed.
     assert _design_outdoor_air(spec("Sum"), 100.0, 300.0, 10.0) == pytest.approx((0.0015, 0.01))
@@ -403,10 +403,36 @@ def test_zoneless_hot_water_records_the_floor_area_fallback() -> None:
     assert result[2][0].share == pytest.approx(0.75)
 
 
-def test_airflow_zone_list_copy_matches_the_longest_object_name() -> None:
+def test_airflow_space_list_copy_strips_the_space_name() -> None:
+    # Space "OPEN BIG" with object "INF": the space name, not the longest suffix, decides.
+    coefficients = {"INF": (0.0, 0.03, 0.0, 0.0), "BIG INF": (1.0, 0.0, 0.0, 0.0)}
+    record = _airflow(NominalInfiltrationRow(1, "OPEN BIG INF", 1, None, 0.1), coefficients, "Zone", ("Open Big",))
+    assert (record.constant, record.temperature) == (0.0, 0.03)
+
+
+def test_airflow_ambiguous_copy_takes_no_coefficients() -> None:
+    # Without a known prefix, two object names end the copy's name: none is guessed.
     coefficients = {"INF": (1.0, 0.0, 0.0, 0.0), "BIG INF": (0.5, 0.1, 0.2, 0.0)}
     record = _airflow(NominalInfiltrationRow(1, "CORE BIG INF", 1, None, 0.1), coefficients)
-    assert (record.constant, record.temperature, record.velocity) == (0.5, 0.1, 0.2)
+    assert not record.coefficients_found
+
+
+def test_design_outdoor_air_proportional_control_adds_the_two_rates() -> None:
+    spec = _OutdoorAirSpec(
+        method="ProportionalControlBasedOnOccupancySchedule",
+        per_person=0.0025,
+        per_area=0.0003,
+        per_zone=0.0,
+        air_changes=0.0,
+    )
+    assert _design_outdoor_air(((1.0, spec),), 100.0, 300.0, 10.0) == pytest.approx((0.0003, 0.0025))
+
+
+def test_design_outdoor_air_weights_a_space_list_by_floor_area() -> None:
+    a = _OutdoorAirSpec(method="Flow/Area", per_person=0.0, per_area=0.001, per_zone=0.0, air_changes=0.0)
+    b = _OutdoorAirSpec(method="Flow/Area", per_person=0.0, per_area=0.003, per_zone=0.0, air_changes=0.0)
+    per_area, _ = _design_outdoor_air(((0.75, a), (0.25, b)), 100.0, 300.0, 10.0)
+    assert per_area == pytest.approx(0.0015)
 
 
 def test_airflow_zone_list_copy_strips_the_zone_name() -> None:

@@ -191,10 +191,11 @@ def test_dimming_type_maps_by_name_both_ways(dimming: DimmingType) -> None:
 def test_reading_sets_metabolic_rate_with_a_note() -> None:
     context = reading()
     parts = loads_to_sbem(zone_loads(), schedule=read_schedule, context=context)
-    assert parts.occupancy.MetabolicRate == METABOLIC_RATE == 1.2
+    assert parts.occupancy.MetabolicRate == METABOLIC_RATE
+    assert parts.occupancy.MetabolicRate_met_to_W == pytest.approx(125.28)  # UMI's people heat
     [note] = [note for note in notes(context) if note.rule == "loads.people"]
     assert note.kind is NoteKind.ASSUMED
-    assert note.value == 1.2
+    assert note.value == METABOLIC_RATE
     assert note.location == "/ZoneLoads/0/MetabolicRate"
     assert "MetabolicRate" in note.reason
 

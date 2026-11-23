@@ -15,9 +15,10 @@ evaluate or project a UMI schedule themselves.
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, NamedTuple, TypeVar, cast
 
-from epinterface.constants import assumed_constants
+from epinterface.constants import assumed_constants, physical_constants
 from epinterface.sbem.components.space_use import EquipmentComponent, LightingComponent, OccupancyComponent
 
 from archetypal.errors import Problem
@@ -64,8 +65,15 @@ __all__ = [
 
 _T = TypeVar("_T")
 
-METABOLIC_RATE: float = assumed_constants.MetabolicRate_met
-"""epinterface's default metabolic rate, in met (1.2): what reading gives SBEM's `MetabolicRate`."""
+UMI_ACTIVITY_W_PER_PERSON = 125.28
+"""The activity level UMI's people give off, W per person (archetypal 2's `ZoneLoads.to_epbunch`)."""
+
+METABOLIC_RATE: float = UMI_ACTIVITY_W_PER_PERSON / (
+    assumed_constants.AvgHumanWeight_kg * physical_constants.ConversionFactor_W_per_kg
+)
+"""UMI's activity level in epinterface's met (about 1.348): what reading gives SBEM's `MetabolicRate`,
+so the SBEM model's people give off the heat UMI's do (epinterface's default of 1.2 met gives
+111.55 W per person)."""
 
 
 def _schedule(year: YearSchedule | None, key: str, context: RuleContext) -> YearSchedule:
@@ -81,7 +89,7 @@ def _schedule(year: YearSchedule | None, key: str, context: RuleContext) -> Year
 
 @rule("loads.people", to="sbem")
 def occupancy_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: RuleContext) -> OccupancyComponent:
-    """Read UMI's people density, schedule and switch; set the metabolic rate to 1.2 met (noted).
+    """Read UMI's people density, schedule and switch; set the metabolic rate to UMI's activity (noted).
 
     Args:
         loads: The UMI loads.
@@ -92,7 +100,8 @@ def occupancy_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: Ru
         "MetabolicRate",
         METABOLIC_RATE,
         rule="loads.people",
-        reason="SBEM's Occupancy.MetabolicRate has no UMI field; epinterface's default used",
+        reason=f"SBEM's Occupancy.MetabolicRate has no UMI field; UMI's people give off {UMI_ACTIVITY_W_PER_PERSON} W "
+        "each, which this rate reproduces in epinterface",
     )
     return OccupancyComponent(
         Name=f"{loads.name} occupancy",
@@ -111,7 +120,7 @@ def occupancy_to_sbem(loads: ZoneLoads, *, schedule: ScheduleToSbem, context: Ru
 def occupancy_to_umi(
     occupancy: OccupancyComponent, *, schedule: ScheduleToUmi, context: RuleContext
 ) -> dict[str, object]:
-    """Write SBEM's occupancy; a metabolic rate other than 1.2 met is lost.
+    """Write SBEM's occupancy; a metabolic rate other than UMI's activity (`METABOLIC_RATE`) is lost.
 
     Args:
         occupancy: The SBEM occupancy.
@@ -121,12 +130,13 @@ def occupancy_to_umi(
     Returns:
         The UMI fields by name.
     """
-    if occupancy.MetabolicRate != METABOLIC_RATE:
+    if not math.isclose(occupancy.MetabolicRate, METABOLIC_RATE, rel_tol=1e-9):
         context.lose(
             "MetabolicRate",
             occupancy.MetabolicRate,
             rule="loads.people",
-            reason=f"UMI has no metabolic rate; reading gives {METABOLIC_RATE} met",
+            reason=f"UMI has no metabolic rate; its people give off {UMI_ACTIVITY_W_PER_PERSON} W each "
+            f"({METABOLIC_RATE:.4g} met)",
         )
     return {
         "people_density": occupancy.PeopleDensity,

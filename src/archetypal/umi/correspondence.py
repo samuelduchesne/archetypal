@@ -1058,8 +1058,8 @@ CORRESPONDENCE: tuple[FieldMapping, ...] = (
         (f"{_SPACE_USE}.Occupancy.PeopleDensity",),
         "loads.people",
         E,
-        "Same quantity (people/m2). SBEM's MetabolicRate has no UMI field: 1.2 met on reading "
-        "(noted), lost on writing when different.",
+        "Same quantity (people/m2). SBEM's MetabolicRate has no UMI field: UMI's 125.28 W per person "
+        "(about 1.348 met) on reading (noted), lost on writing when different.",
     ),
     _row(
         "ZoneLoads",

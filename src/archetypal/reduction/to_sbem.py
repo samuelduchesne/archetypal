@@ -39,8 +39,11 @@ Decisions of this module (spec gaps)
   each; a dict such as `WindowToWallRatio` is one leaf. Paths are dotted from the `ZoneGroup`
   (`Zone.Operations.SpaceUse.Occupancy.PeopleDensity`) or, with `group = None`, from the
   `Archetype` (`Geometry.Storeys`). `set_leaf_paths` lists them for invariant 3.
-- **Schedules** are projected with each month's holidays kept apart (`project_holidays`) and
-  written to UP-2's `Holiday` slots. Every schedule sets its `SummerDesignDay` and
+- **Schedules** are projected with each month's holidays averaged into their weekdays
+  (`project`): epinterface's builder declares no holiday (`RunPeriodControl:SpecialDays`, and
+  `use_weather_file_holidays_and_special_days = No`), so a `Holiday` slot would never apply and
+  the holidays would run as working days. Each month's energy is conserved on the calendar the
+  archetype runs; the lost holiday profile is listed as not represented. Every schedule sets its `SummerDesignDay` and
   `WinterDesignDay` slots in every week, so epinterface's builder sizes with them instead of its
   own design days (always-on gains, extreme setpoints). Gains, setpoints and infiltration take
   the ledger's design days (`DesignDays`), weighted as their run-period profiles and normalised
@@ -76,6 +79,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
 
 import numpy as np
+from epinterface.constants import assumed_constants, physical_constants
 from epinterface.sbem.archetype import (
     Archetype,
     AtticAssumptions,
@@ -131,7 +135,7 @@ from archetypal.reduction.ledger import (
     WindowTotals,
 )
 from archetypal.reduction.report import Parameter, group_name
-from archetypal.reduction.schedules import project_holidays, to_year_component
+from archetypal.reduction.schedules import project, to_year_component
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -218,6 +222,11 @@ _SUPPLY_HEATING_RANGE = (0.0, 100.0)  # epinterface's open bounds, °C
 _SUPPLY_COOLING_RANGE = (-100.0, 50.0)
 _HEATING_OFF, _COOLING_OFF = 5.0, 35.0  # thermostats.BAND edges: the mode stays off
 _SECONDS_PER_HOUR = 3600.0
+_ARCHETYPE_DAYS = 365
+"""Days of the year epinterface's builder simulates (a `RunPeriod` with no begin year)."""
+_STOREY_TIE_TOLERANCE = 1e-9
+_WATTS_PER_MET = assumed_constants.AvgHumanWeight_kg * physical_constants.ConversionFactor_W_per_kg
+"""W per person for 1 met in epinterface's people (`OccupancyComponent.MetabolicRate_met_to_W`)."""
 _HOURS_PER_DAY = 24
 _METADATA = frozenset({"Name", "Category", "Comment", "DataSource", "Version"})
 _ATOMIC: tuple[type[BaseModel], ...] = (YearComponent, ConstructionAssemblyComponent)
@@ -378,7 +387,7 @@ def _schedule(
     `design` gives the slots' values; `"monday"` sets each month's slots to that month's Monday,
     the day epinterface's builder would use; `None` leaves them unset.
     """
-    days, holidays = project_holidays(_profile(hourly, calendar), calendar)
+    days = project(_profile(hourly, calendar), calendar)
     if isinstance(design, str):
         design = (days[:, 0, :], days[:, 0, :])
     summer, winter = (None, None) if design is None else design
@@ -387,7 +396,6 @@ def _schedule(
         name=name,
         category=category,
         limits=limits,
-        holidays=holidays,
         summer_design_day=summer,
         winter_design_day=winter,
     )
@@ -541,7 +549,8 @@ def storeys(ratio: float) -> Derived[int]:
     Returns:
         The number of storeys.
     """
-    value = max(1, math.floor(ratio + 0.5))
+    # A tolerance on the tie, so a half that summation left one ulp low still rounds up.
+    value = max(1, math.floor(ratio + 0.5 + _STOREY_TIE_TOLERANCE))
     return Derived(value, "geometry.storeys", (LeafRule("Storeys", value, "geometry.storeys"),))
 
 
@@ -626,12 +635,24 @@ def _gain_schedule(
     label: str,
     category: YearScheduleCategory,
 ) -> tuple[float, YearComponent, list[NotRepresented]]:
-    """The installed level of `kinds` and their normalised schedule, design days included."""
+    """The level of `kinds` and their normalised schedule, design days included.
+
+    The level is the installed level, or the profile's peak when a schedule exceeds 1 (EnergyPlus
+    accepts any multiplier): the schedule must stay a fraction, and level · schedule still
+    reproduces the hourly gain.
+    """
     installed, hourly = _gain(ledger, kinds, calendar)
     design = _gain_design(ledger, kinds)
-    schedule = _schedule(_ratio(hourly, installed), calendar, name=f"{name} {label}", category=category, design=design)
+    peaks = [float(_ratio(hourly, installed).max()) if hourly.size else 0.0]
+    if design is not None:
+        peaks.extend(float(day.max()) for day in design)
+    factor = max(1.0, *peaks)
+    level = installed * factor
+    if design is not None and factor > 1.0:
+        design = (design[0] / factor, design[1] / factor)
+    schedule = _schedule(_ratio(hourly, level), calendar, name=f"{name} {label}", category=category, design=design)
     lost = [] if design is not None else [_design_lost(ledger, name, label)]
-    return installed, schedule, lost
+    return level, schedule, lost
 
 
 def occupancy(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) -> Derived[OccupancyComponent]:
@@ -648,12 +669,20 @@ def occupancy(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
     installed, schedule, lost = _gain_schedule(
         ledger, ("people",), calendar, name=name, label="occupancy", category="Occupancy"
     )
-    value = OccupancyComponent(
-        Name=f"{name} occupancy",
-        PeopleDensity=installed / ledger.floor_area,
-        Schedule=schedule,
-        IsOn=installed > 0,
-    )
+    people = ledger.gains.get("people")
+    occupant_seconds = float(np.sum(people.hourly)) * _SECONDS_PER_HOUR if people is not None else 0.0
+    metabolic: dict[str, float] = {}
+    if people is not None and people.activity > 0 and occupant_seconds > 0:
+        # The occupant-hour mean activity level, W per person, as epinterface's met: it
+        # multiplies MetabolicRate by its average weight and W per kg.
+        metabolic["MetabolicRate"] = (people.activity / occupant_seconds) / _WATTS_PER_MET
+    value = OccupancyComponent.model_validate({
+        "Name": f"{name} occupancy",
+        "PeopleDensity": installed / ledger.floor_area,
+        "Schedule": schedule,
+        "IsOn": installed > 0,
+        **metabolic,
+    })
     return Derived(
         value, "gain.density", _leaves(value, {"Schedule": "schedule.normalised"}, "gain.density"), tuple(lost)
     )
@@ -815,8 +844,9 @@ def water_use(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
     """`WaterUseComponent`: annual volume ÷ occupant-days (rule `dhw.volume_per_person`, FR-021).
 
     epinterface draws `FlowRatePerPerson · PeopleDensity · floor area` each day, so the
-    occupant-days are the installed occupants times the days of the run period, and the annual
-    volume is conserved. The schedule is the projected volume profile divided by its peak; the
+    occupant-days are the installed occupants times the days of the run period, and the daily
+    volume is conserved: over a 365-day run period, the annual volume too. epinterface runs a
+    365-day year, so a run period of another length (a leap year) is listed as not represented. The schedule is the projected volume profile divided by its peak; the
     volume comes from run-period results, so its design-day slots repeat each month's Monday
     (`design_days_from_results`).
 
@@ -834,6 +864,19 @@ def water_use(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
     lost: list[NotRepresented] = []
     if total > 0 and people > 0:
         per_person = total / (people * calendar.days)
+        if calendar.days != _ARCHETYPE_DAYS:
+            lost.append(
+                _entry(
+                    ledger,
+                    name,
+                    "Hot-water volume outside a 365-day year",
+                    f"The run period has {calendar.days} days and epinterface's year 365; the daily volume is kept, "
+                    "so the archetype's annual volume differs by the difference in days.",
+                    magnitude=total * (_ARCHETYPE_DAYS - calendar.days) / calendar.days,
+                    unit="m3",
+                    source="hotwater",
+                )
+            )
     else:
         per_person = 0.0
         if total > 0:
@@ -848,11 +891,10 @@ def water_use(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
                     source="hotwater",
                 )
             )
-    days, holidays = project_holidays(volume, calendar)
-    peak = max([float(days.max()), *(float(h.max()) for h in holidays.values())]) if total > 0 else 0.0
+    days = project(volume, calendar)
+    peak = float(days.max()) if total > 0 else 0.0
     if peak > 0:
         days = days / peak
-        holidays = {m: h / peak for m, h in holidays.items()}
     # The volume comes from run-period results, which hold no design day: each month's Monday,
     # which the builder would use anyway, is set explicitly (`design_days_from_results`).
     mondays = days[:, 0, :]
@@ -860,7 +902,6 @@ def water_use(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) ->
         days,
         name=f"{name} water use",
         category="WaterUse",
-        holidays=holidays,
         summer_design_day=mondays,
         winter_design_day=mondays,
     )
@@ -947,7 +988,9 @@ def dhw(
 
     The inlet temperature is the annual-mean mains temperature and the supply temperature that
     plus `heat / volume`, so volume · (supply - inlet) reproduces the heat (FR-021). The COPs
-    follow R12 on the hot-water mode (distribution COP 1).
+    follow R12 on the hot-water mode; epinterface's effective COP is SystemCOP · DistributionCOP,
+    so the distribution COP carries the service hot-water pumps. A group whose hot water is
+    never heated (a mean rise of 0 or less) has its hot water off, listed as not represented.
 
     Args:
         ledger: The group's ledger.
@@ -959,21 +1002,41 @@ def dhw(
         The component.
     """
     rise = ledger.hot_water.mean_rise
-    on = rise is not None
     inlet = 10.0 if mains_temperature is None else mains_temperature
+    unheated: list[NotRepresented] = []
+    if rise is not None and rise <= 0:
+        unheated.append(
+            _entry(
+                ledger,
+                name,
+                "Unheated hot water",
+                f"The hot water is drawn at a mean rise of {rise:.3g} K over the cold water, so it is not heated; "
+                "SBEM's hot water is off.",
+                magnitude=float(np.sum(ledger.hot_water.volume)),
+                unit="m3",
+                source="hotwater",
+            )
+        )
+    on = rise is not None and rise > 0
+    # 45 K is only a placeholder for a component that is off.
     supply = inlet + (rise if rise is not None and rise > 0 else 45.0)
     efficiency = _efficiency(ledger, building, "hot_water", name, "Zone.Operations.DHW", "FuelType") if on else None
     if efficiency is None:
-        system, fuel, rule, lost = 1.0, "Electricity", "efficiency.rated", []
+        system, distribution, fuel, rule, lost = 1.0, 1.0, "Electricity", "efficiency.rated", []
     else:
-        system, _, fuel, rule, lost = efficiency
+        system, distribution, fuel, rule, lost = efficiency
+    lost.extend(unheated)
     if fuel not in _DHW_FUELS:
+        # One entry for the fuel written, replacing `_efficiency`'s, which names CustomFuel.
+        lost = [e for e in lost if e.folded_into != "Zone.Operations.DHW.FuelType"]
+        totals = ledger.energy.get("hot_water")
+        source_fuel = (_dominant(totals.consumed_by_fuel) if totals is not None else None) or fuel
         lost.append(
             _entry(
                 ledger,
                 name,
-                f"Hot-water fuel {fuel}",
-                f"SBEM's hot water cannot use {fuel}; it is written as NaturalGas.",
+                f"Hot-water fuel {source_fuel}",
+                f"SBEM's hot water cannot use {source_fuel}; it is written as NaturalGas.",
                 folded_into="Zone.Operations.DHW.FuelType",
                 source="hotwater",
             )
@@ -983,7 +1046,7 @@ def dhw(
         Name=f"{name} hot water",
         SystemCOP=system,
         WaterTemperatureInlet=inlet,
-        DistributionCOP=1.0,
+        DistributionCOP=distribution,
         WaterSupplyTemperature=supply,
         IsOn=on,
         FuelType=cast("Any", fuel),
@@ -1102,8 +1165,9 @@ def infiltration(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str)
     The flow-weighted mean coefficients are written; UP-2's schedule is `project(hourly / mean)`
     (`AnyNumber`), so mean · schedule reproduces the hourly design-flow profile, and its
     design-day slots are the design days divided by the same mean. epinterface's
-    builder applies the coefficients 1/0/0/0, so the weather response is listed as not
-    represented. A group with infiltration but no exterior area cannot hold it.
+    builder applies the coefficients 1/0/0/0, so the weather response is dropped and listed as
+    not represented: the results hold no infiltration flow, zone temperature or wind speed to
+    fold it in. A group with infiltration but no exterior area cannot hold it.
 
     Args:
         ledger: The group's ledger.
@@ -1166,9 +1230,11 @@ def infiltration(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str)
             ledger,
             name,
             "Infiltration response to weather",
-            "The wind and temperature coefficients (flow-weighted means written) are not applied: "
-            "epinterface writes infiltration with coefficients 1, 0, 0, 0.",
-            folded_into="Zone.Envelope.Infiltration.FlowPerExteriorSurfaceArea",
+            "EnergyPlus multiplies the design flow by A + B·|ΔT| + C·v + D·v² (flow-weighted means "
+            f"{totals.constant_weighted / flow:.4g}, {totals.temperature_weighted / flow:.4g}, "
+            f"{totals.velocity_weighted / flow:.4g}, {totals.velocity_squared_weighted / flow:.4g}); the archetype's "
+            "flow is the design flow (epinterface writes 1, 0, 0, 0), so the weather response is dropped, not "
+            "folded: the annual infiltration differs whenever the coefficients are not 1, 0, 0, 0.",
             source="airflow",
         )
     )
@@ -1190,6 +1256,10 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
     run-period results, so the design-day slots repeat each month's Monday
     (`design_days_from_results`).
 
+    EnergyPlus's mechanical-ventilation output holds every outdoor air a zone receives, the
+    economiser's included; with an economiser the profile is held at the design minimum outdoor
+    air, and the volume above it is left to the archetype's economiser (listed).
+
     HRV and economiser take the category serving the most outdoor-air volume, and the sensible
     effectiveness its volume-weighted mean over the volume with heat recovery (UP-2's numeric
     field; rule `airflow.dominant_category`). DCV is `NoDCV`: the hourly profile already holds
@@ -1205,8 +1275,28 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
     """
     oa = ledger.outdoor_air
     hourly = _profile(oa.hourly, calendar)
-    peak = float(hourly.max()) if hourly.size else 0.0
     lost: list[NotRepresented] = []
+    economiser = _dominant(oa.economiser_weighted) or "NoEconomizer"
+    if economiser != "NoEconomizer" and oa.design_flow > 0 and float(hourly.max()) > oa.design_flow:
+        # EnergyPlus reports all the outdoor air a zone receives, the economiser's included.
+        # The minimum outdoor air is held at the design flow; the economiser category lets the
+        # ideal loads draw the free-cooling air above it, as the detailed model's did.
+        excess = float(np.maximum(hourly - oa.design_flow, 0.0).sum()) * _SECONDS_PER_HOUR
+        hourly = np.minimum(hourly, oa.design_flow)
+        lost.append(
+            _entry(
+                ledger,
+                name,
+                "Economiser outdoor air",
+                "The outdoor air above the design minimum, which the detailed model's economiser drew, is left to "
+                "the archetype's economiser instead of being forced as a minimum.",
+                magnitude=excess,
+                unit="m3",
+                folded_into="Zone.Operations.HVAC.Ventilation.Economizer",
+                source="airflow",
+            )
+        )
+    peak = float(hourly.max()) if hourly.size else 0.0
     schedule = _schedule(_ratio(hourly, peak), calendar, name=f"{name} ventilation", category="Window", design="monday")
     if peak <= 0:
         value = VentilationComponent(
@@ -1222,7 +1312,6 @@ def ventilation(ledger: GroupLedger, calendar: RunPeriodCalendar, *, name: str) 
         rules = {"Schedule": "schedule.normalised"}
         return Derived(value, "airflow.peak_per_area", _leaves(value, rules, "airflow.peak_per_area"))
     hrv = _dominant(oa.hrv_weighted) or "NoHRV"
-    economiser = _dominant(oa.economiser_weighted) or "NoEconomizer"
     recovered = sum(v for k, v in oa.hrv_weighted.items() if k != "NoHRV")
     extra: dict[str, object] = {}
     if hrv != "NoHRV" and recovered > 0:
@@ -1369,14 +1458,31 @@ def _supply_limits(ledger: GroupLedger, air_density: float, name: str) -> tuple[
     delta_h = effective_supply_delta(fans, "heating", air_density=air_density)
     delta_c = effective_supply_delta(fans, "cooling", air_density=air_density)
     candidates: dict[str, tuple[float, float]] = {}  # field -> (value, delivered)
+
+    def out_of_range(field: str, value: float, bounds: tuple[float, float]) -> NotRepresented:
+        return _entry(
+            ledger,
+            name,
+            f"Effective supply temperature difference ({field})",
+            f"The detailed model's supply temperature limit, {value:.4g} °C, lies outside epinterface's range "
+            f"({bounds[0]:g} to {bounds[1]:g} °C); it keeps epinterface's default, so the archetype's air volume "
+            "(and fan energy) differs in that mode.",
+            folded_into=f"Zone.Operations.HVAC.ConditioningSystems.{field}",
+            source="fans",
+        )
+
     if heating is not None and delta_h is not None:
         value = _extreme(heating, ledger.heating_setpoint, max) + delta_h
         if _SUPPLY_HEATING_RANGE[0] < value < _SUPPLY_HEATING_RANGE[1]:
             candidates["MaximumHeatingSupplyAirTemperature"] = (value, fans.delivered_in_mode.get("heating", 0.0))
+        else:
+            lost.append(out_of_range("MaximumHeatingSupplyAirTemperature", value, _SUPPLY_HEATING_RANGE))
     if cooling is not None and delta_c is not None:
         value = _extreme(cooling, ledger.cooling_setpoint, min) - delta_c
         if _SUPPLY_COOLING_RANGE[0] < value < _SUPPLY_COOLING_RANGE[1]:
             candidates["MinimumCoolingSupplyAirTemperature"] = (value, fans.delivered_in_mode.get("cooling", 0.0))
+        else:
+            lost.append(out_of_range("MinimumCoolingSupplyAirTemperature", value, _SUPPLY_COOLING_RANGE))
     defaults = {"MaximumHeatingSupplyAirTemperature": 30.0, "MinimumCoolingSupplyAirTemperature": 13.0}
     chosen = {k: v for k, (v, _) in candidates.items()}
     merged = {**defaults, **chosen}
@@ -1570,7 +1676,23 @@ def zone_group(
     )
     lost = [entry for part in parts.values() for entry in part.not_represented]
     lost.extend(_gain_parts_lost(ledger, name))
+    if cal.holidays:
+        lost.append(_holidays_lost(ledger, name, len(cal.holidays)))
     return Derived(value, "area.share", tuple(leaves), tuple(lost))
+
+
+def _holidays_lost(ledger: GroupLedger, name: str, count: int) -> NotRepresented:
+    return _entry(
+        ledger,
+        name,
+        "Holiday profiles",
+        f"The detailed model has {count} holidays; epinterface's builder declares none, so each holiday is "
+        "averaged into its weekday's day of the month, which conserves each month's energy but not the holiday "
+        "profile itself.",
+        magnitude=float(count),
+        unit="days",
+        source="schedules",
+    )
 
 
 # --- the archetype -----------------------------------------------------------------------------------

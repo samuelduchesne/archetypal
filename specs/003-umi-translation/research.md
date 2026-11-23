@@ -371,8 +371,10 @@ Each rule states what it conserves (constitution IV). The full table is in data-
 
 - **Gains.** `PeopleDensity`, `LightingPowerDensity` and `EquipmentPowerDensity` map exactly.
   Their schedules follow R7. `Is*On` maps to `IsOn`. `DimmingType` maps by name. SBEM's
-  `MetabolicRate` has no UMI field: reading sets epinterface's default (1.2 met) and notes it;
-  writing lists a non-default value as lost.
+  `MetabolicRate` has no UMI field: reading sets the rate that gives UMI's people heat, 125.28 W
+  per person (archetypal 2's writer), in epinterface's met (125.28 / (80 kg × 1.162 W/kg), about
+  1.348; epinterface's default of 1.2 met gives 111.55 W, 11 % less), and notes it; writing
+  lists another value as lost.
 - **Infiltration.** `Infiltration` (ACH) maps to `AirChangesPerHour` with `CalculationMethod =
   "AirChanges/Hour"` and `IsOn`. Reading notes the unused coefficients: constant 1, others 0.
   Writing an archetype whose method is not air changes per hour needs the building's volume,

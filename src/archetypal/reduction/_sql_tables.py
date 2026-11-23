@@ -525,6 +525,8 @@ class NominalLoadRow:
             (EnergyPlus computes it from the activity level).
         fraction_lost: `FractionLost`; 0 for people, lights and baseboards.
         fraction_return_air: `FractionReturnAir` for lights; 0 otherwise.
+        activity_schedule_name: For people, the activity level schedule's name (W per person);
+            `None` otherwise.
     """
 
     kind: GainKind
@@ -537,6 +539,7 @@ class NominalLoadRow:
     fraction_latent: float | None
     fraction_lost: float
     fraction_return_air: float
+    activity_schedule_name: str | None = None
 
 
 def _read_nominal(sql: SQLResult, kind: GainKind) -> list[NominalLoadRow]:
@@ -549,8 +552,19 @@ def _read_nominal(sql: SQLResult, kind: GainKind) -> list[NominalLoadRow]:
         "lights": ("FractionReturnAir",),
         "baseboard": (),
     }.get(kind, ("FractionLatent", "FractionLost"))
-    columns = (index, "ObjectName", "ZoneIndex", level, "FractionRadiant", *extra, "s.ScheduleName AS ScheduleName")
+    columns: tuple[str, ...] = (
+        index,
+        "ObjectName",
+        "ZoneIndex",
+        level,
+        "FractionRadiant",
+        *extra,
+        "s.ScheduleName AS ScheduleName",
+    )
     joins = f"LEFT JOIN Schedules s ON s.ScheduleIndex = t.{schedule}"
+    if kind == "people":
+        columns = (*columns, "a.ScheduleName AS ActivityScheduleName")
+        joins += " LEFT JOIN Schedules a ON a.ScheduleIndex = t.ActivityScheduleIndex"
     rows = _select(sql, table, columns, order_by=f"t.{index}", joins=joins, prefix="t")
     return [
         NominalLoadRow(
@@ -564,6 +578,7 @@ def _read_nominal(sql: SQLResult, kind: GainKind) -> list[NominalLoadRow]:
             fraction_latent=None if kind == "people" else (row.real("FractionLatent") if extra[1:] else 0.0),
             fraction_lost=row.real("FractionLost") if extra[1:] else 0.0,
             fraction_return_air=row.real("FractionReturnAir") if kind == "lights" else 0.0,
+            activity_schedule_name=row.opt_text("ActivityScheduleName") if kind == "people" else None,
         )
         for row in rows
     ]

@@ -209,6 +209,8 @@ class GainRecord:
         fraction_latent: Latent fraction; `None` for people (EnergyPlus computes it).
         fraction_lost: Lost fraction.
         fraction_return_air: Return-air fraction (lights); 0 otherwise.
+        activity_schedule: For people, the activity level schedule (W per person); `None`
+            otherwise.
     """
 
     kind: GainKind
@@ -219,6 +221,7 @@ class GainRecord:
     fraction_latent: float | None
     fraction_lost: float
     fraction_return_air: float = 0.0
+    activity_schedule: str | None = None
 
 
 @dataclass(frozen=True)
@@ -312,7 +315,9 @@ class ThermostatRecord:
         Returns:
             The heating and cooling setpoints, °C.
         """
-        control = np.asarray(evaluate(self.control_type_schedule), dtype=np.float64)
+        # EnergyPlus sees only the integer control types at its own timestep; an hour averaged
+        # across a change is taken at the nearest type.
+        control = np.rint(np.asarray(evaluate(self.control_type_schedule), dtype=np.float64))
         heating = np.full(control.shape, np.nan)
         cooling = np.full(control.shape, np.nan)
         for item in self.controls:
@@ -355,9 +360,10 @@ class HotWaterRecord:
         equipment: The equipment's name.
         volume: Hot-water volume each hour for one copy of the zone, m³.
         target_temperature_schedule: The equipment's target-temperature schedule, or `None`.
-        share: The fraction of the equipment's volume one copy receives (1 for equipment in the
-            zone, divided by the zone's multiplier in EnergyPlus's own reporting; the
-            occupant-hour share otherwise). Over every copy of every zone the shares sum to 1.
+        share: The fraction of the equipment's volume one copy receives: 1 ÷ the zone's
+            multiplier for equipment in the zone (EnergyPlus reports its volume with the
+            multiplier applied), the allocation share otherwise. Over every copy of every zone
+            the shares sum to 1.
         allocated: `True` when the equipment has no zone and was allocated.
         rule: How the volume reached the zone: `zone` (the equipment's own), `occupant-hours`, or
             `floor-area` (no conditioned zone has occupant-hours).
@@ -487,8 +493,9 @@ class _Envelope:
     vt: dict[str, float]
 
 
-_TO_SI: dict[str, float] = {"": 1.0, "W/m2-K": 1.0, "Btu/h-ft2-F": 5.678263}
-"""Factors from the Envelope Summary's units to SI; InchPound tables write U-factors in Btu/h·ft²·°F."""
+_TO_SI: dict[str, float] = {"": 1.0, "W/m2-K": 1.0, "Btu/h-ft2-F": 5.678263, "m2": 1.0, "ft2": 0.09290304}
+"""Factors from the Envelope Summary's units to SI; InchPound tables write U-factors in Btu/h·ft²·°F
+and areas in ft²."""
 
 
 def _tabular(results: SQLResult, table: str, column: str) -> dict[str, float]:
@@ -518,6 +525,24 @@ def _first(*sources: dict[str, float]) -> dict[str, float]:
     return merged
 
 
+def _per_glass_area(results: SQLResult, column: str) -> dict[str, float]:
+    """An Exterior Fenestration assembly value per glass area.
+
+    EnergyPlus gives assembly values per opening (glass, frame and divider); a window record's
+    area is its glass area (`Surfaces.Area`), so the value is scaled by opening ÷ glass area
+    for area · value to be the assembly's conductance or admittance.
+    """
+    table = "Exterior Fenestration"
+    values = _tabular(results, table, column)
+    opening = _tabular(results, table, "Area of One Opening")
+    glass = _tabular(results, table, "Glass Area")
+    scaled: dict[str, float] = {}
+    for name, value in values.items():
+        a_glass, a_opening = glass.get(name, 0.0), opening.get(name, 0.0)
+        scaled[name] = value * a_opening / a_glass if a_glass > 0 and a_opening > 0 else value
+    return scaled
+
+
 def _envelope_summary(results: SQLResult) -> _Envelope:
     film = "U-Factor with Film"
     return _Envelope(
@@ -526,17 +551,17 @@ def _envelope_summary(results: SQLResult) -> _Envelope:
             _tabular(results, "Opaque Interior", film),
             _tabular(results, "Exterior Door", film),
             _tabular(results, "Interior Door", film),
-            _tabular(results, "Exterior Fenestration", "Assembly U-Factor"),
+            _per_glass_area(results, "Assembly U-Factor"),
             _tabular(results, "Exterior Fenestration", "Glass U-Factor"),
             _tabular(results, "Interior Fenestration", "Glass U-Factor"),
         ),
         shgc=_first(
-            _tabular(results, "Exterior Fenestration", "Assembly SHGC"),
+            _per_glass_area(results, "Assembly SHGC"),
             _tabular(results, "Exterior Fenestration", "Glass SHGC"),
             _tabular(results, "Interior Fenestration", "Glass SHGC"),
         ),
         vt=_first(
-            _tabular(results, "Exterior Fenestration", "Assembly Visible Transmittance"),
+            _per_glass_area(results, "Assembly Visible Transmittance"),
             _tabular(results, "Exterior Fenestration", "Glass Visible Transmittance"),
             _tabular(results, "Interior Fenestration", "Glass Visible Transmittance"),
         ),
@@ -637,6 +662,7 @@ def _gain(row: NominalLoadRow) -> GainRecord:
         fraction_latent=row.fraction_latent,
         fraction_lost=row.fraction_lost,
         fraction_return_air=row.fraction_return_air,
+        activity_schedule=row.activity_schedule_name,
     )
 
 
@@ -671,18 +697,24 @@ def _ventilation_coefficients(doc: IDFDocumentSince22_1) -> dict[str, _Coefficie
     }
 
 
-def _airflow(row: NominalInfiltrationRow, coefficients: Mapping[str, _Coefficients], zone: str = "") -> AirflowRecord:
+def _airflow(
+    row: NominalInfiltrationRow,
+    coefficients: Mapping[str, _Coefficients],
+    zone: str = "",
+    spaces: Sequence[str] = (),
+) -> AirflowRecord:
     name = row.object_name.upper()
-    prefix = zone.upper() + " "
     found = coefficients.get(name)
-    if found is None and zone and name.startswith(prefix):
-        # A ZoneList object: EnergyPlus names each copy "<ZONE> <OBJECT>".
-        found = coefficients.get(name.removeprefix(prefix))
+    # A ZoneList or SpaceList object: EnergyPlus names each copy "<ZONE> <OBJECT>" or
+    # "<SPACE> <OBJECT>"; the known prefix is removed and the rest looked up exactly.
+    for owner in (zone, *spaces):
+        prefix = owner.upper() + " "
+        if found is None and owner and name.startswith(prefix):
+            found = coefficients.get(name.removeprefix(prefix))
     if found is None:
-        # A SpaceList object ("<SPACE> <OBJECT>"): the longest matching object name wins, so
-        # "INF" never shadows "BIG INF".
+        # Last resort, only when it is unambiguous: one object name ends the copy's name.
         matches = [key for key in coefficients if name.endswith(" " + key)]
-        found = coefficients[max(matches, key=len)] if matches else None
+        found = coefficients[matches[0]] if len(matches) == 1 else None
     constant, temperature, velocity, squared = found or (1.0, 0.0, 0.0, 0.0)
     return AirflowRecord(
         name=row.object_name,
@@ -773,9 +805,24 @@ class _OutdoorAirSpec:
     air_changes: float
 
 
-def _outdoor_air_specs(
-    doc: IDFDocumentSince22_1, zone_lists: Mapping[str, tuple[str, ...]]
-) -> dict[str, _OutdoorAirSpec]:
+_SpecShares = tuple[tuple[float, _OutdoorAirSpec], ...]
+"""A zone's outdoor-air specifications with their floor-area shares (one, of share 1, without spaces)."""
+
+_PROPORTIONAL_METHODS = frozenset({
+    "proportionalcontrolbasedonoccupancyschedule",
+    "proportionalcontrolbasedondesignoccupancy",
+    "indoorairqualityprocedure",
+})
+"""Methods that vary the outdoor air at run time within the per-person and per-area rates; their
+design outdoor air is those two rates added, as for `Sum` without per-zone flow or air changes."""
+
+
+def _space_area(space: object) -> float:
+    area = getattr(space, "floor_area", None)
+    return float(area) if isinstance(area, (int, float)) and area > 0 else 0.0
+
+
+def _outdoor_air_specs(doc: IDFDocumentSince22_1, zone_lists: Mapping[str, tuple[str, ...]]) -> dict[str, _SpecShares]:
     specs: dict[str, _OutdoorAirSpec] = {}
     for obj in doc["DesignSpecification:OutdoorAir"]:
         specs[obj.name.casefold()] = _OutdoorAirSpec(
@@ -785,27 +832,59 @@ def _outdoor_air_specs(
             per_zone=_coefficient(obj.outdoor_air_flow_per_zone, 0.0),
             air_changes=_coefficient(obj.outdoor_air_flow_air_changes_per_hour, 0.0),
         )
-    by_zone: dict[str, _OutdoorAirSpec] = {}
+    # A DesignSpecification:OutdoorAir:SpaceList gives each space its own specification; the zone
+    # takes them weighted by the spaces' floor areas (equal shares when the areas are computed).
+    areas = {space.name.casefold(): _space_area(space) for space in doc.spaces}
+    space_lists: dict[str, _SpecShares] = {}
+    for obj in doc["DesignSpecification:OutdoorAir:SpaceList"]:
+        members = [
+            (areas.get(item.space_name.casefold(), 0.0), specs[name.casefold()])
+            for item in obj.space_specs
+            if (name := item.space_design_specification_outdoor_air_object_name) and name.casefold() in specs
+        ]
+        if not members:
+            continue
+        total = sum(area for area, _ in members)
+        space_lists[obj.name.casefold()] = tuple(
+            (area / total if total > 0 else 1.0 / len(members), spec) for area, spec in members
+        )
+    by_zone: dict[str, _SpecShares] = {}
     for sizing in doc["Sizing:Zone"]:
         name = sizing.design_specification_outdoor_air_object_name
-        spec = specs.get(name.casefold()) if name else None
-        if spec is None:
+        if not name:
+            continue
+        key = name.casefold()
+        shares = space_lists.get(key) or (((1.0, specs[key]),) if key in specs else None)
+        if shares is None:
             continue
         for zone in _expand(sizing.zone_or_zonelist_name, zone_lists):
-            by_zone.setdefault(zone, spec)
+            by_zone.setdefault(zone, shares)
     return by_zone
 
 
 def _design_outdoor_air(
-    spec: _OutdoorAirSpec | None, floor_area: float, volume: float, people: float
+    specs: _SpecShares | None, floor_area: float, volume: float, people: float
 ) -> tuple[float, float]:
     """Return (per area, per person) for a zone; per-zone flow and air changes count per area.
 
     `Maximum` keeps only the largest of the four design flows, given the zone's design `people`,
-    as EnergyPlus does; `Sum` adds them.
+    as EnergyPlus does; `Sum` adds them; the proportional-control and IAQ methods add the
+    per-person and per-area rates. Several specifications (a space list) are weighted by
+    their floor-area shares.
     """
-    if spec is None:
+    if not specs:
         return 0.0, 0.0
+    per_area = per_person = 0.0
+    for share, spec in specs:
+        area, person = _one_design_outdoor_air(spec, floor_area, volume, people)
+        per_area += share * area
+        per_person += share * person
+    return per_area, per_person
+
+
+def _one_design_outdoor_air(
+    spec: _OutdoorAirSpec, floor_area: float, volume: float, people: float
+) -> tuple[float, float]:
     method = spec.method.casefold()
     zone_flow = spec.per_zone / floor_area if floor_area > 0.0 else 0.0
     ach_flow = spec.air_changes * volume / 3600.0 / floor_area if floor_area > 0.0 else 0.0
@@ -815,6 +894,8 @@ def _design_outdoor_air(
         if largest == 0:
             return 0.0, spec.per_person
         return (spec.per_area, zone_flow, ach_flow)[largest - 1], 0.0
+    if method in _PROPORTIONAL_METHODS:
+        return spec.per_area, spec.per_person
     combined = method == "sum"
     per_person = spec.per_person if combined or method == "flow/person" else 0.0
     per_area = spec.per_area if combined or method == "flow/area" else 0.0
@@ -916,7 +997,8 @@ def _hot_water(
             zoneless.append((item.name, volume, target))
             continue
         # EnergyPlus reports a zoned equipment's volume with the zone's multipliers applied.
-        record = HotWaterRecord(item.name, volume / multipliers[zone_index], target, 1.0, allocated=False)
+        share = 1.0 / multipliers[zone_index]
+        record = HotWaterRecord(item.name, volume * share, target, share, allocated=False)
         hot_water.setdefault(zone_index, []).append(record)
     if not zoneless:
         return hot_water
@@ -926,6 +1008,11 @@ def _hot_water(
     if sum(weights[i] * multipliers[i] for i in weights) <= 0.0:
         rule = "floor-area"
         weights = {row.index: row.floor_area if row.is_part_of_total_area else 0.0 for row in targets}
+        # The volume is never dropped: every target's floor area, then equal shares per copy.
+        if sum(weights[i] * multipliers[i] for i in weights) <= 0.0:
+            weights = {row.index: row.floor_area for row in targets}
+        if sum(weights[i] * multipliers[i] for i in weights) <= 0.0:
+            weights = {row.index: 1.0 for row in targets}
     total = sum(weights[i] * multipliers[i] for i in weights)
     for name, volume, target in zoneless:
         for row in targets:
@@ -1001,13 +1088,21 @@ def build_inventory(sources: SourceData, evaluate: Callable[[str], Profile] | No
     surfaces = _surfaces(results, names)
     gains = _by_zone(read_nominal_loads(results), _gain)
     infiltration_coefficients = _infiltration_coefficients(doc)
+    spaces: dict[str, list[str]] = {}
+    for space in doc.spaces:
+        spaces.setdefault(space.zone_name.casefold(), []).append(space.name)
+
+    def zone_spaces(index: int) -> tuple[str, ...]:
+        return tuple(spaces.get(names.get(index, "").casefold(), ()))
+
     infiltration = _by_zone(
         read_nominal_infiltration(results),
-        lambda r: _airflow(r, infiltration_coefficients, names.get(r.zone_index, "")),
+        lambda r: _airflow(r, infiltration_coefficients, names.get(r.zone_index, ""), zone_spaces(r.zone_index)),
     )
     ventilation_coefficients = _ventilation_coefficients(doc)
     ventilation = _by_zone(
-        read_nominal_ventilation(results), lambda r: _airflow(r, ventilation_coefficients, names.get(r.zone_index, ""))
+        read_nominal_ventilation(results),
+        lambda r: _airflow(r, ventilation_coefficients, names.get(r.zone_index, ""), zone_spaces(r.zone_index)),
     )
 
     zone_lists = _zone_lists(doc)

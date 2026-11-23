@@ -515,7 +515,7 @@
     },
     "GainTotals": {
       "additionalProperties": false,
-      "description": "One kind of internal gain (FR-015).\n\nAttributes:\n    installed: \u03a3 design level: W, or people for occupancy.\n    hourly: \u03a3 design level \u00b7 schedule, per hour (W, or people).\n    radiant: Annual radiant energy, J.\n    latent: Annual latent energy, J.\n    lost: Annual energy lost to the zone (lost fraction, and lights' return-air fraction), J.\n    design_days: \u03a3 design level \u00b7 schedule on the design days, weighted by `installed`.",
+      "description": "One kind of internal gain (FR-015).\n\nAttributes:\n    installed: \u03a3 design level: W, or people for occupancy.\n    hourly: \u03a3 design level \u00b7 schedule, per hour (W, or people).\n    radiant: Annual radiant energy, J.\n    latent: Annual latent energy, J.\n    lost: Annual energy lost to the zone (lost fraction, and lights' return-air fraction), J.\n    design_days: \u03a3 design level \u00b7 schedule on the design days, weighted by `installed`.\n    activity: For people, the annual heat their activity level gives off, \u03a3 people \u00b7\n        schedule \u00b7 activity (W per person) \u00b7 3600 s, J; 0 when unknown and for other kinds.\n        Divided by the occupant-hours (\u03a3 `hourly` \u00b7 3600 s) it is the mean W per person.",
       "properties": {
         "installed": {
           "default": 0.0,
@@ -564,6 +564,11 @@
         "lost": {
           "default": 0.0,
           "title": "Lost",
+          "type": "number"
+        },
+        "activity": {
+          "default": 0.0,
+          "title": "Activity",
           "type": "number"
         }
       },

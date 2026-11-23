@@ -554,13 +554,19 @@ def test_up8_and_up2_fields_are_written_not_listed() -> None:
     assert all(e.source in {"to_sbem", "schedules", "airflow", "efficiency", "fans", "hotwater"} for e in entries)
 
 
-def test_holidays_reach_the_week_slots() -> None:
+def test_holidays_are_averaged_into_weekdays_and_reported() -> None:
+    """epinterface's builder declares no holiday, so a Holiday slot would never apply (R5)."""
     cal = RunPeriodCalendar(year=2023, holidays=frozenset({date(2023, 7, 4)}))
     facts = BuildingFacts(calendar=cal, storey_ratio=1.0, mains_temperature=12.0)
     conversion = to_archetype(_groups(), Layout.SPACE_USE_EXPOSURE, facts, name="office")
-    schedule = conversion.archetype.group("office / perimeter").Zone.Operations.SpaceUse.Occupancy.Schedule
-    assert schedule.July.Holiday is not None
-    assert schedule.June.Holiday is None
+    occupancy = conversion.archetype.group("office / perimeter").Zone.Operations.SpaceUse.Occupancy
+    assert occupancy.Schedule.July.Holiday is None
+    # On the calendar the archetype runs (no holiday), each month's occupant-hours are kept.
+    people = _ledger().gains["people"]
+    rebuilt = people.installed * year_values(occupancy.Schedule, CAL)
+    july = (CAL.day_months == 6).repeat(24)
+    assert rebuilt[july].sum() == pytest.approx(np.asarray(people.hourly)[july].sum(), rel=1e-9)
+    assert any(e.feature == "Holiday profiles" for e in conversion.not_represented)
 
 
 def test_group_without_floor_area_raises_reduction_error() -> None:

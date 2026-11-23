@@ -51,6 +51,7 @@ from functools import cached_property
 from typing import TYPE_CHECKING, Literal
 
 from idfkit.exceptions import ResultLookupError
+from idfkit.versioned import as_version
 from pydantic import BaseModel, ConfigDict
 
 from archetypal.reduction._sql_tables import (
@@ -168,6 +169,18 @@ UNSUPPORTED_FEATURES: tuple[UnsupportedFeature, ...] = (
     UnsupportedFeature("Shading:Overhang:Projection", "Overhangs", "Overhangs above windows or doors."),
     UnsupportedFeature("Shading:Fin", "Fins", "Side fins beside windows or doors."),
     UnsupportedFeature("Shading:Fin:Projection", "Fins", "Side fins beside windows or doors."),
+    UnsupportedFeature(
+        "ZoneInfiltration:EffectiveLeakageArea",
+        "Infiltration by effective leakage area",
+        "Infiltration from an effective leakage area, driven by stack and wind (Sherman-Grimsrud); EnergyPlus "
+        "reports no design flow for it, so the archetype's infiltration leaves it out.",
+    ),
+    UnsupportedFeature(
+        "ZoneInfiltration:FlowCoefficient",
+        "Infiltration by flow coefficient",
+        "Infiltration from a flow coefficient and pressure exponent, driven by stack and wind (AIM-2); EnergyPlus "
+        "reports no design flow for it, so the archetype's infiltration leaves it out.",
+    ),
     UnsupportedFeature(
         "ElectricEquipment:ITE:AirCooled",
         "IT equipment",
@@ -384,6 +397,8 @@ def _readers(doc: IDFDocumentSince22_1, z: _Zones) -> dict[str, Callable[[], _Fo
         "Shading:Fin:Projection": lambda: [
             (o.name, z.surface(o.window_or_door_name)) for o in doc["Shading:Fin:Projection"]
         ],
+        "ZoneInfiltration:EffectiveLeakageArea": lambda: _leakage_area(doc, z),
+        "ZoneInfiltration:FlowCoefficient": lambda: _flow_coefficient(doc, z),
         "ElectricEquipment:ITE:AirCooled": lambda: [
             (o.name, z.zone(o.zone_or_space_name)) for o in doc["ElectricEquipment:ITE:AirCooled"]
         ],
@@ -412,6 +427,26 @@ def _readers(doc: IDFDocumentSince22_1, z: _Zones) -> dict[str, Callable[[], _Fo
             for _ in doc["Site:GroundTemperature:BuildingSurface"]
         ],
     }
+
+
+# 22.2 renamed the infiltration objects' Zone Name to Zone or Space Name.
+_SPACE_INFILTRATION = "22.2"
+
+
+def _leakage_area(doc: IDFDocumentSince22_1, z: _Zones) -> _Found:
+    if doc.version < (22, 2, 0):
+        older = as_version(doc, before=_SPACE_INFILTRATION)["ZoneInfiltration:EffectiveLeakageArea"]
+        return [(o.name, z.zone(o.zone_name)) for o in older]
+    newer = as_version(doc, since=_SPACE_INFILTRATION)["ZoneInfiltration:EffectiveLeakageArea"]
+    return [(o.name, z.zone(o.zone_or_space_name)) for o in newer]
+
+
+def _flow_coefficient(doc: IDFDocumentSince22_1, z: _Zones) -> _Found:
+    if doc.version < (22, 2, 0):
+        older = as_version(doc, before=_SPACE_INFILTRATION)["ZoneInfiltration:FlowCoefficient"]
+        return [(o.name, z.zone(o.zone_name)) for o in older]
+    newer = as_version(doc, since=_SPACE_INFILTRATION)["ZoneInfiltration:FlowCoefficient"]
+    return [(o.name, z.zone(o.zone_or_space_name)) for o in newer]
 
 
 def _air_loops(doc: IDFDocumentSince22_1, z: _Zones) -> _Found:

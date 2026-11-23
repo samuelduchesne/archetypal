@@ -100,8 +100,10 @@ def supply_schedules(doc: IDFDocumentSince22_1) -> dict[str, str | None]:
     """Return each `WaterUse:Equipment`'s hot-water temperature schedule, by case-folded name.
 
     EnergyPlus ignores the equipment's own hot water supply schedule when the equipment is
-    listed in a `WaterUse:Connections`: the hot water then arrives at the connection's hot
-    water supply temperature. That schedule is used when the connection has one.
+    listed in a `WaterUse:Connections`: the connection's schedule overrides it, even when blank
+    (Input Output Reference, Group Water Systems). That schedule is used when the connection has
+    one. A connection on a plant loop without one delivers at the plant's temperature, which is
+    not read here; the equipment's schedules then stand in for it, an approximation.
 
     Args:
         doc: The model.

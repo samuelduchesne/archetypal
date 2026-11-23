@@ -34,7 +34,7 @@ from idfkit.exceptions import ResultLookupError
 from idfkit.simulation import SQLResult
 from idfkit.versioned import as_version
 
-from archetypal.errors import MissingResults, ModelResultsMismatch, UnsupportedEnergyPlusVersion
+from archetypal.errors import MissingResults, ModelResultsMismatch, ReductionError, UnsupportedEnergyPlusVersion
 from archetypal.reduction._sql_tables import database_path, read_simulations, read_zones
 from archetypal.reduction.requirements import (
     ENERGYPLUS_FUELS,
@@ -425,12 +425,24 @@ def _check(
     if differences:
         raise ModelResultsMismatch(results_subject, differences)
 
+    # 4. A run period that wraps around 1 January: EnergyPlus reports it from its begin date and
+    # runs its January in the next year, while schedules and results are read on one calendar
+    # year from 1 January, so every hourly series would be out of step with the schedules.
+    run_period = RunPeriodInfo.from_document(doc)
+    if run_period.end.year != run_period.begin.year:
+        message = (
+            f"the RunPeriod {run_period.name or ''} runs from {run_period.begin:%d %B} to {run_period.end:%d %B} "
+            "across 1 January; reduction reads one calendar year from 1 January: run the model from 1 January "
+            "to 31 December"
+        )
+        raise ReductionError(model_path or "the model", message)
+
     version = doc.version
     return SourceData(
         model=doc,
         results=sql,
         energyplus_version=(version[0], version[1], version[2]),
-        run_period=RunPeriodInfo.from_document(doc),
+        run_period=run_period,
         facts=facts,
         model_sha256=model_sha256,
         results_sha256=_sha256_file(results_path) if results_path is not None else "",

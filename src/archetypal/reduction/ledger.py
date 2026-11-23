@@ -449,6 +449,9 @@ class GainTotals(_Totals):
         latent: Annual latent energy, J.
         lost: Annual energy lost to the zone (lost fraction, and lights' return-air fraction), J.
         design_days: Σ design level · schedule on the design days, weighted by `installed`.
+        activity: For people, the annual heat their activity level gives off, Σ people ·
+            schedule · activity (W per person) · 3600 s, J; 0 when unknown and for other kinds.
+            Divided by the occupant-hours (Σ `hourly` · 3600 s) it is the mean W per person.
     """
 
     installed: float = 0.0
@@ -457,6 +460,7 @@ class GainTotals(_Totals):
     radiant: float = 0.0
     latent: float = 0.0
     lost: float = 0.0
+    activity: float = 0.0
 
 
 class AirflowTotals(_Totals):
@@ -935,9 +939,17 @@ def _exact_fields(zone: ZoneComponent, area: float) -> dict[str, Any]:
     )
     for kind, component, installed in sources:
         if component.IsOn:
+            hourly = installed * profile(component.Schedule)
+            # People give off their activity level, W per person, every occupied hour.
+            activity = (
+                float(hourly.sum()) * _SECONDS_PER_HOUR * space_use.Occupancy.MetabolicRate_met_to_W
+                if kind == "people"
+                else 0.0
+            )
             gains[kind] = GainTotals(
                 installed=installed,
-                hourly=installed * profile(component.Schedule),
+                hourly=hourly,
+                activity=activity,
                 design_days=_design_days(component.Schedule, installed),
             )
     values["gains"] = gains
@@ -1190,8 +1202,12 @@ def gain_fields(
         else:
             fraction = np.asarray(schedules(gain.schedule), dtype=np.float64)
         hourly = gain.design_level * fraction
+        activity = 0.0
         if gain.kind == "people":
             radiant = latent = lost = 0.0
+            if gain.activity_schedule is not None:
+                watts = np.asarray(schedules(gain.activity_schedule), dtype=np.float64)
+                activity = float((hourly * watts).sum()) * _SECONDS_PER_HOUR
         else:
             energy = float(hourly.sum()) * _SECONDS_PER_HOUR
             radiant = energy * gain.fraction_radiant
@@ -1204,6 +1220,7 @@ def gain_fields(
             latent=latent,
             lost=lost,
             design_days=schedule_design_days(design, gain.schedule, gain.design_level),
+            activity=activity,
         )
         totals[gain.kind] = totals[gain.kind] + part if gain.kind in totals else part
     return {"gains": totals}

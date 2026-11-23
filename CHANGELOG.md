@@ -118,6 +118,9 @@ before upgrading.
     is no longer typed as triple glazing; a template takes another group's window when the
     perimeter group has none, instead of a default clear glazing.
   - Each dropped ideal-loads limit is reported with the limit type actually written.
+  - People read from UMI give off UMI's 125.28 W each (about 1.348 met), not epinterface's
+    1.2 met; a scheduled infiltration is written as its annual mean and the schedule reported;
+    natural ventilation that SBEM would drop (no wind or buoyancy driver) is reported.
 - Reduction:
   - Backup heaters are left out of the rated heating efficiency.
   - Outdoor air honours the `Maximum` method of `DesignSpecification:OutdoorAir`.
@@ -149,6 +152,26 @@ before upgrading.
     inflates other zones' share of the consumption.
   - A zone served by several air loops takes the heat recovery and economiser of the loop that
     treats its outdoor air most, whatever the loops' names.
+  - Holidays are averaged into their weekdays, since epinterface declares none: they no longer
+    run as working days in the archetype; the lost holiday profile is reported.
+  - People give off the detailed model's activity level (`MetabolicRate`), not a fixed 111.55 W.
+  - Schedules are evaluated at the model's own timestep and follow its daylight saving period,
+    as EnergyPlus applies them.
+  - The hot-water pumps' energy reaches the archetype's distribution COP; hot water that is never
+    heated is off and reported instead of heated by an assumed 45 K; a leap-year run period's
+    hot-water volume and a hot-water fuel SBEM lacks are reported once, correctly.
+  - The minimum outdoor air of a group with an economiser is the design minimum; the
+    economiser's free-cooling air is left to the archetype's economiser.
+  - Window assembly U-factor and SHGC (frame included) are counted over the whole opening.
+  - Design outdoor air reads `DesignSpecification:OutdoorAir:SpaceList` and the
+    proportional-control and IAQ methods instead of giving zero; infiltration objects of a
+    SpaceList take their own coefficients.
+  - Gain schedules above 1, half storey ratios and averaged thermostat control types are
+    handled; zoneless hot water is never dropped; supply-air limits outside epinterface's range,
+    infiltration by leakage area or flow coefficient, and the infiltration's dropped weather
+    response are reported.
+  - A run period that crosses 1 January is refused with an explanation instead of reduced out
+    of step with its schedules.
 
 ## [2.18.11] - 2026-10-25
 

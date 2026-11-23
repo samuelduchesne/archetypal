@@ -72,18 +72,27 @@ def test_hot_water_delivered_heat_uses_the_hot_water_supply_temperature(
 def test_archetype_hot_water_gives_back_the_detailed_consumption(
     reduced: Callable[..., Reduction], detailed: Callable[[str], Any]
 ) -> None:
-    """Volume · (supply - inlet) · rho·c_p / efficiency over the groups is the WaterSystems meter."""
+    """Volume · (supply - inlet) · rho·c_p / efficiency over the groups is the detailed consumption.
+
+    That is the WaterSystems meter plus the pump energy attributed to hot water, which the
+    archetype carries in its distribution COP.
+    """
     sources, _, _ = detailed("ten_zone_multipliers")
     reduction = reduced("ten_zone_multipliers")
     consumed = 0.0
+    pumps = 0.0
     for report_group, zone_group in zip(reduction.report.groups, reduction.archetype.Groups, strict=True):
         dhw = zone_group.Zone.Operations.DHW
+        energy = report_group.ledger.energy.get("hot_water")
+        if energy is not None:
+            pumps += sum(energy.distribution_by_fuel.values())
         volume = float(report_group.ledger.hot_water.volume.sum())
         if volume == 0.0:
             continue
         rise = dhw.WaterSupplyTemperature - dhw.WaterTemperatureInlet
         consumed += volume * rise * WATER_VOLUMETRIC_HEAT / dhw.effective_system_cop
-    assert consumed == pytest.approx(_meter(sources, "WaterSystems:NaturalGas"), rel=0.01)
+    assert pumps > 0
+    assert consumed == pytest.approx(_meter(sources, "WaterSystems:NaturalGas") + pumps, rel=0.01)
 
 
 # --- ideal-loads limits ----------------------------------------------------------------------------

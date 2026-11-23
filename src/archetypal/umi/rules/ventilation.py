@@ -29,6 +29,7 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING, NamedTuple, cast
 
+import numpy as np
 from epinterface.sbem.components.envelope import InfiltrationComponent
 from epinterface.sbem.components.systems import VentilationComponent
 
@@ -36,6 +37,7 @@ from archetypal.errors import Problem
 from archetypal.umi._format import ZoneVentilation
 from archetypal.umi.correspondence import rule
 from archetypal.umi.rules._common import (
+    annual_values,
     identity_to_sbem,
     identity_to_umi,
     optional_schedule_to_sbem,
@@ -105,7 +107,8 @@ _SWITCHES: Mapping[VentilationProvider, tuple[bool, bool]] = MappingProxyType({
 })
 
 _INFILTRATION_PATH = "Envelope.Infiltration"
-# The infiltration fields that change a simulation (epinterface ignores the coefficients).
+# The infiltration fields that change a simulation (epinterface ignores the coefficients; it
+# multiplies the flow by the schedule, compared by name).
 _COMPARED = ("IsOn", "AirChangesPerHour", "FlowPerExteriorSurfaceArea", "CalculationMethod")
 
 
@@ -174,7 +177,9 @@ def infiltration_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext) 
 
 
 def _behaviour(infiltration: InfiltrationComponent) -> dict[str, JsonValue]:
-    return {key: getattr(infiltration, key) for key in _COMPARED}
+    behaviour: dict[str, JsonValue] = {key: getattr(infiltration, key) for key in _COMPARED}
+    behaviour["Schedule"] = None if infiltration.Schedule is None else infiltration.Schedule.Name
+    return behaviour
 
 
 @rule("infiltration.ach", to="umi")
@@ -186,6 +191,10 @@ def infiltration_to_umi(
     context: RuleContext,
 ) -> dict[str, object]:
     """Write SBEM's infiltration as air changes per hour.
+
+    epinterface multiplies the infiltration by its schedule; UMI's infiltration is constant, so a
+    schedule that is not always 1 is lost and the air changes take its annual mean, which keeps
+    the annual infiltrated volume.
 
     Args:
         infiltration: The zone's infiltration.
@@ -209,6 +218,20 @@ def infiltration_to_umi(
             reason=f"UMI holds air changes per hour only; converting {infiltration.CalculationMethod} needs the "
             "building's volume",
         )
+    air_changes = infiltration.AirChangesPerHour
+    if infiltration.Schedule is not None:
+        hourly = annual_values(infiltration.Schedule)
+        if float(hourly.min()) != 1.0 or float(hourly.max()) != 1.0:
+            mean = float(np.mean(hourly))
+            air_changes = infiltration.AirChangesPerHour * mean
+            context.lose(
+                "Infiltration.Schedule",
+                infiltration.Schedule.Name,
+                replacement=air_changes,
+                rule="infiltration.ach",
+                reason=f"UMI's infiltration has no schedule; the air changes are multiplied by the schedule's annual "
+                f"mean, {mean:.4g}, so the annual infiltrated volume is kept but not its hourly profile",
+            )
     main = _behaviour(infiltration)
     for key, other in (("AtticInfiltration", attic), ("BasementInfiltration", basement)):
         # Reading back gives the zone's air changes with `AirChanges/Hour`, so an attic or basement
@@ -217,11 +240,11 @@ def infiltration_to_umi(
             context.lose(
                 key,
                 _behaviour(other),
-                replacement=infiltration.AirChangesPerHour,
+                replacement=air_changes,
                 rule="infiltration.ach",
                 reason="UMI has one infiltration for the whole zone; the zone's is written",
             )
-    return {"infiltration": infiltration.AirChangesPerHour, "is_infiltration_on": infiltration.IsOn}
+    return {"infiltration": air_changes, "is_infiltration_on": infiltration.IsOn}
 
 
 # --- Natural-ventilation schedule ---------------------------------------------------------------
@@ -319,6 +342,14 @@ def natural_limits_to_sbem(ventilation: ZoneVentilation, *, context: RuleContext
                     rule="vent.natural_limits",
                     reason="SBEM needs a minimum outdoor temperature below the maximum; its band is kept",
                 )
+    if ventilation.is_nat_vent_on and not ventilation.is_wind_on and not ventilation.is_buoyancy_on:
+        # epinterface adds no wind-and-stack ventilation when both drivers are off.
+        context.lose(
+            "IsNatVentOn",
+            True,
+            rule="vent.natural_limits",
+            reason="Neither wind nor buoyancy drives the natural ventilation, and SBEM then adds none",
+        )
     return fields
 
 

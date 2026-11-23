@@ -33,8 +33,9 @@ day type (it decides which `Through:` period applies), else `DEFAULT_DESIGN_DATE
 from __future__ import annotations
 
 import calendar
+import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from functools import cached_property
 from itertools import count
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
@@ -128,6 +129,8 @@ _MONDAY = 0
 _DECEMBER = 11
 _LAST_HOUR = 23
 _SUNDAY = 6
+_DEFAULT_TIMESTEP = 6
+"""`Timestep`'s default number of timesteps per hour."""
 # First year searched by `calendar_year`; any year with the same weekday alignment is equivalent.
 _FIRST_CANDIDATE_YEAR = 2013
 # Through: dates of each month. February ends on 02/29 so that a leap day stays in February;
@@ -173,12 +176,16 @@ class RunPeriodCalendar:
         holidays: Dates marked `Holiday` by `RunPeriodControl:SpecialDays`.
         custom_day_1: Dates marked `CustomDay1`.
         custom_day_2: Dates marked `CustomDay2`.
+        daylight_saving: Days of the `RunPeriodControl:DaylightSavingTime` period, start and end
+            dates included (EnergyPlus sets daylight saving per day). On these days EnergyPlus
+            takes each schedule one hour ahead (`ScheduleEvaluator`).
     """
 
     year: int
     holidays: frozenset[date] = field(default_factory=frozenset[date])
     custom_day_1: frozenset[date] = field(default_factory=frozenset[date])
     custom_day_2: frozenset[date] = field(default_factory=frozenset[date])
+    daylight_saving: frozenset[date] = field(default_factory=frozenset[date])
 
     @classmethod
     def from_document(cls, doc: IDFDocumentSince22_1) -> RunPeriodCalendar:
@@ -209,6 +216,7 @@ class RunPeriodCalendar:
             holidays=frozenset(get_holidays(doc, year)),
             custom_day_1=frozenset(get_special_days_by_type(doc, year, "CustomDay1")),
             custom_day_2=frozenset(get_special_days_by_type(doc, year, "CustomDay2")),
+            daylight_saving=daylight_saving_days(doc, year),
         )
 
     @property
@@ -250,6 +258,85 @@ class RunPeriodCalendar:
                 if day.year == self.year:
                     weekdays[day.timetuple().tm_yday - 1] = weekday
         return np.asarray(weekdays, dtype=np.intp)
+
+
+_MONTHS = {name.casefold(): index for index, name in enumerate(calendar.month_name) if name}
+_MONTHS.update({name.casefold(): index for index, name in enumerate(calendar.month_abbr) if name})
+_DAY_NAMES = {name.casefold(): index for index, name in enumerate(calendar.day_name)}
+_DAY_NAMES.update({name.casefold(): index for index, name in enumerate(calendar.day_abbr)})
+_ORDINAL = re.compile(r"^(\d+)(?:st|nd|rd|th)?\s+(\w+)\s+in\s+(\w+)$", re.IGNORECASE)
+_LAST = re.compile(r"^last\s+(\w+)\s+in\s+(\w+)$", re.IGNORECASE)
+_NUMERIC = re.compile(r"^(\d{1,2})\s*[/-]\s*(\d{1,2})$")
+
+
+def parse_date(spec: str, year: int) -> date:
+    """Read an EnergyPlus date field (Input Output Reference, Table 2. Date Field Interpretation).
+
+    Accepted: `3/10` (month/day), `March 10` or `10 March`, `2nd Sunday in March`,
+    `Last Sunday in October`.
+
+    Args:
+        spec: The field's text.
+        year: The year the date falls in.
+
+    Returns:
+        The date.
+
+    Raises:
+        ValueError: If the text is none of these forms.
+    """
+    text = " ".join(spec.split())
+    if match := _NUMERIC.match(text):
+        return date(year, int(match.group(1)), int(match.group(2)))
+    words = text.split(" ")
+    if len(words) == 2:  # noqa: PLR2004 - "March 10" or "10 March"
+        first, second = (w.casefold() for w in words)
+        if first in _MONTHS and second.isdigit():
+            return date(year, _MONTHS[first], int(second))
+        if second in _MONTHS and first.isdigit():
+            return date(year, _MONTHS[second], int(first))
+    if (match := _ORDINAL.match(text)) and match.group(2).casefold() in _DAY_NAMES:
+        month = _MONTHS[match.group(3).casefold()]
+        first_day = date(year, month, 1)
+        offset = (_DAY_NAMES[match.group(2).casefold()] - first_day.weekday()) % 7
+        return first_day + timedelta(days=offset + 7 * (int(match.group(1)) - 1))
+    if (match := _LAST.match(text)) and match.group(1).casefold() in _DAY_NAMES:
+        month = _MONTHS[match.group(2).casefold()]
+        last_day = date(year, month, calendar.monthrange(year, month)[1])
+        return last_day - timedelta(days=(last_day.weekday() - _DAY_NAMES[match.group(1).casefold()]) % 7)
+    msg = f"cannot read the date {spec!r}"
+    raise ValueError(msg)
+
+
+def daylight_saving_days(doc: IDFDocumentSince22_1, year: int) -> frozenset[date]:
+    """The days of the model's `RunPeriodControl:DaylightSavingTime` period in `year`.
+
+    The start and end dates are included; a period whose end comes before its start (southern
+    hemisphere) runs from the start to 31 December and from 1 January to the end. A period
+    from the weather file (`Use Weather File Daylight Saving Period`) is not read: the
+    results do not carry it.
+
+    Args:
+        doc: The model.
+        year: The calendar year.
+
+    Returns:
+        The days, empty without a daylight saving period.
+    """
+    for period in doc["RunPeriodControl:DaylightSavingTime"]:
+        start, end = parse_date(period.start_date, year), parse_date(period.end_date, year)
+        first, last = date(year, 1, 1), date(year, 12, 31)
+        spans = [(start, end)] if end >= start else [(start, last), (first, end)]
+        return frozenset(a + timedelta(days=i) for a, b in spans for i in range((b - a).days + 1))
+    return frozenset()
+
+
+def model_timestep(doc: IDFDocumentSince22_1) -> int:
+    """The model's timesteps per hour (`Timestep`), 6 without one, as EnergyPlus's default."""
+    for timestep in doc["Timestep"]:
+        value = timestep.number_of_timesteps_per_hour
+        return int(value) if value else _DEFAULT_TIMESTEP
+    return _DEFAULT_TIMESTEP
 
 
 def schedule_index(doc: IDFDocumentSince22_1) -> dict[str, AnySchedule]:
@@ -307,6 +394,9 @@ class ScheduleEvaluator:
         self.base_path = base_path
         self.index = schedule_index(doc)
         self.design_dates = design_dates(doc, calendar.year)
+        self.timestep = model_timestep(doc)
+        days = sorted(d.timetuple().tm_yday - 1 for d in calendar.daylight_saving if d.year == calendar.year)
+        self._daylight_saving = np.asarray(days, dtype=np.intp)
         self._profiles: dict[str, Profile] = {}
         self._design_days: dict[tuple[str, DesignDayKind], Profile] = {}
 
@@ -331,16 +421,46 @@ class ScheduleEvaluator:
         if cached is not None:
             return cached
         evaluate = cast("Callable[..., list[float]]", values)
-        hourly = evaluate(self._object(name), year=self.calendar.year, document=self.doc, base_path=self.base_path)
-        profile = np.asarray(hourly, dtype=np.float64)
+        steps = evaluate(
+            self._object(name),
+            year=self.calendar.year,
+            timestep=self.timestep,
+            document=self.doc,
+            base_path=self.base_path,
+        )
+        profile: Profile = self._hourly(steps)
+        if self._daylight_saving.size:
+            # EnergyPlus reports in standard time and, on a daylight saving day, takes each
+            # schedule's value of the next hour of the same day (the last hour wraps to the first).
+            days: npt.NDArray[np.float64] = profile.reshape(-1, 24)  # pyright: ignore[reportUnknownMemberType]
+            clock: npt.NDArray[np.float64] = days[self._daylight_saving]
+            shifted = np.array(clock, dtype=np.float64)
+            shifted[:, :-1] = clock[:, 1:]
+            shifted[:, -1] = clock[:, 0]
+            days[self._daylight_saving] = shifted
+            profile = days.ravel()
         profile.flags.writeable = False
         self._profiles[key] = profile
         return profile
 
+    def _hourly(self, steps: list[float]) -> npt.NDArray[np.float64]:
+        """Each hour's mean of the model's timesteps: the value EnergyPlus applies over the hour."""
+        array: npt.NDArray[np.float64] = np.array(steps, dtype=np.float64)
+        if self.timestep == 1:
+            return array
+        hours: npt.NDArray[np.float64] = array.reshape(-1, self.timestep)  # pyright: ignore[reportUnknownMemberType]
+        # An hour whose timesteps agree keeps that value exactly (a mean of equal floats can
+        # differ in the last bit, and equal days are shared by comparing values).
+        hourly = hours.mean(axis=1)
+        same = hours.min(axis=1) == hours.max(axis=1)
+        hourly[same] = hours[same, 0]
+        return hourly
+
     def design_day(self, name: str, kind: DesignDayKind) -> Profile:
         """Return the 24 hourly values of the schedule called `name` on a design day.
 
-        The day is evaluated as the run-period profiles are (hourly, default interpolation), on
+        The day is evaluated as the run-period profiles are (each hour the mean of the model's
+        timesteps, default interpolation), on
         the date `design_dates[kind]`, with the design day's type, so a `For: SummerDesignDay`
         or `For: WinterDesignDay` day applies as in EnergyPlus.
 
@@ -360,16 +480,17 @@ class ScheduleEvaluator:
             return cached
         date_ = self.design_dates[kind]
         evaluate = cast("Callable[..., list[float]]", values)
-        hourly = evaluate(
+        steps = evaluate(
             self._object(name),
             year=self.calendar.year,
+            timestep=self.timestep,
             start_date=date_,
             end_date=date_,
             day_type=kind,
             document=self.doc,
             base_path=self.base_path,
         )
-        profile = np.asarray(hourly, dtype=np.float64)
+        profile = self._hourly(steps)
         profile.flags.writeable = False
         self._design_days[key] = profile
         return profile

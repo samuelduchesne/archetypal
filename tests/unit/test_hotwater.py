@@ -178,7 +178,7 @@ def test_fixture_conserves_volume_and_heat(
     building = _raw(ten_sources, "Water Use Equipment Hot Water Volume", "BUILDING HOT WATER")
     assert sum(a.volume for a in zoneless) == pytest.approx(float(building.sum()))
     zoned = [a for a in recorded if not a.allocated]
-    assert all(a.rule == "zone" and a.share == 1.0 for a in zoned)
+    assert all(a.rule == "zone" and a.share * a.multiplier == pytest.approx(1.0) for a in zoned)
 
 
 def test_allocations_report_the_rule_the_inventory_used() -> None:

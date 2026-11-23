@@ -25,6 +25,8 @@ env:
   # EnergyPlus 24.2 for the integration tier (spec 001 research R3).
   ENERGYPLUS_VERSION: 24.2.0
   ENERGYPLUS_BUILD: 94a887817b
+  # The release tag of 24.2.0 is v24.2.0a: v24.2.0 has no Linux archive.
+  ENERGYPLUS_TAG: v24.2.0a
   ENERGYPLUS_DIR: /usr/local/EnergyPlus-24-2-0
   # Basilisk, the UMI library code SC-002 checks written libraries with (spec 003 research R15).
   DOTNET_NOLOGO: "true"
@@ -134,7 +136,7 @@ jobs:
         run: |
           archive="EnergyPlus-${ENERGYPLUS_VERSION}-${ENERGYPLUS_BUILD}-Linux-Ubuntu22.04-x86_64.tar.gz"
           curl -fsSL -o "/tmp/${archive}" \
-            "https://github.com/NREL/EnergyPlus/releases/download/v${ENERGYPLUS_VERSION}/${archive}"
+            "https://github.com/NREL/EnergyPlus/releases/download/${ENERGYPLUS_TAG}/${archive}"
           sudo mkdir -p "${ENERGYPLUS_DIR}"
           sudo tar -xzf "/tmp/${archive}" -C "${ENERGYPLUS_DIR}" --strip-components=1
           echo "${ENERGYPLUS_DIR}" >> "${GITHUB_PATH}"
